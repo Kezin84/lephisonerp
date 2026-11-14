@@ -15,6 +15,8 @@
       background: #f3f2f1;
       color: #201f1e;
       height: 100vh;
+      height: 100dvh;
+      min-height: 100dvh;
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -266,8 +268,10 @@
 
     /* Authentic Excel Grid Container */
     .grid-container {
-      flex: 1;
+      flex: 1 1 0%;
+      min-height: 220px;
       overflow: auto;
+      -webkit-overflow-scrolling: touch;
       background: #ffffff;
       position: relative;
     }
@@ -278,6 +282,22 @@
       font-family: Calibri, 'Aptos Narrow', 'Segoe UI', Arial, sans-serif;
       font-size: 11pt;
       color: #000000;
+    }
+    table.excel-grid col.col-corner-w {
+      width: 58px;
+    }
+    table.excel-grid tbody td.cell-nowrap {
+      white-space: nowrap !important;
+      word-break: normal !important;
+      overflow-wrap: normal !important;
+      font-variant-numeric: tabular-nums;
+    }
+    table.excel-grid tbody td.cell-sku {
+      white-space: nowrap !important;
+      word-break: normal !important;
+      overflow-wrap: normal !important;
+      font-family: Consolas, 'JetBrains Mono', Calibri, monospace;
+      font-variant-numeric: tabular-nums;
     }
     table.excel-grid thead th {
       position: sticky;
@@ -575,6 +595,209 @@
       color: #92400e;
       border: 1px dashed #f59e0b;
     }
+    .calc-ctrl-mobile-head {
+      display: none;
+    }
+    .calc-ctrl-body {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      width: 100%;
+    }
+    .calc-ctrl-toggle-btn {
+      border: 1px solid #93c5fd;
+      background: #ffffff;
+      color: #002f6c;
+      border-radius: 5px;
+      padding: 3px 9px;
+      font-size: 11.5px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    /* Mobile & Compact Viewport Optimization — đảm bảo Bảng Sheet luôn chiếm diện tích chính */
+    @media (max-width: 820px) {
+      .excel-topbar {
+        padding: 6px 10px;
+        gap: 5px;
+        flex-shrink: 0;
+      }
+      .excel-brand {
+        width: 100%;
+        gap: 5px;
+      }
+      .excel-logo {
+        display: none;
+      }
+      .file-switcher {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        max-width: 100%;
+        scrollbar-width: none;
+      }
+      .file-switcher::-webkit-scrollbar {
+        display: none;
+      }
+      .file-btn {
+        white-space: nowrap;
+        flex-shrink: 0;
+        padding: 4px 8px;
+        font-size: 11px;
+      }
+      .mode-switcher {
+        display: none;
+      }
+      .target-badges {
+        width: 100%;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        gap: 5px;
+        scrollbar-width: none;
+      }
+      .target-badges::-webkit-scrollbar {
+        display: none;
+      }
+      .badge-sku,
+      .badge-coord {
+        font-size: 11.5px;
+        padding: 2px 7px;
+        white-space: nowrap;
+        flex-shrink: 0;
+        font-variant-numeric: tabular-nums;
+      }
+      #lblItemName {
+        max-width: 160px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 11.5px !important;
+        flex-shrink: 0;
+      }
+      .top-actions {
+        width: 100%;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        gap: 5px;
+        scrollbar-width: none;
+      }
+      .top-actions::-webkit-scrollbar {
+        display: none;
+      }
+      .top-btn {
+        white-space: nowrap;
+        flex-shrink: 0;
+        padding: 4px 8px;
+        font-size: 11px;
+      }
+      .locations-bar {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        white-space: nowrap;
+        padding: 4px 10px;
+        gap: 6px;
+        flex-shrink: 0;
+        scrollbar-width: none;
+      }
+      .locations-bar::-webkit-scrollbar {
+        display: none;
+      }
+      .loc-pill {
+        flex-shrink: 0;
+        white-space: nowrap;
+        padding: 2px 8px;
+        font-size: 11px;
+      }
+      .formula-bar {
+        padding: 4px 8px;
+        gap: 5px;
+        flex-shrink: 0;
+      }
+      .name-box {
+        min-width: 54px;
+        padding: 3px 5px;
+        font-size: 11.5px;
+      }
+      .fx-label {
+        display: none;
+      }
+      .formula-input {
+        min-height: 25px;
+        padding: 3px 6px;
+        font-size: 11.5px;
+      }
+      .search-input {
+        width: 115px;
+        padding: 3px 6px;
+        font-size: 11.5px;
+      }
+      .search-btn {
+        padding: 3px 8px;
+        font-size: 11px;
+        white-space: nowrap;
+      }
+      .calc-control-bar {
+        padding: 5px 10px;
+        gap: 6px;
+        flex-shrink: 0;
+      }
+      .calc-ctrl-mobile-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        width: 100%;
+        font-size: 11.5px;
+      }
+      .calc-control-bar:not(.is-mobile-expanded) .calc-ctrl-body {
+        display: none;
+      }
+      .calc-control-bar.is-mobile-expanded .calc-ctrl-body {
+        max-height: 32dvh;
+        overflow-y: auto;
+        padding-top: 4px;
+        border-top: 1px dashed #bfdbfe;
+      }
+      .window-banner {
+        padding: 4px 10px;
+        font-size: 11px;
+        gap: 6px;
+        flex-wrap: wrap;
+        flex-shrink: 0;
+      }
+      .window-btn {
+        padding: 2px 7px;
+        font-size: 11px;
+      }
+      .grid-container {
+        flex: 1 1 auto;
+        min-height: 45dvh;
+      }
+      table.excel-grid col.col-corner-w {
+        width: 44px;
+      }
+      table.excel-grid thead th.col-corner,
+      table.excel-grid tbody td.row-header {
+        width: 44px;
+        min-width: 44px;
+        font-size: 11px !important;
+      }
+      .sheet-bar {
+        height: 34px;
+        padding: 0 6px;
+        flex-shrink: 0;
+      }
+      .sheet-tab {
+        height: 28px;
+        padding: 0 10px;
+        font-size: 11.5px;
+      }
+      .status-info {
+        display: none;
+      }
+    }
   </style>
 </head>
 <body>
@@ -711,6 +934,19 @@
     let currentLoadedOfficeUrl = '';
     let showHiddenCalcSheets = false;
     let activeCalcCtx = null;
+    let mobileCalcCtrlExpanded = false;
+
+    function toggleMobileCalcCtrl() {
+      mobileCalcCtrlExpanded = !mobileCalcCtrlExpanded;
+      const bar = document.getElementById('calcControlBar');
+      if (bar) {
+        bar.classList.toggle('is-mobile-expanded', mobileCalcCtrlExpanded);
+      }
+      const btn = document.getElementById('btnToggleMobileCalcCtrl');
+      if (btn) {
+        btn.textContent = mobileCalcCtrlExpanded ? 'Thu gọn ▴' : '⚙️ Tùy chỉnh ▾';
+      }
+    }
 
     const state = {
       fileType: 'tg', // 'calc' | 'goc' | 'skulist' | 'tg'
@@ -851,6 +1087,70 @@
       return String(val);
     }
 
+    function isSkuLikeValJs(val, activeSku) {
+      if (typeof val !== 'string') return false;
+      const s = val.trim();
+      if (!s || s.length < 5 || s.length > 28) return false;
+      const u = s.toUpperCase();
+      if (activeSku && u === String(activeSku).trim().toUpperCase()) return true;
+      if (u === 'NOT AVAILABLE') return true;
+      return /^[A-Z0-9][A-Z0-9._-]{4,26}$/.test(u) && /[A-Z]/.test(u) && /\d/.test(u);
+    }
+
+    function isNumericMoneyOrPctValJs(val) {
+      if (typeof val === 'number' && Number.isFinite(val)) return true;
+      if (typeof val !== 'string') return false;
+      const s = val.trim();
+      if (!s || s.length > 28) return false;
+      return /^\$?\s*-?[\d,]+(?:\.\d+)?\s*(?:%|₫|USD)?$/i.test(s);
+    }
+
+    function isCalcQuantityCellJs(rIdx, cIdx, rowArr) {
+      if (state.sheet === 'MDR calculator' && (rIdx === 10 || rIdx === 12)) return true;
+      if (state.sheet === 'Network Detection & Response' && (rIdx === 13 || rIdx === 23)) return true;
+      const leftLbl = String((rowArr && (rowArr[2] ?? rowArr[1] ?? rowArr[3])) ?? '').trim().toLowerCase();
+      if (
+        leftLbl.startsWith('qty') ||
+        leftLbl.startsWith('quantity') ||
+        leftLbl.startsWith('no. of') ||
+        leftLbl.startsWith('number of')
+      ) {
+        return true;
+      }
+      return false;
+    }
+
+    function formatGridCellValueJs(val, rIdx, cIdx, rowArr) {
+      if (val === null || val === undefined || val === '') return '';
+      if (typeof val === 'number' && Number.isFinite(val)) {
+        if (state.fileType === 'calc') {
+          if (state.sheet === 'MSRPs&BuyCost') {
+            if (cIdx >= 2) {
+              return '$' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+          } else if (cIdx >= 5 && rIdx >= 10 && !isCalcQuantityCellJs(rIdx, cIdx, rowArr) && val > 0) {
+            return '$' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          }
+        }
+        return formatCell(val);
+      }
+      return String(val);
+    }
+
+    function buildColgroupAndTableOpenHtml(colWidths) {
+      const isNarrowViewport = typeof window !== 'undefined' && window.innerWidth <= 820;
+      const cornerW = isNarrowViewport ? 44 : 58;
+      let totalW = cornerW;
+      let colsHtml = `<colgroup><col class="col-corner-w" style="width:${cornerW}px">`;
+      for (let c = 0; c < colWidths.length; c++) {
+        const w = Math.max(0, Math.round(Number(colWidths[c]) || 0));
+        totalW += w;
+        colsHtml += `<col style="width:${w}px">`;
+      }
+      colsHtml += '</colgroup>';
+      return `<table class="excel-grid" style="width:${totalW}px;min-width:${totalW}px">${colsHtml}`;
+    }
+
     function escapeHtml(str) {
       return String(str || '')
         .replace(/&/g, '&amp;')
@@ -883,7 +1183,20 @@
     }
 
     function normalizeVirtKeyJs(s) {
-      return String(s || '').toUpperCase().replace(/\bGB\s+/g, '').replace(/\s+/g, ' ').trim();
+      return String(s || '')
+        .toUpperCase()
+        .replace(/\bUP\s+TO\s+/g, '')
+        .replace(/\bGB\s+/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    function collapseWsLowerJs(s) {
+      return String(s || '')
+        .replace(/[–—]/g, '-')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
     }
 
     function hydrateSophosEngineRuntimeJs(engineCompact) {
@@ -892,6 +1205,7 @@
       const descToProduct = {};
       const descLowerToProduct = {};
       const pcToProduct = {};
+      const pcToProducts = {};
       const partIdToProducts = {};
       const rawProds = Array.isArray(engineCompact.products) ? engineCompact.products : [];
       for (const t of rawProds) {
@@ -913,8 +1227,14 @@
         if (item.desc) {
           descToProduct[item.desc] = item;
           descLowerToProduct[item.desc.toLowerCase()] = item;
+          descLowerToProduct[collapseWsLowerJs(item.desc)] = item;
         }
-        if (item.pc) pcToProduct[item.pc.toUpperCase()] = item;
+        if (item.pc) {
+          const pcUpper = item.pc.toUpperCase();
+          pcToProduct[pcUpper] = item;
+          if (!pcToProducts[pcUpper]) pcToProducts[pcUpper] = [];
+          pcToProducts[pcUpper].push(item);
+        }
         if (item.partId) {
           if (!partIdToProducts[item.partId]) partIdToProducts[item.partId] = [];
           partIdToProducts[item.partId].push(item);
@@ -938,6 +1258,7 @@
         descToProduct,
         descLowerToProduct,
         pcToProduct,
+        pcToProducts,
         partIdToProducts,
         productToHierarchy,
         featuresByProduct: engineCompact.featuresByProduct || {},
@@ -1002,7 +1323,8 @@
 
     function getSpecialAttrOptsJs(prod, dd) {
       if (!prod) return [{ label: 'Standard Pricing (AA)', code: 'AA' }];
-      const rule = String(prod.specAttrRule || 'AA').trim();
+      const rawRule = String(prod.specAttrRule || 'AA').trim();
+      const rule = /^X[123]$/.test(rawRule) ? `${rawRule}_` : rawRule;
       const singleList = (dd && dd.specialAttrSingleSet) || [];
       if (rule !== 'CU' && singleList.includes(rule)) return [{ label: `${rule} (Mặc định)`, code: rule }];
       if (rule === 'X1_' || rule === 'X2_' || rule === 'X3_') {
@@ -1016,10 +1338,12 @@
     }
 
     function resolveSpecialAttrCodeJs(prod, selectedSpecAttr, dd) {
-      const rule = String(prod.specAttrRule || 'AA').trim();
+      const rawRule = String(prod.specAttrRule || 'AA').trim();
+      const rule = /^X[123]$/.test(rawRule) ? `${rawRule}_` : rawRule;
       if (rule !== 'CU' && dd && Array.isArray(dd.specialAttrSingleSet) && dd.specialAttrSingleSet.includes(rule)) return rule;
       const rawSel = String(selectedSpecAttr || '').trim();
-      const upperSel = rawSel.toUpperCase();
+      let upperSel = rawSel.toUpperCase();
+      if (upperSel === 'EUK' || upperSel === 'EU/UK') upperSel = 'EU';
       if (rule === 'X1_' || rule === 'X2_' || rule === 'X3_') {
         const tbl = (dd && dd.specialAttrTables && dd.specialAttrTables[rule]) || {};
         if (tbl[upperSel]) return tbl[upperSel];
@@ -1033,13 +1357,148 @@
       return 'AA';
     }
 
+    function ensureRuntimeCalcSkuLookupsJs(calcData) {
+      const runtime = calcData && calcData.engineRuntime;
+      if (runtime && runtime._skuLookupCache) return runtime._skuLookupCache;
+
+      const pcHasSkuSet = new Set();
+      const partIdHasSkuSet = new Set();
+      const firstEntryByPc = {};
+      const calcSkus = (calcData && calcData.calcSkus) || {};
+      const newByOld = (runtime && runtime.dropDowns && runtime.dropDowns.newSkuByOldSku) || {};
+      const rows = (calcData && Array.isArray(calcData.sortedCalcMsrpRows) && calcData.sortedCalcMsrpRows.length)
+        ? calcData.sortedCalcMsrpRows
+        : Object.values(calcSkus);
+
+      const scoreSkuCandidate = (sku, mapped14) => {
+        let sc = 0;
+        const s = mapped14 || sku;
+        if (s.length === 14) {
+          const t = s.slice(6, 8);
+          const sp = s.slice(12, 14);
+          if (t === '12' || t === '00') sc += 20;
+          else if (t === '36') sc += 10;
+          if (['AA', 'AU', 'NP', 'MR', 'EK'].includes(sp)) sc += 10;
+          if (s[10] === 'N' || s[10] === 'P') sc += 5;
+          if (s[11] === 'C') sc += 5;
+        } else if (/(AU|EUK|ROW|MR|AA)$/i.test(sku)) {
+          sc += 15;
+        }
+        return sc;
+      };
+
+      const bestScoreByPc = {};
+      for (const r of rows) {
+        if (!r || !r.sku) continue;
+        const sku = String(r.sku).toUpperCase();
+        const pc = r.pc ? String(r.pc).toUpperCase() : '';
+        const mapped14 = newByOld[sku] || (sku.length === 14 ? sku : '');
+        if (mapped14.length === 14) {
+          partIdHasSkuSet.add(mapped14.slice(0, 6).toUpperCase());
+        }
+        if (pc) {
+          pcHasSkuSet.add(pc);
+          const sc = scoreSkuCandidate(sku, mapped14);
+          if (!firstEntryByPc[pc] || sc > (bestScoreByPc[pc] ?? -1)) {
+            firstEntryByPc[pc] = r;
+            bestScoreByPc[pc] = sc;
+          }
+        }
+      }
+
+      const cache = { pcHasSkuSet, partIdHasSkuSet, firstEntryByPc };
+      if (runtime && typeof runtime === 'object') runtime._skuLookupCache = cache;
+      return cache;
+    }
+
+    function productHasAnyCalcSkuJs(calcData, prod) {
+      if (!calcData || !prod) return false;
+      const cache = ensureRuntimeCalcSkuLookupsJs(calcData);
+      const pc = String(prod.pc || '').trim().toUpperCase();
+      if (pc && cache.pcHasSkuSet.has(pc)) return true;
+      const partId = String(prod.partId || '').trim().toUpperCase();
+      if (partId && cache.partIdHasSkuSet.has(partId)) return true;
+      return false;
+    }
+
+    function doesSkuBelongToProductJs(calcData, rawSku, prod) {
+      if (!calcData || !rawSku || !prod) return false;
+      const sku = String(rawSku).trim().toUpperCase();
+      if (!sku) return false;
+      const entry = calcData.calcSkus && calcData.calcSkus[sku];
+      const prodPc = String(prod.pc || '').trim().toUpperCase();
+      if (entry && entry.pc && prodPc && String(entry.pc).trim().toUpperCase() === prodPc) return true;
+      const dd = calcData.engineRuntime && calcData.engineRuntime.dropDowns;
+      const mapped14 = (dd && dd.newSkuByOldSku && dd.newSkuByOldSku[sku]) || (sku.length === 14 ? sku : '');
+      const prodPart = String(prod.partId || '').trim().toUpperCase();
+      if (mapped14.length === 14 && prodPart && mapped14.slice(0, 6).toUpperCase() === prodPart) return true;
+      return false;
+    }
+
+    function buildDirectSkuEvalFallbackJs(calcData, rawSku, partnerLevel, dealType, qty, promoDiscPct, specialDiscPct) {
+      const cleanSku = String(rawSku || '').trim().toUpperCase();
+      if (!cleanSku) return null;
+      const entry = calcData && calcData.calcSkus && calcData.calcSkus[cleanSku];
+      if (!entry) return null;
+
+      const effQty = Math.max(1, Math.round(Number(qty) || 1));
+      const pDisc = Number(promoDiscPct) || 0;
+      const sDisc = Number(specialDiscPct) || 0;
+      const rawUnitMsrp = Number(entry.msrp) || 0;
+      const msrp = round2Js(rawUnitMsrp * effQty);
+      const unitMsrp = effQty > 0 ? round2Js(msrp / effQty) : rawUnitMsrp;
+      const unitResellerCost = resolvePartnerUnitCostJs(entry, partnerLevel, dealType);
+      let resellerDiscRatio = 0;
+      let resellerDiscPct = 0;
+      let buyCost = msrp;
+      if (unitResellerCost !== null && rawUnitMsrp > 0) {
+        resellerDiscRatio = Math.max(0, 1 - unitResellerCost / rawUnitMsrp);
+        resellerDiscPct = Math.round(resellerDiscRatio * 10000) / 100;
+        if (pDisc === 0 && sDisc === 0) buyCost = round2Js(unitResellerCost * effQty);
+        else buyCost = round2Js(msrp * (1 - resellerDiscRatio) * (1 - pDisc / 100) * (1 - sDisc / 100));
+      }
+
+      const dd = calcData.engineRuntime && calcData.engineRuntime.dropDowns;
+      const mappedNew = (dd && dd.newSkuByOldSku && dd.newSkuByOldSku[cleanSku]) || (cleanSku.length === 14 ? cleanSku : '');
+      return {
+        foundProduct: true,
+        productDesc: entry.desc || cleanSku,
+        productCode: entry.pc || '',
+        prodType: entry.prodType || '',
+        sku: cleanSku,
+        newSku: mappedNew,
+        available: true,
+        unitMsrp,
+        msrp,
+        unitResellerCost,
+        resellerDiscPct,
+        promoDiscPct: pDisc,
+        specialDiscPct: sDisc,
+        buyCost,
+        bandCode: mappedNew.length === 14 ? mappedNew.slice(8, 10) : 'ZZ',
+        bandMin: null,
+        bandMax: null,
+        minQtyWarning: '',
+        isTermed: mappedNew.length === 14 ? mappedNew.slice(6, 8) !== '00' : true,
+        fixedTermLabel: '',
+        specialAttrOptions: [{ label: 'Standard Pricing', code: 'AA' }],
+        features: (entry.desc && calcData.engineRuntime && calcData.engineRuntime.featuresByProduct && calcData.engineRuntime.featuresByProduct[entry.desc]) || '',
+        calcRowNum: entry.rowNum || null,
+        eolMonths: null,
+        effectiveQty: effQty,
+        effectiveTermLabel: (mappedNew.length === 14 && mappedNew.slice(6, 8) !== '00') ? `${parseInt(mappedNew.slice(6, 8), 10)} MOS` : ''
+      };
+    }
+
     function computeProductPricingFromRuleJs(calcData, prod, opts) {
       const runtime = calcData && calcData.engineRuntime;
       const dd = runtime && runtime.dropDowns;
       const calcSkus = (calcData && calcData.calcSkus) || {};
       const qty = Math.max(1, Math.round(Number(opts.qty) || 1));
-      const termInfo = resolveTermDigitsJs(prod.termed, opts.term);
-      const bandInfo = resolveVolumeBandCodeJs(prod.volScheme, qty, dd && dd.volBandTables);
+      let effectiveQty = qty;
+      let effectiveTermLabel = opts.term || '12 MOS';
+      let resolvedTermInfo = resolveTermDigitsJs(prod.termed, opts.term);
+      let resolvedBandInfo = resolveVolumeBandCodeJs(prod.volScheme, qty, dd && dd.volBandTables);
       const specCode = resolveSpecialAttrCodeJs(prod, opts.specialAttribute, dd);
       let txCode = 'P';
       if (prod.txEnabled) {
@@ -1051,29 +1510,146 @@
         if (sLower.startsWith('edu') || sLower === 'e') sectorCode = 'E';
         else if (sLower.startsWith('gov') || sLower === 'g') sectorCode = 'G';
       }
-      const newSku = `${prod.partId}${termInfo.code}${bandInfo.bandCode}${txCode}${sectorCode}${specCode}`.toUpperCase();
-      const mappedOldSku = dd && dd.oldSkuByNewSku && dd.oldSkuByNewSku[newSku];
-      let finalSku = newSku;
-      let skuEntry = calcSkus[newSku] || null;
-      if (mappedOldSku && calcSkus[mappedOldSku]) {
+
+      const tryConstructedCandidate = (tCode, bCode, tx, sec, sp) => {
+        const candNew = `${prod.partId}${tCode}${bCode}${tx}${sec}${sp}`.toUpperCase();
+        const candOld = dd && dd.oldSkuByNewSku && dd.oldSkuByNewSku[candNew];
+        if (candOld && calcSkus[candOld]) return { newSku: candNew, finalSku: candOld, entry: calcSkus[candOld] };
+        if (calcSkus[candNew]) return { newSku: candNew, finalSku: candNew, entry: calcSkus[candNew] };
+        return null;
+      };
+
+      let resolvedNewSku = `${prod.partId}${resolvedTermInfo.code}${resolvedBandInfo.bandCode}${txCode}${sectorCode}${specCode}`.toUpperCase();
+      const mappedOldSku = dd && dd.oldSkuByNewSku && dd.oldSkuByNewSku[resolvedNewSku];
+      const pref = String(opts.preferredSku || '').trim().toUpperCase();
+      let finalSku = resolvedNewSku;
+      let skuEntry = calcSkus[resolvedNewSku] || null;
+      if (pref && (pref === resolvedNewSku || pref === mappedOldSku) && calcSkus[pref]) {
+        finalSku = pref;
+        skuEntry = calcSkus[pref];
+      } else if (mappedOldSku && calcSkus[mappedOldSku]) {
         finalSku = mappedOldSku;
         skuEntry = calcSkus[mappedOldSku];
       } else if (!skuEntry && mappedOldSku) {
         finalSku = mappedOldSku;
       }
+
+      if (!skuEntry) {
+        if (pref && calcSkus[pref] && doesSkuBelongToProductJs(calcData, pref, prod)) {
+          finalSku = pref;
+          skuEntry = calcSkus[pref];
+          const pref14 = (dd && dd.newSkuByOldSku && dd.newSkuByOldSku[pref]) || (pref.length === 14 ? pref : '');
+          if (pref14.length === 14) {
+            resolvedNewSku = pref14;
+            const bCode = pref14.slice(8, 10);
+            if (bCode !== 'ZZ' && dd && dd.volBandTables && dd.volBandTables[bCode[0]]) {
+              const hitB = dd.volBandTables[bCode[0]].find(b => b[2] === bCode);
+              if (hitB) {
+                resolvedBandInfo = { bandCode: bCode, min: hitB[0], max: hitB[1], minWarning: '' };
+                if (effectiveQty < hitB[0]) effectiveQty = hitB[0];
+              }
+            }
+          }
+        }
+
+        if (!skuEntry && prod.volScheme && prod.volScheme !== 'Z' && dd && dd.volBandTables && dd.volBandTables[prod.volScheme]) {
+          const sortedBands = [...dd.volBandTables[prod.volScheme]].sort((a, b) => Math.abs(qty - a[0]) - Math.abs(qty - b[0]));
+          for (const [bMin, bMax, bCode] of sortedBands) {
+            const hit = tryConstructedCandidate(resolvedTermInfo.code, bCode, txCode, sectorCode, specCode);
+            if (hit) {
+              resolvedNewSku = hit.newSku;
+              finalSku = hit.finalSku;
+              skuEntry = hit.entry;
+              resolvedBandInfo = { bandCode: bCode, min: bMin, max: bMax, minWarning: qty < bMin ? `Số lượng tối thiểu ${bMin}` : '' };
+              effectiveQty = qty < bMin ? bMin : (qty > bMax ? bMax : qty);
+              break;
+            }
+          }
+        }
+
+        if (!skuEntry) {
+          const optCodes = getSpecialAttrOptsJs(prod, dd).map(o => o.code);
+          const specCandidates = Array.from(new Set([...optCodes, 'AU', 'EU', 'EK', 'ES', 'AN', 'UK', 'US', 'CN', 'AA', 'NP', 'MR']));
+          for (const sp of specCandidates) {
+            const mappedSp = resolveSpecialAttrCodeJs(prod, sp, dd);
+            for (const trySp of (sp === mappedSp ? [sp] : [mappedSp, sp])) {
+              const hit = tryConstructedCandidate(resolvedTermInfo.code, resolvedBandInfo.bandCode, txCode, sectorCode, trySp);
+              if (hit) {
+                resolvedNewSku = hit.newSku;
+                finalSku = hit.finalSku;
+                skuEntry = hit.entry;
+                break;
+              }
+            }
+            if (skuEntry) break;
+          }
+        }
+
+        if (!skuEntry) {
+          const termCandidates = resolvedTermInfo.isTermed
+            ? Array.from(new Set([resolvedTermInfo.code, '12', '36', '24', '60']))
+            : ['00', '12'];
+          const txCandidates = Array.from(new Set([txCode, 'N', 'P', 'R']));
+          const spCandidates = Array.from(new Set([specCode, 'AA', 'AU', 'EK', 'NP', 'MR', 'US', 'CN']));
+          for (const tc of termCandidates) {
+            for (const tx of txCandidates) {
+              for (const sp of spCandidates) {
+                const hit = tryConstructedCandidate(tc, resolvedBandInfo.bandCode, tx, sectorCode, sp);
+                if (hit) {
+                  resolvedNewSku = hit.newSku;
+                  finalSku = hit.finalSku;
+                  skuEntry = hit.entry;
+                  if (tc !== '00') {
+                    effectiveTermLabel = `${parseInt(tc, 10)} MOS`;
+                    resolvedTermInfo = { ...resolvedTermInfo, code: tc, months: parseInt(tc, 10) };
+                  }
+                  break;
+                }
+              }
+              if (skuEntry) break;
+            }
+            if (skuEntry) break;
+          }
+        }
+
+        if (!skuEntry && prod.pc) {
+          const lookupCache = ensureRuntimeCalcSkuLookupsJs(calcData);
+          const pcHit = lookupCache.firstEntryByPc[String(prod.pc).trim().toUpperCase()];
+          if (pcHit) {
+            finalSku = String(pcHit.sku).toUpperCase();
+            skuEntry = pcHit;
+            const hit14 = (dd && dd.newSkuByOldSku && dd.newSkuByOldSku[finalSku]) || (finalSku.length === 14 ? finalSku : '');
+            if (hit14.length === 14) {
+              resolvedNewSku = hit14;
+              const tC = hit14.slice(6, 8);
+              if (tC !== '00' && /^\d{2}$/.test(tC)) effectiveTermLabel = `${parseInt(tC, 10)} MOS`;
+              const bC = hit14.slice(8, 10);
+              if (bC !== 'ZZ' && dd && dd.volBandTables && dd.volBandTables[bC[0]]) {
+                const hitB = dd.volBandTables[bC[0]].find(b => b[2] === bC);
+                if (hitB) {
+                  resolvedBandInfo = { bandCode: bC, min: hitB[0], max: hitB[1], minWarning: '' };
+                  if (effectiveQty < hitB[0]) effectiveQty = hitB[0];
+                }
+              }
+            }
+          }
+        }
+      }
+
       const promoDiscPct = Math.max(0, Math.min(100, Number(opts.promoDiscPct) || 0));
       const specialDiscPct = Math.max(0, Math.min(100, Number(opts.specialDiscPct) || 0));
       if (!skuEntry) {
         return {
-          newSku, sku: finalSku, available: false, unitMsrp: 0, msrp: 0,
+          newSku: resolvedNewSku, sku: finalSku, available: false, unitMsrp: 0, msrp: 0,
           unitResellerCost: null, resellerDiscPct: 0, promoDiscPct, specialDiscPct, buyCost: 0,
-          bandInfo, termInfo, calcRowNum: null
+          bandInfo: resolvedBandInfo, termInfo: resolvedTermInfo, calcRowNum: null,
+          effectiveQty, effectiveTermLabel
         };
       }
       const isLegacyFlat = prod.desc === 'Sophos Endpoint for Legacy Platforms';
       const rawUnitMsrp = Number(skuEntry.msrp) || 0;
-      const msrp = isLegacyFlat ? round2Js(rawUnitMsrp) : round2Js(rawUnitMsrp * qty);
-      const unitMsrp = qty > 0 ? round2Js(msrp / qty) : rawUnitMsrp;
+      const msrp = isLegacyFlat ? round2Js(rawUnitMsrp) : round2Js(rawUnitMsrp * effectiveQty);
+      const unitMsrp = effectiveQty > 0 ? round2Js(msrp / effectiveQty) : rawUnitMsrp;
       const unitResellerCost = resolvePartnerUnitCostJs(skuEntry, opts.partnerLevel, opts.dealType);
       let resellerDiscRatio = 0;
       let resellerDiscPct = 0;
@@ -1082,15 +1658,16 @@
         resellerDiscRatio = Math.max(0, 1 - unitResellerCost / rawUnitMsrp);
         resellerDiscPct = Math.round(resellerDiscRatio * 10000) / 100;
         if (promoDiscPct === 0 && specialDiscPct === 0) {
-          buyCost = isLegacyFlat ? round2Js(unitResellerCost) : round2Js(unitResellerCost * qty);
+          buyCost = isLegacyFlat ? round2Js(unitResellerCost) : round2Js(unitResellerCost * effectiveQty);
         } else {
           buyCost = round2Js(msrp * (1 - resellerDiscRatio) * (1 - promoDiscPct / 100) * (1 - specialDiscPct / 100));
         }
       }
       return {
-        newSku, sku: finalSku, available: true, unitMsrp, msrp,
+        newSku: resolvedNewSku, sku: finalSku, available: true, unitMsrp, msrp,
         unitResellerCost, resellerDiscPct, promoDiscPct, specialDiscPct, buyCost,
-        bandInfo, termInfo, calcRowNum: skuEntry.rowNum || null
+        bandInfo: resolvedBandInfo, termInfo: resolvedTermInfo, calcRowNum: skuEntry.rowNum || null,
+        effectiveQty, effectiveTermLabel
       };
     }
 
@@ -1098,7 +1675,8 @@
       const runtime = calcData && calcData.engineRuntime;
       const prodName = String((scenario && scenario.product) || '').trim();
       const prod = (runtime && runtime.descToProduct && runtime.descToProduct[prodName]) ||
-                   (runtime && runtime.descLowerToProduct && runtime.descLowerToProduct[prodName.toLowerCase()]) || null;
+                   (runtime && runtime.descLowerToProduct && runtime.descLowerToProduct[prodName.toLowerCase()]) ||
+                   (runtime && runtime.descLowerToProduct && runtime.descLowerToProduct[collapseWsLowerJs(prodName)]) || null;
       if (!prod || !runtime) {
         return {
           foundProduct: false, productDesc: prodName, productCode: '', prodType: '',
@@ -1117,7 +1695,8 @@
         qty: Number(scenario.qty) || 1,
         specialAttribute: scenario.specialAttribute || 'AA',
         promoDiscPct: Number(scenario.promoDiscPct) || 0,
-        specialDiscPct: Number(scenario.specialDiscPct) || 0
+        specialDiscPct: Number(scenario.specialDiscPct) || 0,
+        preferredSku: scenario.preferredSku
       });
       return {
         foundProduct: true, productDesc: prod.desc, productCode: prod.pc, prodType: prod.prodType,
@@ -1128,7 +1707,8 @@
         minQtyWarning: calc.bandInfo.minWarning, isTermed: calc.termInfo.isTermed, fixedTermLabel: calc.termInfo.fixedLabel,
         specialAttrOptions: getSpecialAttrOptsJs(prod, runtime.dropDowns),
         features: (runtime.featuresByProduct && runtime.featuresByProduct[prod.desc]) || '',
-        calcRowNum: calc.calcRowNum, eolMonths: prod.eolMonths
+        calcRowNum: calc.calcRowNum, eolMonths: prod.eolMonths,
+        effectiveQty: calc.effectiveQty, effectiveTermLabel: calc.effectiveTermLabel
       };
     }
 
@@ -1151,14 +1731,22 @@
       const pList = runtime.product2List || [];
       const tryExact = candidates => {
         for (const c of candidates) {
-          const hit = byDesc[c.toLowerCase()];
+          const hit = byDesc[c.toLowerCase()] || byDesc[collapseWsLowerJs(c)];
           if (hit) return hit;
         }
         return null;
       };
       if (rowKey === 'cfr_adv') return tryExact(['Central Firewall Reporting Advanced']);
       if (rowKey === 'hw_appliance') {
-        if (isVirtual) return null;
+        if (isVirtual) {
+          const virtDesc = (runtime.dropDowns && runtime.dropDowns.firewallVirtualMap && runtime.dropDowns.firewallVirtualMap[m]) || '';
+          const normTarget = normalizeVirtKeyJs(virtDesc);
+          return pList.find(p => {
+            const dl = p.desc.toLowerCase();
+            if (!dl.includes('sf sw/virtual') || !dl.includes('base license')) return false;
+            return p.fwFilter.toLowerCase() === m.toLowerCase() || (normTarget && normalizeVirtKeyJs(p.desc).includes(normTarget));
+          }) || null;
+        }
         return tryExact([`${m} Security Appliance`, `${baseModel} Security Appliance`]);
       }
       if (rowKey === 'std_bundle' || rowKey === 'xstream_bundle') {
@@ -1180,7 +1768,7 @@
         xstream_plus: ['Xstream Plus'],
         std_prot: ['Standard Protection'],
         enhanced_sup: ['Enhanced Support', 'Enhanced Protection'],
-        enhanced_plus_upg: ['Enhanced to Enhanced Plus Support Upgrade', 'Enhanced to Enhanced Plus Upgrade'],
+        enhanced_plus_upg: ['Enhanced to Enhanced Plus Support Upgrade', 'Enhanced to Enhanced Plus Upgrade', 'Enhanced to Enhanced Plus Support'],
         net_prot: ['Network Protection'],
         web_prot: ['Web Protection'],
         zeroday_prot: ['Zero-Day Protection'],
@@ -1199,7 +1787,7 @@
       for (const sf of suffixes) {
         const sfLower = sf.toLowerCase();
         const hit = pList.find(p => {
-          if (p.prodType !== 'Subscription') return false;
+          if (p.prodType !== 'Subscription' && p.prodType !== 'Support') return false;
           const dl = p.desc.toLowerCase();
           if (dl.includes('with ')) return false;
           const filterMatch = p.fwFilter.toLowerCase() === m.toLowerCase() || (normTarget && normalizeVirtKeyJs(p.desc).includes(normTarget));
@@ -1279,8 +1867,10 @@
           const effectiveTerm = (spec.key === 'std_bundle' || spec.key === 'xstream_bundle')
             ? `${bundleInfo ? bundleInfo.code : '12'} MOS`
             : termSub;
+          const effectiveQty = spec.key === 'cfr_adv' ? qty : 1;
           const res = computeProductPricingFromRuleJs(calcData, prod, {
-            partnerLevel, sector, dealType, term: effectiveTerm, qty, specialAttribute: specAttr, promoDiscPct, specialDiscPct
+            partnerLevel, sector, dealType, term: effectiveTerm, qty: effectiveQty, specialAttribute: specAttr, promoDiscPct, specialDiscPct,
+            preferredSku: settings.preferredSku
           });
           cells.push({
             model: mdl, productDesc: prod.desc, productCode: prod.pc,
@@ -1300,51 +1890,149 @@
       return { rows, modelFeatures };
     }
 
-    function mapProductToNativeSheetJs(prod, family, productLine) {
+    function mapProductToNativeSheetJs(prod, family, productLine, calcData) {
       const fam = String(family || '');
       const ln = String(productLine || '');
       const desc = String((prod && prod.desc) || '');
-      if (fam === 'Endpoint_Security') return (ln === 'Mobile' || /mobile/i.test(desc)) ? 'Mobile' : 'Endpoint & Server';
-      if (fam === 'Workspace__Protection' || /workspace/i.test(desc)) return 'Workspace Protection';
-      if (fam === 'Email_Security' || /sophos email|phish threat|dmarc/i.test(desc)) return 'Email';
-      if (fam === 'Backup_and_Recovery' || /backup/i.test(desc)) return 'Backup & Recovery';
-      if (fam === 'Identity_Security' || /\bitdr\b|identity threat/i.test(desc)) return 'ITDR';
-      if (fam === 'Network_Detection_and_Response' || /\bndr\b|network detection/i.test(desc)) return 'Network Detection & Response';
-      if (['Switches', 'Access_Points', 'SD_WAN', 'Modules_and_Transceivers', 'Accessories'].includes(fam)) return 'Network Infrastructure';
+      const pcUpper = String((prod && prod.pc) || '').toUpperCase();
+      const partUpper = String((prod && prod.partId) || '').toUpperCase();
+
       if (fam === 'Advisory_Services') return 'Advisory services';
       if (fam === 'ProServices_and_Training') return 'ProServices & Training';
+      if (['Switches', 'Access_Points', 'SD_WAN', 'Modules_and_Transceivers', 'Accessories'].includes(fam)) return 'Network Infrastructure';
+      if (fam === 'Endpoint_Security') {
+        if (pcUpper === 'CDE' || /device encryption/i.test(desc)) return 'Endpoint & Server';
+        return (ln === 'Mobile' || /\bmobile\b/i.test(desc)) ? 'Mobile' : 'Endpoint & Server';
+      }
+      if (fam === 'Workspace__Protection' || pcUpper === 'CWP') {
+        if (pcUpper === 'CIXAWP') return 'Endpoint & Server';
+        return 'Workspace Protection';
+      }
+      if (fam === 'Email_Security' || ['CEMA', 'CPHISH', 'EMS', 'EMAIL-PLUS', 'CEMA-PE-ADDON', 'CEMA-DMARC-ADDON'].includes(pcUpper)) return 'Email';
+      if (fam === 'Backup_and_Recovery') return 'Backup & Recovery';
+      if (fam === 'Identity_Security') return 'ITDR';
+      if (fam === 'Network_Detection_and_Response') return 'Network Detection & Response';
       if (fam === 'Managed_Services') return /\bmdr\b/i.test(desc) ? 'MDR calculator' : 'Managed Services';
       if (fam === 'Security_Operations') {
         if (/ai defense/i.test(desc)) return 'AI Defense';
         if (/ciso advantage/i.test(desc)) return 'CISO Advantage';
         if (/\bmdr\b/i.test(desc)) return 'MDR calculator';
+        if (pcUpper === 'NDR' || partUpper === 'MDRNDU' || /central network detection and response/i.test(desc)) return 'Network Detection & Response';
         return 'XDR & Next-Gen SIEM';
+      }
+
+      if (pcUpper === 'CDE' || /device encryption/i.test(desc)) return 'Endpoint & Server';
+      if (pcUpper === 'NDR' || partUpper === 'MDRNDU' || /^NDR\s*\d+/i.test(desc) || /central network detection and response/i.test(desc)) {
+        return 'Network Detection & Response';
+      }
+      if (/sophos email|phish threat|dmarc/i.test(desc)) return 'Email';
+      if (/\bworkspace protection\b/i.test(desc)) return 'Workspace Protection';
+      if (/\bbackup\b/i.test(desc)) return 'Backup & Recovery';
+      if (/\bitdr\b|identity threat/i.test(desc)) return 'ITDR';
+      if (/ai defense/i.test(desc)) return 'AI Defense';
+      if (/ciso advantage/i.test(desc)) return 'CISO Advantage';
+      if (/\bmdr\b/i.test(desc)) return 'MDR calculator';
+
+      if ((prod && prod.prodType === 'ProServices') || /^(PR|TRD|CAD)/.test(partUpper) || /certified .* training|professional services|enhanced plus support|technical account manager/i.test(desc)) {
+        const advRows = (calcData && calcData.calcSheetsRaw && calcData.calcSheetsRaw['Advisory services']) || [];
+        const normDesc = collapseWsLowerJs(desc);
+        if (advRows.some(r => collapseWsLowerJs((r && r[2]) || '') === normDesc)) return 'Advisory services';
+        return 'ProServices & Training';
+      }
+      if (/power supply|power cord|transceiver|sfp|qsfp|rackmount|mounting kit|poe injector|antenna|flexi port|module|sd-red|\bap6\s*\d|\bcs\d{3}/i.test(desc)) {
+        return 'Network Infrastructure';
       }
       return 'Universal Calculator';
     }
 
-    function inferFirewallRowKeyFromProductOrNameJs(desc, itemName, sku) {
-      const combined = `${desc || ''} ${itemName || ''}`.toLowerCase();
-      const s = String(sku || '').toUpperCase();
+    function detectExplicitFirewallRowKeyJs(text) {
+      const combined = String(text || '').toLowerCase();
+      if (!combined) return null;
       if (combined.includes('with standard protection') || combined.includes('standard hardware bundle')) return 'std_bundle';
       if (combined.includes('with xstream protection') || combined.includes('xstream hardware bundle')) return 'xstream_bundle';
-      if (combined.includes('security appliance') || combined.includes('hardware appliance') || s.startsWith('XG')) return 'hw_appliance';
       if (combined.includes('xstream plus')) return 'xstream_plus';
-      if ((combined.includes('xstream protection') || combined.includes('xtsream protection') || s.startsWith('XS')) && !combined.includes('with ')) return 'xstream_prot';
-      if ((combined.includes('standard protection') || s.startsWith('SP')) && !combined.includes('with ')) return 'std_prot';
-      if (combined.includes('enhanced to enhanced plus') || combined.includes('plus upgrade') || s.startsWith('UP')) return 'enhanced_plus_upg';
-      if (combined.includes('enhanced support') || combined.includes('enhanced protection') || s.startsWith('SE')) return 'enhanced_sup';
-      if (combined.includes('network protection') || s.startsWith('NS')) return 'net_prot';
-      if ((combined.includes('web protection') && !combined.includes('webserver')) || s.startsWith('WS')) return 'web_prot';
-      if (combined.includes('zero-day') || s.startsWith('ZD')) return 'zeroday_prot';
-      if (combined.includes('orchestration') || combined.includes('orchestation') || s.startsWith('CO')) return 'central_orch';
-      if (combined.includes('email protection') || s.startsWith('ES')) return 'email_prot';
-      if (combined.includes('webserver protection') || s.startsWith('SS')) return 'webserver_prot';
-      if (combined.includes('central firewall reporting') || s.startsWith('CFR')) return 'cfr_adv';
+      if ((combined.includes('xstream protection') || combined.includes('xtsream protection')) && !combined.includes('with ')) return 'xstream_prot';
+      if (combined.includes('standard protection') && !combined.includes('with ')) return 'std_prot';
+      if (combined.includes('enhanced to enhanced plus') || combined.includes('plus upgrade') || combined.includes('enhanced plus support')) return 'enhanced_plus_upg';
+      if (combined.includes('enhanced support') || combined.includes('enhanced protection')) return 'enhanced_sup';
+      if (combined.includes('network protection')) return 'net_prot';
+      if (combined.includes('webserver protection')) return 'webserver_prot';
+      if (combined.includes('web protection')) return 'web_prot';
+      if (combined.includes('zero-day')) return 'zeroday_prot';
+      if (combined.includes('orchestration') || combined.includes('orchestation')) return 'central_orch';
+      if (combined.includes('email protection')) return 'email_prot';
+      if (combined.includes('central firewall reporting')) return 'cfr_adv';
+      return null;
+    }
+
+    function inferFirewallRowKeyFromProductOrNameJs(desc, itemName, sku) {
+      const explicitFromDesc = detectExplicitFirewallRowKeyJs(desc);
+      const explicitFromName = detectExplicitFirewallRowKeyJs(itemName);
+      if (explicitFromDesc) return explicitFromDesc;
+      if (explicitFromName) return explicitFromName;
+
+      const combined = `${desc || ''} ${itemName || ''}`.toLowerCase();
+      const s = String(sku || '').toUpperCase();
+      if (combined.includes('security appliance') || combined.includes('hardware appliance') || combined.includes('base license') || s.startsWith('XG') || s.startsWith('XV')) return 'hw_appliance';
+      if (s.startsWith('XP')) return 'xstream_plus';
+      if (s.startsWith('XZ')) return 'xstream_bundle';
+      if (s.startsWith('XU')) return 'std_bundle';
+      if (s.startsWith('XS')) return 'xstream_prot';
+      if (s.startsWith('SP')) return 'std_prot';
+      if (s.startsWith('UP')) return 'enhanced_plus_upg';
+      if (s.startsWith('SE')) return 'enhanced_sup';
+      if (s.startsWith('NS')) return 'net_prot';
+      if (s.startsWith('WS')) return 'web_prot';
+      if (s.startsWith('ZD')) return 'zeroday_prot';
+      if (s.startsWith('CO')) return 'central_orch';
+      if (s.startsWith('ES')) return 'email_prot';
+      if (s.startsWith('SS')) return 'webserver_prot';
+      if (s.startsWith('CFR')) return 'cfr_adv';
       return 'hw_appliance';
     }
 
-    function inferSophosCalculatorContextJs(calcData, rawSku, itemName) {
+    function extractVolumeRangeFromTextJs(srcText) {
+      const src = String(srcText || '').trim();
+      if (!src) return null;
+      const yearSet = new Set([2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030]);
+      const re = /(?:^|[^A-Z0-9])(?:CZTNA|CFR|NDR|CWP|CIX[A-Z]*|CEP[A-Z]*|MDR[A-Z]*|XDR[A-Z]*|CMA|CMS|CEMA|CPHISH|BAND|VOL|USER|SRV)?(\d{1,5})\s*-\s*(\d{1,7})(?=$|[^0-9])/gi;
+      let m;
+      while ((m = re.exec(src)) !== null) {
+        const min = parseInt(m[1], 10);
+        const max = parseInt(m[2], 10);
+        if (min >= 1 && max > min && !yearSet.has(min)) return { min, max };
+      }
+      return null;
+    }
+
+    function isNonFirewallInfraOrAccessoryTextJs(text) {
+      const t = String(text || '').toLowerCase();
+      if (!t) return false;
+      if (t.includes('(for xgs ') || t.includes('(for xg ')) return true;
+      return /\b(xrp\d+|pwr-supply|power\s+supply|power\s+cord|transceiver|sfp\+?|qsfp\d*|rackmount|mounting\s+kit|poe\s+injector|flexi\s+port|sd-red\s*\d+|ap6\s*\d+|cs101|cs110|cs210|cs1010|ndr\s*\d{4})\b/i.test(t);
+    }
+
+    function detectVirtualFirewallModelFromTextJs(text) {
+      const t = String(text || '');
+      if (!t) return '';
+      const direct = t.match(/\bSFv[\s-]*(Unlimited|\d+C\d+)\b/i);
+      if (direct) {
+        const suffix = /^unlimited$/i.test(direct[1]) ? 'Unlimited' : direct[1].toUpperCase();
+        return `SFv ${suffix}`;
+      }
+      if (/sf\s*sw\/virtual|virtual\/software\s*firewall|virtual\s*firewall|\bsfv\b/i.test(t)) {
+        if (/\bunl(?:imited)?\s*(?:cores?|&)/i.test(t)) return 'SFv Unlimited';
+        if (/\b16\s*-?\s*cores?\b/i.test(t)) return 'SFv 16C24';
+        if (/\b8\s*-?\s*cores?\b/i.test(t)) return 'SFv 8C16';
+        if (/\b6\s*-?\s*cores?\b/i.test(t)) return 'SFv 6C8';
+        if (/\b4\s*-?\s*cores?\b/i.test(t)) return 'SFv 4C6';
+        if (/\b2\s*-?\s*cores?\b/i.test(t)) return 'SFv 2C4';
+        if (/\b1\s*-?\s*core\b/i.test(t)) return 'SFv 1C4';
+      }
+      return '';
+    }
+
+    function inferSophosCalculatorContextJs(calcData, rawSku, itemNameOrObj) {
       const runtime = calcData && calcData.engineRuntime;
       const dd = runtime && runtime.dropDowns;
       const calcMap = (calcData && calcData.calcSkus) || {};
@@ -1356,6 +2044,9 @@
       let qty = 1;
       let specialAttribute = 'AU';
 
+      const itemObj = (itemNameOrObj && typeof itemNameOrObj === 'object') ? itemNameOrObj : null;
+      const itemName = itemObj ? String(itemObj.Ten_hang || '') : String(itemNameOrObj || '');
+
       let cleanSku = String(rawSku || '').trim().toUpperCase();
       if (cleanSku === 'CFRAAB12ZZCAA' && !calcMap[cleanSku] && calcMap['CFRAAB12BANCAA']) cleanSku = 'CFRAAB12BANCAA';
       const mappedNewSku = (cleanSku && dd && dd.newSkuByOldSku && dd.newSkuByOldSku[cleanSku]) || (cleanSku.length === 14 ? cleanSku : '');
@@ -1366,15 +2057,30 @@
         matchedProd = runtime.pcToProduct[String(skuEntry.pc).toUpperCase()];
       }
       if (!matchedProd && mappedNewSku.length === 14 && runtime && runtime.partIdToProducts) {
-        const cands = runtime.partIdToProducts[mappedNewSku.slice(0, 6)] || [];
-        matchedProd = cands[0] || null;
+        const partId = mappedNewSku.slice(0, 6);
+        const tCode = mappedNewSku.slice(6, 8);
+        const cands = runtime.partIdToProducts[partId] || [];
+        if (cands.length === 1) {
+          matchedProd = cands[0];
+        } else if (cands.length > 1) {
+          const fixedTag = `fixed_${parseInt(tCode, 10)}`;
+          const yrNum = Math.round(parseInt(tCode, 10) / 12);
+          matchedProd =
+            cands.find(c => String(c.termed).toLowerCase() === fixedTag) ||
+            (yrNum > 0 ? cands.find(c => c.desc.toLowerCase().includes(`${yrNum}-year`)) : null) ||
+            cands.find(c => Boolean(runtime.productToHierarchy && runtime.productToHierarchy[c.desc])) ||
+            cands[0];
+        }
       }
 
+      let decodedFrom14Char = false;
       if (mappedNewSku.length === 14 && /^[A-Z0-9]{6}\d{2}[A-Z]{2}[A-Z]{2}[A-Z0-9]{2}$/.test(mappedNewSku)) {
+        decodedFrom14Char = true;
         const months = parseInt(mappedNewSku.slice(6, 8), 10);
         if (months > 0) {
           termSubscription = `${months} MOS`;
           if (months === 12) termHwBundle = '1-Year';
+          else if (months === 24) termHwBundle = '2-Year';
           else if (months === 36) termHwBundle = '3-Year';
           else if (months === 60) termHwBundle = '5-Year';
         }
@@ -1391,22 +2097,69 @@
           const hitBand = tbl.find(b => b[2] === bCode);
           if (hitBand) qty = Math.max(1, hitBand[0]);
         }
+      } else if (itemName) {
+        const mMatch = itemName.match(/(\d+)\s*month/i);
+        const yMatch = itemName.match(/(\d+)\s*(?:year|năm)/i);
+        if (mMatch) {
+          const mVal = parseInt(mMatch[1], 10);
+          termSubscription = `${mVal} MOS`;
+          if (mVal === 36) termHwBundle = '3-Year';
+          else if (mVal === 60) termHwBundle = '5-Year';
+        } else if (yMatch) {
+          const yVal = parseInt(yMatch[1], 10);
+          termSubscription = `${yVal * 12} MOS`;
+          if (yVal === 3) termHwBundle = '3-Year';
+          else if (yVal === 5) termHwBundle = '5-Year';
+        }
+      }
+
+      const volRange = extractVolumeRangeFromTextJs(`${(itemObj && itemObj.volume) || ''} ${state.band || ''} ${itemName}`);
+      if (volRange && (!decodedFrom14Char || volRange.min > qty)) {
+        qty = Math.max(1, volRange.min);
+      }
+
+      if (!decodedFrom14Char && itemName) {
+        if (/\b(?:eu\/uk|euk|eu\s+power\s+cord)\b|heuk\b|pcek\b/i.test(itemName)) specialAttribute = 'EU';
+        else if (/\buk\s+power\s+cord\b/i.test(itemName)) specialAttribute = 'UK';
+        else if (/\bus\s+power\s+cord\b/i.test(itemName)) specialAttribute = 'US';
+        else if (/\bau\s+power\s+cord\b/i.test(itemName)) specialAttribute = 'AU';
       }
 
       const combinedText = `${itemName || ''} ${(matchedProd && matchedProd.desc) || ''}`;
-      const xgsMatch = combinedText.match(/\b(XGS?\s*\d{2,4}w?|SFv\s*(?:Unlimited|\d+C\d+))\b/i);
+      const matchedHierFam = (matchedProd && matchedProd.desc && runtime && runtime.productToHierarchy && runtime.productToHierarchy[matchedProd.desc] && runtime.productToHierarchy[matchedProd.desc].family) || '';
+      const isInfraOrAccessory =
+        (matchedProd && !matchedProd.fwFilter && (
+          ['Switches', 'Access_Points', 'SD_WAN', 'Modules_and_Transceivers', 'Accessories'].includes(matchedHierFam) ||
+          isNonFirewallInfraOrAccessoryTextJs(matchedProd.desc)
+        )) ||
+        (matchedProd && /^NDR\s*\d+/i.test(matchedProd.fwFilter || matchedProd.desc)) ||
+        (!matchedProd && isNonFirewallInfraOrAccessoryTextJs(itemName));
+
       const allKnownFwModels = [];
       for (const grp of ((dd && dd.firewallModelGroups) || [])) {
         for (const m of (grp.models || [])) allKnownFwModels.push(m);
       }
       let detectedFwModel = '';
-      if (xgsMatch) {
-        const rawM = xgsMatch[1].replace(/\b(XGS?)(\d)/i, '$1 $2').replace(/\s+/g, ' ').trim();
-        const exactKnown = allKnownFwModels.find(km => km.toLowerCase() === rawM.toLowerCase());
-        detectedFwModel = exactKnown || rawM.replace(/^xgs/i, 'XGS').replace(/^xg\b/i, 'XG').replace(/^sfv/i, 'SFv');
-      } else if (matchedProd && matchedProd.fwFilter) {
-        const exactKnown = allKnownFwModels.find(km => km.toLowerCase() === matchedProd.fwFilter.toLowerCase());
-        if (exactKnown) detectedFwModel = exactKnown;
+      if (!isInfraOrAccessory) {
+        if (matchedProd && matchedProd.fwFilter && !/^NDR/i.test(matchedProd.fwFilter)) {
+          const exactKnown = allKnownFwModels.find(km => km.toLowerCase() === matchedProd.fwFilter.toLowerCase());
+          detectedFwModel = exactKnown || matchedProd.fwFilter;
+        }
+        if (!detectedFwModel) {
+          const virtM = detectVirtualFirewallModelFromTextJs(combinedText);
+          if (virtM) {
+            const exactKnown = allKnownFwModels.find(km => km.toLowerCase() === virtM.toLowerCase());
+            detectedFwModel = exactKnown || virtM;
+          }
+        }
+        if (!detectedFwModel) {
+          const xgsMatch = combinedText.match(/\b(XGS?\s*\d{2,4}w?)\b/i);
+          if (xgsMatch) {
+            const rawM = xgsMatch[1].replace(/\b(XGS?)(\d)/i, '$1 $2').replace(/\s+/g, ' ').trim();
+            const exactKnown = allKnownFwModels.find(km => km.toLowerCase() === rawM.toLowerCase());
+            detectedFwModel = exactKnown || rawM.replace(/^xgs/i, 'XGS').replace(/^xg\b/i, 'XG');
+          }
+        }
       }
 
       const isCfrOnFw = (matchedProd && matchedProd.desc === 'Central Firewall Reporting Advanced') ||
@@ -1414,52 +2167,113 @@
 
       if (detectedFwModel || isCfrOnFw) {
         const model = detectedFwModel || (viewerContext.settings && viewerContext.settings.model) || allKnownFwModels.find(m => m === 'XGS 2300') || allKnownFwModels[0] || 'XGS 2300';
-        const rowKey = inferFirewallRowKeyFromProductOrNameJs(matchedProd && matchedProd.desc, itemName, cleanSku);
+        const rowKey = isCfrOnFw ? 'cfr_adv' : inferFirewallRowKeyFromProductOrNameJs(matchedProd && matchedProd.desc, itemName, cleanSku);
         if (rowKey === 'std_bundle' || rowKey === 'xstream_bundle') {
-          const dl = ((matchedProd && matchedProd.desc) || '').toLowerCase();
-          if (dl.includes('3-year')) termHwBundle = '3-Year';
-          else if (dl.includes('5-year')) termHwBundle = '5-Year';
+          const dl = `${(matchedProd && matchedProd.desc) || ''} ${itemName || ''}`.toLowerCase();
+          if (dl.includes('3-year') || termSubscription === '36 MOS') termHwBundle = '3-Year';
+          else if (dl.includes('5-year') || termSubscription === '60 MOS') termHwBundle = '5-Year';
           else termHwBundle = '1-Year';
         }
         if (!['AU', 'EU', 'UK', 'US', 'CN', 'IN', 'JP'].includes(specialAttribute)) specialAttribute = 'AU';
+        const effectiveFwQty = isCfrOnFw ? qty : 1;
         const evalP = evaluateFirewallCalculatorJs(calcData, {
-          partnerLevel, sector, dealType, termHwBundle, termSubscription, qty: 1, specialAttribute, models: [model]
+          partnerLevel, sector, dealType, termHwBundle, termSubscription, qty: effectiveFwQty, specialAttribute, models: [model], preferredSku: cleanSku
         });
         const mRow = evalP.rows.find(r => r.key === rowKey);
+        const rCell = mRow && mRow.cells && mRow.cells[0];
+        const resolvedSku = (rCell && rCell.available && rCell.sku) ? rCell.sku : cleanSku;
         return {
+          sku: resolvedSku,
           calcType: 'firewall',
           nativeSheet: 'Firewall',
           targetFirewallRowKey: rowKey,
           targetFirewallSheetRow: (mRow && mRow.sheetRowNum) || 29,
           partnerLevel, sector, dealType, termHwBundle, termSubscription,
-          qty: isCfrOnFw ? qty : 1,
+          qty: effectiveFwQty,
           specialAttribute,
           model,
           models: [model],
           family: 'Firewall',
           productLine: '',
-          product: (matchedProd && matchedProd.desc) || ''
+          product: (rCell && rCell.productDesc) || (matchedProd && matchedProd.desc) || ''
         };
       }
 
+      const stripPlugSuffix = s => String(s || '').replace(/\s*-\s*(?:eu\/uk|au|uk|us|cn|in|jp)\s+power\s+cord\s*$/i, '').trim();
       if (!matchedProd && runtime && runtime.product2List && runtime.product2List.length && itemName) {
-        const thLower = String(itemName).trim().toLowerCase();
-        matchedProd = (runtime.descLowerToProduct && runtime.descLowerToProduct[thLower]) ||
-                      runtime.product2List.find(p => p.desc.toLowerCase().includes(thLower) || thLower.includes(p.desc.toLowerCase())) || null;
+        const cleanTh = stripPlugSuffix(itemName);
+        const thLower = collapseWsLowerJs(cleanTh);
+        if (/zero\s+trust\s+network\s+access|\bztna\b/i.test(itemName)) {
+          matchedProd = (runtime.pcToProduct && runtime.pcToProduct['CWP']) || (runtime.descLowerToProduct && runtime.descLowerToProduct['workspace protection']) || null;
+        } else if (/central\s+network\s+detection\s+and\s+response/i.test(itemName)) {
+          matchedProd = (runtime.pcToProduct && runtime.pcToProduct['NDR']) || (runtime.descLowerToProduct && runtime.descLowerToProduct['central network detection and response']) || null;
+        }
+        if (!matchedProd) {
+          matchedProd =
+            (runtime.descLowerToProduct && runtime.descLowerToProduct[thLower]) ||
+            (runtime.descLowerToProduct && runtime.descLowerToProduct[collapseWsLowerJs(itemName)]) ||
+            (runtime.descLowerToProduct && runtime.descLowerToProduct[`sophos ${thLower}`]) ||
+            (runtime.descLowerToProduct && runtime.descLowerToProduct[thLower.replace(/^sophos\s+/, '')]) ||
+            null;
+        }
+        if (!matchedProd && thLower && !/\butm\s*\d+\b/i.test(thLower)) {
+          const stopWords = new Set(['sophos', 'central', 'license', 'subscription', 'bundle', 'protection', 'security', 'for', 'with', 'and', 'the', 'only']);
+          const meaningfulTokens = thLower.split(/[^a-z0-9]+/).filter(w => w.length >= 2 && !stopWords.has(w));
+          if (meaningfulTokens.length >= 1) {
+            matchedProd = runtime.product2List.find(p => {
+              const pl = collapseWsLowerJs(p.desc);
+              if (thLower.length >= 6 && (pl.includes(thLower) || thLower.includes(pl))) return true;
+              return meaningfulTokens.length >= 2 && meaningfulTokens.every(tok => pl.includes(tok));
+            }) || null;
+          }
+        }
       }
+
+      if (!matchedProd && !cleanSku && itemName && /\butm\s*\d+\b/i.test(itemName)) {
+        return {
+          sku: '',
+          calcType: 'product',
+          nativeSheet: 'Firewall',
+          targetFirewallRowKey: '',
+          targetFirewallSheetRow: 29,
+          partnerLevel, sector, dealType, termHwBundle, termSubscription, qty: 1,
+          specialAttribute: 'AU',
+          model: 'XGS 2300',
+          models: ['XGS 2300'],
+          family: 'Firewall',
+          productLine: '',
+          product: itemName
+        };
+      }
+
       const fallbackProd = matchedProd || (runtime && runtime.descToProduct && runtime.descToProduct['Sophos Endpoint - User']) || (runtime && runtime.product2List && runtime.product2List[0]) || null;
       const prodDesc = (fallbackProd && fallbackProd.desc) || '';
       const hier = (prodDesc && runtime && runtime.productToHierarchy && runtime.productToHierarchy[prodDesc]) || {
-        family: (dd && dd.universalCatalog && dd.universalCatalog.families && dd.universalCatalog.families[0]) || 'Endpoint_Security',
+        family: '',
         productLine: ''
       };
-      const family = hier.family;
-      const productLine = hier.productLine || (dd && dd.universalCatalog && dd.universalCatalog.linesByFamily && dd.universalCatalog.linesByFamily[family] && dd.universalCatalog.linesByFamily[family][0]) || '';
-      const nativeSheet = mapProductToNativeSheetJs(fallbackProd, family, productLine);
+      const family = hier.family || (dd && dd.universalCatalog && dd.universalCatalog.families && dd.universalCatalog.families[0]) || 'Endpoint_Security';
+      const productLine = hier.productLine || (hier.family && dd && dd.universalCatalog && dd.universalCatalog.linesByFamily && dd.universalCatalog.linesByFamily[hier.family] && dd.universalCatalog.linesByFamily[hier.family][0]) || '';
+      const nativeSheet = mapProductToNativeSheetJs(fallbackProd, hier.family, productLine, calcData);
       const specOpts = getSpecialAttrOptsJs(fallbackProd, dd);
-      const validSpec = specOpts.some(o => o.code === specialAttribute || o.label === specialAttribute) ? specialAttribute : ((specOpts[0] && specOpts[0].code) || 'AA');
+      const rawRule = String((fallbackProd && fallbackProd.specAttrRule) || 'AA').trim();
+      const normRule = /^X[123]$/.test(rawRule) ? `${rawRule}_` : rawRule;
+      let validSpec = specialAttribute;
+      if (normRule === 'X1_' || normRule === 'X2_' || normRule === 'X3_') {
+        if (!['AU', 'EU', 'UK', 'US', 'CN', 'IN', 'JP', 'KR'].includes(validSpec) && !specOpts.some(o => o.code === validSpec)) {
+          validSpec = 'AU';
+        }
+      } else if (!specOpts.some(o => o.code === validSpec || o.label === validSpec)) {
+        validSpec = (specOpts[0] && specOpts[0].code) || 'AA';
+      }
+
+      const prodPreview = evaluateProductCalculatorJs(calcData, {
+        partnerLevel, sector, dealType, family, productLine, product: prodDesc, term: termSubscription, qty, specialAttribute: validSpec, preferredSku: cleanSku
+      });
+      const resolvedProdSku = (prodPreview.available && prodPreview.sku) ? prodPreview.sku : cleanSku;
 
       return {
+        sku: resolvedProdSku,
         calcType: 'product',
         nativeSheet,
         targetFirewallRowKey: '',
@@ -1472,8 +2286,183 @@
       };
     }
 
+    function findDefaultProductForCalcSheetJs(calcData, sheetName) {
+      const runtime = calcData && calcData.engineRuntime;
+      if (!runtime) return null;
+
+      const tryByDescOrPc = cands => {
+        for (const c of cands) {
+          const hit =
+            (runtime.pcToProduct && runtime.pcToProduct[c.toUpperCase()]) ||
+            (runtime.descToProduct && runtime.descToProduct[c]) ||
+            (runtime.descLowerToProduct && runtime.descLowerToProduct[collapseWsLowerJs(c)]) ||
+            null;
+          if (hit && productHasAnyCalcSkuJs(calcData, hit)) return hit;
+        }
+        return null;
+      };
+
+      let picked = null;
+      if (sheetName === 'Endpoint & Server' || sheetName === 'Universal Calculator') {
+        picked = tryByDescOrPc(['Sophos Endpoint - User', 'Central Device Encryption']);
+      } else if (sheetName === 'MDR calculator') {
+        picked = tryByDescOrPc(['Sophos MDR - User', 'Sophos MDR Plus - User']);
+      } else if (sheetName === 'XDR & Next-Gen SIEM') {
+        picked = tryByDescOrPc(['Sophos XDR - User', 'Sophos Next-Gen SIEM']);
+      } else if (sheetName === 'Network Detection & Response') {
+        picked = tryByDescOrPc(['NDR', 'Central Network Detection and Response']);
+      } else if (sheetName === 'Workspace Protection') {
+        picked = tryByDescOrPc(['CWP', 'Workspace Protection']);
+      } else if (sheetName === 'Email') {
+        picked = tryByDescOrPc(['CEMA', 'Sophos Email']);
+      } else if (sheetName === 'Mobile') {
+        picked = tryByDescOrPc(['Central Mobile Advanced', 'Central Intercept X for Mobile']);
+      } else if (sheetName === 'Backup & Recovery') {
+        picked = tryByDescOrPc(['BACKUP-M365-RBRK', 'Backup and Recovery M365']);
+      } else if (sheetName === 'ITDR') {
+        picked = tryByDescOrPc(['ITDR', 'Sophos Identity Threat Detection and Response']);
+      } else if (sheetName === 'AI Defense') {
+        picked = tryByDescOrPc(['AI-DEFENSE', 'Sophos AI Defense']);
+      } else if (sheetName === 'CISO Advantage') {
+        picked = tryByDescOrPc(['CISO-ADVANTAGE', 'Sophos CISO Advantage']);
+      } else if (sheetName === 'Managed Services') {
+        picked = tryByDescOrPc(['Central Managed Risk', 'Sophos MDR - User']);
+      } else if (sheetName === 'Network Infrastructure') {
+        picked = tryByDescOrPc(['R60ZTCH', 'R20ZTCHMR', 'AP6-420-ROW', 'CS110-24FP']);
+      } else if (sheetName === 'ProServices & Training') {
+        picked = tryByDescOrPc(['EPSUP', 'TAM-Services']);
+      } else if (sheetName === 'Advisory services') {
+        const advRows = (calcData.calcSheetsRaw && calcData.calcSheetsRaw['Advisory services']) || [];
+        for (let r = 10; r < advRows.length; r++) {
+          const pName = String((advRows[r] && advRows[r][2]) ?? '').trim();
+          if (!pName || pName.toLowerCase() === 'advisory services') continue;
+          const pObj = runtime.descLowerToProduct && runtime.descLowerToProduct[collapseWsLowerJs(pName)];
+          if (pObj && productHasAnyCalcSkuJs(calcData, pObj)) {
+            picked = pObj;
+            break;
+          }
+        }
+      }
+
+      if (!picked && runtime.product2List && runtime.product2List.length) {
+        picked = runtime.product2List.find(p => {
+          if (!productHasAnyCalcSkuJs(calcData, p)) return false;
+          const h = runtime.productToHierarchy && runtime.productToHierarchy[p.desc];
+          return mapProductToNativeSheetJs(p, (h && h.family) || '', (h && h.productLine) || '', calcData) === sheetName;
+        }) || null;
+      }
+
+      if (!picked) {
+        picked = tryByDescOrPc(['Sophos Endpoint - User']) || (runtime.product2List && runtime.product2List.find(p => productHasAnyCalcSkuJs(calcData, p))) || null;
+      }
+      if (!picked) return null;
+
+      const hier = (runtime.productToHierarchy && runtime.productToHierarchy[picked.desc]) || { family: '', productLine: '' };
+      const family = hier.family || (runtime.dropDowns && runtime.dropDowns.universalCatalog && runtime.dropDowns.universalCatalog.families && runtime.dropDowns.universalCatalog.families[0]) || 'Endpoint_Security';
+      const productLine = hier.productLine || (runtime.dropDowns && runtime.dropDowns.universalCatalog && runtime.dropDowns.universalCatalog.linesByFamily && runtime.dropDowns.universalCatalog.linesByFamily[family] && runtime.dropDowns.universalCatalog.linesByFamily[family][0]) || '';
+      return { prod: picked, family, productLine };
+    }
+
+    function resolveSheetContextForWorkbookJs(calcData, sheetName, baseCtx, targetSheet) {
+      if (!baseCtx) return baseCtx;
+      if (
+        sheetName === 'Cover' ||
+        sheetName === 'Discounts' ||
+        sheetName === 'Quick MSRP look up' ||
+        sheetName === "What's New!" ||
+        sheetName === 'Partner Resources' ||
+        sheetName === 'Successors'
+      ) {
+        return baseCtx;
+      }
+
+      if (sheetName === 'Firewall') {
+        if (sheetName === targetSheet && baseCtx.calcType === 'firewall') {
+          const validTermSub = /^0?1\s*mos/i.test(baseCtx.termSubscription || '') ? '12 MOS' : (baseCtx.termSubscription || '12 MOS');
+          const rawPlug = String(baseCtx.specialAttribute || 'AU').toUpperCase();
+          const validPlug = rawPlug === 'EUK' ? 'EU' : (['AU', 'EU', 'UK', 'US', 'CN'].includes(rawPlug) ? rawPlug : 'AU');
+          return { ...baseCtx, termSubscription: validTermSub, specialAttribute: validPlug };
+        }
+        return {
+          ...baseCtx,
+          sku: '',
+          calcType: 'firewall',
+          nativeSheet: 'Firewall',
+          targetFirewallRowKey: 'hw_appliance',
+          targetFirewallSheetRow: 29,
+          termHwBundle: '1-Year',
+          termSubscription: '12 MOS',
+          qty: 1,
+          specialAttribute: 'AU',
+          model: baseCtx.model || 'XGS 2300',
+          models: (baseCtx.models && baseCtx.models.length) ? baseCtx.models : [baseCtx.model || 'XGS 2300']
+        };
+      }
+
+      const runtime = calcData && calcData.engineRuntime;
+      const curProd = (baseCtx.product && runtime && (
+        (runtime.descToProduct && runtime.descToProduct[baseCtx.product]) ||
+        (runtime.descLowerToProduct && runtime.descLowerToProduct[collapseWsLowerJs(baseCtx.product)])
+      )) || null;
+      const curProdMappedSheet = curProd ? mapProductToNativeSheetJs(curProd, baseCtx.family, baseCtx.productLine, calcData) : '';
+      const isTargetProdSheet =
+        baseCtx.calcType === 'product' &&
+        Boolean(curProd) &&
+        (sheetName === targetSheet ||
+          curProdMappedSheet === sheetName ||
+          (sheetName === 'Universal Calculator' && Boolean(runtime && runtime.productToHierarchy && runtime.productToHierarchy[curProd.desc])));
+
+      if (isTargetProdSheet) return baseCtx;
+
+      if (sheetName === targetSheet && baseCtx.sku && calcData && calcData.calcSkus && calcData.calcSkus[String(baseCtx.sku).trim().toUpperCase()]) {
+        const inferredForTarget = inferSophosCalculatorContextJs(calcData, baseCtx.sku, baseCtx.product || '');
+        if (inferredForTarget.calcType === 'product' && inferredForTarget.product) {
+          return {
+            ...inferredForTarget,
+            partnerLevel: baseCtx.partnerLevel || inferredForTarget.partnerLevel,
+            sector: baseCtx.sector || inferredForTarget.sector,
+            dealType: baseCtx.dealType || inferredForTarget.dealType
+          };
+        }
+      }
+
+      const def = findDefaultProductForCalcSheetJs(calcData, sheetName);
+      if (!def) return baseCtx;
+      const specOpts = getSpecialAttrOptsJs(def.prod, runtime && runtime.dropDowns);
+      const defSpec = (specOpts[0] && specOpts[0].code) || 'AA';
+      return {
+        ...baseCtx,
+        sku: '',
+        calcType: 'product',
+        nativeSheet: sheetName,
+        targetFirewallRowKey: '',
+        targetFirewallSheetRow: null,
+        termHwBundle: '1-Year',
+        termSubscription: '12 MOS',
+        qty: 1,
+        specialAttribute: defSpec,
+        family: def.family,
+        productLine: def.productLine,
+        product: def.prod.desc
+      };
+    }
+
     function overlayCalculatedSheetAoaJs(calcData, sheetName, baseRows, ctx) {
       const rows = (baseRows || []).map(r => (Array.isArray(r) ? [...r] : []));
+      const runtime = calcData && calcData.engineRuntime;
+      const calcSkus = (calcData && calcData.calcSkus) || {};
+
+      for (let r = 0; r < rows.length; r++) {
+        const rowArr = rows[r];
+        if (!Array.isArray(rowArr)) continue;
+        for (let c = 0; c < rowArr.length; c++) {
+          const v = rowArr[c];
+          if (typeof v === 'string' && /^not\s+available(?:\s+in\s+this\s+region)?$/i.test(v.trim())) {
+            rowArr[c] = '';
+          }
+        }
+      }
+
       const ensureCell = (rIdx, cIdx, val) => {
         if (rIdx < 0 || cIdx < 0) return;
         while (rows.length <= rIdx) rows.push([]);
@@ -1481,18 +2470,37 @@
         while (rows[rIdx].length <= cIdx) rows[rIdx].push(null);
         rows[rIdx][cIdx] = val;
       };
-      if (!ctx) return { rows, targetRow: 3, targetColLetter: 'B' };
+      if (!ctx) return { rows, targetRow: 3, targetColLetter: 'B', targetSku: '' };
+
+      const safePrefForProd = prod => {
+        if (!ctx.sku || !prod) return undefined;
+        return doesSkuBelongToProductJs(calcData, ctx.sku, prod) ? ctx.sku : undefined;
+      };
 
       if (sheetName === 'Cover') {
         for (let r = 0; r < Math.min(rows.length, 8); r++) {
           for (let c = 0; c < ((rows[r] && rows[r].length) || 0); c++) {
             if (DEFAULT_PARTNER_LEVELS_JS.includes(String(rows[r][c] ?? '').trim())) {
               ensureCell(r, c, ctx.partnerLevel || 'Authorized');
-              return { rows, targetRow: r + 1, targetColLetter: colIndexToLetter(c) };
+              return { rows, targetRow: r + 1, targetColLetter: colIndexToLetter(c), targetSku: ctx.sku || '' };
             }
           }
         }
-        return { rows, targetRow: 3, targetColLetter: 'I' };
+        return { rows, targetRow: 3, targetColLetter: 'I', targetSku: ctx.sku || '' };
+      }
+
+      if (sheetName === 'Discounts') {
+        ensureCell(8, 3, ctx.partnerLevel || 'Authorized');
+        return { rows, targetRow: 9, targetColLetter: 'D', targetSku: ctx.sku || '' };
+      }
+
+      if (sheetName === 'Quick MSRP look up') {
+        ensureCell(0, 4, ctx.sector || 'Corporate');
+        return { rows, targetRow: 12, targetColLetter: 'C', targetSku: ctx.sku || '' };
+      }
+
+      if (sheetName === "What's New!" || sheetName === 'Partner Resources' || sheetName === 'Successors') {
+        return { rows, targetRow: 3, targetColLetter: 'B', targetSku: ctx.sku || '' };
       }
 
       for (let r = 0; r < Math.min(rows.length, 5); r++) {
@@ -1505,22 +2513,33 @@
       }
 
       if (sheetName === 'Firewall') {
+        const isFwCtx = ctx.calcType === 'firewall';
+        const effTermBundle = isFwCtx ? (ctx.termHwBundle ?? '1-Year') : '1-Year';
+        const effTermSub = (!isFwCtx || /^0?1\s*mos/i.test(String(ctx.termSubscription || '').trim()))
+          ? '12 MOS'
+          : (ctx.termSubscription || '12 MOS');
+        const rawPlug = String(ctx.specialAttribute || 'AU').trim().toUpperCase();
+        const effPlug = rawPlug === 'EUK' ? 'EU' : (['AU', 'EU', 'UK', 'US', 'CN'].includes(rawPlug) ? rawPlug : 'AU');
+        const effQty = isFwCtx ? Math.max(1, Number(ctx.qty) || 1) : 1;
+        const effModels = (ctx.models && ctx.models.length) ? ctx.models : [ctx.model || 'XGS 2300'];
+
         for (let r = 4; r < Math.min(rows.length, 18); r++) {
           const lbl = String((rows[r] && (rows[r][2] ?? rows[r][1])) ?? '').trim().toLowerCase();
-          if (lbl.includes('term') && lbl.includes('bundle')) ensureCell(r, 3, ctx.termHwBundle || '1-Year');
-          else if (lbl.includes('term') && lbl.includes('subscription')) ensureCell(r, 3, ctx.termSubscription || '12 MOS');
-          else if (lbl === 'qty' || lbl === 'quantity') ensureCell(r, 3, ctx.qty || 1);
-          else if (lbl.includes('special attribute')) ensureCell(r, 3, ctx.specialAttribute || 'AU');
+          if (lbl.includes('term') && lbl.includes('bundle')) ensureCell(r, 3, effTermBundle || 'None');
+          else if (lbl.includes('term') && lbl.includes('subscription')) ensureCell(r, 3, effTermSub);
+          else if (lbl === 'qty' || lbl === 'quantity') ensureCell(r, 3, effQty);
+          else if (lbl.includes('special attribute')) ensureCell(r, 3, effPlug);
         }
         const fwEval = evaluateFirewallCalculatorJs(calcData, {
           partnerLevel: ctx.partnerLevel,
           sector: ctx.sector,
           dealType: ctx.dealType,
-          termHwBundle: ctx.termHwBundle,
-          termSubscription: ctx.termSubscription,
-          qty: ctx.qty,
-          specialAttribute: ctx.specialAttribute,
-          models: (ctx.models && ctx.models.length) ? ctx.models : [ctx.model || 'XGS 2300']
+          termHwBundle: effTermBundle,
+          termSubscription: effTermSub,
+          qty: effQty,
+          specialAttribute: effPlug,
+          models: effModels,
+          preferredSku: isFwCtx ? ctx.sku : ''
         });
         const modelColStarts = [7, 21, 35];
         if (fwEval.rows[0]) {
@@ -1534,24 +2553,66 @@
           });
         }
         let targetRow = ctx.targetFirewallSheetRow || 29;
+        let targetSku = isFwCtx ? (ctx.sku || '') : '';
+        let matchedBySku = false;
+        const ctxSkuUpper = isFwCtx ? String(ctx.sku || '').trim().toUpperCase() : '';
+
         for (const rEval of fwEval.rows) {
           const rIdx = rEval.sheetRowNum - 1;
           rEval.cells.forEach((cEval, mIdx) => {
             const baseCol = modelColStarts[mIdx];
             if (baseCol === undefined) return;
-            ensureCell(rIdx, baseCol, cEval.sku || '');
-            ensureCell(rIdx, baseCol + 2, cEval.available ? cEval.msrp : 'Not Available');
-            ensureCell(rIdx, baseCol + 4, cEval.available ? `${cEval.resellerDiscPct}%` : '');
-            ensureCell(rIdx, baseCol + 6, cEval.available ? `${cEval.promoDiscPct}%` : '');
-            ensureCell(rIdx, baseCol + 8, cEval.available ? `${cEval.specialDiscPct}%` : '');
-            ensureCell(rIdx, baseCol + 10, cEval.available ? cEval.buyCost : 0);
+            if (cEval.available && cEval.sku && cEval.sku !== 'Not Available') {
+              ensureCell(rIdx, baseCol, cEval.sku);
+              ensureCell(rIdx, baseCol + 2, cEval.msrp);
+              ensureCell(rIdx, baseCol + 4, `${cEval.resellerDiscPct}%`);
+              ensureCell(rIdx, baseCol + 6, `${cEval.promoDiscPct}%`);
+              ensureCell(rIdx, baseCol + 8, `${cEval.specialDiscPct}%`);
+              ensureCell(rIdx, baseCol + 10, cEval.buyCost);
+            } else if (mIdx === 0 && ctxSkuUpper && calcSkus[ctxSkuUpper] && rEval.key === (ctx.targetFirewallRowKey || 'hw_appliance')) {
+              const directEv = buildDirectSkuEvalFallbackJs(calcData, ctxSkuUpper, ctx.partnerLevel, ctx.dealType, effQty, 0, 0);
+              if (directEv) {
+                ensureCell(rIdx, baseCol, directEv.sku);
+                ensureCell(rIdx, baseCol + 2, directEv.msrp);
+                ensureCell(rIdx, baseCol + 4, `${directEv.resellerDiscPct}%`);
+                ensureCell(rIdx, baseCol + 6, '0%');
+                ensureCell(rIdx, baseCol + 8, '0%');
+                ensureCell(rIdx, baseCol + 10, directEv.buyCost);
+              }
+            } else {
+              ensureCell(rIdx, baseCol, '');
+              ensureCell(rIdx, baseCol + 2, '');
+              ensureCell(rIdx, baseCol + 4, '');
+              ensureCell(rIdx, baseCol + 6, '');
+              ensureCell(rIdx, baseCol + 8, '');
+              ensureCell(rIdx, baseCol + 10, '');
+            }
           });
-          if (rEval.key === ctx.targetFirewallRowKey) targetRow = rEval.sheetRowNum;
+          const firstCell = rEval.cells[0];
+          const writtenSku = String((rows[rIdx] && rows[rIdx][7]) ?? '').trim();
+          if (ctxSkuUpper && (writtenSku === ctxSkuUpper || (firstCell && firstCell.newSku === ctxSkuUpper))) {
+            targetRow = rEval.sheetRowNum;
+            targetSku = writtenSku || (firstCell && firstCell.sku) || ctxSkuUpper;
+            matchedBySku = true;
+          } else if (!matchedBySku && ctx.targetFirewallRowKey && rEval.key === ctx.targetFirewallRowKey && writtenSku) {
+            targetRow = rEval.sheetRowNum;
+            targetSku = writtenSku;
+          }
         }
-        return { rows, targetRow, targetColLetter: 'H' };
+
+        if (!String((rows[targetRow - 1] && rows[targetRow - 1][7]) ?? '').trim()) {
+          const firstAvailRow = fwEval.rows.find(r => String((rows[r.sheetRowNum - 1] && rows[r.sheetRowNum - 1][7]) ?? '').trim() !== '');
+          if (firstAvailRow) {
+            targetRow = firstAvailRow.sheetRowNum;
+            targetSku = String(rows[firstAvailRow.sheetRowNum - 1][7] ?? '').trim();
+          }
+        } else if (!targetSku) {
+          targetSku = String((rows[targetRow - 1] && rows[targetRow - 1][7]) ?? '').trim();
+        }
+        return { rows, targetRow, targetColLetter: 'H', targetSku };
       }
 
-      const prodEval = evaluateProductCalculatorJs(calcData, {
+      let prodEval = evaluateProductCalculatorJs(calcData, {
         partnerLevel: ctx.partnerLevel,
         sector: ctx.sector,
         dealType: ctx.dealType,
@@ -1560,62 +2621,187 @@
         product: ctx.product,
         term: ctx.termSubscription,
         qty: ctx.qty,
-        specialAttribute: ctx.specialAttribute
+        specialAttribute: ctx.specialAttribute,
+        preferredSku: ctx.sku
       });
+      if (!prodEval.available && ctx.sku) {
+        const directHit = buildDirectSkuEvalFallbackJs(calcData, ctx.sku, ctx.partnerLevel, ctx.dealType, ctx.qty || 1, 0, 0);
+        if (directHit) prodEval = directHit;
+      }
+      const ctxSkuUpper = String(ctx.sku || prodEval.sku || '').trim().toUpperCase();
 
-      const valCol = sheetName === 'Network Infrastructure' ? 7 : 6;
-      let skuRowNum = 0;
-      for (let r = 6; r < Math.min(rows.length, 40); r++) {
-        const lbl = String((rows[r] && (rows[r][2] ?? rows[r][1])) ?? '').trim().toLowerCase();
-        if (!lbl) continue;
-        if (lbl.startsWith('term') && !skuRowNum) {
-          ensureCell(r, valCol, prodEval.isTermed ? (ctx.termSubscription || '12 MOS') : 'N/A (One-time)');
-        } else if (lbl.startsWith('solution family') && !skuRowNum) {
-          ensureCell(r, valCol, ctx.family);
-        } else if (lbl.startsWith('product line') && !skuRowNum) {
-          ensureCell(r, valCol, ctx.productLine);
-        } else if (lbl.startsWith('product') && !lbl.includes('line') && !skuRowNum) {
-          ensureCell(r, valCol, prodEval.productDesc || ctx.product);
-        } else if ((lbl.startsWith('qty') || lbl.startsWith('quantity')) && !skuRowNum) {
-          ensureCell(r, valCol, ctx.qty || 1);
-        } else if (lbl.startsWith('special attribute') && !skuRowNum) {
-          ensureCell(r, valCol, ctx.specialAttribute || 'AA');
-        } else if (lbl === 'sku' && !skuRowNum) {
-          skuRowNum = r + 1;
-          ensureCell(r, valCol, prodEval.available ? prodEval.sku : 'Not Available in this region');
-          if (sheetName !== 'Universal Calculator') {
-            for (let up = r - 1; up >= Math.max(6, r - 10); up--) {
-              const prevLbl = String((rows[up] && (rows[up][2] ?? rows[up][1])) ?? '').trim();
-              if (!prevLbl && !(rows[up] && rows[up][valCol])) {
-                ensureCell(up, valCol, prodEval.productDesc);
-                break;
-              }
+      if (sheetName === 'Mobile' || sheetName === 'Email' || sheetName === 'Workspace Protection') {
+        const populateFixedPcBlock = (pcRowIdx, cols, rTerm, rQty, rSku, rUnitMsrp, rMsrp, rPromo, rSpec, rDisc, rBuy) => {
+          let hitCol = -1;
+          let hitSku = '';
+          for (const cIdx of cols) {
+            const rawPc = String((rows[pcRowIdx] && rows[pcRowIdx][cIdx]) ?? '').trim().toUpperCase();
+            if (!rawPc) continue;
+            const pItem = runtime && runtime.pcToProduct && runtime.pcToProduct[rawPc];
+            if (!pItem) continue;
+            const ev = evaluateProductCalculatorJs(calcData, {
+              partnerLevel: ctx.partnerLevel,
+              sector: ctx.sector,
+              dealType: ctx.dealType,
+              product: pItem.desc,
+              term: ctx.termSubscription,
+              qty: ctx.qty || 1,
+              specialAttribute: ctx.specialAttribute,
+              preferredSku: safePrefForProd(pItem)
+            });
+            ensureCell(rTerm, cIdx, ev.isTermed ? (ev.effectiveTermLabel || ctx.termSubscription || '12 MOS') : 'N/A (One-time)');
+            ensureCell(rQty, cIdx, ev.effectiveQty || ctx.qty || 1);
+            ensureCell(rSku, cIdx, ev.available ? ev.sku : '');
+            ensureCell(rUnitMsrp, cIdx, ev.available ? ev.unitMsrp : '');
+            ensureCell(rMsrp, cIdx, ev.available ? ev.msrp : '');
+            ensureCell(rPromo, cIdx, ev.available ? `${ev.promoDiscPct}%` : '');
+            ensureCell(rSpec, cIdx, ev.available ? `${ev.specialDiscPct}%` : '');
+            ensureCell(rDisc, cIdx, ev.available ? `${ev.resellerDiscPct}%` : '');
+            ensureCell(rBuy, cIdx, ev.available ? ev.buyCost : '');
+            if (
+              ev.available &&
+              ((ctxSkuUpper && (ev.sku === ctxSkuUpper || ev.newSku === ctxSkuUpper)) ||
+                (prodEval.productCode && prodEval.productCode.toUpperCase() === rawPc) ||
+                (prodEval.productDesc && collapseWsLowerJs(pItem.desc) === collapseWsLowerJs(prodEval.productDesc)))
+            ) {
+              hitCol = cIdx;
+              hitSku = ev.sku;
             }
-          } else {
-            ensureCell(11, valCol, prodEval.productDesc);
           }
-        } else if (lbl === 'unit msrp' && skuRowNum && r < skuRowNum + 12) {
-          ensureCell(r, valCol, prodEval.available ? prodEval.unitMsrp : 'Not Available');
-        } else if (lbl === 'msrp' && skuRowNum && r < skuRowNum + 12) {
-          ensureCell(r, valCol, prodEval.available ? prodEval.msrp : 'Not Available in this region');
-        } else if (lbl.startsWith('promo disc') && skuRowNum && r < skuRowNum + 14) {
-          ensureCell(r, valCol, `${prodEval.promoDiscPct}%`);
-        } else if (lbl.startsWith('special disc') && skuRowNum && r < skuRowNum + 14) {
-          ensureCell(r, valCol, `${prodEval.specialDiscPct}%`);
-        } else if (lbl.startsWith('suggested reseller disc') && skuRowNum && r < skuRowNum + 16) {
-          ensureCell(r, valCol, prodEval.available ? `${prodEval.resellerDiscPct}%` : '0%');
-        } else if (lbl.startsWith('buy cost') && skuRowNum && r < skuRowNum + 18) {
-          ensureCell(r, valCol, prodEval.available ? prodEval.buyCost : 0);
-          if (prodEval.features && r + 2 < rows.length) ensureCell(r + 2, valCol, prodEval.features);
-          break;
+          return { hitCol, hitSku };
+        };
+        const topCols = sheetName === 'Workspace Protection' ? [6, 10] : (sheetName === 'Mobile' ? [6, 10, 14] : [6, 10, 14, 18]);
+        const topRes = populateFixedPcBlock(7, topCols, 11, 13, 15, 17, 19, 21, 23, 25, 27);
+        if (sheetName === 'Email') {
+          const addonRes = populateFixedPcBlock(39, [6, 10], 43, 45, 47, 49, 51, 53, 55, 57, 59);
+          if (addonRes.hitCol !== -1) {
+            return { rows, targetRow: 48, targetColLetter: colIndexToLetter(addonRes.hitCol), targetSku: addonRes.hitSku || prodEval.sku };
+          }
         }
+        const finalCol = topRes.hitCol !== -1 ? topRes.hitCol : 6;
+        const fallbackCellSku = String((rows[15] && rows[15][finalCol]) ?? '').trim();
+        return { rows, targetRow: 16, targetColLetter: colIndexToLetter(finalCol), targetSku: topRes.hitSku || fallbackCellSku || prodEval.sku };
       }
 
       if (sheetName === 'Advisory services') {
-        let advTargetRow = 11;
+        let advTargetRow = 0;
+        let advTargetSku = '';
+        let firstAvailAdvRow = 0;
+        let firstAvailAdvSku = '';
         for (let r = 10; r < rows.length; r++) {
           const pName = String((rows[r] && rows[r][2]) ?? '').trim();
-          if (!pName) continue;
+          if (!pName || pName.toLowerCase() === 'advisory services') continue;
+          const rowProd = runtime && runtime.descLowerToProduct && runtime.descLowerToProduct[collapseWsLowerJs(pName)];
+          const ev = evaluateProductCalculatorJs(calcData, {
+            partnerLevel: ctx.partnerLevel,
+            sector: ctx.sector,
+            dealType: ctx.dealType,
+            product: pName,
+            term: ctx.termSubscription,
+            qty: ctx.qty || 1,
+            specialAttribute: 'AA',
+            preferredSku: safePrefForProd(rowProd)
+          });
+          ensureCell(r, 9, ev.available ? ev.sku : '');
+          ensureCell(r, 13, ev.available ? ev.msrp : '');
+          ensureCell(r, 16, ev.available ? `${ev.resellerDiscPct}%` : '');
+          ensureCell(r, 18, ev.available ? `${ev.promoDiscPct}%` : '');
+          ensureCell(r, 20, ev.available ? `${ev.specialDiscPct}%` : '');
+          ensureCell(r, 22, ev.available ? ev.buyCost : '');
+          if (ev.available && !firstAvailAdvRow) {
+            firstAvailAdvRow = r + 1;
+            firstAvailAdvSku = ev.sku;
+          }
+          if (
+            ev.available &&
+            ((ctxSkuUpper && (ev.sku === ctxSkuUpper || ev.newSku === ctxSkuUpper)) ||
+              collapseWsLowerJs(pName) === collapseWsLowerJs(prodEval.productDesc))
+          ) {
+            advTargetRow = r + 1;
+            advTargetSku = ev.sku;
+          }
+        }
+        return { rows, targetRow: advTargetRow || firstAvailAdvRow || 11, targetColLetter: 'J', targetSku: advTargetSku || firstAvailAdvSku || prodEval.sku };
+      }
+
+      if (sheetName === 'ProServices & Training') {
+        let psTargetRow = 18;
+        let psTargetCol = 'G';
+        let psTargetSku = '';
+        let matchedPs = false;
+
+        const epsupProd = runtime && runtime.pcToProduct && runtime.pcToProduct['EPSUP'];
+        if (epsupProd) {
+          const ev = evaluateProductCalculatorJs(calcData, {
+            partnerLevel: ctx.partnerLevel,
+            sector: ctx.sector,
+            dealType: ctx.dealType,
+            product: epsupProd.desc,
+            term: ctx.termSubscription,
+            qty: ctx.qty || 1,
+            specialAttribute: ctx.specialAttribute,
+            preferredSku: safePrefForProd(epsupProd)
+          });
+          ensureCell(13, 6, ev.isTermed ? (ev.effectiveTermLabel || ctx.termSubscription || '12 MOS') : 'N/A (One-time)');
+          ensureCell(15, 6, ev.effectiveQty || ctx.qty || 1);
+          ensureCell(17, 6, ev.available ? ev.sku : '');
+          ensureCell(19, 6, ev.available ? ev.msrp : '');
+          ensureCell(21, 6, ev.available ? `${ev.promoDiscPct}%` : '');
+          ensureCell(23, 6, ev.available ? `${ev.specialDiscPct}%` : '');
+          ensureCell(25, 6, ev.available ? `${ev.resellerDiscPct}%` : '');
+          ensureCell(27, 6, ev.available ? ev.buyCost : '');
+          if (ev.available) psTargetSku = ev.sku;
+          if (
+            ev.available &&
+            ((ctxSkuUpper && (ev.sku === ctxSkuUpper || ev.newSku === ctxSkuUpper)) ||
+              collapseWsLowerJs(epsupProd.desc) === collapseWsLowerJs(prodEval.productDesc))
+          ) {
+            psTargetRow = 18;
+            psTargetCol = 'G';
+            psTargetSku = ev.sku;
+            matchedPs = true;
+          }
+        }
+
+        for (const cIdx of [6, 10]) {
+          const rawPc = String((rows[30] && rows[30][cIdx]) ?? '').trim().toUpperCase();
+          const tamProd = rawPc && runtime && runtime.pcToProduct ? runtime.pcToProduct[rawPc] : null;
+          if (!tamProd) continue;
+          const ev = evaluateProductCalculatorJs(calcData, {
+            partnerLevel: ctx.partnerLevel,
+            sector: ctx.sector,
+            dealType: ctx.dealType,
+            product: tamProd.desc,
+            term: ctx.termSubscription,
+            qty: ctx.qty || 1,
+            specialAttribute: ctx.specialAttribute,
+            preferredSku: safePrefForProd(tamProd)
+          });
+          ensureCell(34, cIdx, ev.isTermed ? (ev.effectiveTermLabel || ctx.termSubscription || '12 MOS') : 'N/A (One-time)');
+          ensureCell(36, cIdx, ev.effectiveQty || ctx.qty || 1);
+          ensureCell(38, cIdx, ev.available ? ev.sku : '');
+          ensureCell(40, cIdx, ev.available ? ev.msrp : '');
+          ensureCell(42, cIdx, ev.available ? `${ev.promoDiscPct}%` : '');
+          ensureCell(44, cIdx, ev.available ? `${ev.specialDiscPct}%` : '');
+          ensureCell(46, cIdx, ev.available ? `${ev.resellerDiscPct}%` : '');
+          ensureCell(48, cIdx, ev.available ? ev.buyCost : '');
+          if (
+            !matchedPs && ev.available &&
+            ((ctxSkuUpper && (ev.sku === ctxSkuUpper || ev.newSku === ctxSkuUpper)) ||
+              collapseWsLowerJs(tamProd.desc) === collapseWsLowerJs(prodEval.productDesc))
+          ) {
+            psTargetRow = 39;
+            psTargetCol = colIndexToLetter(cIdx);
+            psTargetSku = ev.sku;
+            matchedPs = true;
+          }
+        }
+
+        for (let r = 53; r < rows.length; r++) {
+          const pName = String((rows[r] && rows[r][2]) ?? '').trim();
+          const existingJ = String((rows[r] && rows[r][9]) ?? '').trim();
+          if (!pName || existingJ.toLowerCase() === 'sku') continue;
+          const rowProd = runtime && runtime.descLowerToProduct && runtime.descLowerToProduct[collapseWsLowerJs(pName)];
           const ev = evaluateProductCalculatorJs(calcData, {
             partnerLevel: ctx.partnerLevel,
             sector: ctx.sector,
@@ -1623,70 +2809,544 @@
             product: pName,
             term: ctx.termSubscription,
             qty: 1,
-            specialAttribute: 'AA'
+            specialAttribute: 'AA',
+            preferredSku: safePrefForProd(rowProd)
           });
-          ensureCell(r, 9, ev.available ? ev.sku : 'Not Available in this region');
-          ensureCell(r, 13, ev.available ? ev.msrp : '');
-          ensureCell(r, 14, ev.available ? `${ev.resellerDiscPct}%` : '');
-          ensureCell(r, 20, ev.available ? ev.buyCost : '');
-          if (pName === prodEval.productDesc) advTargetRow = r + 1;
+          if (ev.foundProduct && ev.available) {
+            ensureCell(r, 9, ev.sku);
+            ensureCell(r, 13, ev.msrp);
+            ensureCell(r, 16, `${ev.resellerDiscPct}%`);
+            ensureCell(r, 18, `${ev.promoDiscPct}%`);
+            ensureCell(r, 20, `${ev.specialDiscPct}%`);
+            ensureCell(r, 22, ev.buyCost);
+            if (
+              !matchedPs &&
+              ((ctxSkuUpper && (ev.sku === ctxSkuUpper || ev.newSku === ctxSkuUpper)) ||
+                collapseWsLowerJs(pName) === collapseWsLowerJs(prodEval.productDesc))
+            ) {
+              psTargetRow = r + 1;
+              psTargetCol = 'J';
+              psTargetSku = ev.sku;
+              matchedPs = true;
+            }
+          } else if (existingJ && calcSkus[existingJ.toUpperCase()]) {
+            const entry = calcSkus[existingJ.toUpperCase()];
+            const uCost = resolvePartnerUnitCostJs(entry, ctx.partnerLevel, ctx.dealType);
+            const msrp = round2Js(entry.msrp);
+            const discPct = uCost !== null && msrp > 0 ? round2Js((1 - uCost / msrp) * 100) : 0;
+            const buyCost = uCost !== null ? round2Js(uCost) : msrp;
+            ensureCell(r, 9, existingJ.toUpperCase());
+            ensureCell(r, 13, msrp);
+            ensureCell(r, 16, `${discPct}%`);
+            ensureCell(r, 22, buyCost);
+            if (!matchedPs && ctxSkuUpper && existingJ.toUpperCase() === ctxSkuUpper) {
+              psTargetRow = r + 1;
+              psTargetCol = 'J';
+              psTargetSku = existingJ.toUpperCase();
+              matchedPs = true;
+            }
+          } else if (ev.foundProduct && !ev.available) {
+            ensureCell(r, 9, '');
+            ensureCell(r, 13, '');
+            ensureCell(r, 16, '');
+            ensureCell(r, 18, '');
+            ensureCell(r, 20, '');
+            ensureCell(r, 22, '');
+          }
         }
-        return { rows, targetRow: advTargetRow, targetColLetter: 'J' };
+        return { rows, targetRow: psTargetRow, targetColLetter: psTargetCol, targetSku: psTargetSku || prodEval.sku };
+      }
+
+      if (sheetName === 'Network Infrastructure') {
+        let niTargetRow = 20;
+        let niTargetCol = 'H';
+        let niTargetSku = '';
+        let matchedNi = false;
+        const rawPlug = String(ctx.specialAttribute || 'AU').toUpperCase();
+        const plugAttr = rawPlug === 'EUK' ? 'EU' : (['AU', 'EU', 'UK', 'US', 'CN'].includes(rawPlug) ? rawPlug : 'AU');
+
+        const sdWanSpecs = [
+          { col: 7, pc: 'R20ZTCHMR', matchKey: 'sd-red 20' },
+          { col: 21, pc: 'R60ZTCH', matchKey: 'sd-red 60' }
+        ];
+        for (const sd of sdWanSpecs) {
+          const sdProd =
+            (runtime && runtime.pcToProduct && runtime.pcToProduct[sd.pc]) ||
+            (runtime && runtime.product2List && runtime.product2List.find(p => p.desc.toLowerCase().includes(sd.matchKey) && productHasAnyCalcSkuJs(calcData, p))) ||
+            null;
+          const ev = evaluateProductCalculatorJs(calcData, {
+            partnerLevel: ctx.partnerLevel,
+            sector: ctx.sector,
+            dealType: ctx.dealType,
+            product: (sdProd && sdProd.desc) || sd.matchKey.toUpperCase(),
+            term: ctx.termSubscription,
+            qty: ctx.qty || 1,
+            specialAttribute: plugAttr,
+            preferredSku: safePrefForProd(sdProd)
+          });
+          ensureCell(13, sd.col, ev.isTermed ? (ev.effectiveTermLabel || ctx.termSubscription || '12 MOS') : 'N/A (One-time)');
+          ensureCell(15, sd.col, ev.effectiveQty || ctx.qty || 1);
+          if (sd.col === 21) ensureCell(17, sd.col, plugAttr);
+          ensureCell(19, sd.col, ev.available ? ev.sku : '');
+          ensureCell(21, sd.col, ev.available ? ev.msrp : '');
+          ensureCell(23, sd.col, ev.available ? `${ev.promoDiscPct}%` : '');
+          ensureCell(25, sd.col, ev.available ? `${ev.specialDiscPct}%` : '');
+          ensureCell(27, sd.col, ev.available ? `${ev.resellerDiscPct}%` : '');
+          ensureCell(29, sd.col, ev.available ? ev.buyCost : '');
+          if (ev.available && !niTargetSku) niTargetSku = ev.sku;
+          if (
+            ev.available &&
+            ((ctxSkuUpper && (ev.sku === ctxSkuUpper || ev.newSku === ctxSkuUpper)) ||
+              collapseWsLowerJs(prodEval.productDesc).includes(sd.matchKey))
+          ) {
+            niTargetRow = 20;
+            niTargetCol = colIndexToLetter(sd.col);
+            niTargetSku = ev.sku;
+            matchedNi = true;
+          }
+        }
+
+        const apMatch = `${prodEval.productDesc || ''} ${ctx.product || ''}`.match(/\b(AP6\s*\d{3}[A-Z]*)\b/i);
+        const apModel = apMatch ? apMatch[1].replace(/\s+/g, ' ').toUpperCase() : 'AP6 420';
+        const apBundleInfo = resolveFirewallBundleYearSuffixJs(ctx.termHwBundle || '1-Year') || { code: '12', suffix: '1-year' };
+        ensureCell(34, 3, ctx.termHwBundle || '1-Year');
+        ensureCell(36, 3, ctx.termSubscription || '12 MOS');
+        ensureCell(38, 3, ctx.qty || 1);
+        ensureCell(41, 7, apModel);
+
+        for (const rIdx of [46, 48, 50]) {
+          const apProd = (runtime && runtime.product2List && runtime.product2List.find(p => {
+            if (!productHasAnyCalcSkuJs(calcData, p)) return false;
+            const dl = p.desc.toLowerCase();
+            if (!dl.includes(apModel.toLowerCase())) return false;
+            if (rIdx === 46) return dl.includes('with support') && dl.includes(apBundleInfo.suffix);
+            if (rIdx === 50) return dl.includes('support for') || (dl.includes('support') && !dl.includes('with '));
+            return !dl.includes('support') && !dl.includes('with ');
+          })) || null;
+          if (apProd) {
+            const ev = evaluateProductCalculatorJs(calcData, {
+              partnerLevel: ctx.partnerLevel,
+              sector: ctx.sector,
+              dealType: ctx.dealType,
+              product: apProd.desc,
+              term: rIdx === 46 ? `${apBundleInfo.code} MOS` : ctx.termSubscription,
+              qty: ctx.qty || 1,
+              specialAttribute: ctx.specialAttribute,
+              preferredSku: safePrefForProd(apProd)
+            });
+            ensureCell(rIdx, 7, ev.available ? ev.sku : '');
+            ensureCell(rIdx, 9, ev.available ? ev.msrp : '');
+            ensureCell(rIdx, 11, ev.available ? `${ev.resellerDiscPct}%` : '');
+            ensureCell(rIdx, 13, ev.available ? `${ev.promoDiscPct}%` : '');
+            ensureCell(rIdx, 15, ev.available ? `${ev.specialDiscPct}%` : '');
+            ensureCell(rIdx, 17, ev.available ? ev.buyCost : '');
+            if (
+              !matchedNi && apMatch && ev.available &&
+              ((ctxSkuUpper && (ev.sku === ctxSkuUpper || ev.newSku === ctxSkuUpper)) ||
+                collapseWsLowerJs(apProd.desc) === collapseWsLowerJs(prodEval.productDesc) ||
+                rIdx === 48)
+            ) {
+              niTargetRow = rIdx + 1;
+              niTargetCol = 'H';
+              niTargetSku = ev.sku;
+              if ((ctxSkuUpper && (ev.sku === ctxSkuUpper || ev.newSku === ctxSkuUpper)) || collapseWsLowerJs(apProd.desc) === collapseWsLowerJs(prodEval.productDesc)) {
+                matchedNi = true;
+              }
+            }
+          }
+        }
+
+        const swMatch = `${prodEval.productDesc || ''} ${ctx.product || ''}`.match(/\b(CS\d{3,4}-\d+[A-Z]*)\b/i);
+        const swModel = swMatch ? swMatch[1].toUpperCase() : 'CS110-24FP';
+        const swBundleInfo = resolveFirewallBundleYearSuffixJs(ctx.termHwBundle || '1-Year') || { code: '12', suffix: '1-year' };
+        ensureCell(74, 3, ctx.termHwBundle || '1-Year');
+        ensureCell(76, 3, ctx.termSubscription || '12 MOS');
+        ensureCell(78, 3, ctx.qty || 1);
+        ensureCell(80, 3, plugAttr);
+        ensureCell(80, 7, swModel);
+
+        for (const rIdx of [85, 87, 89]) {
+          const swProd = (runtime && runtime.product2List && runtime.product2List.find(p => {
+            if (!productHasAnyCalcSkuJs(calcData, p)) return false;
+            const dl = p.desc.toLowerCase();
+            if (!dl.includes(swModel.toLowerCase())) return false;
+            if (rIdx === 85) return dl.includes(swBundleInfo.suffix);
+            if (rIdx === 89) return dl.includes('support') && !dl.includes('with ');
+            return !dl.includes('support') && !dl.includes('with ') && !dl.includes('power ');
+          })) || null;
+          if (swProd) {
+            const ev = evaluateProductCalculatorJs(calcData, {
+              partnerLevel: ctx.partnerLevel,
+              sector: ctx.sector,
+              dealType: ctx.dealType,
+              product: swProd.desc,
+              term: rIdx === 85 ? `${swBundleInfo.code} MOS` : ctx.termSubscription,
+              qty: ctx.qty || 1,
+              specialAttribute: plugAttr,
+              preferredSku: safePrefForProd(swProd)
+            });
+            ensureCell(rIdx, 7, ev.available ? ev.sku : '');
+            ensureCell(rIdx, 9, ev.available ? ev.msrp : '');
+            ensureCell(rIdx, 11, ev.available ? `${ev.resellerDiscPct}%` : '');
+            ensureCell(rIdx, 13, ev.available ? `${ev.promoDiscPct}%` : '');
+            ensureCell(rIdx, 15, ev.available ? `${ev.specialDiscPct}%` : '');
+            ensureCell(rIdx, 17, ev.available ? ev.buyCost : '');
+            if (
+              !matchedNi && swMatch && ev.available &&
+              ((ctxSkuUpper && (ev.sku === ctxSkuUpper || ev.newSku === ctxSkuUpper)) ||
+                collapseWsLowerJs(swProd.desc) === collapseWsLowerJs(prodEval.productDesc) ||
+                rIdx === 87)
+            ) {
+              niTargetRow = rIdx + 1;
+              niTargetCol = 'H';
+              niTargetSku = ev.sku;
+              if ((ctxSkuUpper && (ev.sku === ctxSkuUpper || ev.newSku === ctxSkuUpper)) || collapseWsLowerJs(swProd.desc) === collapseWsLowerJs(prodEval.productDesc)) {
+                matchedNi = true;
+              }
+            }
+          }
+        }
+
+        for (let r = 104; r < rows.length; r++) {
+          const hDesc = String((rows[r] && rows[r][7]) ?? '').trim();
+          const vCell = String((rows[r] && rows[r][21]) ?? '').trim();
+          if (!hDesc || vCell.toLowerCase() === 'sku') continue;
+          const upperV = vCell.toUpperCase();
+          if (upperV && calcSkus[upperV]) {
+            const entry = calcSkus[upperV];
+            const uCost = resolvePartnerUnitCostJs(entry, ctx.partnerLevel, ctx.dealType);
+            const isTarget = Boolean(ctxSkuUpper && upperV === ctxSkuUpper);
+            const effQty = isTarget ? Math.max(1, ctx.qty || 1) : 1;
+            const msrp = round2Js(entry.msrp * effQty);
+            const discPct = uCost !== null && entry.msrp > 0 ? round2Js((1 - uCost / entry.msrp) * 100) : 0;
+            const buyCost = uCost !== null ? round2Js(uCost * effQty) : msrp;
+            ensureCell(r, 21, upperV);
+            ensureCell(r, 23, msrp);
+            ensureCell(r, 25, `${discPct}%`);
+            ensureCell(r, 31, buyCost);
+            if (!matchedNi && isTarget) {
+              niTargetRow = r + 1;
+              niTargetCol = 'V';
+              niTargetSku = upperV;
+              matchedNi = true;
+            }
+            continue;
+          }
+
+          let rowPlug = plugAttr;
+          if (/eu\/uk\s+power\s+cord/i.test(hDesc)) rowPlug = 'EU';
+          else if (/\buk\s+power\s+cord/i.test(hDesc)) rowPlug = 'UK';
+          else if (/\bus\s+power\s+cord/i.test(hDesc)) rowPlug = 'US';
+          else if (/\bau\s+power\s+cord/i.test(hDesc)) rowPlug = 'AU';
+
+          const baseDesc = hDesc.replace(/\s*-\s*(?:eu\/uk|au|uk|us|cn|in|jp)\s+power\s+cord\s*$/i, '').trim();
+          const rowProd = runtime && runtime.descLowerToProduct && runtime.descLowerToProduct[collapseWsLowerJs(baseDesc)];
+          const ev = evaluateProductCalculatorJs(calcData, {
+            partnerLevel: ctx.partnerLevel,
+            sector: ctx.sector,
+            dealType: ctx.dealType,
+            product: baseDesc,
+            term: ctx.termSubscription,
+            qty: 1,
+            specialAttribute: rowPlug,
+            preferredSku: safePrefForProd(rowProd)
+          });
+          if (ev.foundProduct && ev.available) {
+            ensureCell(r, 21, ev.sku);
+            ensureCell(r, 23, ev.msrp);
+            ensureCell(r, 25, `${ev.resellerDiscPct}%`);
+            ensureCell(r, 31, ev.buyCost);
+            if (
+              !matchedNi &&
+              ((ctxSkuUpper && (ev.sku === ctxSkuUpper || ev.newSku === ctxSkuUpper)) ||
+                (collapseWsLowerJs(baseDesc) === collapseWsLowerJs(prodEval.productDesc) &&
+                  (rowPlug === plugAttr || !/power\s+cord/i.test(hDesc))))
+            ) {
+              niTargetRow = r + 1;
+              niTargetCol = 'V';
+              niTargetSku = ev.sku;
+              matchedNi = true;
+            }
+          } else {
+            ensureCell(r, 21, '');
+            ensureCell(r, 23, '');
+            ensureCell(r, 25, '');
+            ensureCell(r, 31, '');
+          }
+        }
+        return { rows, targetRow: niTargetRow, targetColLetter: niTargetCol, targetSku: niTargetSku || prodEval.sku };
       }
 
       if (sheetName === 'MDR calculator') {
-        ensureCell(10, 12, ctx.qty || 1);
-        ensureCell(12, 12, 0);
-        ensureCell(20, 5, ctx.termSubscription || '12 MOS');
-        ensureCell(22, 5, prodEval.productDesc || ctx.product || 'Sophos MDR - User');
-        ensureCell(22, 8, prodEval.available ? prodEval.sku : 'Not Available');
-        ensureCell(22, 10, prodEval.available ? prodEval.msrp : 'Not Available');
-        ensureCell(22, 12, prodEval.available ? `${prodEval.resellerDiscPct}%` : '0%');
-        ensureCell(22, 14, `${prodEval.promoDiscPct}%`);
-        ensureCell(22, 16, `${prodEval.specialDiscPct}%`);
-        ensureCell(22, 18, prodEval.available ? prodEval.buyCost : 0);
-        return { rows, targetRow: 23, targetColLetter: 'I' };
+        let mdrEv = prodEval;
+        const isMdrRelated = mdrEv.available && /\bmdr\b|managed detection|retainer|siem|onboarding|managed risk/i.test(mdrEv.productDesc || '');
+        if (!isMdrRelated) {
+          const defMdr = findDefaultProductForCalcSheetJs(calcData, 'MDR calculator');
+          if (defMdr) {
+            mdrEv = evaluateProductCalculatorJs(calcData, {
+              partnerLevel: ctx.partnerLevel,
+              sector: ctx.sector,
+              dealType: ctx.dealType,
+              product: defMdr.prod.desc,
+              term: ctx.termSubscription || '12 MOS',
+              qty: ctx.qty || 1,
+              specialAttribute: 'AA'
+            });
+          }
+        }
+        const pLower = (mdrEv.productDesc || 'Sophos MDR - User').toLowerCase();
+        const isServer = /\bserver\b/i.test(pLower);
+        const effQty = mdrEv.effectiveQty || ctx.qty || 1;
+        ensureCell(10, 15, isServer ? 0 : effQty);
+        ensureCell(12, 15, isServer ? effQty : 0);
+        ensureCell(20, 5, mdrEv.effectiveTermLabel || ctx.termSubscription || '12 MOS');
+
+        let mdrRowIdx = 22;
+        if (isServer) mdrRowIdx = 24;
+        else if (/retainer|incident/i.test(pLower)) mdrRowIdx = 26;
+        else if (/siem/i.test(pLower)) mdrRowIdx = 28;
+        else if (/onboarding|implementation/i.test(pLower)) mdrRowIdx = 38;
+        else if (/managed risk|vulnerability/i.test(pLower)) mdrRowIdx = 40;
+
+        ensureCell(mdrRowIdx, 5, mdrEv.productDesc || 'Sophos MDR - User');
+        ensureCell(mdrRowIdx, 8, mdrEv.available ? mdrEv.sku : '');
+        ensureCell(mdrRowIdx, 10, mdrEv.available ? mdrEv.msrp : '');
+        ensureCell(mdrRowIdx, 12, mdrEv.available ? `${mdrEv.resellerDiscPct}%` : '');
+        ensureCell(mdrRowIdx, 14, mdrEv.available ? `${mdrEv.promoDiscPct}%` : '');
+        ensureCell(mdrRowIdx, 16, mdrEv.available ? `${mdrEv.specialDiscPct}%` : '');
+        ensureCell(mdrRowIdx, 18, mdrEv.available ? mdrEv.buyCost : '');
+        if (mdrEv.available) {
+          ensureCell(43, 10, mdrEv.msrp);
+          ensureCell(43, 18, mdrEv.buyCost);
+        }
+        return { rows, targetRow: mdrRowIdx + 1, targetColLetter: 'I', targetSku: mdrEv.sku };
       }
 
       if (sheetName === 'Network Detection & Response') {
-        ensureCell(11, 3, ctx.termSubscription || '12 MOS');
-        ensureCell(13, 3, ctx.qty || 1);
-        const isApp = /appliance|hardware/i.test(prodEval.prodType || prodEval.productDesc);
-        const ndrRowIdx = isApp ? 42 : 38;
-        if (isApp) ensureCell(ndrRowIdx, 1, prodEval.productDesc || ctx.product);
-        ensureCell(ndrRowIdx, 6, prodEval.available ? prodEval.sku : 'Not Available');
-        ensureCell(ndrRowIdx, 9, prodEval.available ? prodEval.msrp : 'Not Available');
-        ensureCell(ndrRowIdx, 11, prodEval.available ? `${prodEval.resellerDiscPct}%` : '0%');
-        ensureCell(ndrRowIdx, 13, `${prodEval.promoDiscPct}%`);
-        ensureCell(ndrRowIdx, 15, `${prodEval.specialDiscPct}%`);
-        ensureCell(ndrRowIdx, 17, prodEval.available ? prodEval.buyCost : 0);
-        return { rows, targetRow: ndrRowIdx + 1, targetColLetter: 'G' };
+        let ndrEv = prodEval;
+        const isNdrRelated = ndrEv.available && (
+          String(ndrEv.productCode || '').toUpperCase() === 'NDR' ||
+          /\bndr\b|network detection and response/i.test(ndrEv.productDesc || '')
+        );
+        if (!isNdrRelated) {
+          const defNdr = findDefaultProductForCalcSheetJs(calcData, 'Network Detection & Response');
+          if (defNdr) {
+            ndrEv = evaluateProductCalculatorJs(calcData, {
+              partnerLevel: ctx.partnerLevel,
+              sector: ctx.sector,
+              dealType: ctx.dealType,
+              product: defNdr.prod.desc,
+              term: ctx.termSubscription || '12 MOS',
+              qty: ctx.qty || 1,
+              specialAttribute: ctx.specialAttribute || 'AA'
+            });
+          }
+        }
+        const rawPlug = String(ctx.specialAttribute || 'AU').toUpperCase();
+        const plugAttr = rawPlug === 'EUK' ? 'EU' : (['AU', 'EU', 'UK', 'US', 'CN'].includes(rawPlug) ? rawPlug : 'AU');
+        ensureCell(11, 4, ndrEv.effectiveTermLabel || ctx.termSubscription || '12 MOS');
+        ensureCell(13, 4, ndrEv.effectiveQty || ctx.qty || 1);
+        ensureCell(21, 4, plugAttr);
+        ensureCell(23, 4, 1);
+        ensureCell(32, 7, 'NDR 5500');
+
+        const pDescLower = (ndrEv.productDesc || '').toLowerCase();
+        let ndrRowIdx = 38;
+        if (/ips-ids|intrusion/i.test(pDescLower)) ndrRowIdx = 46;
+        else if (/support/i.test(pDescLower) || ndrEv.prodType === 'Support') ndrRowIdx = 48;
+        else if (/appliance|hardware|with central network detection/i.test(pDescLower) || ndrEv.prodType === 'Appliance') ndrRowIdx = 42;
+
+        ensureCell(ndrRowIdx, 7, ndrEv.available ? ndrEv.sku : '');
+        ensureCell(ndrRowIdx, 10, ndrEv.available ? ndrEv.msrp : '');
+        ensureCell(ndrRowIdx, 12, ndrEv.available ? `${ndrEv.resellerDiscPct}%` : '');
+        ensureCell(ndrRowIdx, 14, ndrEv.available ? `${ndrEv.promoDiscPct}%` : '');
+        ensureCell(ndrRowIdx, 16, ndrEv.available ? `${ndrEv.specialDiscPct}%` : '');
+        ensureCell(ndrRowIdx, 18, ndrEv.available ? ndrEv.buyCost : '');
+        return { rows, targetRow: ndrRowIdx + 1, targetColLetter: 'H', targetSku: ndrEv.sku };
       }
 
-      return { rows, targetRow: skuRowNum || 16, targetColLetter: colIndexToLetter(valCol) };
+      if (sheetName === 'Endpoint & Server' || sheetName === 'XDR & Next-Gen SIEM' || sheetName === 'Managed Services') {
+        const isEp = sheetName === 'Endpoint & Server';
+        const isXdr = sheetName === 'XDR & Next-Gen SIEM';
+        const rProd = isEp ? 15 : 14;
+        const rTerm = isEp ? 17 : 16;
+        const rQty = isEp ? 19 : 18;
+        const rSpec = isEp ? 21 : (isXdr ? 20 : -1);
+        const rSku = isEp ? 23 : 22;
+        const rUnit = isEp ? 25 : 24;
+        const rMsrp = isEp ? 27 : 26;
+        const rPromo = isEp ? 29 : 28;
+        const rSpecial = isEp ? 31 : 30;
+        const rDisc = isEp ? 33 : 32;
+        const rBuy = isEp ? 35 : 34;
+        const rFeat = isEp ? 37 : 36;
+
+        const colDefaults = isEp
+          ? { 6: 'Sophos Endpoint - User', 12: 'Sophos Endpoint - Server', 16: 'Central Device Encryption' }
+          : (isXdr
+            ? { 6: 'Sophos XDR - User', 12: 'Sophos Next-Gen SIEM', 16: 'Sophos Next-Gen SIEM - 3 yr Data Addon' }
+            : { 6: 'Central Managed Risk', 12: 'Sophos MDR - Server', 16: 'German Language MDR Service Add-on' });
+
+        const mappedNative = prodEval.foundProduct
+          ? mapProductToNativeSheetJs((runtime && runtime.descToProduct && runtime.descToProduct[prodEval.productDesc]) || null, ctx.family, ctx.productLine, calcData)
+          : '';
+        const belongsHere = prodEval.available && mappedNative === sheetName;
+        let targetCol = 6;
+        if (belongsHere) {
+          const pd = (prodEval.productDesc || '').toLowerCase();
+          const pcU = (prodEval.productCode || '').toUpperCase();
+          if (isEp) {
+            if (/encryption|legacy\s+platform/i.test(pd) || ['CDE', 'CEP-LP'].includes(pcU)) targetCol = 16;
+            else if (/\bserver\b/i.test(pd)) targetCol = 12;
+          } else if (isXdr) {
+            if (/addon|add-on|data/i.test(pd)) targetCol = 16;
+            else if (/siem/i.test(pd)) targetCol = 12;
+          } else {
+            if (/addon|add-on|language/i.test(pd)) targetCol = 16;
+            else if (/\bserver\b/i.test(pd)) targetCol = 12;
+          }
+        }
+
+        let resolvedSku = '';
+        for (const cIdx of [6, 12, 16]) {
+          const useTargetEv = belongsHere && cIdx === targetCol;
+          const colProdName = useTargetEv ? prodEval.productDesc : colDefaults[cIdx];
+          const colProdObj = (runtime && ((runtime.descToProduct && runtime.descToProduct[colProdName]) || (runtime.descLowerToProduct && runtime.descLowerToProduct[collapseWsLowerJs(colProdName)]))) || null;
+          const ev = useTargetEv
+            ? prodEval
+            : evaluateProductCalculatorJs(calcData, {
+                partnerLevel: ctx.partnerLevel,
+                sector: ctx.sector,
+                dealType: ctx.dealType,
+                product: (colProdObj && colProdObj.desc) || colProdName,
+                term: ctx.termSubscription || '12 MOS',
+                qty: cIdx === targetCol ? (ctx.qty || 1) : 1,
+                specialAttribute: cIdx === targetCol ? (ctx.specialAttribute || 'AA') : 'AA',
+                preferredSku: cIdx === targetCol ? safePrefForProd(colProdObj) : undefined
+              });
+          ensureCell(rProd, cIdx, ev.productDesc || colProdName);
+          ensureCell(rTerm, cIdx, ev.isTermed ? (ev.effectiveTermLabel || ctx.termSubscription || '12 MOS') : 'N/A (One-time)');
+          ensureCell(rQty, cIdx, ev.effectiveQty || (cIdx === targetCol ? (ctx.qty || 1) : 1));
+          if (rSpec >= 0) {
+            const specLabel = /cu|competitive/i.test(cIdx === targetCol ? ctx.specialAttribute : 'AA') ? 'Competitive Upgrade' : 'Standard Pricing';
+            ensureCell(rSpec, cIdx, specLabel);
+          }
+          ensureCell(rSku, cIdx, ev.available ? ev.sku : '');
+          ensureCell(rUnit, cIdx, ev.available ? ev.unitMsrp : '');
+          ensureCell(rMsrp, cIdx, ev.available ? ev.msrp : '');
+          ensureCell(rPromo, cIdx, ev.available ? `${ev.promoDiscPct}%` : '');
+          ensureCell(rSpecial, cIdx, ev.available ? `${ev.specialDiscPct}%` : '');
+          ensureCell(rDisc, cIdx, ev.available ? `${ev.resellerDiscPct}%` : '');
+          ensureCell(rBuy, cIdx, ev.available ? ev.buyCost : '');
+          if (ev.features && rFeat < rows.length) ensureCell(rFeat, cIdx, ev.features);
+          if (cIdx === targetCol && ev.available) resolvedSku = ev.sku;
+        }
+        return { rows, targetRow: rSku + 1, targetColLetter: colIndexToLetter(targetCol), targetSku: resolvedSku || prodEval.sku };
+      }
+
+      const valCol = 6;
+      let activeEv = prodEval;
+      let activeFamily = ctx.family;
+      let activeLine = ctx.productLine;
+      if (sheetName !== 'Universal Calculator') {
+        const fixedPc = String((rows[7] && rows[7][valCol]) ?? '').trim().toUpperCase();
+        const fixedDesc = String((rows[9] && rows[9][valCol]) ?? '').trim();
+        const fixedProd =
+          (fixedPc && runtime && runtime.pcToProduct && runtime.pcToProduct[fixedPc]) ||
+          (fixedDesc && runtime && ((runtime.descToProduct && runtime.descToProduct[fixedDesc]) || (runtime.descLowerToProduct && runtime.descLowerToProduct[collapseWsLowerJs(fixedDesc)]))) ||
+          null;
+        if (fixedProd && (!activeEv.available || collapseWsLowerJs(activeEv.productDesc) !== collapseWsLowerJs(fixedProd.desc))) {
+          activeEv = evaluateProductCalculatorJs(calcData, {
+            partnerLevel: ctx.partnerLevel,
+            sector: ctx.sector,
+            dealType: ctx.dealType,
+            product: fixedProd.desc,
+            term: ctx.termSubscription || '12 MOS',
+            qty: ctx.qty || 1,
+            specialAttribute: ctx.specialAttribute || 'AA',
+            preferredSku: safePrefForProd(fixedProd)
+          });
+        }
+      } else if (!activeEv.available) {
+        const defUniv = findDefaultProductForCalcSheetJs(calcData, 'Universal Calculator');
+        if (defUniv) {
+          activeFamily = defUniv.family;
+          activeLine = defUniv.productLine;
+          activeEv = evaluateProductCalculatorJs(calcData, {
+            partnerLevel: ctx.partnerLevel,
+            sector: ctx.sector,
+            dealType: ctx.dealType,
+            family: defUniv.family,
+            productLine: defUniv.productLine,
+            product: defUniv.prod.desc,
+            term: ctx.termSubscription || '12 MOS',
+            qty: ctx.qty || 1,
+            specialAttribute: 'AA'
+          });
+        }
+      }
+
+      let skuRowNum = 0;
+      for (let r = 6; r < Math.min(rows.length, 42); r++) {
+        const lbl = String((rows[r] && (rows[r][2] ?? rows[r][1])) ?? '').trim().toLowerCase();
+        if (!lbl) continue;
+        if (lbl.startsWith('term') && !skuRowNum) {
+          ensureCell(r, valCol, activeEv.isTermed ? (activeEv.effectiveTermLabel || ctx.termSubscription || '12 MOS') : 'N/A (One-time)');
+        } else if (lbl.startsWith('solution family') && !skuRowNum) {
+          ensureCell(r, valCol, activeFamily || 'Endpoint_Security');
+        } else if (lbl.startsWith('product line') && !skuRowNum) {
+          ensureCell(r, valCol, activeLine || 'Endpoint_User');
+        } else if (lbl.startsWith('product') && !lbl.includes('line') && !skuRowNum) {
+          ensureCell(r, valCol, activeEv.productDesc || ctx.product);
+        } else if ((lbl.startsWith('qty') || lbl.startsWith('quantity')) && !skuRowNum) {
+          ensureCell(r, valCol, activeEv.effectiveQty || ctx.qty || 1);
+        } else if (lbl.startsWith('special attribute') && !skuRowNum) {
+          ensureCell(r, valCol, ctx.specialAttribute || 'AA');
+        } else if (lbl === 'sku' && !skuRowNum) {
+          skuRowNum = r + 1;
+          ensureCell(r, valCol, activeEv.available ? activeEv.sku : '');
+        } else if (lbl === 'unit msrp' && skuRowNum && r < skuRowNum + 12) {
+          ensureCell(r, valCol, activeEv.available ? activeEv.unitMsrp : '');
+        } else if (lbl === 'msrp' && skuRowNum && r < skuRowNum + 12) {
+          ensureCell(r, valCol, activeEv.available ? activeEv.msrp : '');
+        } else if (lbl.startsWith('promo disc') && skuRowNum && r < skuRowNum + 14) {
+          ensureCell(r, valCol, activeEv.available ? `${activeEv.promoDiscPct}%` : '');
+        } else if (lbl.startsWith('special disc') && skuRowNum && r < skuRowNum + 14) {
+          ensureCell(r, valCol, activeEv.available ? `${activeEv.specialDiscPct}%` : '');
+        } else if (lbl.startsWith('suggested reseller disc') && skuRowNum && r < skuRowNum + 16) {
+          ensureCell(r, valCol, activeEv.available ? `${activeEv.resellerDiscPct}%` : '');
+        } else if (lbl.startsWith('buy cost') && skuRowNum && r < skuRowNum + 18) {
+          ensureCell(r, valCol, activeEv.available ? activeEv.buyCost : '');
+          if (activeEv.features && r + 2 < rows.length) ensureCell(r + 2, valCol, activeEv.features);
+          break;
+        }
+      }
+
+      return { rows, targetRow: skuRowNum || 18, targetColLetter: colIndexToLetter(valCol), targetSku: activeEv.sku };
     }
 
     function ensureActiveCalcContext() {
       if (activeCalcCtx) return activeCalcCtx;
       if (!calcRefData) return null;
+      const urlSku = String(state.sku || '').trim().toUpperCase();
+      const inferred = inferSophosCalculatorContextJs(calcRefData, urlSku, state.itemName);
       if (viewerContext && viewerContext.calcContext && typeof viewerContext.calcContext === 'object') {
-        const inferred = inferSophosCalculatorContextJs(calcRefData, state.sku, state.itemName);
-        // Nếu URL truyền SKU cụ thể khác ngữ cảnh lưu cũ thì ưu tiên SKU trên URL
-        if (state.sku && inferred && inferred.product && viewerContext.calcContext.sku && viewerContext.calcContext.sku !== state.sku) {
-          activeCalcCtx = inferred;
-        } else {
+        const savedSku = String(viewerContext.calcContext.sku || '').trim().toUpperCase();
+        // Chỉ tái sử dụng ngữ cảnh lưu trong localStorage khi URL không truyền SKU cụ thể hoặc SKU trên URL khớp đúng savedSku
+        if (!urlSku || (savedSku && savedSku === urlSku)) {
           activeCalcCtx = {
             ...inferred,
             ...viewerContext.calcContext,
+            sku: urlSku || savedSku || inferred.sku || '',
             models: Array.isArray(viewerContext.calcContext.models) && viewerContext.calcContext.models.length
               ? [...viewerContext.calcContext.models]
               : [viewerContext.calcContext.model || inferred.model || 'XGS 2300']
           };
+          return activeCalcCtx;
         }
-        return activeCalcCtx;
       }
-      activeCalcCtx = inferSophosCalculatorContextJs(calcRefData, state.sku, state.itemName);
-      if (viewerContext && viewerContext.settings && viewerContext.settings.model && !state.sku) {
+      activeCalcCtx = inferred;
+      if (viewerContext && viewerContext.settings && viewerContext.settings.model && !urlSku) {
         activeCalcCtx.model = viewerContext.settings.model;
         activeCalcCtx.models = [viewerContext.settings.model];
       }
@@ -1699,7 +3359,7 @@
       const cat = runtime.dropDowns && runtime.dropDowns.universalCatalog;
       if (!cat) return;
       const currentProd = runtime.descToProduct && runtime.descToProduct[activeCalcCtx.product];
-      const currentMapped = mapProductToNativeSheetJs(currentProd, activeCalcCtx.family, activeCalcCtx.productLine);
+      const currentMapped = mapProductToNativeSheetJs(currentProd, activeCalcCtx.family, activeCalcCtx.productLine, calcRefData);
       if (sheetName === 'Universal Calculator' && currentProd) return;
       if (currentProd && currentMapped === sheetName) return;
 
@@ -1707,7 +3367,8 @@
         for (const ln of ((cat.linesByFamily && cat.linesByFamily[fam]) || [])) {
           for (const pName of ((cat.productsByLine && cat.productsByLine[ln]) || [])) {
             const pObj = runtime.descToProduct && runtime.descToProduct[pName];
-            if (pObj && mapProductToNativeSheetJs(pObj, fam, ln) === sheetName) {
+            if (pObj && mapProductToNativeSheetJs(pObj, fam, ln, calcRefData) === sheetName) {
+              activeCalcCtx.sku = '';
               activeCalcCtx.family = fam;
               activeCalcCtx.productLine = ln;
               activeCalcCtx.product = pName;
@@ -1739,6 +3400,7 @@
       const dd = runtime && runtime.dropDowns;
       const cat = dd && dd.universalCatalog;
 
+      if (field !== 'partnerLevel') ctx.sku = '';
       if (field === 'partnerLevel') ctx.partnerLevel = val;
       else if (field === 'sector') ctx.sector = val;
       else if (field === 'dealType') ctx.dealType = val;
@@ -1783,17 +3445,25 @@
           termSubscription: ctx.termSubscription,
           qty: ctx.qty,
           specialAttribute: ctx.specialAttribute,
-          models: ctx.models
+          models: ctx.models,
+          preferredSku: ctx.sku
         });
         const rHit = fwEval.rows.find(r => r.key === ctx.targetFirewallRowKey) || fwEval.rows[2];
         if (rHit && rHit.cells[0] && rHit.cells[0].available) {
           state.sku = rHit.cells[0].sku;
+          ctx.sku = state.sku;
           state.itemName = rHit.cells[0].productDesc;
           state.targetRow = rHit.sheetRowNum;
           state.colLetter = 'H';
           state.colIndex = 7;
         }
-      } else if (state.sheet !== 'Cover' && state.sheet !== 'MSRPs&BuyCost') {
+      } else if (state.sheet !== 'Cover' && state.sheet !== 'Discounts' && state.sheet !== 'MSRPs&BuyCost') {
+        const base = (calcRefData.calcSheetsRaw && calcRefData.calcSheetsRaw[state.sheet]) || [];
+        const ov = overlayCalculatedSheetAoaJs(calcRefData, state.sheet, base, ctx);
+        if (ov.targetSku) {
+          state.sku = ov.targetSku;
+          ctx.sku = ov.targetSku;
+        }
         const pEval = evaluateProductCalculatorJs(calcRefData, {
           partnerLevel: ctx.partnerLevel,
           sector: ctx.sector,
@@ -1803,14 +3473,12 @@
           product: ctx.product,
           term: ctx.termSubscription,
           qty: ctx.qty,
-          specialAttribute: ctx.specialAttribute
+          specialAttribute: ctx.specialAttribute,
+          preferredSku: ctx.sku
         });
-        if (pEval.available && pEval.sku) {
-          state.sku = pEval.sku;
+        if (pEval.available && pEval.productDesc) {
           state.itemName = pEval.productDesc;
         }
-        const base = (calcRefData.calcSheetsRaw && calcRefData.calcSheetsRaw[state.sheet]) || [];
-        const ov = overlayCalculatedSheetAoaJs(calcRefData, state.sheet, base, ctx);
         state.targetRow = ov.targetRow;
         state.colLetter = ov.targetColLetter;
         state.colIndex = letterToColIndex(ov.targetColLetter);
@@ -1832,6 +3500,7 @@
         return;
       }
       bar.style.display = 'flex';
+      bar.classList.toggle('is-mobile-expanded', mobileCalcCtrlExpanded);
 
       const runtime = calcRefData.engineRuntime;
       const dd = runtime.dropDowns || {};
@@ -1851,6 +3520,8 @@
         return h;
       };
 
+      const toggleBtnHtml = `<button id="btnToggleMobileCalcCtrl" type="button" class="calc-ctrl-toggle-btn" onclick="toggleMobileCalcCtrl()">${mobileCalcCtrlExpanded ? 'Thu gọn ▴' : '⚙️ Tùy chỉnh ▾'}</button>`;
+
       const commonControls = `
         <div class="calc-ctrl-item" title="Partner Level từ Cover!I3">
           <label>Partner Level:</label>
@@ -1868,14 +3539,20 @@
 
       if (state.sheet === 'Cover') {
         bar.innerHTML = `
-          <div class="calc-ctrl-group">
-            <span style="font-weight:800;color:#002f6c;">🧮 Sophos Calculator (Sheet Cover):</span>
-            ${commonControls}
+          <div class="calc-ctrl-mobile-head">
+            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">🧮 <strong>Cover</strong> • Partner: <strong>${escapeHtml(ctx.partnerLevel)}</strong></span>
+            ${toggleBtnHtml}
           </div>
-          <div class="calc-ctrl-summary">
-            <span>Cover!I3 = <strong>${escapeHtml(ctx.partnerLevel)}</strong></span>
-            <button type="button" class="window-btn" style="padding:2px 8px;font-size:11px;" onclick="switchSheet('Firewall')">→ Mở Sheet Firewall</button>
-            <button type="button" class="window-btn" style="padding:2px 8px;font-size:11px;" onclick="switchSheet('Universal Calculator')">→ Mở Universal Calculator</button>
+          <div class="calc-ctrl-body">
+            <div class="calc-ctrl-group">
+              <span style="font-weight:800;color:#002f6c;">🧮 Sophos Calculator (Sheet Cover):</span>
+              ${commonControls}
+            </div>
+            <div class="calc-ctrl-summary">
+              <span>Cover!I3 = <strong>${escapeHtml(ctx.partnerLevel)}</strong></span>
+              <button type="button" class="window-btn" style="padding:2px 8px;font-size:11px;" onclick="switchSheet('Firewall')">→ Mở Sheet Firewall</button>
+              <button type="button" class="window-btn" style="padding:2px 8px;font-size:11px;" onclick="switchSheet('Universal Calculator')">→ Mở Universal Calculator</button>
+            </div>
           </div>
         `;
         return;
@@ -1901,16 +3578,22 @@
         const plugs = dd.powerSockets || ['AU', 'EU', 'UK', 'US', 'CN', 'IN', 'JP'];
 
         bar.innerHTML = `
-          <div class="calc-ctrl-group">
-            <span style="font-weight:800;color:#002f6c;">🔥 Firewall Calculator:</span>
-            ${commonControls}
-            <div class="calc-ctrl-item"><label>Model 1 (Cột H):</label><select onchange="onCalcCtrlChange('model1', this.value)">${buildModelOptgroups(m1, '')}</select></div>
-            <div class="calc-ctrl-item"><label>Model 2 (Cột V):</label><select onchange="onCalcCtrlChange('model2', this.value)">${buildModelOptgroups(m2, '— Không chọn —')}</select></div>
-            <div class="calc-ctrl-item"><label>Model 3 (Cột AJ):</label><select onchange="onCalcCtrlChange('model3', this.value)">${buildModelOptgroups(m3, '— Không chọn —')}</select></div>
-            <div class="calc-ctrl-item"><label>Term (HW):</label><select onchange="onCalcCtrlChange('termHwBundle', this.value)">${buildOpts(hwTerms, ctx.termHwBundle)}</select></div>
-            <div class="calc-ctrl-item"><label>Term (Sub):</label><select onchange="onCalcCtrlChange('termSubscription', this.value)">${buildOpts(terms, ctx.termSubscription)}</select></div>
-            <div class="calc-ctrl-item"><label>Qty:</label><input type="number" min="1" value="${ctx.qty || 1}" style="width:52px;" onchange="onCalcCtrlChange('qty', this.value)" /></div>
-            <div class="calc-ctrl-item"><label>Plug:</label><select onchange="onCalcCtrlChange('specialAttribute', this.value)">${buildOpts(plugs, ctx.specialAttribute)}</select></div>
+          <div class="calc-ctrl-mobile-head">
+            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">🔥 <strong>Firewall</strong> • ${escapeHtml(m1)} • ${escapeHtml(ctx.partnerLevel)} • Qty ${ctx.qty || 1}</span>
+            ${toggleBtnHtml}
+          </div>
+          <div class="calc-ctrl-body">
+            <div class="calc-ctrl-group">
+              <span style="font-weight:800;color:#002f6c;">🔥 Firewall Calculator:</span>
+              ${commonControls}
+              <div class="calc-ctrl-item"><label>Model 1 (Cột H):</label><select onchange="onCalcCtrlChange('model1', this.value)">${buildModelOptgroups(m1, '')}</select></div>
+              <div class="calc-ctrl-item"><label>Model 2 (Cột V):</label><select onchange="onCalcCtrlChange('model2', this.value)">${buildModelOptgroups(m2, '— Không chọn —')}</select></div>
+              <div class="calc-ctrl-item"><label>Model 3 (Cột AJ):</label><select onchange="onCalcCtrlChange('model3', this.value)">${buildModelOptgroups(m3, '— Không chọn —')}</select></div>
+              <div class="calc-ctrl-item"><label>Term (HW):</label><select onchange="onCalcCtrlChange('termHwBundle', this.value)">${buildOpts(hwTerms, ctx.termHwBundle)}</select></div>
+              <div class="calc-ctrl-item"><label>Term (Sub):</label><select onchange="onCalcCtrlChange('termSubscription', this.value)">${buildOpts(terms, ctx.termSubscription)}</select></div>
+              <div class="calc-ctrl-item"><label>Qty:</label><input type="number" min="1" value="${ctx.qty || 1}" style="width:52px;" onchange="onCalcCtrlChange('qty', this.value)" /></div>
+              <div class="calc-ctrl-item"><label>Plug:</label><select onchange="onCalcCtrlChange('specialAttribute', this.value)">${buildOpts(plugs, ctx.specialAttribute)}</select></div>
+            </div>
           </div>
         `;
         return;
@@ -1932,25 +3615,32 @@
         product: ctx.product,
         term: ctx.termSubscription,
         qty: ctx.qty,
-        specialAttribute: ctx.specialAttribute
+        specialAttribute: ctx.specialAttribute,
+        preferredSku: ctx.sku
       });
 
       bar.innerHTML = `
-        <div class="calc-ctrl-group">
-          <span style="font-weight:800;color:#002f6c;">🧮 ${escapeHtml(state.sheet)}:</span>
-          ${commonControls}
-          <div class="calc-ctrl-item"><label>Family:</label><select onchange="onCalcCtrlChange('family', this.value)">${buildOpts(fams, ctx.family)}</select></div>
-          <div class="calc-ctrl-item"><label>Line:</label><select onchange="onCalcCtrlChange('productLine', this.value)">${buildOpts(lines, ctx.productLine)}</select></div>
-          <div class="calc-ctrl-item"><label>Product:</label><select onchange="onCalcCtrlChange('product', this.value)">${buildOpts(prodList, ctx.product)}</select></div>
-          ${pEval.isTermed ? `<div class="calc-ctrl-item"><label>Term:</label><select onchange="onCalcCtrlChange('termSubscription', this.value)">${buildOpts(terms, ctx.termSubscription)}</select></div>` : ''}
-          <div class="calc-ctrl-item"><label>Qty:</label><input type="number" min="1" value="${ctx.qty || 1}" style="width:58px;" onchange="onCalcCtrlChange('qty', this.value)" /></div>
-          <div class="calc-ctrl-item"><label>Attr:</label><select onchange="onCalcCtrlChange('specialAttribute', this.value)">${buildOpts(specOpts, ctx.specialAttribute)}</select></div>
+        <div class="calc-ctrl-mobile-head">
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">🧮 <strong>${escapeHtml(state.sheet)}</strong> • <strong>${escapeHtml(pEval.available ? pEval.sku : (state.sku || 'N/A'))}</strong> • MSRP <strong>$${formatCell(pEval.msrp)}</strong></span>
+          ${toggleBtnHtml}
         </div>
-        <div class="calc-ctrl-summary">
-          <span>SKU: <strong>${escapeHtml(pEval.available ? pEval.sku : 'N/A')}</strong></span>
-          <span>• MSRP: <strong>$${formatCell(pEval.msrp)}</strong></span>
-          <span>• Disc: <strong>${pEval.resellerDiscPct}%</strong></span>
-          <span>• Buy Cost: <strong style="color:#fde047;">$${formatCell(pEval.buyCost)}</strong></span>
+        <div class="calc-ctrl-body">
+          <div class="calc-ctrl-group">
+            <span style="font-weight:800;color:#002f6c;">🧮 ${escapeHtml(state.sheet)}:</span>
+            ${commonControls}
+            <div class="calc-ctrl-item"><label>Family:</label><select onchange="onCalcCtrlChange('family', this.value)">${buildOpts(fams, ctx.family)}</select></div>
+            <div class="calc-ctrl-item"><label>Line:</label><select onchange="onCalcCtrlChange('productLine', this.value)">${buildOpts(lines, ctx.productLine)}</select></div>
+            <div class="calc-ctrl-item"><label>Product:</label><select onchange="onCalcCtrlChange('product', this.value)">${buildOpts(prodList, ctx.product)}</select></div>
+            ${pEval.isTermed ? `<div class="calc-ctrl-item"><label>Term:</label><select onchange="onCalcCtrlChange('termSubscription', this.value)">${buildOpts(terms, ctx.termSubscription)}</select></div>` : ''}
+            <div class="calc-ctrl-item"><label>Qty:</label><input type="number" min="1" value="${ctx.qty || 1}" style="width:58px;" onchange="onCalcCtrlChange('qty', this.value)" /></div>
+            <div class="calc-ctrl-item"><label>Attr:</label><select onchange="onCalcCtrlChange('specialAttribute', this.value)">${buildOpts(specOpts, ctx.specialAttribute)}</select></div>
+          </div>
+          <div class="calc-ctrl-summary">
+            <span>SKU: <strong>${escapeHtml(pEval.available ? pEval.sku : 'N/A')}</strong></span>
+            <span>• MSRP: <strong>$${formatCell(pEval.msrp)}</strong></span>
+            <span>• Disc: <strong>${pEval.resellerDiscPct}%</strong></span>
+            <span>• Buy Cost: <strong style="color:#fde047;">$${formatCell(pEval.buyCost)}</strong></span>
+          </div>
         </div>
       `;
     }
@@ -2046,16 +3736,19 @@
         const calcMap = calcRefData.calcSkus || {};
         const calcEntry = calcMap[sku] || (sku === 'CFRAAB12ZZCAA' ? calcMap['CFRAAB12BANCAA'] : null);
         if (calcRefData.engineRuntime) {
-          const ctx = inferSophosCalculatorContextJs(calcRefData, sku, state.itemName || (calcEntry && calcEntry.desc));
+          const actCtx = ensureActiveCalcContext();
+          const useActCtx = actCtx && String(actCtx.sku || '').toUpperCase() === sku;
+          const ctx = useActCtx ? actCtx : inferSophosCalculatorContextJs(calcRefData, sku, state.itemName || (calcEntry && calcEntry.desc));
           const nativeSh = ctx.nativeSheet || 'Firewall';
           if (calcRefData.calcSheetsRaw && calcRefData.calcSheetsRaw[nativeSh]) {
             const ov = overlayCalculatedSheetAoaJs(calcRefData, nativeSh, calcRefData.calcSheetsRaw[nativeSh], ctx);
+            const actualSku = ov.targetSku || ctx.sku || (calcMap[sku] ? sku : (calcEntry ? 'CFRAAB12BANCAA' : sku));
             locs.push({
               fileType: 'calc',
               sheet: nativeSh,
               rowNum: ov.targetRow,
               colLetter: ov.targetColLetter,
-              sku: calcMap[sku] ? sku : (calcEntry ? 'CFRAAB12BANCAA' : sku),
+              sku: actualSku,
               itemName: state.itemName || (calcEntry && calcEntry.desc) || ctx.product
             });
           }
@@ -2066,7 +3759,7 @@
               sheet: 'Universal Calculator',
               rowNum: ovUniv.targetRow,
               colLetter: ovUniv.targetColLetter,
-              sku: calcMap[sku] ? sku : sku,
+              sku: ovUniv.targetSku || (calcMap[sku] ? sku : sku),
               itemName: state.itemName || (calcEntry && calcEntry.desc) || ctx.product
             });
           }
@@ -2366,11 +4059,27 @@
           for (const r of rawRows) {
             if (r && r.length > maxCols) maxCols = r.length;
           }
-          let html = '<table class="excel-grid"><thead><tr><th class="col-corner">#</th>';
+          const colWidths = Array.from({ length: maxCols }, (_, c) =>
+            c === 0 ? 40 : (c === 1 ? 70 : (c === 2 ? 250 : (c === 8 ? 145 : 125)))
+          );
+          for (let rIdx = 0; rIdx < rawRows.length; rIdx++) {
+            const rowArr = rawRows[rIdx] || [];
+            for (let c = 0; c < maxCols; c++) {
+              const val = rowArr[c];
+              if (val === null || val === undefined || val === '') continue;
+              const disp = formatCell(val);
+              const isSku = isSkuLikeValJs(val, state.sku);
+              const isNum = !isSku && (isNumericMoneyOrPctValJs(val) || isNumericMoneyOrPctValJs(disp));
+              if (isSku || isNum) {
+                const needed = Math.min(320, Math.ceil(disp.length * (isSku ? 9.6 : 9.0) + 22));
+                if (colWidths[c] < needed) colWidths[c] = needed;
+              }
+            }
+          }
+          let html = buildColgroupAndTableOpenHtml(colWidths) + '<thead><tr><th class="col-corner">#</th>';
           for (let c = 0; c < maxCols; c++) {
             const letStr = colIndexToLetter(c);
-            const w = c === 0 ? 35 : (c === 1 ? 65 : (c === 2 ? 250 : (c === 8 ? 135 : 120)));
-            html += `<th style="width:${w}px" class="${letStr === state.colLetter ? 'col-active' : ''}">${letStr}</th>`;
+            html += `<th style="width:${colWidths[c]}px" class="${letStr === state.colLetter ? 'col-active' : ''}">${letStr}</th>`;
           }
           html += '</tr></thead><tbody>';
 
@@ -2386,11 +4095,14 @@
             html += `<td class="row-header">${isTarget ? '▶ ' : ''}${rNum}</td>`;
             for (let c = 0; c < maxCols; c++) {
               const val = rowArr[c];
+              const disp = formatCell(val);
+              const isSku = isSkuLikeValJs(val, state.sku);
+              const isNum = !isSku && (isNumericMoneyOrPctValJs(val) || isNumericMoneyOrPctValJs(disp));
               const isTargetCell = isTarget && c === state.colIndex;
               let bg = '#ffffff';
               let fg = '#1e293b';
               let fw = '';
-              let align = typeof val === 'number' ? 'right' : 'left';
+              let align = (typeof val === 'number' || isNum) ? 'right' : 'left';
               if (rNum <= 5) {
                 bg = '#006D5C'; fg = '#ffffff'; fw = 'font-weight:700;';
               } else if (rNum === 7 || rNum === 8) {
@@ -2401,7 +4113,8 @@
                 if (c >= 1 && c <= 8) bg = '#D9F2E6';
                 if (c === 8) fw = 'font-weight:700;';
               }
-              html += `<td class="${isTargetCell ? 'excel-target-cell' : ''}" style="background:${bg};color:${fg};text-align:${align};${fw}" onclick="event.stopPropagation();selectCell(${rNum}, ${c})">${escapeHtml(formatCell(val))}</td>`;
+              const cls = [isTargetCell ? 'excel-target-cell' : '', isSku ? 'cell-sku' : (isNum ? 'cell-nowrap' : '')].filter(Boolean).join(' ');
+              html += `<td class="${cls}" style="background:${bg};color:${fg};text-align:${align};${fw}" onclick="event.stopPropagation();selectCell(${rNum}, ${c})">${escapeHtml(disp)}</td>`;
             }
             html += '</tr>';
           }
@@ -2414,7 +4127,7 @@
         // SaleListSMB+Enterprise
         const allSaleRows = isGoc ? (refData.gocSaleRows || []) : (refData.mauSaleRows || []);
         const headers = ['PositionCode', 'PartNumber (SKU)', 'Category', 'Code', 'Product', 'LicenceDescription', 'LicenceObject', 'Package', 'Band', 'LicenceComposition', 'LicenceType', 'Term', 'Price (VND)'];
-        const widths = [135, 135, 130, 65, 240, 120, 100, 90, 135, 120, 115, 80, 130];
+        const widths = [145, 150, 130, 65, 240, 120, 100, 90, 135, 120, 115, 80, 140];
 
         let centerIdx = allSaleRows.findIndex(x => x.rowNum === state.targetRow);
         if (centerIdx === -1) {
@@ -2425,11 +4138,21 @@
         const endIdx = Math.min(allSaleRows.length - 1, centerIdx + msrpWindowRadius);
         const slice = allSaleRows.slice(startIdx, endIdx + 1);
 
+        for (const item of slice) {
+          const checkCols = [[0, item.posCode, true], [1, item.sku, true], [12, item.price, false]];
+          for (const [idx, v, skuMode] of checkCols) {
+            const disp = formatCell(v);
+            if (!disp) continue;
+            const needed = Math.min(320, Math.ceil(disp.length * (skuMode ? 9.6 : 9.0) + 24));
+            if (widths[idx] < needed) widths[idx] = needed;
+          }
+        }
+
         banner.style.display = 'flex';
         document.getElementById('windowBannerText').innerHTML =
           `Đang hiển thị từ <strong>Dòng ${slice[0]?.rowNum || 2}</strong> đến <strong>Dòng ${slice[slice.length - 1]?.rowNum || 2}</strong> quanh <strong>Dòng mục tiêu #${state.targetRow}</strong> (Sheet <code>SaleListSMB+Enterprise</code> - ${allSaleRows.length.toLocaleString()} dòng).`;
 
-        let html = '<table class="excel-grid"><thead><tr><th class="col-corner">#</th>';
+        let html = buildColgroupAndTableOpenHtml(widths) + '<thead><tr><th class="col-corner">#</th>';
         for (let c = 0; c < headers.length; c++) {
           const letStr = colIndexToLetter(c);
           html += `<th style="width:${widths[c]}px" class="${letStr === state.colLetter ? 'col-active' : ''}">${letStr}</th>`;
@@ -2460,7 +4183,8 @@
             const align = c === 12 ? 'right' : (c === 3 || c === 11 ? 'center' : 'left');
             const bg = c === 12 ? '#D9F2E6' : '#ffffff';
             const fw = (c === 0 || c === 1 || c === 12) ? 'font-weight:700;' : '';
-            html += `<td class="${isTargetCell ? 'excel-target-cell' : ''}" style="background:${bg};text-align:${align};${fw}" onclick="event.stopPropagation();selectCell(${rNum}, ${c})">${escapeHtml(formatCell(cells[c]))}</td>`;
+            const cls = [isTargetCell ? 'excel-target-cell' : '', (c === 0 || c === 1) ? 'cell-sku' : (c === 12 ? 'cell-nowrap' : '')].filter(Boolean).join(' ');
+            html += `<td class="${cls}" style="background:${bg};text-align:${align};${fw}" onclick="event.stopPropagation();selectCell(${rNum}, ${c})">${escapeHtml(formatCell(cells[c]))}</td>`;
           }
           html += '</tr>';
         }
@@ -2483,9 +4207,9 @@
           'Standard Platinum Reseller Cost', 'Registered Platinum Reseller Cost'
         ];
         const colWidths = [
-          150, 90, 140, 115,
-          130, 130, 155, 120, 310, 120,
-          75, 90, 70, 75, 115, 150, 110,
+          150, 95, 140, 120,
+          130, 145, 165, 140, 310, 125,
+          80, 95, 75, 75, 115, 150, 110,
           115, 110,
           130, 130, 130,
           125, 125,
@@ -2512,11 +4236,33 @@
         const endIdx = Math.min(sortedSkuTabCache.length - 1, centerIdx + msrpWindowRadius);
         const slice = sortedSkuTabCache.slice(startIdx, endIdx + 1);
 
+        for (const item of slice) {
+          const sampleCells = [
+            item.changeVer || '', item.changeKey || '', '', item.prevPrice ?? '',
+            item.status || 'Available', item.pc || '', item.sku || '', item.oldSku || '', '', item.msrp ?? '',
+            1, 9999999, item.term ?? '', '', '', '', '',
+            '', '',
+            item.stdAuth ?? '', item.regAuth ?? '', item.incAuth ?? '',
+            item.stdSilv ?? '', item.regSilv ?? '',
+            item.stdGold ?? '', item.regGold ?? '',
+            item.stdPlat ?? '', item.regPlat ?? ''
+          ];
+          for (let c = 0; c < sampleCells.length; c++) {
+            const isSkuCol = c === 5 || c === 6 || c === 7;
+            const isPriceCol = c === 3 || c === 9 || c === 10 || c === 11 || c >= 19;
+            if (!isSkuCol && !isPriceCol) continue;
+            const disp = formatCell(sampleCells[c]);
+            if (!disp) continue;
+            const needed = Math.min(320, Math.ceil(disp.length * (isSkuCol ? 9.6 : 9.0) + 24));
+            if (colWidths[c] < needed) colWidths[c] = needed;
+          }
+        }
+
         banner.style.display = 'flex';
         document.getElementById('windowBannerText').innerHTML =
           `Đang hiển thị từ <strong>Dòng ${slice[0]?.skuTabRow || 8}</strong> đến <strong>Dòng ${slice[slice.length - 1]?.skuTabRow || 8}</strong> quanh <strong>Dòng mục tiêu #${state.targetRow}</strong> (Sheet <code>SKU_Tab</code> - 199,995 dòng).`;
 
-        let html = '<table class="excel-grid"><thead><tr><th class="col-corner">#</th>';
+        let html = buildColgroupAndTableOpenHtml(colWidths) + '<thead><tr><th class="col-corner">#</th>';
         for (let c = 0; c < headers.length; c++) {
           const letStr = colIndexToLetter(c);
           html += `<th style="width:${colWidths[c]}px" class="${letStr === state.colLetter ? 'col-active' : ''}">${letStr}</th>`;
@@ -2566,7 +4312,10 @@
             const isTargetCell = isTarget && c === state.colIndex;
             const align = (c === 3 || c === 9 || c >= 19) ? 'right' : (c <= 2 || c === 4 || (c >= 10 && c <= 14) ? 'center' : 'left');
             const bold = (c === 6 || c === 9) ? 'font-weight:700;' : '';
-            html += `<td class="${isTargetCell ? 'excel-target-cell' : ''}" style="background:${colBgs[c]};text-align:${align};${bold}" onclick="event.stopPropagation();selectCell(${rNum}, ${c})">${escapeHtml(formatCell(cells[c]))}</td>`;
+            const isSkuCol = c === 5 || c === 6 || c === 7;
+            const isPriceCol = c === 3 || c === 9 || c === 10 || c === 11 || c >= 19;
+            const cls = [isTargetCell ? 'excel-target-cell' : '', isSkuCol ? 'cell-sku' : (isPriceCol ? 'cell-nowrap' : '')].filter(Boolean).join(' ');
+            html += `<td class="${cls}" style="background:${colBgs[c]};text-align:${align};${bold}" onclick="event.stopPropagation();selectCell(${rNum}, ${c})">${escapeHtml(formatCell(cells[c]))}</td>`;
           }
           html += '</tr>';
         }
@@ -2581,9 +4330,24 @@
         banner.style.display = 'none';
         const hwRows = refData.hwComplianceRaw || [];
         const maxCols = 16;
-        const colWidths = [130, 150, 320, 130, 110, 95, 95, 95, 95, 115, 115, 115, 115, 140, 120, 120];
+        const colWidths = [135, 160, 320, 130, 110, 95, 95, 95, 95, 115, 115, 115, 115, 140, 120, 120];
+        for (const rObj of hwRows) {
+          if (rObj.rowNum === 7) continue;
+          const rowArr = rObj.cells || [];
+          for (let c = 0; c < maxCols; c++) {
+            const val = rowArr[c];
+            if (val === null || val === undefined || val === '') continue;
+            const disp = formatCell(val);
+            const isSku = c === 0 || c === 1 || isSkuLikeValJs(val, state.sku);
+            const isNum = !isSku && (isNumericMoneyOrPctValJs(val) || isNumericMoneyOrPctValJs(disp));
+            if (isSku || isNum) {
+              const needed = Math.min(320, Math.ceil(disp.length * (isSku ? 9.6 : 9.0) + 22));
+              if (colWidths[c] < needed) colWidths[c] = needed;
+            }
+          }
+        }
 
-        let html = '<table class="excel-grid"><thead><tr><th class="col-corner">#</th>';
+        let html = buildColgroupAndTableOpenHtml(colWidths) + '<thead><tr><th class="col-corner">#</th>';
         for (let c = 0; c < maxCols; c++) {
           const letStr = colIndexToLetter(c);
           html += `<th style="width:${colWidths[c] || 110}px" class="${letStr === state.colLetter ? 'col-active' : ''}">${letStr}</th>`;
@@ -2602,9 +4366,14 @@
           html += `<tr id="row-${rNum}" class="${isTarget ? 'excel-target-row' : ''}" onclick="selectCell(${rNum}, ${state.colIndex})">`;
           html += `<td class="row-header">${isTarget ? '▶ ' : ''}${rNum}</td>`;
           for (let c = 0; c < maxCols; c++) {
+            const val = rowArr[c];
+            const disp = formatCell(val);
+            const isSku = !isHdr && (c === 0 || c === 1 || isSkuLikeValJs(val, state.sku));
+            const isNum = !isHdr && !isSku && (isNumericMoneyOrPctValJs(val) || isNumericMoneyOrPctValJs(disp));
             const isTargetCell = isTarget && c === state.colIndex;
             const style = isHdr ? 'background:#002060;color:#ffffff;font-weight:700;text-align:center;' : (c === 1 ? 'font-weight:700;' : '');
-            html += `<td class="${isTargetCell ? 'excel-target-cell' : ''}" style="${style}" onclick="event.stopPropagation();selectCell(${rNum}, ${c})">${escapeHtml(formatCell(rowArr[c]))}</td>`;
+            const cls = [isTargetCell ? 'excel-target-cell' : '', isSku ? 'cell-sku' : (isNum ? 'cell-nowrap' : '')].filter(Boolean).join(' ');
+            html += `<td class="${cls}" style="${style}" onclick="event.stopPropagation();selectCell(${rNum}, ${c})">${escapeHtml(disp)}</td>`;
           }
           html += '</tr>';
         }
@@ -2619,8 +4388,8 @@
         const activeMsrpList = state.fileType === 'calc' ? sortedCalcMsrpCache : sortedMsrpCache;
         const isFullV2 = state.fileType === 'calc' && calcRefData && calcRefData.format === 'sophos_calc_v2';
         const colWidths = isFullV2
-          ? [165, 160, 120, 125, 125, 125, 125, 125, 125, 125, 125, 125, 125, 125, 125, 125, 125, 125, 320]
-          : [165, 160, 120, 130, 130, 130, 125, 125, 125, 125, 125, 125, 320];
+          ? [165, 165, 125, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 320]
+          : [165, 165, 125, 130, 130, 130, 128, 128, 128, 128, 128, 128, 320];
         const colBgs = isFullV2
           ? [
               '#ffffff', '#ffffff', '#ffffff',
@@ -2667,11 +4436,39 @@
         const endIdx = Math.min(activeMsrpList.length - 1, centerIdx + msrpWindowRadius);
         const slice = activeMsrpList.slice(startIdx, endIdx + 1);
 
+        const lastNumCol = isFullV2 ? 17 : 11;
+        for (const item of slice) {
+          const sampleCells = isFullV2
+            ? [
+                item.pc || '', item.sku || '', item.msrp ?? '',
+                item.stdAuth ?? '', item.regAuth ?? '', item.incAuth ?? '',
+                item.stdSilv ?? '', item.regSilv ?? '', item.incSilv ?? '',
+                item.stdGold ?? '', item.regGold ?? '', item.incGold ?? '',
+                item.stdPlat ?? '', item.regPlat ?? '', item.incPlat ?? '',
+                item.stdSel ?? '', item.regSel ?? '', item.incSel ?? '',
+                ''
+              ]
+            : [
+                item.pc || '', item.sku || '', item.msrp ?? '',
+                item.stdAuth ?? '', item.regAuth ?? '', item.incAuth ?? '',
+                item.stdSilv ?? '', item.regSilv ?? '',
+                item.stdGold ?? '', item.regGold ?? '',
+                item.stdPlat ?? '', item.regPlat ?? '',
+                ''
+              ];
+          for (let c = 0; c <= lastNumCol; c++) {
+            const disp = formatGridCellValueJs(sampleCells[c], (item.rowNum || 3) - 1, c, sampleCells);
+            if (!disp) continue;
+            const needed = Math.min(320, Math.ceil(disp.length * (c <= 1 ? 9.6 : 9.0) + 24));
+            if (colWidths[c] < needed) colWidths[c] = needed;
+          }
+        }
+
         banner.style.display = 'flex';
         document.getElementById('windowBannerText').innerHTML =
           `Đang hiển thị từ <strong>Dòng ${slice[0]?.rowNum || 3}</strong> đến <strong>Dòng ${slice[slice.length - 1]?.rowNum || 3}</strong> quanh <strong>Dòng mục tiêu #${state.targetRow}</strong> (Sheet <code>MSRPs&amp;BuyCost</code>${state.fileType === 'calc' ? ' <em>[Sheet ẩn nguồn tra cứu công thức]</em>' : ''} - ${activeMsrpList.length.toLocaleString()} dòng${state.fileType === 'calc' && calcRefData?.version ? ' • v' + escapeHtml(calcRefData.version) : ''}).`;
 
-        let html = '<table class="excel-grid"><thead><tr><th class="col-corner">#</th>';
+        let html = buildColgroupAndTableOpenHtml(colWidths) + '<thead><tr><th class="col-corner">#</th>';
         for (let c = 0; c < headers.length; c++) {
           const letStr = colIndexToLetter(c);
           html += `<th style="width:${colWidths[c]}px" class="${letStr === state.colLetter ? 'col-active' : ''}">${letStr}</th>`;
@@ -2686,7 +4483,6 @@
         html += '</tr>';
 
         let selectedFormulaText = '';
-        const lastNumCol = isFullV2 ? 17 : 11;
         for (const item of slice) {
           const rNum = item.rowNum;
           const isTarget = rNum === state.targetRow;
@@ -2717,7 +4513,9 @@
             const isTargetCell = isTarget && c === state.colIndex;
             const align = c >= 2 && c <= lastNumCol ? 'right' : 'left';
             const bold = c === 1 && isTarget ? 'font-weight:700;' : '';
-            html += `<td class="${isTargetCell ? 'excel-target-cell' : ''}" style="background:${colBgs[c]};text-align:${align};${bold}" onclick="event.stopPropagation();selectCell(${rNum}, ${c})">${escapeHtml(formatCell(cells[c]))}</td>`;
+            const disp = formatGridCellValueJs(cells[c], rNum - 1, c, cells);
+            const cls = [isTargetCell ? 'excel-target-cell' : '', c <= 1 ? 'cell-sku' : (c <= lastNumCol ? 'cell-nowrap' : '')].filter(Boolean).join(' ');
+            html += `<td class="${cls}" style="background:${colBgs[c]};text-align:${align};${bold}" onclick="event.stopPropagation();selectCell(${rNum}, ${c})">${escapeHtml(disp)}</td>`;
           }
           html += '</tr>';
         }
@@ -2746,7 +4544,8 @@
         const baseSheet = (calcRefData?.calcSheetsRaw && calcRefData.calcSheetsRaw[state.sheet]) || [];
         const ctx = ensureActiveCalcContext();
         if (calcRefData && calcRefData.engineRuntime && ctx) {
-          rawRows = overlayCalculatedSheetAoaJs(calcRefData, state.sheet, baseSheet, ctx).rows;
+          const sheetCtx = resolveSheetContextForWorkbookJs(calcRefData, state.sheet, ctx, state.sheet);
+          rawRows = overlayCalculatedSheetAoaJs(calcRefData, state.sheet, baseSheet, sheetCtx).rows;
         } else {
           rawRows = baseSheet.map(r => [...(r || [])]);
         }
@@ -2780,12 +4579,8 @@
       for (const r of rawRows) {
         if (r && r.length > maxCols) maxCols = r.length;
       }
-      const hasExplicitColWidths = Boolean(styledMeta && Array.isArray(styledMeta.colWidths) && styledMeta.colWidths.length >= maxCols);
-      const colWidths = hasExplicitColWidths
-        ? styledMeta.colWidths
-        : Array.from({ length: maxCols }, (_, i) => (i === 4 ? 360 : (i === 2 || i === 3 ? 220 : 120)));
 
-      // Build merge lookup: top-left (r,c) -> { rowspan, colspan }, covered (r,c) -> skipped
+      // Build merge lookup FIRST: top-left (r,c) -> { rowspan, colspan }, covered (r,c) -> skipped
       const mergeOwner = new Map();
       const mergeCovered = new Set();
       if (styledMeta && Array.isArray(styledMeta.merges)) {
@@ -2805,12 +4600,51 @@
         }
       }
 
-      let html = '<table class="excel-grid"><thead><tr><th class="col-corner">#</th>';
+      // Preserve per-column widths from Excel even when trailing empty columns extend maxCols beyond styledMeta.colWidths.length
+      const rawColWidths = (styledMeta && Array.isArray(styledMeta.colWidths)) ? styledMeta.colWidths : null;
+      const colWidths = Array.from({ length: maxCols }, (_, c) => {
+        if (rawColWidths && c < rawColWidths.length && rawColWidths[c] !== null && rawColWidths[c] !== undefined) {
+          return Math.max(22, Math.min(540, Number(rawColWidths[c]) || 22));
+        }
+        return c === 4 ? 360 : (c === 2 || c === 3 ? 220 : 120);
+      });
+
+      // Auto-fit column widths so SKU codes and Money / Numeric / Percentage values NEVER wrap onto a second line
+      for (let rIdx = 0; rIdx < rawRows.length; rIdx++) {
+        const rNum = rIdx + 1;
+        const rowArr = rawRows[rIdx] || [];
+        for (let cIdx = 0; cIdx < maxCols; cIdx++) {
+          const key = `${rNum},${cIdx + 1}`;
+          if (mergeCovered.has(key)) continue;
+          const cellVal = rowArr[cIdx];
+          if (cellVal === null || cellVal === undefined || cellVal === '') continue;
+          const disp = formatGridCellValueJs(cellVal, rIdx, cIdx, rowArr);
+          if (!disp) continue;
+          const isSku = isSkuLikeValJs(cellVal, state.sku);
+          const isNum = !isSku && (isNumericMoneyOrPctValJs(cellVal) || isNumericMoneyOrPctValJs(disp));
+          if (!isSku && !isNum) continue;
+
+          const neededPx = Math.min(340, Math.ceil(disp.length * (isSku ? 9.6 : 9.0) + 24));
+          const spanInfo = mergeOwner.get(key);
+          if (spanInfo && spanInfo.colspan > 1) {
+            let spanSum = 0;
+            const endC = Math.min(maxCols, cIdx + spanInfo.colspan);
+            for (let sc = cIdx; sc < endC; sc++) {
+              spanSum += colWidths[sc] || 0;
+            }
+            if (spanSum < neededPx) {
+              colWidths[cIdx] = (colWidths[cIdx] || 0) + (neededPx - spanSum);
+            }
+          } else if (colWidths[cIdx] < neededPx) {
+            colWidths[cIdx] = neededPx;
+          }
+        }
+      }
+
+      let html = buildColgroupAndTableOpenHtml(colWidths) + '<thead><tr><th class="col-corner">#</th>';
       for (let c = 0; c < maxCols; c++) {
         const letStr = colIndexToLetter(c);
-        const w = hasExplicitColWidths
-          ? Math.max(22, Math.min(540, colWidths[c] ?? 95))
-          : Math.max(70, Math.min(540, colWidths[c] || 115));
+        const w = Math.max(22, Math.min(540, colWidths[c] || 95));
         html += `<th style="width:${w}px" class="${letStr === state.colLetter ? 'col-active' : ''}">${letStr}</th>`;
       }
       html += '</tr></thead><tbody>';
@@ -2844,12 +4678,20 @@
           const stObj = (stIdx !== null && stIdx !== undefined) ? palette[stIdx] : null;
           let css = buildCellCss(stObj);
           const cellVal = rowArr[cIdx];
-          if (typeof cellVal === 'number' && (!stObj || !stObj.al)) {
+          const disp = formatGridCellValueJs(cellVal, rIdx, cIdx, rowArr);
+          const isSku = isSkuLikeValJs(cellVal, state.sku);
+          const isNum = !isSku && (isNumericMoneyOrPctValJs(cellVal) || isNumericMoneyOrPctValJs(disp));
+          if ((typeof cellVal === 'number' || isNum) && (!stObj || !stObj.al)) {
             css += 'text-align:right;';
           }
           const isTargetCell = isTarget && cIdx === state.colIndex;
+          const clsList = [];
+          if (isTargetCell) clsList.push('excel-target-cell');
+          if (isSku) clsList.push('cell-sku');
+          else if (isNum) clsList.push('cell-nowrap');
+          const clsAttr = clsList.length ? ` class="${clsList.join(' ')}"` : '';
 
-          html += `<td${spanAttr} class="${isTargetCell ? 'excel-target-cell' : ''}" style="${css}" onclick="event.stopPropagation();selectCell(${rNum}, ${cIdx})">${escapeHtml(formatCell(cellVal))}</td>`;
+          html += `<td${spanAttr}${clsAttr} style="${css}" onclick="event.stopPropagation();selectCell(${rNum}, ${cIdx})">${escapeHtml(disp)}</td>`;
         }
 
         html += '</tr>';
@@ -2862,11 +4704,31 @@
 
     function scrollToTargetRow() {
       setTimeout(() => {
-        const el = document.getElementById(`row-${state.targetRow}`);
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const container = document.getElementById('gridContainer');
+        const targetCell = container ? container.querySelector('.excel-target-cell') : null;
+        const rowEl = document.getElementById(`row-${state.targetRow}`);
+        const el = targetCell || rowEl;
+        if (!container || !el) return;
+
+        const cRect = container.getBoundingClientRect();
+        const eRect = el.getBoundingClientRect();
+        const stickyTop = 28;
+        const stickyLeft = window.innerWidth <= 820 ? 46 : 60;
+
+        const desiredTop = container.scrollTop + (eRect.top - cRect.top) - Math.max(stickyTop + 12, (cRect.height - eRect.height) / 2);
+        let desiredLeft = container.scrollLeft;
+        if (targetCell) {
+          const availW = Math.max(120, cRect.width - stickyLeft);
+          const offsetRatio = window.innerWidth <= 820 ? 0.18 : 0.32;
+          desiredLeft = container.scrollLeft + (eRect.left - cRect.left) - stickyLeft - Math.max(8, (availW - eRect.width) * offsetRatio);
         }
-      }, 60);
+
+        container.scrollTo({
+          top: Math.max(0, desiredTop),
+          left: Math.max(0, desiredLeft),
+          behavior: 'smooth'
+        });
+      }, 80);
     }
 
     function selectCell(rowNum, colIdx) {
@@ -3179,9 +5041,18 @@
       if (window.XLSX) return Promise.resolve(window.XLSX);
       return new Promise((resolve, reject) => {
         const sc = document.createElement('script');
-        sc.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
-        sc.onload = () => resolve(window.XLSX);
-        sc.onerror = () => reject(new Error('Không thể nạp thư viện XLSX'));
+        sc.src = 'https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js';
+        sc.onload = () => {
+          if (window.XLSX) resolve(window.XLSX);
+          else reject(new Error('Không thể nạp thư viện XLSX Style'));
+        };
+        sc.onerror = () => {
+          const fb = document.createElement('script');
+          fb.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+          fb.onload = () => resolve(window.XLSX);
+          fb.onerror = () => reject(new Error('Không thể nạp thư viện XLSX'));
+          document.head.appendChild(fb);
+        };
         document.head.appendChild(sc);
       });
     }
@@ -3322,7 +5193,7 @@
         calcVisibleSheetNames,
         calcHiddenSheetNames: Array.isArray(rawCalc.calcHiddenSheetNames) ? rawCalc.calcHiddenSheetNames : ['MSRPs&BuyCost'],
         calcSheetNames: calcVisibleSheetNames,
-        calcSheetsRaw: rawCalc.calcSheetsRaw || {},
+        calcSheetsRaw: normalizeSophosCalcSheetsRawToA1Js(rawCalc.calcSheetsRaw),
         calcSheetsStyled: rawCalc.calcSheetsStyled || {},
         engineMeta: rawCalc.engineMeta || null,
         engineRuntime,
@@ -3330,8 +5201,323 @@
       };
     }
 
+    function normalizeSophosCalcSheetsRawToA1Js(rawSheets) {
+      if (!rawSheets || typeof rawSheets !== 'object') return {};
+      const out = {};
+      for (const [sName, srcRows] of Object.entries(rawSheets)) {
+        if (!Array.isArray(srcRows) || !srcRows.length) {
+          out[sName] = Array.isArray(srcRows) ? srcRows : [];
+          continue;
+        }
+        let rows = srcRows;
+        if (sName === 'Quick MSRP look up' && /^sector\b/i.test(String((rows[0] && rows[0][1]) || '').trim())) {
+          rows = [[], ...rows];
+        }
+        let colPad = 0;
+        if (sName === 'Advisory services' && /^advisory\s+services$/i.test(String((rows[8] && rows[8][0]) || '').trim())) {
+          colPad = 2;
+        } else if (
+          (sName === 'Mobile' || sName === 'Email' || sName === 'Workspace Protection' || sName === 'Backup & Recovery') &&
+          /^sector\b/i.test(String((rows[2] && rows[2][5]) || '').trim())
+        ) {
+          colPad = 1;
+        } else if (
+          sName === 'Network Detection & Response' &&
+          /^ndr\s+deal\s+settings/i.test(String((rows[7] && rows[7][1]) || '').trim())
+        ) {
+          colPad = 1;
+        } else if (
+          sName === 'Discounts' &&
+          (/^asean|^americas|^emea|^apj/i.test(String((rows[1] && rows[1][0]) || '').trim()) ||
+            /^suggested\s+reseller/i.test(String((rows[8] && rows[8][1]) || '').trim()))
+        ) {
+          colPad = 1;
+        } else if (
+          (sName === "What's New!" || sName === 'Partner Resources' || sName === 'Successors') &&
+          String((rows[1] && rows[1][0]) || '').trim() !== '' &&
+          String((rows[1] && rows[1][1]) || '').trim() === ''
+        ) {
+          colPad = 1;
+        }
+        if (colPad > 0) {
+          const prefix = new Array(colPad).fill(null);
+          rows = rows.map(r => (Array.isArray(r) && r.length ? [...prefix, ...r] : []));
+        }
+        out[sName] = rows;
+      }
+      return out;
+    }
+
+    const populatedCalcOfficeUrlCache = new Map();
+    const populatedCalcOfficeInFlight = new Map();
+
+    function resolveCalcOfficeTargetInfo() {
+      const ctx = ensureActiveCalcContext() || inferSophosCalculatorContextJs(calcRefData, state.sku, state.itemName);
+      const rawSheets = (calcRefData && calcRefData.calcSheetsRaw) || {};
+      const visibleNames = (calcRefData && Array.isArray(calcRefData.calcVisibleSheetNames) && calcRefData.calcVisibleSheetNames.length)
+        ? calcRefData.calcVisibleSheetNames
+        : Object.keys(rawSheets);
+      let targetSheet = String(state.sheet || '').trim();
+      if (!targetSheet || targetSheet === 'MSRPs&BuyCost' || targetSheet === 'Drop_Downs' || targetSheet === 'Features' || !rawSheets[targetSheet]) {
+        targetSheet = (ctx && ctx.nativeSheet && rawSheets[ctx.nativeSheet])
+          ? ctx.nativeSheet
+          : (rawSheets['Firewall'] ? 'Firewall' : (visibleNames[0] || 'Cover'));
+      }
+      const cacheKey = JSON.stringify([
+        (calcRefData && calcRefData.updatedAt) || '',
+        targetSheet,
+        String(state.sku || '').toUpperCase(),
+        ctx || {}
+      ]);
+      return { ctx, targetSheet, cacheKey };
+    }
+
+    function buildPopulatedCalcWorkbookJs(XLSX) {
+      const { ctx, targetSheet } = resolveCalcOfficeTargetInfo();
+      const rawSheets = (calcRefData && calcRefData.calcSheetsRaw) || {};
+      const styledSheets = (calcRefData && calcRefData.calcSheetsStyled) || {};
+      const visibleNames = (calcRefData && Array.isArray(calcRefData.calcVisibleSheetNames) && calcRefData.calcVisibleSheetNames.length)
+        ? [...calcRefData.calcVisibleSheetNames]
+        : Object.keys(rawSheets);
+
+      const orderedSheets = [];
+      if (rawSheets[targetSheet]) orderedSheets.push(targetSheet);
+      for (const sName of visibleNames) {
+        if (sName !== targetSheet && rawSheets[sName]) orderedSheets.push(sName);
+      }
+
+      const outWb = XLSX.utils.book_new();
+      let resolvedTargetRow = Number(state.targetRow) || 29;
+      let resolvedTargetColLetter = String(state.colLetter || 'H').toUpperCase();
+      let resolvedTargetSku = String(state.sku || (ctx && ctx.sku) || '').toUpperCase();
+
+      for (const sName of orderedSheets) {
+        const baseRows = rawSheets[sName] || [];
+        const sheetCtx = (calcRefData && calcRefData.engineRuntime && ctx)
+          ? resolveSheetContextForWorkbookJs(calcRefData, sName, ctx, targetSheet)
+          : ctx;
+        const overlaid = (calcRefData && calcRefData.engineRuntime && sheetCtx)
+          ? overlayCalculatedSheetAoaJs(calcRefData, sName, baseRows, sheetCtx)
+          : { rows: baseRows, targetRow: resolvedTargetRow, targetColLetter: resolvedTargetColLetter, targetSku: resolvedTargetSku };
+
+        if (sName === targetSheet) {
+          const curR = resolvedTargetRow - 1;
+          const curC = letterToColIndex(resolvedTargetColLetter);
+          const cellAtState = overlaid.rows[curR] ? String(overlaid.rows[curR][curC] ?? '').trim().toUpperCase() : '';
+          const expected = String(state.sku || overlaid.targetSku || (ctx && ctx.sku) || '').trim().toUpperCase();
+          if (state.sheet !== targetSheet || !expected || cellAtState !== expected) {
+            resolvedTargetRow = overlaid.targetRow || resolvedTargetRow;
+            resolvedTargetColLetter = overlaid.targetColLetter || resolvedTargetColLetter;
+          }
+          if (overlaid.targetSku) resolvedTargetSku = overlaid.targetSku;
+        }
+
+        const ws = XLSX.utils.aoa_to_sheet(overlaid.rows);
+        const stMeta = styledSheets[sName];
+        const merges = (stMeta && Array.isArray(stMeta.merges)) ? stMeta.merges : [];
+        const mergeTopLeftSpan = new Map();
+        const mergeCoveredWb = new Set();
+        if (merges.length) {
+          ws['!merges'] = merges.map(m => {
+            const sr = Math.max(0, m.top - 1);
+            const sc = Math.max(0, m.left - 1);
+            const er = Math.max(0, m.bottom - 1);
+            const ec = Math.max(0, m.right - 1);
+            const cSpan = ec - sc + 1;
+            if (cSpan > 1 || er > sr) {
+              mergeTopLeftSpan.set(`${sr},${sc}`, cSpan);
+              for (let rr = sr; rr <= er; rr++) {
+                for (let cc = sc; cc <= ec; cc++) {
+                  if (rr !== sr || cc !== sc) mergeCoveredWb.add(`${rr},${cc}`);
+                }
+              }
+            }
+            return { s: { r: sr, c: sc }, e: { r: er, c: ec } };
+          });
+        }
+
+        const rawColW = (stMeta && Array.isArray(stMeta.colWidths)) ? stMeta.colWidths : [];
+        let sheetMaxCols = rawColW.length;
+        for (const rArr of overlaid.rows) {
+          if (rArr && rArr.length > sheetMaxCols) sheetMaxCols = rArr.length;
+        }
+        const computedColWpx = Array.from({ length: sheetMaxCols }, (_, c) => {
+          if (c < rawColW.length && rawColW[c] !== null && rawColW[c] !== undefined) {
+            const w = Number(rawColW[c]);
+            return w === 0 ? 0 : Math.max(50, Math.min(420, w || 95));
+          }
+          return c === 4 ? 320 : 115;
+        });
+
+        for (let r = 0; r < overlaid.rows.length; r++) {
+          const valRow = overlaid.rows[r] || [];
+          for (let c = 0; c < valRow.length; c++) {
+            const mKey = `${r},${c}`;
+            if (mergeCoveredWb.has(mKey)) continue;
+            const val = valRow[c];
+            if (val === null || val === undefined || val === '') continue;
+            const isSkuCell = isSkuLikeValJs(val, resolvedTargetSku || state.sku);
+            let disp = '';
+            let isNumCell = false;
+            if (typeof val === 'number' && Number.isFinite(val)) {
+              isNumCell = true;
+              const isMoney = c >= 5 && r >= 10 && val > 0 && !isCalcQuantityCellJs(r, c, valRow);
+              disp = isMoney
+                ? ('$' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))
+                : formatCell(val);
+            } else if (!isSkuCell && isNumericMoneyOrPctValJs(val)) {
+              isNumCell = true;
+              disp = String(val).trim();
+            } else if (isSkuCell) {
+              disp = String(val).trim();
+            }
+            if (!isSkuCell && !isNumCell) continue;
+            const neededPx = Math.min(320, Math.ceil(disp.length * 9.2 + 24));
+            const cSpan = mergeTopLeftSpan.get(mKey) || 1;
+            if (cSpan > 1) {
+              let spanSum = 0;
+              const endC = Math.min(sheetMaxCols, c + cSpan);
+              for (let sc = c; sc < endC; sc++) spanSum += computedColWpx[sc] || 0;
+              if (spanSum > 0 && spanSum < neededPx) {
+                computedColWpx[c] = (computedColWpx[c] || 0) + (neededPx - spanSum);
+              }
+            } else if (computedColWpx[c] > 0 && computedColWpx[c] < neededPx) {
+              computedColWpx[c] = neededPx;
+            }
+          }
+        }
+        if (sheetMaxCols > 0) {
+          ws['!cols'] = computedColWpx.map(w => (w === 0 ? { hidden: true, wpx: 0 } : { wpx: w }));
+        }
+
+        const palette = (stMeta && Array.isArray(stMeta.stylePalette)) ? stMeta.stylePalette : [];
+        const cellStyles = (stMeta && Array.isArray(stMeta.cellStyles)) ? stMeta.cellStyles : [];
+        if (palette.length && cellStyles.length) {
+          for (let r = 0; r < overlaid.rows.length; r++) {
+            const stRow = cellStyles[r];
+            const valRow = overlaid.rows[r] || [];
+            const maxC = Math.max(stRow ? stRow.length : 0, valRow.length);
+            for (let c = 0; c < maxC; c++) {
+              const pIdx = stRow ? stRow[c] : null;
+              const val = valRow[c];
+              if ((pIdx === null || pIdx === undefined) && (val === null || val === undefined || val === '')) continue;
+              const addr = XLSX.utils.encode_cell({ r, c });
+              if (!ws[addr]) ws[addr] = { t: 's', v: '' };
+              const pObj = (pIdx !== null && pIdx !== undefined) ? palette[pIdx] : null;
+              const isSkuCell = isSkuLikeValJs(val, resolvedTargetSku || state.sku);
+              const isNumCell = !isSkuCell && isNumericMoneyOrPctValJs(val);
+              const cellStyle = {
+                font: {
+                  name: 'Calibri',
+                  sz: (pObj && pObj.sz) || 10,
+                  bold: Boolean(pObj && pObj.b),
+                  italic: Boolean(pObj && pObj.i),
+                  ...(pObj && pObj.fg ? { color: { rgb: String(pObj.fg).replace('#', '') } } : {})
+                },
+                alignment: {
+                  horizontal: (pObj && pObj.al) || ((typeof val === 'number' || isNumCell) ? 'right' : 'left'),
+                  vertical: (pObj && pObj.val) || 'center',
+                  wrapText: !(isSkuCell || isNumCell)
+                }
+              };
+              if (pObj && pObj.bg) {
+                cellStyle.fill = {
+                  patternType: 'solid',
+                  fgColor: { rgb: String(pObj.bg).replace('#', '') }
+                };
+              }
+              if (typeof val === 'number' && c >= 5 && r >= 10 && val > 0 && !isCalcQuantityCellJs(r, c, valRow)) {
+                ws[addr].z = '$#,##0.00';
+              }
+              ws[addr].s = cellStyle;
+            }
+          }
+        }
+
+        if (sName === targetSheet && resolvedTargetRow >= 1) {
+          const targetR = resolvedTargetRow - 1;
+          const targetC = letterToColIndex(resolvedTargetColLetter || 'H');
+          let rStart = targetR, rEnd = targetR, cStart = targetC, cEnd = targetC;
+          for (const m of merges) {
+            if (targetR >= m.top - 1 && targetR <= m.bottom - 1 && targetC >= m.left - 1 && targetC <= m.right - 1) {
+              rStart = m.top - 1;
+              rEnd = m.bottom - 1;
+              cStart = m.left - 1;
+              cEnd = m.right - 1;
+              break;
+            }
+          }
+          const highlightBorder = {
+            top: { style: 'medium', color: { rgb: 'DC2626' } },
+            bottom: { style: 'medium', color: { rgb: 'DC2626' } },
+            left: { style: 'medium', color: { rgb: 'DC2626' } },
+            right: { style: 'medium', color: { rgb: 'DC2626' } }
+          };
+          for (let hr = rStart; hr <= rEnd; hr++) {
+            for (let hc = cStart; hc <= cEnd; hc++) {
+              const hAddr = XLSX.utils.encode_cell({ r: hr, c: hc });
+              if (!ws[hAddr]) ws[hAddr] = { t: 's', v: '' };
+              ws[hAddr].s = {
+                fill: { patternType: 'solid', fgColor: { rgb: 'FEF08A' } },
+                font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: '991B1B' } },
+                alignment: { horizontal: 'center', vertical: 'center', wrapText: false },
+                border: highlightBorder
+              };
+            }
+          }
+        }
+
+        XLSX.utils.book_append_sheet(outWb, ws, sName.slice(0, 31));
+      }
+
+      const lookupSku = String(resolvedTargetSku || state.sku || '').trim().toUpperCase();
+      const skuHit = (lookupSku && calcRefData && calcRefData.calcSkus) ? calcRefData.calcSkus[lookupSku] : null;
+      const allMsrpRows = Array.isArray(sortedCalcMsrpCache) ? sortedCalcMsrpCache : [];
+      if (allMsrpRows.length > 0) {
+        const msrpAoa = [
+          ['Excel Row', 'SKU', 'Product Code', 'Description', 'Type', 'MSRP (USD)', 'Auth Std', 'Auth Reg', 'Auth Inc', 'Silver Std', 'Gold Std', 'Plat Std']
+        ];
+        let startIdx = 0;
+        if (skuHit) {
+          const hitIdx = allMsrpRows.findIndex(x => x && x.sku === lookupSku);
+          if (hitIdx >= 0) startIdx = Math.max(0, hitIdx - 25);
+        }
+        const slice = allMsrpRows.slice(startIdx, startIdx + 120);
+        for (const r of slice) {
+          if (!r) continue;
+          msrpAoa.push([
+            r.rowNum, r.sku, r.pc, r.desc, r.prodType, r.msrp,
+            r.stdAuth, r.regAuth, r.incAuth, r.stdSilv, r.stdGold, r.stdPlat
+          ]);
+        }
+        const msrpWs = XLSX.utils.aoa_to_sheet(msrpAoa);
+        msrpWs['!cols'] = [
+          { wpx: 70 }, { wpx: 145 }, { wpx: 115 }, { wpx: 280 }, { wpx: 105 },
+          { wpx: 95 }, { wpx: 90 }, { wpx: 90 }, { wpx: 90 }, { wpx: 90 }, { wpx: 90 }, { wpx: 90 }
+        ];
+        XLSX.utils.book_append_sheet(outWb, msrpWs, 'MSRPs&BuyCost');
+      }
+
+      if (!outWb.SheetNames.length) {
+        XLSX.utils.book_append_sheet(outWb, XLSX.utils.aoa_to_sheet([['Sophos Reseller Calculator']]), 'Cover');
+      }
+      outWb.Workbook = { Views: [{ activeTab: 0 }] };
+      return {
+        wb: outWb,
+        targetSheet: outWb.SheetNames[0] || targetSheet,
+        targetRow: resolvedTargetRow,
+        targetColLetter: resolvedTargetColLetter,
+        targetSku: resolvedTargetSku
+      };
+    }
+
     async function buildWorkbookFromCurrentRefData() {
       const XLSX = await loadSheetJsIfNeeded();
+      if (state.fileType === 'calc' && calcRefData && calcRefData.calcSheetsRaw) {
+        const built = buildPopulatedCalcWorkbookJs(XLSX);
+        return { XLSX, wb: built.wb };
+      }
+
       const wb = XLSX.utils.book_new();
       const fInfo = getActiveFileInfo();
 
@@ -3358,12 +5544,6 @@
           ];
           XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), 'SaleListSMB+Enterprise');
         }
-      } else if (state.fileType === 'calc' && calcRefData?.calcSheetsRaw) {
-        Object.entries(calcRefData.calcSheetsRaw).forEach(([sName, rows]) => {
-          if (Array.isArray(rows)) {
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), sName.slice(0, 31));
-          }
-        });
       } else if (state.fileType === 'tg' && refData?.tgSheetsRaw) {
         Object.entries(refData.tgSheetsRaw).forEach(([sName, rows]) => {
           if (Array.isArray(rows)) {
@@ -3443,17 +5623,24 @@
       const cleanSku = String(state.sku || '').trim().toUpperCase();
 
       if (state.fileType === 'calc') {
-        if (!targetSheet || targetSheet === 'MSRPs&BuyCost' || targetSheet === 'Drop_Downs' || targetSheet === 'Features') {
-          const ctx = ensureActiveCalcContext();
-          targetSheet = (ctx && ctx.nativeSheet) || 'Firewall';
-          if (calcRefData && calcRefData.engineRuntime && ctx && calcRefData.calcSheetsRaw && calcRefData.calcSheetsRaw[targetSheet]) {
+        if (calcRefData && calcRefData.calcSheetsRaw) {
+          const { ctx, targetSheet: resolvedSheet } = resolveCalcOfficeTargetInfo();
+          targetSheet = resolvedSheet;
+          if (calcRefData.engineRuntime && ctx && calcRefData.calcSheetsRaw[targetSheet]) {
             const ov = overlayCalculatedSheetAoaJs(calcRefData, targetSheet, calcRefData.calcSheetsRaw[targetSheet], ctx);
-            targetR = ov.targetRow;
-            cleanCol = ov.targetColLetter;
-          } else {
-            targetR = getCalcFirewallRowForItem(state.itemName, cleanSku) || 29;
-            cleanCol = 'H';
+            const curR = targetR - 1;
+            const curC = letterToColIndex(cleanCol);
+            const cellAtState = ov.rows[curR] ? String(ov.rows[curR][curC] ?? '').trim().toUpperCase() : '';
+            const expected = String(cleanSku || ov.targetSku || (ctx && ctx.sku) || '').trim().toUpperCase();
+            if (state.sheet !== targetSheet || !expected || cellAtState !== expected) {
+              targetR = ov.targetRow || targetR;
+              cleanCol = ov.targetColLetter || cleanCol;
+            }
           }
+        } else if (!targetSheet || targetSheet === 'MSRPs&BuyCost' || targetSheet === 'Drop_Downs' || targetSheet === 'Features') {
+          targetSheet = 'Firewall';
+          targetR = getCalcFirewallRowForItem(state.itemName, cleanSku) || 29;
+          cleanCol = 'H';
         }
       } else if (state.fileType === 'goc' || state.fileType === 'skulist') {
         if (targetSheet === 'HW_Compliance') {
@@ -3484,6 +5671,49 @@
     async function ensureExcelUrlForOfficeView() {
       const fInfo = getActiveFileInfo();
       const rawUrl = String(fInfo.url || '').trim();
+
+      // Với file calculate_sophos: luôn tạo bản .xlsx đã điền đầy đủ Mã SKU, Giá MSRP & Buy Cost (không dùng file template trống công thức)
+      if (state.fileType === 'calc' && calcRefData && calcRefData.calcSheetsRaw) {
+        const { cacheKey, targetSheet } = resolveCalcOfficeTargetInfo();
+        if (populatedCalcOfficeUrlCache.has(cacheKey)) {
+          return populatedCalcOfficeUrlCache.get(cacheKey);
+        }
+        if (populatedCalcOfficeInFlight.has(cacheKey)) {
+          return await populatedCalcOfficeInFlight.get(cacheKey);
+        }
+        const uploadTask = (async () => {
+          const { XLSX, wb } = await buildWorkbookFromCurrentRefData();
+          const outBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array', compression: true });
+          const blob = new Blob([outBuffer], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+          });
+          const safeToken = String(state.sku || targetSheet || 'calc').replace(/[^a-zA-Z0-9_-]+/g, '_').slice(0, 36);
+          const safeName = String(fInfo.name || 'calculate_sophos').replace(/\.(xlsb|xls|xlsx|json)$/i, '') + `_${safeToken}_viewoffice.xlsx`;
+          const formData = new FormData();
+          formData.append('file', blob, safeName);
+          formData.append('upload_preset', 'upload_file');
+          const res = await fetch('https://api.cloudinary.com/v1_1/db6fzs3rh/raw/upload', {
+            method: 'POST',
+            body: formData
+          });
+          if (!res.ok) {
+            throw new Error('Không thể tạo file .xlsx đã tính sẵn mã SKU trên Cloudinary cho ViewOffice');
+          }
+          const data = await res.json();
+          const newUrl = data.secure_url;
+          if (newUrl) {
+            populatedCalcOfficeUrlCache.set(cacheKey, newUrl);
+          }
+          return newUrl;
+        })();
+        populatedCalcOfficeInFlight.set(cacheKey, uploadTask);
+        try {
+          return await uploadTask;
+        } finally {
+          populatedCalcOfficeInFlight.delete(cacheKey);
+        }
+      }
+
       if (rawUrl && !rawUrl.toLowerCase().endsWith('.json')) {
         return rawUrl;
       }
@@ -3508,11 +5738,10 @@
       const data = await res.json();
       const newUrl = data.secure_url;
       if (vendorMeta && newUrl) {
-        if (state.fileType === 'calc') vendorMeta.calc_file_url = newUrl;
-        else if (state.fileType.includes('goc')) vendorMeta.goc_file_url = newUrl;
+        if (state.fileType.includes('goc')) vendorMeta.goc_file_url = newUrl;
         else if (state.fileType === 'tg') vendorMeta.tg_file_url = newUrl;
         else if (state.fileType === 'skulist') vendorMeta.skulist_file_url = newUrl;
-        else vendorMeta.mau_file_url = newUrl;
+        else if (state.fileType !== 'calc') vendorMeta.mau_file_url = newUrl;
       }
       return newUrl;
     }
@@ -3522,7 +5751,7 @@
       if (!iframe) return;
       try {
         const excelUrl = await ensureExcelUrlForOfficeView();
-        const activeCellParam = getOfficeActiveCellParam(excelUrl);
+        const activeCellParam = getOfficeActiveCellParam();
         const embedUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(excelUrl)}&activeCell=${activeCellParam}&wdAllowInteractivity=True&wdHideGridlines=False&wdDownloadButton=True`;
         if (currentLoadedOfficeUrl !== embedUrl) {
           currentLoadedOfficeUrl = embedUrl;
@@ -3539,8 +5768,36 @@
 
       const fInfo = getActiveFileInfo();
       const rawUrl = String(fInfo.url || '').trim();
+
+      if (state.fileType === 'calc' && calcRefData && calcRefData.calcSheetsRaw) {
+        const { cacheKey, targetSheet } = resolveCalcOfficeTargetInfo();
+        if (populatedCalcOfficeUrlCache.has(cacheKey)) {
+          const cachedUrl = populatedCalcOfficeUrlCache.get(cacheKey);
+          const activeCellParam = getOfficeActiveCellParam();
+          const viewUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(cachedUrl)}&activeCell=${activeCellParam}`;
+          window.open(viewUrl, '_blank', 'noopener,noreferrer');
+          return;
+        }
+        const win = window.open('about:blank', '_blank');
+        if (win && win.document) {
+          win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Đang mở ViewOffice...</title></head><body style="margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:#0f172a;color:#e2e8f0;font-family:system-ui,sans-serif;"><div style="text-align:center;max-width:520px;padding:24px;"><div style="font-size:18px;font-weight:700;color:#38bdf8;margin-bottom:8px;">⏳ Đang tính sẵn mã SKU ${escapeHtml(state.sku || '')} & mở Microsoft ViewOffice...</div><div style="font-size:13px;color:#94a3b8;">${escapeHtml(fInfo.name || 'calculate_sophos.xlsx')} • Sheet: ${escapeHtml(targetSheet)} • Ô ${escapeHtml(state.colLetter + state.targetRow)}</div></div></body></html>`);
+          win.document.close();
+        }
+        try {
+          const excelUrl = await ensureExcelUrlForOfficeView();
+          const activeCellParam = getOfficeActiveCellParam();
+          const viewUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(excelUrl)}&activeCell=${activeCellParam}`;
+          if (win) win.location.href = viewUrl;
+          else window.open(viewUrl, '_blank', 'noopener,noreferrer');
+        } catch (err) {
+          if (win) win.close();
+          alert('Không thể mở ViewOffice: ' + (err.message || err));
+        }
+        return;
+      }
+
       if (rawUrl && !rawUrl.toLowerCase().endsWith('.json')) {
-        const activeCellParam = getOfficeActiveCellParam(rawUrl);
+        const activeCellParam = getOfficeActiveCellParam();
         const viewUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(rawUrl)}&activeCell=${activeCellParam}`;
         window.open(viewUrl, '_blank', 'noopener,noreferrer');
         return;
@@ -3553,7 +5810,7 @@
       }
       try {
         const excelUrl = await ensureExcelUrlForOfficeView();
-        const activeCellParam = getOfficeActiveCellParam(excelUrl);
+        const activeCellParam = getOfficeActiveCellParam();
         const viewUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(excelUrl)}&activeCell=${activeCellParam}`;
         if (win) win.location.href = viewUrl;
         else window.open(viewUrl, '_blank', 'noopener,noreferrer');
@@ -3728,8 +5985,45 @@
       const vendorKey = isAcronisMode ? 'acronis' : (isKasMode ? 'kaspersky' : 'sophos');
 
       try {
-        const metaRes = await fetch(`https://chusonproject-default-rtdb.asia-southeast1.firebasedatabase.app/vendor_ref_files/${vendorKey}.json`);
-        vendorMeta = metaRes.ok ? await metaRes.json() : null;
+        const tsNow = Date.now();
+        const [liveMeta, mockMeta] = await Promise.all([
+          fetch(`https://chusonproject-default-rtdb.asia-southeast1.firebasedatabase.app/vendor_ref_files/${vendorKey}.json?_t=${tsNow}`, { cache: 'no-store' })
+            .then(r => (r.ok ? r.json() : null))
+            .catch(() => null),
+          fetch(`/__mock_rtdb/data?path=vendor_ref_files/${vendorKey}&_t=${tsNow}`, { cache: 'no-store' })
+            .then(r => (r.ok ? r.json() : null))
+            .catch(() => null)
+        ]);
+        const mergeMetaFieldGroup = (baseObj, candObj, tsKeys, fields) => {
+          if (!candObj || typeof candObj !== 'object') return;
+          const getTs = o => {
+            if (!o) return 0;
+            for (const k of tsKeys) {
+              const n = Number(o[k]);
+              if (Number.isFinite(n) && n > 0) return n;
+            }
+            return 0;
+          };
+          const bTs = getTs(baseObj);
+          const cTs = getTs(candObj);
+          const hasAnyField = o => o && fields.some(f => o[f] !== undefined && o[f] !== null && o[f] !== '');
+          if (!hasAnyField(baseObj) || (hasAnyField(candObj) && cTs >= bTs)) {
+            for (const f of fields) {
+              if (candObj[f] !== undefined) baseObj[f] = candObj[f];
+            }
+          }
+        };
+        if (liveMeta && mockMeta && typeof liveMeta === 'object' && typeof mockMeta === 'object') {
+          const merged = { ...liveMeta };
+          mergeMetaFieldGroup(merged, mockMeta, ['updated_at', 'tg_updated_at', 'goc_updated_at'], ['index_url', 'index_file_name', 'updated_at']);
+          mergeMetaFieldGroup(merged, mockMeta, ['calc_updated_at', 'updated_at'], ['calc_file_url', 'calc_file_chunk_urls', 'calc_file_name', 'calc_index_url', 'calc_index_chunk_urls', 'calc_version', 'calc_sku_count', 'calc_updated_at']);
+          mergeMetaFieldGroup(merged, mockMeta, ['tg_updated_at', 'updated_at'], ['tg_file_url', 'tg_file_name', 'tg_updated_at']);
+          mergeMetaFieldGroup(merged, mockMeta, ['goc_updated_at', 'updated_at'], ['goc_file_url', 'goc_file_name', 'skulist_file_url', 'skulist_file_name', 'goc_updated_at']);
+          mergeMetaFieldGroup(merged, mockMeta, ['mau_updated_at', 'updated_at'], ['mau_file_url', 'mau_file_name', 'mau_updated_at']);
+          vendorMeta = merged;
+        } else {
+          vendorMeta = liveMeta || mockMeta || null;
+        }
         const hasMainIndex = Boolean(vendorMeta && vendorMeta.index_url);
         const hasCalcIndex = vendorKey === 'sophos' && Boolean(
           vendorMeta && (vendorMeta.calc_index_url || (Array.isArray(vendorMeta.calc_index_chunk_urls) && vendorMeta.calc_index_chunk_urls.length > 0))
@@ -3807,14 +6101,28 @@
         sortedCalcMsrpCache = calcRefData.sortedCalcMsrpRows || [];
         const ctx = ensureActiveCalcContext();
         if (state.fileType === 'calc' && state.sheet !== 'MSRPs&BuyCost' && calcRefData.engineRuntime && ctx) {
-          if (!explicitSheetParam) {
-            state.sheet = ctx.nativeSheet || 'Firewall';
+          const rawSheets = calcRefData.calcSheetsRaw || {};
+          if (
+            !explicitSheetParam ||
+            !rawSheets[state.sheet] ||
+            (explicitSheetParam === 'Firewall' && ctx.calcType === 'product' && ctx.nativeSheet && ctx.nativeSheet !== 'Firewall' && rawSheets[ctx.nativeSheet])
+          ) {
+            state.sheet = (ctx.nativeSheet && rawSheets[ctx.nativeSheet]) ? ctx.nativeSheet : 'Firewall';
           }
-          if (!explicitRowParam && calcRefData.calcSheetsRaw && calcRefData.calcSheetsRaw[state.sheet]) {
-            const ov = overlayCalculatedSheetAoaJs(calcRefData, state.sheet, calcRefData.calcSheetsRaw[state.sheet], ctx);
-            state.targetRow = ov.targetRow;
-            state.colLetter = explicitColParam ? state.colLetter : ov.targetColLetter;
-            state.colIndex = letterToColIndex(state.colLetter);
+          if (rawSheets[state.sheet]) {
+            const ov = overlayCalculatedSheetAoaJs(calcRefData, state.sheet, rawSheets[state.sheet], ctx);
+            const expectedSku = String(ov.targetSku || ctx.sku || state.sku || '').trim().toUpperCase();
+            if (expectedSku && (!state.sku || (state.sku === 'CFRAAB12ZZCAA' && expectedSku === 'CFRAAB12BANCAA'))) {
+              state.sku = expectedSku;
+            }
+            const curCell = (state.targetRow >= 1 && ov.rows[state.targetRow - 1])
+              ? String(ov.rows[state.targetRow - 1][letterToColIndex(state.colLetter)] ?? '').trim().toUpperCase()
+              : '';
+            if (!explicitRowParam || (expectedSku && curCell !== expectedSku && ov.targetRow >= 1)) {
+              state.targetRow = ov.targetRow || state.targetRow;
+              state.colLetter = ov.targetColLetter || (explicitColParam ? state.colLetter : 'H');
+              state.colIndex = letterToColIndex(state.colLetter);
+            }
           }
         }
       }

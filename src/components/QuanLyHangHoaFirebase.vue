@@ -219,6 +219,15 @@
               </template>
               <span v-else class="vendor-uploaded-file-box__empty">File đã up: Chưa có</span>
             </div>
+            <button
+              type="button"
+              class="vendor-ref-sync-btn vendor-ref-sync-btn--calc-db"
+              title="Đối chiếu toàn bộ mặt hàng Sophos trong Database với File Calculator và đồng bộ List Price vào DB"
+              @click="openSophosDbListPriceSyncModal"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+              <span>Đồng bộ ListPrice (DB)</span>
+            </button>
           </div>
           <div class="vendor-ref-slot">
             <label
@@ -301,6 +310,25 @@
               </template>
               <span v-else class="vendor-uploaded-file-box__empty">File đã up: Chưa có</span>
             </div>
+            <button
+              type="button"
+              class="vendor-ref-sync-btn vendor-ref-sync-btn--tg-calc"
+              title="Đồng bộ giá cột F (GIÁ THAM KHẢO USD) & bảng LP Sophos của File Trung Gian hiện tại theo File Calculator rồi lưu lên Cloudinary"
+              @click="openSophosTrungGianCalcSyncModal"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+              <span>Đồng bộ giá theo Calc</span>
+            </button>
+            <button
+              type="button"
+              class="vendor-ref-sync-btn vendor-ref-sync-btn--tg-export"
+              :disabled="exportingSophosTgFromCalc"
+              title="Lấy File Trung Gian hiện tại làm khung (giữ nguyên màu sắc, công thức, cột Nhập khẩu), cập nhật Giá MSRP & SKU mới từ File Calculator cho cả 5 sheet BOM + sheet LP Sophos rồi xuất .xlsx về máy"
+              @click="exportSophosTrungGianFromCalc()"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              <span>{{ exportingSophosTgFromCalc ? 'Đang xuất...' : 'Xuất File Trung Gian (Calc)' }}</span>
+            </button>
           </div>
         </div>
 
@@ -2937,8 +2965,8 @@
                       <button
                         type="button"
                         class="vendor-file-office-btn"
-                        title="Mở ViewOffice trong tab mới tại sheet Firewall của calculate_sophos"
-                        @click.stop="openCompareOfficePreview({ vendor: 'sophos', role: 'calc', sheet: 'Firewall', rowNum: comparisonRows.find(r => r.calcFirewallRowNum)?.calcFirewallRowNum || 29, colLetter: 'H', sku: comparisonRows.find(r => r.calcFound)?.sku || '' })"
+                        title="Mở ViewOffice trong tab mới với đầy đủ mã SKU đã tính toán của calculate_sophos"
+                        @click.stop="openCompareOfficePreview({ vendor: 'sophos', role: 'calc', sheet: comparisonRows.find(r => r.calcFound)?.calcNativeSheet || 'Firewall', rowNum: comparisonRows.find(r => r.calcFound)?.calcSheetRowNum || comparisonRows.find(r => r.calcFirewallRowNum)?.calcFirewallRowNum || 29, colLetter: comparisonRows.find(r => r.calcFound)?.calcSheetColLetter || 'H', sku: comparisonRows.find(r => r.calcFound)?.calcAltSku || comparisonRows.find(r => r.calcFound)?.sku || '', itemName: comparisonRows.find(r => r.calcFound)?.name || '' })"
                       >👁️ Xem bằng ViewOffice</button>
                       <button
                         type="button"
@@ -3037,7 +3065,7 @@
                     type="button"
                     class="compare-office-role-btn"
                     :class="{ active: compareOfficePreview.role === 'calc' }"
-                    @click="openCompareOfficePreview({ vendor: 'sophos', role: 'calc', sheet: 'Firewall', rowNum: compareOfficePreview.rowNum || 29, colLetter: 'H', sku: compareOfficePreview.sku })"
+                    @click="openCompareOfficePreview({ vendor: 'sophos', role: 'calc', sheet: compareOfficePreview.sheet || 'Firewall', rowNum: compareOfficePreview.rowNum || 29, colLetter: compareOfficePreview.colLetter || 'H', sku: compareOfficePreview.sku, itemName: compareOfficePreview.itemName })"
                   >🧮 File Calculator ({{ getVendorCompareFileMeta('sophos', 'calc').name }})</button>
                   <button
                     v-if="getVendorCompareFileMeta('sophos', 'goc')"
@@ -3478,20 +3506,20 @@
                             🧮 MSRPs&amp;BuyCost • B{{ item.calcRowNum }} (Dòng {{ item.calcRowNum }})
                           </button>
                           <button
-                            v-if="item.calcFirewallRowNum"
+                            v-if="item.calcSheetRowNum || item.calcFirewallRowNum"
                             type="button"
                             class="sku-jump-chip sku-jump-chip--calc-sub"
-                            @click="openExcelNavigator({ fileType: 'calc', sheet: 'Firewall', rowNum: item.calcFirewallRowNum, colLetter: 'H', sku: item.sku, itemName: item.name })"
-                            :title="`Click để mở tab mới tới ô H${item.calcFirewallRowNum} (Dòng ${item.calcFirewallRowNum}) trong sheet Firewall của calculate_sophos.xlsx`"
+                            @click="openExcelNavigator({ fileType: 'calc', sheet: item.calcNativeSheet || 'Firewall', rowNum: item.calcSheetRowNum || item.calcFirewallRowNum, colLetter: item.calcSheetColLetter || 'H', sku: item.calcAltSku || item.sku, itemName: item.name })"
+                            :title="`Click để mở tab mới tới ô ${item.calcSheetColLetter || 'H'}${item.calcSheetRowNum || item.calcFirewallRowNum} (Dòng ${item.calcSheetRowNum || item.calcFirewallRowNum}) trong sheet ${item.calcNativeSheet || 'Firewall'} của calculate_sophos.xlsx`"
                           >
-                            🧮 Sheet Firewall • H{{ item.calcFirewallRowNum }} (Dòng {{ item.calcFirewallRowNum }})
+                            🧮 Sheet {{ item.calcNativeSheet || 'Firewall' }} • {{ item.calcSheetColLetter || 'H' }}{{ item.calcSheetRowNum || item.calcFirewallRowNum }} (Dòng {{ item.calcSheetRowNum || item.calcFirewallRowNum }})
                           </button>
                           <button
                             type="button"
                             class="vendor-file-office-btn"
                             style="padding: 2px 7px; font-size: 10.5px;"
-                            @click="openCompareOfficePreview({ vendor: 'sophos', role: 'calc', sheet: 'Firewall', rowNum: item.calcFirewallRowNum || 29, colLetter: 'H', sku: item.calcAltSku || item.sku, itemName: item.name })"
-                            title="Mở ViewOffice bằng file calculate_sophos trong tab mới"
+                            @click="openCompareOfficePreview({ vendor: 'sophos', role: 'calc', sheet: item.calcNativeSheet || 'Firewall', rowNum: item.calcSheetRowNum || item.calcFirewallRowNum || 29, colLetter: item.calcSheetColLetter || 'H', sku: item.calcAltSku || item.sku, itemName: item.name })"
+                            title="Mở ViewOffice bằng file calculate_sophos đã điền mã SKU trong tab mới"
                           >
                             👁️ Xem bằng ViewOffice
                           </button>
@@ -4857,12 +4885,12 @@
                   :key="colLet"
                   :class="{
                     'excel-cell-target': rObj.rowNum === excelNavState.targetRow && cIdx === excelNavState.colIndex,
-                    'excel-cell-num': typeof rObj.cells[cIdx] === 'number',
+                    'excel-cell-num': isNumericOrMoneyExcelCell(rObj.cells[cIdx]),
                     'excel-cell-sku': isSkuLikeCell(rObj.cells[cIdx], excelNavState.sku)
                   }"
                   @click.stop="selectExcelRowAndCell(rObj.rowNum, cIdx, rObj.cells)"
                 >
-                  <div class="excel-cell-inner">{{ formatExcelCellValue(rObj.cells[cIdx]) }}</div>
+                  <div class="excel-cell-inner">{{ formatExcelCellValue(rObj.cells[cIdx], rObj.rowNum, cIdx, rObj.cells) }}</div>
                 </td>
               </tr>
             </tbody>
@@ -4991,8 +5019,8 @@
                       <button
                         type="button"
                         class="vendor-file-office-btn"
-                        title="Mở ViewOffice bằng calculate_sophos trong tab mới"
-                        @click.stop="openCompareOfficePreview({ vendor: 'sophos', role: 'calc', sheet: 'Firewall', rowNum: cardRefCompareData.calcFirewallRowNum || 29, colLetter: 'H', sku: cardRefCompareData.sku, itemName: cardRefCompareData.item?.Ten_hang })"
+                        title="Mở ViewOffice bằng calculate_sophos (đã điền sẵn mã SKU & công thức) trong tab mới"
+                        @click.stop="openCompareOfficePreview({ vendor: 'sophos', role: 'calc', sheet: sophosCardActiveCalcSummary.sheetName || cardRefCompareData.calcNativeSheet || 'Firewall', rowNum: sophosCardActiveCalcSummary.sheetRowNum || cardRefCompareData.calcSheetRowNum || cardRefCompareData.calcFirewallRowNum || 29, colLetter: sophosCardActiveCalcSummary.sheetColLetter || cardRefCompareData.calcSheetColLetter || 'H', sku: sophosCardActiveCalcSummary.sku || cardRefCompareData.sku, itemName: cardRefCompareData.item?.Ten_hang })"
                       >👁️ Xem bằng ViewOffice</button>
                       <button
                         type="button"
@@ -5136,7 +5164,7 @@
                   type="button"
                   class="compare-office-role-btn"
                   :class="{ active: compareOfficePreview.role === 'calc' }"
-                  @click="openCompareOfficePreview({ vendor: 'sophos', role: 'calc', sheet: 'Firewall', rowNum: cardRefCompareData.calcFirewallRowNum || 29, colLetter: 'H', sku: cardRefCompareData.sku })"
+                  @click="openCompareOfficePreview({ vendor: 'sophos', role: 'calc', sheet: sophosCardActiveCalcSummary.sheetName || cardRefCompareData.calcNativeSheet || 'Firewall', rowNum: sophosCardActiveCalcSummary.sheetRowNum || cardRefCompareData.calcSheetRowNum || cardRefCompareData.calcFirewallRowNum || 29, colLetter: sophosCardActiveCalcSummary.sheetColLetter || cardRefCompareData.calcSheetColLetter || 'H', sku: sophosCardActiveCalcSummary.sku || cardRefCompareData.sku, itemName: cardRefCompareData.item?.Ten_hang })"
                 >🧮 Calculator ({{ getVendorCompareFileMeta('sophos', 'calc').name }})</button>
                 <button
                   v-if="getVendorCompareFileMeta(cardRefCompareData.vendor, 'goc')"
@@ -5337,7 +5365,7 @@
                   class="pl-view-tab"
                   :class="{ active: sophosCardCalcState.activeTab === 'firewall' }"
                   style="font-weight: 700;"
-                  @click="sophosCardCalcState.activeTab = 'firewall'"
+                  @click="sophosCardCalcState.activeTab = 'firewall'; sophosCardCalcState.calcMode = 'firewall'"
                 >
                   🔥 Sheet Firewall (5 Nhóm Model &amp; 15 Hạng Mục)
                 </button>
@@ -5346,7 +5374,7 @@
                   class="pl-view-tab"
                   :class="{ active: sophosCardCalcState.activeTab === 'product' }"
                   style="font-weight: 700;"
-                  @click="sophosCardCalcState.activeTab = 'product'"
+                  @click="sophosCardCalcState.activeTab = 'product'; sophosCardCalcState.calcMode = 'product'"
                 >
                   🧮 Sheet {{ sophosCardCalcState.nativeSheet && sophosCardCalcState.nativeSheet !== 'Firewall' ? sophosCardCalcState.nativeSheet : 'Universal Calculator' }} (Tất Cả Sản Phẩm)
                 </button>
@@ -6816,6 +6844,674 @@
       </div>
     </div>
 
+    <!-- ================== MODAL 1: ĐỒNG BỘ LISTPRICE HÀNG SOPHOS (DB) THEO FILE CALCULATOR ================== -->
+    <div v-if="showSophosDbSyncModal" class="import-overlay" style="z-index: 10255;" @click.self="!syncingSophosDbFromCalc && (showSophosDbSyncModal = false)">
+      <div class="import-modal sophos-sync-modal" style="max-width: 1320px; width: 96vw; max-height: 92vh; display: flex; flex-direction: column; overflow: hidden;">
+        <!-- Header -->
+        <div class="import-modal__header" style="padding: 14px 20px; border-bottom: 1px solid rgba(148,163,184,0.18);">
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <span class="sophos-sync-pill sophos-sync-pill--db">
+              🔄 ĐỒNG BỘ LISTPRICE DB
+            </span>
+            <h2 class="import-modal__title" style="margin: 0; font-size: 16px;">
+              Đồng Bộ List Price Hàng Sophos Theo File Calculator
+              <code style="margin-left: 6px; font-size: 12.5px; color: #5eead4;">{{ vendorRefFilesMeta.sophos?.calc_file_name || 'calculate_sophos.xlsx' }}</code>
+            </h2>
+            <span v-if="vendorRefFilesMeta.sophos?.calc_version" class="sophos-sync-ver-badge">
+              v{{ vendorRefFilesMeta.sophos.calc_version }}
+            </span>
+            <span v-if="vendorRefFilesMeta.sophos?.calc_effective_from" style="font-size: 11.5px; color: #94a3b8;">
+              • Hiệu lực: <strong style="color: #cbd5e1;">{{ vendorRefFilesMeta.sophos.calc_effective_from }}</strong>
+            </span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <button
+              type="button"
+              class="btn btn-outline"
+              style="padding: 5px 10px; font-size: 12px; width: auto; margin: 0;"
+              :disabled="sophosDbSyncLoading || syncingSophosDbFromCalc"
+              @click="refreshSophosDbSyncModal"
+              title="Quét lại dữ liệu mới nhất từ Database và File Calculator"
+            >
+              ↻ Làm mới
+            </button>
+            <button type="button" class="import-modal__close" :disabled="syncingSophosDbFromCalc" @click="showSophosDbSyncModal = false">✕</button>
+          </div>
+        </div>
+
+        <!-- Body -->
+        <div style="padding: 14px 20px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 12px;">
+          <!-- KPI Strip -->
+          <div class="sophos-sync-kpi-grid">
+            <div class="sophos-sync-kpi-card sophos-sync-kpi-card--slate">
+              <div class="sophos-sync-kpi-label">Tổng hàng Sophos (DB)</div>
+              <div class="sophos-sync-kpi-val">{{ sophosDbSyncSummary.total }}</div>
+              <div class="sophos-sync-kpi-sub">Quét toàn bộ node <code>hang_hoa</code></div>
+            </div>
+            <div class="sophos-sync-kpi-card sophos-sync-kpi-card--amber">
+              <div class="sophos-sync-kpi-label">Cần đồng bộ</div>
+              <div class="sophos-sync-kpi-val">{{ sophosDbSyncSummary.needSync }}</div>
+              <div class="sophos-sync-kpi-sub">Lệch giá: {{ sophosDbSyncSummary.priceDiff }} • Đổi SKU: {{ sophosDbSyncSummary.skuDiff }}</div>
+            </div>
+            <div class="sophos-sync-kpi-card sophos-sync-kpi-card--emerald">
+              <div class="sophos-sync-kpi-label">Đã khớp giá</div>
+              <div class="sophos-sync-kpi-val">{{ sophosDbSyncSummary.matched }}</div>
+              <div class="sophos-sync-kpi-sub">Đúng 100% MSRP File Calculator</div>
+            </div>
+            <div class="sophos-sync-kpi-card sophos-sync-kpi-card--rose">
+              <div class="sophos-sync-kpi-label">Chưa tìm thấy mã Calc</div>
+              <div class="sophos-sync-kpi-val">{{ sophosDbSyncSummary.notFound }}</div>
+              <div class="sophos-sync-kpi-sub">Mã EOL cũ hoặc hàng tự tạo ngoài bảng giá</div>
+            </div>
+          </div>
+
+          <!-- Filter + Options Toolbar -->
+          <div class="sophos-sync-toolbar">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: 1; min-width: 0;">
+              <div class="sophos-sync-filter-tabs">
+                <button
+                  type="button"
+                  class="sophos-sync-tab-btn"
+                  :class="{ active: sophosDbSyncFilter === 'need_sync' }"
+                  @click="sophosDbSyncFilter = 'need_sync'"
+                >
+                  Cần đồng bộ ({{ sophosDbSyncSummary.needSync }})
+                </button>
+                <button
+                  type="button"
+                  class="sophos-sync-tab-btn"
+                  :class="{ active: sophosDbSyncFilter === 'all' }"
+                  @click="sophosDbSyncFilter = 'all'"
+                >
+                  Tất cả ({{ sophosDbSyncSummary.total }})
+                </button>
+                <button
+                  type="button"
+                  class="sophos-sync-tab-btn"
+                  :class="{ active: sophosDbSyncFilter === 'price_diff' }"
+                  @click="sophosDbSyncFilter = 'price_diff'"
+                >
+                  Lệch giá ({{ sophosDbSyncSummary.priceDiff }})
+                </button>
+                <button
+                  v-if="sophosDbSyncSummary.skuDiff > 0"
+                  type="button"
+                  class="sophos-sync-tab-btn"
+                  :class="{ active: sophosDbSyncFilter === 'sku_diff' }"
+                  @click="sophosDbSyncFilter = 'sku_diff'"
+                >
+                  SKU 2026 mới ({{ sophosDbSyncSummary.skuDiff }})
+                </button>
+                <button
+                  type="button"
+                  class="sophos-sync-tab-btn"
+                  :class="{ active: sophosDbSyncFilter === 'matched' }"
+                  @click="sophosDbSyncFilter = 'matched'"
+                >
+                  Đã khớp ({{ sophosDbSyncSummary.matched }})
+                </button>
+                <button
+                  v-if="sophosDbSyncSummary.notFound > 0"
+                  type="button"
+                  class="sophos-sync-tab-btn"
+                  :class="{ active: sophosDbSyncFilter === 'not_found' }"
+                  @click="sophosDbSyncFilter = 'not_found'"
+                >
+                  Không tìm thấy ({{ sophosDbSyncSummary.notFound }})
+                </button>
+              </div>
+
+              <input
+                v-model="sophosDbSyncSearch"
+                type="text"
+                class="sophos-sync-search-input"
+                placeholder="Tìm SKU, mã hàng, tên hàng, danh mục..."
+              />
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <label class="sophos-sync-check-opt" title="Cập nhật trường sku_code sang mã 2026 mới của File Calculator, vẫn giữ nguyên Mã hàng (Ma_hang) nội bộ">
+                <input type="checkbox" v-model="sophosDbSyncUpdateSku2026" />
+                <span>Cập nhật SKU sang mã 2026 mới</span>
+              </label>
+
+              <button
+                type="button"
+                class="btn btn-outline"
+                style="padding: 6px 11px; font-size: 12px; border-color: rgba(245, 158, 11, 0.45); color: #fbbf24; width: auto; margin: 0;"
+                :disabled="syncingSophosDbFromCalc || sophosDbSyncSummary.needSync === 0"
+                @click="selectAllNeedSyncSophosDbRows"
+              >
+                ☑️ Chọn dòng thay đổi ({{ sophosDbSyncSummary.needSync }})
+              </button>
+
+              <button
+                type="button"
+                class="btn btn-primary"
+                style="padding: 6px 14px; font-size: 12.5px; font-weight: 700; width: auto; margin: 0;"
+                :disabled="syncingSophosDbFromCalc || selectedSophosDbSyncCount === 0"
+                @click="applySophosDbListPriceSync"
+              >
+                {{ syncingSophosDbFromCalc ? '⏳ Đang đồng bộ...' : `🔄 Đồng bộ ${selectedSophosDbSyncCount} mã vào DB` }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Rule Banner -->
+          <div class="sophos-sync-rule-note">
+            <span>💡 <strong>Quy tắc bảo toàn Giá vốn:</strong> Cột <code>Don_gia</code> cập nhật theo Giá mới (MSRP). Trường <code>Gia_tieu_chuan</code> chỉ cập nhật theo Giá mới nếu trước đó đang bằng List Price cũ (hoặc = 0); nếu mặt hàng đã có Giá vốn riêng sẽ được giữ nguyên.</span>
+          </div>
+
+          <!-- Loading state -->
+          <div v-if="sophosDbSyncLoading" class="sophos-sync-loading-box">
+            ⏳ Đang tải dữ liệu File Calculator & đối chiếu toàn bộ hàng Sophos trong Database...
+          </div>
+
+          <!-- Preview Table -->
+          <div v-else class="sophos-sync-table-wrap">
+            <table class="sophos-sync-table">
+              <thead>
+                <tr>
+                  <th style="width: 38px; text-align: center;">
+                    <input
+                      type="checkbox"
+                      :checked="allFilteredSophosDbSelected"
+                      :disabled="!selectableFilteredSophosDbRows.length"
+                      @change="toggleSelectAllFilteredSophosDb($event.target.checked)"
+                    />
+                  </th>
+                  <th style="text-align: left; width: 195px;">SKU</th>
+                  <th style="text-align: left;">Tên hàng</th>
+                  <th style="text-align: right; width: 145px; color: #93c5fd;">List Price cũ (DB)</th>
+                  <th style="text-align: right; width: 155px; color: #34d399;">Giá mới (Calc)</th>
+                  <th style="text-align: right; width: 165px;">Chênh lệch</th>
+                  <th style="text-align: center; width: 115px;">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="!filteredSophosDbSyncRows.length">
+                  <td colspan="7" style="padding: 28px; text-align: center; color: #94a3b8;">
+                    Không có mặt hàng nào khớp bộ lọc hiện tại.
+                  </td>
+                </tr>
+                <tr
+                  v-for="row in filteredSophosDbSyncRows"
+                  :key="row.id"
+                  :class="{
+                    'sophos-sync-row--diff': rowNeedsDbSync(row),
+                    'sophos-sync-row--miss': !row.calcFound
+                  }"
+                >
+                  <td style="text-align: center;">
+                    <input
+                      type="checkbox"
+                      v-model="row.selected"
+                      :disabled="!row.calcFound || !(row.newPrice > 0)"
+                    />
+                  </td>
+                  <td>
+                    <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-start;">
+                      <div style="display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">
+                        <span class="sophos-sync-sku-code" :style="{ color: row.calcFound ? '#5eead4' : '#94a3b8' }">
+                          {{ row.displaySku || 'Chưa có SKU' }}
+                        </span>
+                        <button
+                          v-if="row.calcFound && row.resolvedSku"
+                          type="button"
+                          class="sku-jump-chip sku-jump-chip--calc"
+                          title="Xem trực tiếp dòng SKU này trên Bảng Sheet File Calculator"
+                          @click="openExcelNavigator({ fileType: 'calc', sheet: 'MSRPs&BuyCost', rowNum: row.calcRowNum || 3, colLetter: 'B', sku: row.resolvedSku, itemName: row.name })"
+                        >
+                          🧮 #{{ row.calcRowNum || '?' }}
+                        </button>
+                      </div>
+                      <div
+                        v-if="row.hasSkuUpgrade && sophosDbSyncUpdateSku2026"
+                        class="sophos-sync-sku-upgrade-pill"
+                        :title="`Cập nhật sku_code: ${row.currentSku || '(Trống)'} → ${row.resolvedSku}`"
+                      >
+                        {{ row.currentSku || 'Trống' }} → <strong>{{ row.resolvedSku }}</strong>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div style="font-weight: 600; color: #f8fafc; line-height: 1.35;">{{ row.name }}</div>
+                    <div style="display: flex; align-items: center; gap: 6px; margin-top: 3px; flex-wrap: wrap;">
+                      <span v-if="row.maHang && row.maHang !== row.displaySku" class="sophos-sync-meta-tag">
+                        Mã hàng: {{ row.maHang }}
+                      </span>
+                      <span v-if="row.category" class="sophos-sync-meta-tag sophos-sync-meta-tag--cat">
+                        {{ row.category }}
+                      </span>
+                      <span
+                        v-if="row.preserveCustomCost"
+                        class="sophos-sync-meta-tag sophos-sync-meta-tag--cost"
+                        :title="`Mặt hàng đã có Giá vốn riêng (${formatUsdPrice(row.oldStdCost)}) khác List Price cũ nên sẽ giữ nguyên Giá vốn này`"
+                      >
+                        🔒 Giữ Giá vốn: {{ formatUsdPrice(row.oldStdCost) }}
+                      </span>
+                    </div>
+                  </td>
+                  <td class="sophos-sync-num" style="text-align: right;">
+                    <div style="font-weight: 700; color: #bfdbfe; font-size: 13px;">
+                      {{ row.oldCurrency === 'VND' ? formatVndPrice(row.oldPrice) : formatUsdPrice(row.oldPrice) }}
+                    </div>
+                    <div v-if="row.oldCurrency === 'VND' && row.calcFound" style="font-size: 10.5px; color: #fbbf24;">
+                      Đang lưu VND → chuyển USD
+                    </div>
+                  </td>
+                  <td class="sophos-sync-num" style="text-align: right;">
+                    <template v-if="row.calcFound && row.newPrice > 0">
+                      <div style="font-weight: 800; color: #34d399; font-size: 13.5px;">
+                        {{ formatUsdPrice(row.newPrice) }}
+                      </div>
+                    </template>
+                    <span v-else style="color: #64748b; font-size: 11.5px;">—</span>
+                  </td>
+                  <td class="sophos-sync-num" style="text-align: right;">
+                    <template v-if="!row.calcFound">
+                      <span class="cmp-badge cmp-badge-danger">✕ Không có trong Calc</span>
+                    </template>
+                    <template v-else-if="row.hasPriceDiff">
+                      <span
+                        class="cmp-badge"
+                        :class="row.diffUsd > 0 ? 'cmp-badge-warn' : 'cmp-badge-info'"
+                      >
+                        {{ row.diffUsd > 0 ? '+' : '' }}{{ formatUsdPrice(row.diffUsd) }}
+                        <template v-if="row.oldCurrency !== 'VND' && row.oldPrice > 0">
+                          ({{ row.diffPct > 0 ? '+' : '' }}{{ row.diffPct.toFixed(1) }}%)
+                        </template>
+                      </span>
+                    </template>
+                    <template v-else-if="row.hasSkuUpgrade && sophosDbSyncUpdateSku2026">
+                      <span class="cmp-badge cmp-badge-info">🏷️ Cập nhật SKU 2026</span>
+                    </template>
+                    <template v-else>
+                      <span class="cmp-badge cmp-badge-ok">✓ Khớp giá</span>
+                    </template>
+                  </td>
+                  <td style="text-align: center;">
+                    <button
+                      v-if="row.calcFound && row.newPrice > 0"
+                      type="button"
+                      class="btn btn-outline"
+                      style="padding: 4px 10px; font-size: 11.5px; font-weight: 700; width: auto; margin: 0;"
+                      :style="rowNeedsDbSync(row)
+                        ? 'border-color: rgba(16,185,129,0.55); color: #34d399; background: rgba(16,185,129,0.12);'
+                        : 'border-color: rgba(148,163,184,0.28); color: #94a3b8;'"
+                      :disabled="syncingSophosDbFromCalc"
+                      @click="syncSingleSophosDbRow(row)"
+                    >
+                      {{ rowNeedsDbSync(row) ? '🔄 Đồng bộ' : '↻ Ghi lại' }}
+                    </button>
+                    <span v-else style="color: #64748b; font-size: 11px;">Bỏ qua</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="import-modal__footer" style="padding: 12px 20px; border-top: 1px solid rgba(148,163,184,0.18); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <div style="font-size: 12.5px; color: #94a3b8; font-variant-numeric: tabular-nums;">
+            Đang hiển thị <strong style="color: #f8fafc;">{{ filteredSophosDbSyncRows.length }}</strong> / <strong>{{ sophosDbSyncRows.length }}</strong> mặt hàng Sophos • Đã chọn <strong style="color: #34d399;">{{ selectedSophosDbSyncCount }}</strong> mặt hàng.
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              style="width: auto; margin: 0;"
+              :disabled="syncingSophosDbFromCalc"
+              @click="showSophosDbSyncModal = false"
+            >
+              Đóng
+            </button>
+            <button
+              type="button"
+              class="btn btn-primary"
+              style="font-weight: 700; width: auto; margin: 0;"
+              :disabled="syncingSophosDbFromCalc || selectedSophosDbSyncCount === 0"
+              @click="applySophosDbListPriceSync"
+            >
+              {{ syncingSophosDbFromCalc ? '⏳ Đang đồng bộ vào DB...' : `🔄 Đồng bộ ${selectedSophosDbSyncCount} mặt hàng vào DB` }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================== MODAL 2: ĐỒNG BỘ GIÁ FILE TRUNG GIAN THEO FILE CALCULATOR ================== -->
+    <div v-if="showSophosTgSyncModal" class="import-overlay" style="z-index: 10256;" @click.self="!syncingSophosTgFromCalc && (showSophosTgSyncModal = false)">
+      <div class="import-modal sophos-sync-modal" style="max-width: 1360px; width: 96vw; max-height: 92vh; display: flex; flex-direction: column; overflow: hidden;">
+        <!-- Header -->
+        <div class="import-modal__header" style="padding: 14px 20px; border-bottom: 1px solid rgba(148,163,184,0.18);">
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <span class="sophos-sync-pill sophos-sync-pill--tg">
+              🔄 ĐỒNG BỘ FILE TRUNG GIAN
+            </span>
+            <h2 class="import-modal__title" style="margin: 0; font-size: 16px;">
+              Đồng Bộ Giá File Trung Gian Theo File Calculator
+              <code style="margin-left: 6px; font-size: 12.5px; color: #d8b4fe;">{{ sophosTgSyncFileName }}</code>
+              <span style="color: #94a3b8; margin: 0 4px;">⟵</span>
+              <code style="font-size: 12.5px; color: #5eead4;">{{ vendorRefFilesMeta.sophos?.calc_file_name || 'calculate_sophos.xlsx' }}</code>
+            </h2>
+            <span v-if="vendorRefFilesMeta.sophos?.calc_version" class="sophos-sync-ver-badge">
+              v{{ vendorRefFilesMeta.sophos.calc_version }}
+            </span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <button
+              type="button"
+              class="vendor-file-download-btn"
+              style="padding: 5px 10px; font-size: 12px; width: auto; margin: 0; border-color: rgba(56, 189, 248, 0.55); color: #7dd3fc; background: rgba(14, 165, 233, 0.16);"
+              :disabled="syncingSophosTgFromCalc || exportingSophosTgFromCalc || sophosTgSyncLoading"
+              @click="exportSophosTrungGianFromCalc({ onlySelectedFromModal: true })"
+              title="Xuất ngay bản File Trung Gian (.xlsx) đã áp dụng giá & SKU từ File Calculator (kèm cập nhật sheet LP Sophos, giữ nguyên màu sắc & công thức) về máy mà không ghi đè Cloudinary"
+            >
+              {{ exportingSophosTgFromCalc ? '⏳ Đang xuất .xlsx...' : '⬇ Xuất File Trung Gian (.xlsx theo Calc)' }}
+            </button>
+            <button
+              type="button"
+              class="btn btn-outline"
+              style="padding: 5px 10px; font-size: 12px; width: auto; margin: 0;"
+              :disabled="sophosTgSyncLoading || syncingSophosTgFromCalc"
+              @click="refreshSophosTgSyncModal"
+              title="Đọc lại File Trung Gian từ Cloudinary và đối chiếu lại với File Calculator"
+            >
+              ↻ Làm mới
+            </button>
+            <button type="button" class="import-modal__close" :disabled="syncingSophosTgFromCalc" @click="showSophosTgSyncModal = false">✕</button>
+          </div>
+        </div>
+
+        <!-- Body -->
+        <div style="padding: 14px 20px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 12px;">
+          <!-- KPI Strip -->
+          <div class="sophos-sync-kpi-grid">
+            <div class="sophos-sync-kpi-card sophos-sync-kpi-card--violet">
+              <div class="sophos-sync-kpi-label">Tổng dòng BOM ({{ sophosTgBomSheetList.length }} Sheets)</div>
+              <div class="sophos-sync-kpi-val">{{ sophosTgSyncSummary.total }}</div>
+              <div class="sophos-sync-kpi-sub">Chỉ quét 5 sheet BOM chuẩn, giữ nguyên sheet công thức</div>
+            </div>
+            <div class="sophos-sync-kpi-card sophos-sync-kpi-card--amber">
+              <div class="sophos-sync-kpi-label">Cần đồng bộ</div>
+              <div class="sophos-sync-kpi-val">{{ sophosTgSyncSummary.needSync }}</div>
+              <div class="sophos-sync-kpi-sub">Lệch giá cột F: {{ sophosTgSyncSummary.priceDiff }} • Đổi SKU cột B: {{ sophosTgSyncSummary.skuDiff }}</div>
+            </div>
+            <div class="sophos-sync-kpi-card sophos-sync-kpi-card--emerald">
+              <div class="sophos-sync-kpi-label">Đã khớp giá Calc</div>
+              <div class="sophos-sync-kpi-val">{{ sophosTgSyncSummary.matched }}</div>
+              <div class="sophos-sync-kpi-sub">Cột F đã bằng đúng 100% MSRP Calculator</div>
+            </div>
+            <div class="sophos-sync-kpi-card sophos-sync-kpi-card--rose">
+              <div class="sophos-sync-kpi-label">Chưa tìm thấy mã Calc</div>
+              <div class="sophos-sync-kpi-val">{{ sophosTgSyncSummary.notFound }}</div>
+              <div class="sophos-sync-kpi-sub">Các dòng không khớp SKU trong File Calculator</div>
+            </div>
+          </div>
+
+          <!-- Filter + Options Toolbar -->
+          <div class="sophos-sync-toolbar">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: 1; min-width: 0;">
+              <select
+                v-model="sophosTgSyncSheetFilter"
+                class="sophos-sync-sheet-select"
+              >
+                <option value="ALL">📑 Tất cả {{ sophosTgBomSheetList.length }} Sheets BOM ({{ sophosTgSyncRows.length }})</option>
+                <option v-for="sh in sophosTgBomSheetList" :key="sh" :value="sh">
+                  📄 {{ sh }} ({{ sophosTgSyncRows.filter(r => r.sheet === sh).length }})
+                </option>
+              </select>
+
+              <div class="sophos-sync-filter-tabs">
+                <button
+                  type="button"
+                  class="sophos-sync-tab-btn"
+                  :class="{ active: sophosTgSyncFilter === 'need_sync' }"
+                  @click="sophosTgSyncFilter = 'need_sync'"
+                >
+                  Cần đồng bộ ({{ sophosTgSyncSummary.needSync }})
+                </button>
+                <button
+                  type="button"
+                  class="sophos-sync-tab-btn"
+                  :class="{ active: sophosTgSyncFilter === 'all' }"
+                  @click="sophosTgSyncFilter = 'all'"
+                >
+                  Tất cả ({{ sophosTgSyncSummary.total }})
+                </button>
+                <button
+                  type="button"
+                  class="sophos-sync-tab-btn"
+                  :class="{ active: sophosTgSyncFilter === 'matched' }"
+                  @click="sophosTgSyncFilter = 'matched'"
+                >
+                  Đã khớp ({{ sophosTgSyncSummary.matched }})
+                </button>
+                <button
+                  v-if="sophosTgSyncSummary.notFound > 0"
+                  type="button"
+                  class="sophos-sync-tab-btn"
+                  :class="{ active: sophosTgSyncFilter === 'not_found' }"
+                  @click="sophosTgSyncFilter = 'not_found'"
+                >
+                  Không tìm thấy ({{ sophosTgSyncSummary.notFound }})
+                </button>
+              </div>
+
+              <input
+                v-model="sophosTgSyncSearch"
+                type="text"
+                class="sophos-sync-search-input"
+                placeholder="Tìm SKU, Model, mô tả, sheet..."
+              />
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <label class="sophos-sync-check-opt" title="Nếu cột B đang để SKU đời cũ (2025), tự động cập nhật sang mã SKU 2026 mới tương ứng của File Calculator">
+                <input type="checkbox" v-model="sophosTgSyncUpdateSku2026" />
+                <span>Cập nhật cột SKU sang mã 2026 mới</span>
+              </label>
+
+              <label class="sophos-sync-check-opt" title="Tự động tải thêm 1 bản .xlsx đã cập nhật về máy tính ngay sau khi đồng bộ lên Cloudinary">
+                <input type="checkbox" v-model="sophosTgAutoDownloadAfterSync" />
+                <span>Tải luôn file .xlsx sau khi đồng bộ</span>
+              </label>
+
+              <button
+                type="button"
+                class="btn btn-outline"
+                style="padding: 6px 11px; font-size: 12px; border-color: rgba(245, 158, 11, 0.45); color: #fbbf24; width: auto; margin: 0;"
+                :disabled="syncingSophosTgFromCalc || sophosTgSyncSummary.needSync === 0"
+                @click="selectAllNeedSyncSophosTgRows"
+              >
+                ☑️ Chọn dòng thay đổi ({{ sophosTgSyncSummary.needSync }})
+              </button>
+
+              <button
+                type="button"
+                class="btn btn-primary sophos-sync-btn-tg-submit"
+                style="padding: 6px 14px; font-size: 12.5px; font-weight: 700; width: auto; margin: 0;"
+                :disabled="syncingSophosTgFromCalc || selectedSophosTgSyncCount === 0"
+                @click="applySophosTrungGianCalcSync"
+              >
+                {{ syncingSophosTgFromCalc ? '⏳ Đang ghi & đẩy Cloudinary...' : `🔄 Đồng bộ ${selectedSophosTgSyncCount} dòng vào File Trung Gian` }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Rule Banner -->
+          <div class="sophos-sync-rule-note sophos-sync-rule-note--tg">
+            <span>💡 <strong>Quy tắc ghi &amp; xuất File Trung Gian:</strong> Ghi đúng 100% giá MSRP chuẩn từ File Calculator vào cột <code>F</code> (<strong>GIÁ THAM KHẢO USD</strong>) &amp; cập nhật SKU 2026 ở cột <code>B</code> cho 5 sheet BOM chuẩn, đồng thời cập nhật bảng giá gốc USD (cột <code>T..Z</code>) tại sheet <strong>LP Sophos</strong> để công thức VNĐ tự nhảy chuẩn xác; giữ nguyên hoàn toàn cột <code>G</code> (<strong>NHẬP KHẨU</strong>), màu sắc, đường viền và toàn bộ các sheet công thức khác.</span>
+          </div>
+
+          <!-- Loading state -->
+          <div v-if="sophosTgSyncLoading" class="sophos-sync-loading-box">
+            ⏳ Đang tải workbook File Trung Gian từ Cloudinary &amp; đối chiếu với File Calculator...
+          </div>
+
+          <!-- Preview Table -->
+          <div v-else class="sophos-sync-table-wrap">
+            <table class="sophos-sync-table">
+              <thead>
+                <tr>
+                  <th style="width: 38px; text-align: center;">
+                    <input
+                      type="checkbox"
+                      :checked="allFilteredSophosTgSelected"
+                      :disabled="!selectableFilteredSophosTgRows.length"
+                      @change="toggleSelectAllFilteredSophosTg($event.target.checked)"
+                    />
+                  </th>
+                  <th style="text-align: left; width: 190px;">Sheet / Ô Excel</th>
+                  <th style="text-align: left; width: 185px;">SKU (Cột B)</th>
+                  <th style="text-align: left;">Tên hàng / Mô tả BOM</th>
+                  <th style="text-align: right; width: 150px; color: #d8b4fe;">Giá Trung Gian cũ (Cột F)</th>
+                  <th style="text-align: right; width: 150px; color: #34d399;">Giá mới (Calc)</th>
+                  <th style="text-align: right; width: 170px;">Chênh lệch</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="!filteredSophosTgSyncRows.length">
+                  <td colspan="7" style="padding: 28px; text-align: center; color: #94a3b8;">
+                    Không có dòng BOM nào khớp bộ lọc hiện tại.
+                  </td>
+                </tr>
+                <tr
+                  v-for="row in filteredSophosTgSyncRows"
+                  :key="row.id"
+                  :class="{
+                    'sophos-sync-row--diff': rowNeedsTgSync(row),
+                    'sophos-sync-row--miss': !row.calcFound
+                  }"
+                >
+                  <td style="text-align: center;">
+                    <input
+                      type="checkbox"
+                      v-model="row.selected"
+                      :disabled="!row.calcFound || !(row.newPrice > 0)"
+                    />
+                  </td>
+                  <td>
+                    <div style="font-weight: 700; color: #e9d5ff; font-size: 12px;">{{ row.sheet }}</div>
+                    <div style="display: flex; align-items: center; gap: 5px; margin-top: 3px; flex-wrap: wrap;">
+                      <button
+                        type="button"
+                        class="sku-jump-chip sku-jump-chip--tg"
+                        title="Xem dòng này trên Bảng Sheet File Trung Gian"
+                        @click="openExcelNavigator({ fileType: 'tg', sheet: row.sheet, rowNum: row.rowNum, colLetter: 'F', sku: row.rawSku, itemName: row.name })"
+                      >
+                        📘 Ô F{{ row.rowNum }}
+                      </button>
+                    </div>
+                  </td>
+                  <td>
+                    <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-start;">
+                      <div style="display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">
+                        <span class="sophos-sync-sku-code" style="color: #f0abfc;">{{ row.rawSku }}</span>
+                        <button
+                          v-if="row.calcFound && row.resolvedSku"
+                          type="button"
+                          class="sku-jump-chip sku-jump-chip--calc"
+                          title="Xem mã này trong Bảng Sheet File Calculator"
+                          @click="openExcelNavigator({ fileType: 'calc', sheet: 'MSRPs&BuyCost', rowNum: row.calcRowNum || 3, colLetter: 'B', sku: row.resolvedSku, itemName: row.name })"
+                        >
+                          🧮 #{{ row.calcRowNum || '?' }}
+                        </button>
+                      </div>
+                      <div
+                        v-if="row.hasSkuUpgrade && sophosTgSyncUpdateSku2026"
+                        class="sophos-sync-sku-upgrade-pill"
+                      >
+                        Cột B{{ row.rowNum }}: {{ row.rawSku }} → <strong>{{ row.resolvedSku }}</strong>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div style="font-weight: 600; color: #f8fafc; line-height: 1.35;">{{ row.name }}</div>
+                    <div v-if="row.description && row.description !== row.name" style="font-size: 11.5px; color: #94a3b8; margin-top: 2px;">
+                      {{ row.description }}
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 6px; margin-top: 4px; flex-wrap: wrap;">
+                      <span v-if="row.group" class="sophos-sync-meta-tag sophos-sync-meta-tag--cat">
+                        {{ row.group }}
+                      </span>
+                      <span v-if="row.nhapKhau > 0" class="sophos-sync-meta-tag sophos-sync-meta-tag--nk">
+                        Nhập khẩu (Cột G giữ nguyên): {{ formatUsdPrice(row.nhapKhau) }}
+                      </span>
+                    </div>
+                  </td>
+                  <td class="sophos-sync-num" style="text-align: right;">
+                    <div style="font-weight: 700; color: #e9d5ff; font-size: 13px;">
+                      {{ formatUsdPrice(row.oldPrice) }}
+                    </div>
+                  </td>
+                  <td class="sophos-sync-num" style="text-align: right;">
+                    <template v-if="row.calcFound && row.newPrice > 0">
+                      <div style="font-weight: 800; color: #34d399; font-size: 13.5px;">
+                        {{ formatUsdPrice(row.newPrice) }}
+                      </div>
+                    </template>
+                    <span v-else style="color: #64748b; font-size: 11.5px;">—</span>
+                  </td>
+                  <td class="sophos-sync-num" style="text-align: right;">
+                    <template v-if="!row.calcFound">
+                      <span class="cmp-badge cmp-badge-danger">✕ Không có trong Calc</span>
+                    </template>
+                    <template v-else-if="row.hasPriceDiff">
+                      <span
+                        class="cmp-badge"
+                        :class="row.diffUsd > 0 ? 'cmp-badge-warn' : 'cmp-badge-info'"
+                      >
+                        {{ row.diffUsd > 0 ? '+' : '' }}{{ formatUsdPrice(row.diffUsd) }}
+                        <template v-if="row.oldPrice > 0">
+                          ({{ row.diffPct > 0 ? '+' : '' }}{{ row.diffPct.toFixed(1) }}%)
+                        </template>
+                      </span>
+                    </template>
+                    <template v-else-if="row.hasSkuUpgrade && sophosTgSyncUpdateSku2026">
+                      <span class="cmp-badge cmp-badge-info">🏷️ Cập nhật SKU 2026</span>
+                    </template>
+                    <template v-else>
+                      <span class="cmp-badge cmp-badge-ok">✓ Khớp giá</span>
+                    </template>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="import-modal__footer" style="padding: 12px 20px; border-top: 1px solid rgba(148,163,184,0.18); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <div style="font-size: 12.5px; color: #94a3b8; font-variant-numeric: tabular-nums;">
+            Đang hiển thị <strong style="color: #f8fafc;">{{ filteredSophosTgSyncRows.length }}</strong> / <strong>{{ sophosTgSyncRows.length }}</strong> dòng BOM • Đã chọn <strong style="color: #d8b4fe;">{{ selectedSophosTgSyncCount }}</strong> dòng để ghi vào <code>{{ sophosTgSyncFileName }}</code>.
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              style="width: auto; margin: 0;"
+              :disabled="syncingSophosTgFromCalc"
+              @click="showSophosTgSyncModal = false"
+            >
+              Đóng
+            </button>
+            <button
+              type="button"
+              class="btn btn-primary sophos-sync-btn-tg-submit"
+              style="font-weight: 700; width: auto; margin: 0;"
+              :disabled="syncingSophosTgFromCalc || selectedSophosTgSyncCount === 0"
+              @click="applySophosTrungGianCalcSync"
+            >
+              {{ syncingSophosTgFromCalc ? '⏳ Đang ghi Excel & đẩy lên Cloudinary...' : `🔄 Đồng bộ ${selectedSophosTgSyncCount} dòng vào File Trung Gian` }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ASYNC RESULT MODAL -->
     <Transition name="async-modal">
       <div v-if="asyncResultModal.show" class="async-overlay" @click.self="asyncResultModal.type !== 'loading' && (asyncResultModal.show = false)">
@@ -7013,6 +7709,7 @@
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import * as XLSX from 'xlsx-js-style'
+import ExcelJS from 'exceljs'
 import NumberInput from './NumberInput.vue'
 import ExcelEditor from './ExcelEditor.vue'
 import Tesseract from 'tesseract.js'
@@ -7020,10 +7717,13 @@ import { callDeepSeek } from '../services/deepseek'
 import { parsePurchaseFileStandard, analyzePurchaseFileWithAI } from '../utils/purchaseQuoteParser'
 import {
   uploadBlobToCloudinary,
+  uploadRawBlobToCloudinary,
   uploadLargeFileChunkedToCloudinary,
   downloadChunkedFileFromCloudinary,
   uploadCompressedJsonZipToCloudinary,
   fetchCompressedJsonZipFromCloudinary,
+  mergeVendorRefFilesMetaWithLiveFirebase,
+  mirrorVendorRefMetaToLiveFirebase,
   uploadExcelFileToCloudinarySafe,
   uploadJsonToCloudinary,
   formatRefTimestamp,
@@ -7032,17 +7732,22 @@ import {
   parseAcronisWorkbookToRefPart,
   parseKasperskyWorkbookToRefPart,
   parseSophosWorkbookToRefUpdate,
+  isSophosTrungGianBomSheet,
   resolveSophosFirewallRowDynamic,
   parseSophosCalculatorWorkbook,
   hydrateSophosCalcRefData,
   buildSlimSophosCalcViewOfficeWorkbook
 } from '../utils/vendorRefCloudinary'
 import {
+  buildPopulatedSophosCalcViewOfficeWorkbook,
   evaluateFirewallCalculator,
   evaluateProductCalculator,
+  extractValidatedEmbeddedCalcSku,
+  extractVolumeRangeFromSophosItem,
   inferSophosCalculatorContext,
   overlayCalculatedSheetAoa,
-  resolvePartnerUnitCost
+  resolvePartnerUnitCost,
+  resolveSheetContextForWorkbook
 } from '../utils/sophosCalculatorEngine'
 import { initializeApp, getApps, getApp } from 'firebase/app'
 import { getDatabase, ref as dbRef, get, set, push, update, remove } from 'firebase/database'
@@ -7264,14 +7969,28 @@ const vendorRefLoadError = ref({
 const pendingImportVendorRef = ref(null) // { vendor: 'sophos' | 'kaspersky' | 'acronis', file: File, workbook: XLSX.WorkBook }
 const syncImportFileToCloudinaryRef = ref(true)
 let pendingImportUploadPromise = null
+let lastVendorRefMetaFetchAt = 0
+let loadedSophosRefSig = ''
+let loadedSophosCalcSig = ''
+
+const getSophosCalcMetaSig = (m) =>
+  `${m?.calc_updated_at || 0}|${m?.calc_index_url || ''}|${Array.isArray(m?.calc_index_chunk_urls) ? m.calc_index_chunk_urls.join(',') : ''}`
+
+const getMainIndexMetaSig = (m) => `${m?.updated_at || 0}|${m?.index_url || ''}`
 
 const fetchVendorRefFilesMeta = async (force = false) => {
-  if (!force && (vendorRefFilesMeta.value.sophos || vendorRefFilesMeta.value.kaspersky || vendorRefFilesMeta.value.acronis)) {
+  if (
+    !force &&
+    Date.now() - lastVendorRefMetaFetchAt < 3000 &&
+    (vendorRefFilesMeta.value.sophos || vendorRefFilesMeta.value.kaspersky || vendorRefFilesMeta.value.acronis)
+  ) {
     return vendorRefFilesMeta.value
   }
   try {
-    const snap = await get(dbRef(database, 'vendor_ref_files'))
-    const val = snap.val() || {}
+    const snap = await get(dbRef(database, 'vendor_ref_files')).catch(() => null)
+    const rawLocal = snap && typeof snap.val === 'function' ? snap.val() || {} : {}
+    const val = await mergeVendorRefFilesMetaWithLiveFirebase(rawLocal)
+    lastVendorRefMetaFetchAt = Date.now()
     vendorRefFilesMeta.value = {
       sophos: val.sophos || null,
       kaspersky: val.kaspersky || null,
@@ -7556,12 +8275,22 @@ const getVendorOfficeActiveCellParam = ({
   let cleanCol = String(colLetter || 'B').trim().toUpperCase()
   const cleanSku = String(sku || '').trim().toUpperCase()
 
-  // Đối với Sophos File Calculator (bản rút gọn ViewOffice không chứa MSRPs&BuyCost 234k dòng):
+  // Đối với Sophos File Calculator: giải quyết đúng Sheet & Ô công thức đã điền mã SKU
   if (vendor === 'sophos' && role === 'calc') {
     if (!targetSheet || targetSheet === 'MSRPs&BuyCost') {
-      targetSheet = 'Firewall'
-      targetR = targetR > 100 ? 29 : (targetR || 29)
-      cleanCol = 'H'
+      if (sophosCalcRefData.value?.engineRuntime && cleanSku) {
+        const ctx = inferSophosCalculatorContext(sophosCalcRefData.value, cleanSku)
+        const sh = ctx.nativeSheet || 'Firewall'
+        const rawSh = sophosCalcRefData.value.calcSheetsRaw?.[sh] || []
+        const ov = overlayCalculatedSheetAoa(sophosCalcRefData.value, sh, rawSh, ctx)
+        targetSheet = sh
+        targetR = ov.targetRow || 29
+        cleanCol = ov.targetColLetter || 'H'
+      } else {
+        targetSheet = 'Firewall'
+        targetR = targetR > 100 ? 29 : (targetR || 29)
+        cleanCol = 'H'
+      }
     }
   } else if (vendor === 'sophos' && role !== 'tg') {
     // Đối với Sophos File Gốc (file nguyên bản sophos-pricelist-reseller_SKU_list-asean-usd-2026-3.0.xlsb trên Cloudinary):
@@ -7608,6 +8337,34 @@ const handleOpenVendorOfficeView = async (event, vendor, role, meta) => {
   }
   const fileName = meta.name
   const url = String(meta.url || '').trim()
+
+  // Đối với calculate_sophos: file gốc chỉ chứa công thức rỗng khi chưa chọn Model/Product,
+  // nên luôn đi qua trình dựng file Excel đã điền đầy đủ mã SKU & giá đang đối chiếu!
+  if (vendor === 'sophos' && role === 'calc') {
+    event?.preventDefault?.()
+    if (showCardRefCompareModal.value && cardRefCompareData.value?.vendor === 'sophos') {
+      const sum = sophosCardActiveCalcSummary.value
+      return openCompareOfficePreview({
+        vendor: 'sophos',
+        role: 'calc',
+        sheet: sum?.sheetName || cardRefCompareData.value.calcNativeSheet || 'Firewall',
+        rowNum: sum?.sheetRowNum || cardRefCompareData.value.calcSheetRowNum || cardRefCompareData.value.calcFirewallRowNum || 29,
+        colLetter: sum?.sheetColLetter || cardRefCompareData.value.calcSheetColLetter || 'H',
+        sku: sum?.sku || cardRefCompareData.value.sku || '',
+        itemName: cardRefCompareData.value.item?.Ten_hang || ''
+      })
+    }
+    const firstCmp = comparisonRows.value.find(r => r.calcFound) || comparisonRows.value[0]
+    return openCompareOfficePreview({
+      vendor: 'sophos',
+      role: 'calc',
+      sheet: firstCmp?.calcNativeSheet || 'Firewall',
+      rowNum: firstCmp?.calcSheetRowNum || firstCmp?.calcFirewallRowNum || 29,
+      colLetter: firstCmp?.calcSheetColLetter || 'H',
+      sku: firstCmp?.calcAltSku || firstCmp?.sku || '',
+      itemName: firstCmp?.name || ''
+    })
+  }
 
   // Nếu đã có URL file Excel trực tiếp (.xlsx / .xls) -> cho phép thẻ <a> mở trực tiếp ViewOffice ở tab mới
   if (url && !url.toLowerCase().endsWith('.json')) {
@@ -7670,6 +8427,8 @@ const copyCompareOfficeQuickText = async (text, label = 'Đã copy!') => {
   } catch (_) {}
 }
 
+const sophosPopulatedViewOfficeCache = new Map()
+
 const openCompareOfficePreview = async ({
   vendor = 'sophos',
   role = 'goc',
@@ -7694,6 +8453,116 @@ const openCompareOfficePreview = async ({
     copyCompareOfficeQuickText(cleanSku, `Đã copy SKU: ${cleanSku}`)
   } else if (sheet && targetRow) {
     copyCompareOfficeQuickText(`'${sheet}'!${cleanCol}${targetRow}`, `Đã copy ô '${sheet}'!${cleanCol}${targetRow}`)
+  }
+
+  // Trường hợp đặc biệt: Sophos File Calculator (calculate_sophos.xlsx)
+  // Sinh & cache bản .xlsx đã tính sẵn toàn bộ công thức (SKU, MSRP, Suggested Reseller Disc %, Buy Cost) và tô nổi bật đúng ô SKU!
+  if (vendor === 'sophos' && comparePart === 'calc') {
+    const win = window.open('about:blank', '_blank')
+    if (win && win.document) {
+      win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Đang mở ViewOffice - ${meta.name}</title></head><body style="margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:#0f172a;color:#e2e8f0;font-family:system-ui,sans-serif;"><div style="text-align:center;"><div style="font-size:18px;font-weight:700;color:#2dd4bf;margin-bottom:8px;">⏳ Đang tính toán mã SKU &amp; mở ViewOffice...</div><div style="font-size:13px;color:#94a3b8;">${meta.name}${cleanSku ? ' • SKU: ' + cleanSku : ''}${sheet ? ' • Sheet: ' + sheet : ''}</div></div></body></html>`)
+      win.document.close()
+    }
+
+    try {
+      if (!sophosCalcRefData.value) {
+        await loadSophosCalcRefData()
+      }
+      const calcObj = sophosCalcRefData.value
+      if (calcObj) {
+        const ctx = buildActiveCalcContextForViewer(cleanSku, itemName)
+        const preferredSheet = (sheet && sheet !== 'MSRPs&BuyCost') ? sheet : (ctx.nativeSheet || 'Firewall')
+        const cacheKey = JSON.stringify([
+          vendorRefFilesMeta.value?.sophos?.calc_updated_at || calcObj.updatedAt || 0,
+          calcObj.version || '',
+          preferredSheet,
+          ctx.sku || cleanSku,
+          ctx.calcType,
+          ctx.model,
+          ctx.models || [],
+          ctx.product,
+          ctx.partnerLevel,
+          ctx.sector,
+          ctx.dealType,
+          ctx.termHwBundle,
+          ctx.termSubscription,
+          ctx.qty,
+          ctx.specialAttribute,
+          ctx.targetFirewallRowKey
+        ])
+
+        let cached = sophosPopulatedViewOfficeCache.get(cacheKey)
+        if (!cached) {
+          const built = buildPopulatedSophosCalcViewOfficeWorkbook(calcObj, ctx, { preferredSheet })
+          const safeSkuTag = String(built.targetSku || cleanSku || 'calc').replace(/[^A-Z0-9_-]/gi, '').slice(0, 18) || 'calc'
+          const uploadName = `sophos_calc_viewoffice_${safeSkuTag}_${Date.now()}.xlsx`
+          const uploadedUrl = await uploadRawBlobToCloudinary(built.blob, uploadName)
+          cached = {
+            url: uploadedUrl,
+            targetSheet: built.targetSheet,
+            targetRow: built.targetRow,
+            targetColLetter: built.targetColLetter,
+            targetSku: built.targetSku || cleanSku
+          }
+          sophosPopulatedViewOfficeCache.set(cacheKey, cached)
+        }
+
+        const activeCellParam = getVendorOfficeActiveCellParam({
+          vendor: 'sophos',
+          role: 'calc',
+          sheet: cached.targetSheet,
+          rowNum: cached.targetRow,
+          colLetter: cached.targetColLetter,
+          sku: cached.targetSku || cleanSku
+        })
+        const viewUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(cached.url)}&activeCell=${activeCellParam}`
+        const embedUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(cached.url)}&activeCell=${activeCellParam}`
+
+        if (compareOfficePreview.value.show) {
+          compareOfficePreview.value = {
+            ...compareOfficePreview.value,
+            loading: false,
+            vendor: 'sophos',
+            role: 'calc',
+            fileName: meta.name,
+            rawExcelUrl: cached.url,
+            embedUrl,
+            viewUrl,
+            sheet: cached.targetSheet,
+            rowNum: cached.targetRow,
+            colLetter: cached.targetColLetter,
+            sku: cached.targetSku || cleanSku,
+            itemName
+          }
+        }
+        if (win) {
+          win.location.href = viewUrl
+        } else {
+          window.open(viewUrl, '_blank', 'noopener,noreferrer')
+        }
+        return
+      }
+    } catch (err) {
+      console.warn('Không thể tạo bản ViewOffice động cho calculate_sophos, dùng bản dự phòng:', err)
+    }
+
+    // Dự phòng nếu chưa tải được dữ liệu Calculator
+    const fallbackUrl = String(meta.url || '').trim()
+    if (fallbackUrl && !fallbackUrl.toLowerCase().endsWith('.json')) {
+      const activeCellParam = getVendorOfficeActiveCellParam({
+        vendor,
+        role: comparePart,
+        sheet,
+        rowNum: targetRow,
+        colLetter: cleanCol,
+        sku: cleanSku
+      })
+      const viewUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(fallbackUrl)}&activeCell=${activeCellParam}`
+      if (win) win.location.href = viewUrl
+      else window.open(viewUrl, '_blank', 'noopener,noreferrer')
+      return
+    }
+    if (win) win.close()
   }
 
   const rawUrl = String(meta.url || '').trim()
@@ -7874,9 +8743,13 @@ const uploadAndPersistVendorRefWorkbook = async (vendor, file, workbook, role = 
     }
 
     await set(dbRef(database, 'vendor_ref_files/sophos'), nextMeta)
+    mirrorVendorRefMetaToLiveFirebase('sophos', nextMeta)
     vendorRefFilesMeta.value.sophos = nextMeta
+    lastVendorRefMetaFetchAt = Date.now()
     vendorRefLoadError.value.sophos = ''
+    sophosPopulatedViewOfficeCache.clear()
     sophosCalcRefData.value = hydrateSophosCalcRefData(parsedCalc.compactIndex)
+    loadedSophosCalcSig = getSophosCalcMetaSig(nextMeta)
     return {
       meta: nextMeta,
       summaryText: parsedCalc.summaryText
@@ -7936,6 +8809,7 @@ const uploadAndPersistVendorRefWorkbook = async (vendor, file, workbook, role = 
     }
 
     await set(dbRef(database, 'vendor_ref_files/acronis'), nextMeta)
+    mirrorVendorRefMetaToLiveFirebase('acronis', nextMeta)
     vendorRefFilesMeta.value.acronis = nextMeta
     vendorRefLoadError.value.acronis = ''
     acronisRefData.value = hydrateAcronisRefData(slimObj)
@@ -7995,6 +8869,7 @@ const uploadAndPersistVendorRefWorkbook = async (vendor, file, workbook, role = 
     }
 
     await set(dbRef(database, 'vendor_ref_files/kaspersky'), nextMeta)
+    mirrorVendorRefMetaToLiveFirebase('kaspersky', nextMeta)
     vendorRefFilesMeta.value.kaspersky = nextMeta
     vendorRefLoadError.value.kaspersky = ''
     kasRefData.value = hydrateKasRefData(slimObj)
@@ -8050,6 +8925,10 @@ const uploadAndPersistVendorRefWorkbook = async (vendor, file, workbook, role = 
     nextMeta.tg_file_url = fileUrl
     nextMeta.tg_file_name = file.name
     nextMeta.tg_updated_at = now
+    if (prevMeta.import_file_name && String(prevMeta.import_file_name).trim().toLowerCase() === String(file.name).trim().toLowerCase()) {
+      nextMeta.import_file_url = fileUrl
+      nextMeta.import_updated_at = now
+    }
   } else if (detectedRole === 'skulist') {
     nextMeta.skulist_file_url = fileUrl
     nextMeta.skulist_file_name = file.name
@@ -8060,9 +8939,13 @@ const uploadAndPersistVendorRefWorkbook = async (vendor, file, workbook, role = 
   }
 
   await set(dbRef(database, 'vendor_ref_files/sophos'), nextMeta)
+  mirrorVendorRefMetaToLiveFirebase('sophos', nextMeta)
   vendorRefFilesMeta.value.sophos = nextMeta
+  lastVendorRefMetaFetchAt = Date.now()
   vendorRefLoadError.value.sophos = ''
   sophosRefData.value = updatedRef
+  loadedSophosRefSig = getMainIndexMetaSig(nextMeta)
+  sophosPopulatedViewOfficeCache.clear()
   return {
     meta: nextMeta,
     summaryText
@@ -12302,16 +13185,26 @@ const parseSophosCalculatorOcr = (rawText) => {
   }
 
   // 4. Suy luận chính xác Model, Term (Subscriptions), Special Attribute (Site), Qty nếu bị khung đỏ che
+  let detectedModel = ''
   const descModelMatch = settings.description.match(/\b(XGS\s*\d{2,4}w?|SFv\s*\w+)\b/i)
   if (descModelMatch) {
-    settings.model = descModelMatch[1].toUpperCase().replace(/\s+/g, ' ')
+    detectedModel = descModelMatch[1].toUpperCase().replace(/\s+/g, ' ')
   }
-  if (!settings.model) {
-    const subRow = rows.find(r => r.available && /^(XS|SP|SE|NS|WS|ZD|ES|SS)(\d{2,4})/i.test(r.sku))
+  if (!detectedModel) {
+    const subRow = rows.find(r => r.available && /^(XS|SP|SE|NS|WS|ZD|ES|SS)(\d{2,4}w?)/i.test(r.sku))
     if (subRow) {
-      const mCode = subRow.sku.match(/^(?:XS|SP|SE|NS|WS|ZD|ES|SS)(\d{2,4})/i)
-      if (mCode) settings.model = `XGS ${mCode[1]}`
+      const mCode = subRow.sku.match(/^(?:XS|SP|SE|NS|WS|ZD|ES|SS)(\d{2,4}w?)/i)
+      if (mCode) detectedModel = `XGS ${mCode[1].toUpperCase()}`
     }
+  }
+  if (!detectedModel) {
+    const rawModelMatch = text.match(/\b(XGS\s*\d{2,4}w?)\b/i)
+    if (rawModelMatch) {
+      detectedModel = rawModelMatch[1].toUpperCase().replace(/\bXGS(\d)/i, 'XGS $1').replace(/\s+/g, ' ')
+    }
+  }
+  if (detectedModel) {
+    settings.model = detectedModel
   }
 
   // Suy luận Special Attribute (AU, EU, UK, US, CN) từ mã SKU phần cứng (VD: XG2CTCHAU -> AU)
@@ -12319,21 +13212,33 @@ const parseSophosCalculatorOcr = (rawText) => {
   if (hwRow) {
     const siteMatch = hwRow.sku.match(/(EUK|AU|CN|EU|UK|US|IN|BR)$/i)
     if (siteMatch) {
-      settings.specialAttribute = siteMatch[1].toUpperCase()
+      const rawPlug = siteMatch[1].toUpperCase()
+      settings.specialAttribute = rawPlug === 'EUK' ? 'EU' : (rawPlug === 'BR' ? 'US' : (['AU', 'EU', 'UK', 'US', 'CN'].includes(rawPlug) ? rawPlug : 'AU'))
     }
   }
 
+  // Nếu ảnh chụp có dòng Hardware Bundle hiển thị Not Available và không có mã Bundle XZ/XU khả dụng -> termHwBundle = '' (None)
+  const hasNaBundleRow = rows.some(r => !r.available && /bundle/i.test(r.name))
+  const hasAvailBundleRow = rows.some(r => r.available && /^(XZ|XU)/i.test(r.sku))
+  if (hasNaBundleRow && !hasAvailBundleRow) {
+    settings.termHwBundle = ''
+  }
+
   // Suy luận Term (Subscriptions) từ mã SKU Subscription (VD: XS230012ZZNCAA -> 12 MOS)
+  let detectedTermSub = ''
   const termSubRow = rows.find(r => r.available && r.category === 'Subscriptions' && /\d{2}ZZ[NR]?CAA$/i.test(r.sku))
   if (termSubRow) {
     const tMatch = termSubRow.sku.match(/(\d{2})ZZ[NR]?CAA$/i)
     if (tMatch) {
-      settings.termSubscription = `${parseInt(tMatch[1], 10)} MOS`
+      detectedTermSub = `${parseInt(tMatch[1], 10)} MOS`
     }
   }
-  if (!settings.termSubscription) {
+  if (!detectedTermSub) {
     const rawTermMatch = text.match(/\b(12|24|36|48|60)\s*MOS\b/i)
-    if (rawTermMatch) settings.termSubscription = `${rawTermMatch[1]} MOS`
+    if (rawTermMatch) detectedTermSub = `${rawTermMatch[1]} MOS`
+  }
+  if (detectedTermSub) {
+    settings.termSubscription = detectedTermSub
   }
 
   imageCheckSettings.value = settings
@@ -12516,7 +13421,9 @@ const formatUsdPrice = (val) => {
 }
 
 const loadSophosRefData = async (forceReload = false) => {
-  if (!forceReload && (sophosRefData.value || loadingSophosRef.value)) return sophosRefData.value
+  const curSig = getMainIndexMetaSig(vendorRefFilesMeta.value?.sophos)
+  if (!forceReload && loadingSophosRef.value) return sophosRefData.value
+  if (!forceReload && sophosRefData.value && (!curSig || curSig === loadedSophosRefSig)) return sophosRefData.value
   loadingSophosRef.value = true
   vendorRefLoadError.value.sophos = ''
   try {
@@ -12532,6 +13439,7 @@ const loadSophosRefData = async (forceReload = false) => {
       throw new Error(`Không tải được dữ liệu Sophos từ Cloudinary (HTTP ${res.status})`)
     }
     sophosRefData.value = await res.json()
+    loadedSophosRefSig = getMainIndexMetaSig(meta)
   } catch (err) {
     console.error('Lỗi tải dữ liệu tham chiếu Sophos từ Cloudinary:', err)
     sophosRefData.value = null
@@ -12543,7 +13451,11 @@ const loadSophosRefData = async (forceReload = false) => {
 }
 
 const loadSophosCalcRefData = async (forceReload = false) => {
-  if (!forceReload && (sophosCalcRefData.value || loadingSophosCalcRef.value)) {
+  const curSig = getSophosCalcMetaSig(vendorRefFilesMeta.value?.sophos)
+  if (!forceReload && loadingSophosCalcRef.value) {
+    return sophosCalcRefData.value
+  }
+  if (!forceReload && sophosCalcRefData.value && (!curSig || curSig === loadedSophosCalcSig)) {
     return sophosCalcRefData.value
   }
   loadingSophosCalcRef.value = true
@@ -12557,7 +13469,9 @@ const loadSophosCalcRefData = async (forceReload = false) => {
       return null
     }
     const rawCalc = await fetchCompressedJsonZipFromCloudinary(calcSource)
+    sophosPopulatedViewOfficeCache.clear()
     sophosCalcRefData.value = hydrateSophosCalcRefData(rawCalc)
+    loadedSophosCalcSig = getSophosCalcMetaSig(meta)
   } catch (err) {
     console.error('Lỗi tải dữ liệu File Calculator Sophos (calculate_sophos) từ Cloudinary:', err)
   } finally {
@@ -12741,6 +13655,18 @@ const runImagePriceComparison = async () => {
     let calcRowNum = calcEntry && calcEntry.rowNum ? calcEntry.rowNum : null
     let calcAltSku = ''
     const calcFirewallRowNum = r.sheetRowNum || getCalcFirewallSheetRowNumForItem(r.name, sku)
+    let calcNativeSheet = calcFirewallRowNum ? 'Firewall' : ''
+    let calcSheetRowNum = calcFirewallRowNum || null
+    let calcSheetColLetter = 'H'
+    if (!calcFirewallRowNum && sophosCalcRefData.value?.engineRuntime && (calcEntry || sku)) {
+      const rowCtx = inferSophosCalculatorContext(sophosCalcRefData.value, sku, { Ten_hang: r.name })
+      const sh = rowCtx.nativeSheet || 'Firewall'
+      const rawSh = sophosCalcRefData.value.calcSheetsRaw?.[sh] || []
+      const ov = overlayCalculatedSheetAoa(sophosCalcRefData.value, sh, rawSh, rowCtx)
+      calcNativeSheet = sh
+      calcSheetRowNum = ov.targetRow || 29
+      calcSheetColLetter = ov.targetColLetter || 'H'
+    }
     let calcNote = ''
 
     if (calcEntry) {
@@ -12903,6 +13829,9 @@ const runImagePriceComparison = async () => {
       calcRowNum,
       calcAltSku,
       calcFirewallRowNum,
+      calcNativeSheet,
+      calcSheetRowNum,
+      calcSheetColLetter,
       calcStatus,
       calcNote,
       calcVsGocDiff,
@@ -12976,7 +13905,9 @@ const handleStep2CalcDealSettingChange = async () => {
 // ═══════════════════════════════════════════════════════════════════════════
 const sophosCardCalcState = ref({
   activeTab: 'firewall', // 'firewall' | 'product' | 'sources'
+  calcMode: 'firewall', // 'firewall' | 'product'
   nativeSheet: 'Firewall',
+  preferredSku: '',
   partnerLevel: 'Authorized',
   sector: 'Corporate',
   dealType: 'New - Standard',
@@ -13070,6 +14001,7 @@ const handleSophosCardLineChange = () => {
 }
 
 const handleSophosCardProductChange = () => {
+  sophosCardCalcState.value.preferredSku = ''
   const calcObj = sophosCalcRefData.value
   if (!calcObj?.engineRuntime) return
   const pDesc = sophosCardCalcState.value.product
@@ -13097,6 +14029,7 @@ const handleSophosCardProductChange = () => {
 
 const selectSophosCardSearchedProduct = (prodItem) => {
   if (!prodItem) return
+  sophosCardCalcState.value.preferredSku = ''
   const hier = sophosCalcRefData.value?.engineRuntime?.productToHierarchy?.[prodItem.desc]
   if (hier) {
     sophosCardCalcState.value.family = hier.family
@@ -13108,6 +14041,7 @@ const selectSophosCardSearchedProduct = (prodItem) => {
 }
 
 const toggleSophosCardFirewallModel = (mdl) => {
+  sophosCardCalcState.value.preferredSku = ''
   const cur = [...(sophosCardCalcState.value.models || [])]
   const idx = cur.indexOf(mdl)
   if (idx !== -1) {
@@ -13121,6 +14055,7 @@ const toggleSophosCardFirewallModel = (mdl) => {
 }
 
 const setPrimarySophosCardFirewallModel = (mdl) => {
+  sophosCardCalcState.value.preferredSku = ''
   const cur = [...(sophosCardCalcState.value.models || [])].filter(m => m !== mdl)
   sophosCardCalcState.value.models = [mdl, ...cur].slice(0, 3)
 }
@@ -13140,7 +14075,8 @@ const sophosCardFirewallEval = computed(() => {
     specialAttribute: st.specialAttribute,
     models: st.models?.length ? st.models : ['XGS 2300'],
     promoDiscByRow: st.promoDiscByRow,
-    specialDiscByRow: st.specialDiscByRow
+    specialDiscByRow: st.specialDiscByRow,
+    preferredSku: st.preferredSku || ''
   })
 })
 
@@ -13158,18 +14094,21 @@ const sophosCardProductEval = computed(() => {
     qty: Math.max(1, Number(st.qty) || 1),
     specialAttribute: st.specialAttribute,
     promoDiscPct: Number(st.productPromoDisc) || 0,
-    specialDiscPct: Number(st.productSpecialDisc) || 0
+    specialDiscPct: Number(st.productSpecialDisc) || 0,
+    preferredSku: st.preferredSku || ''
   })
 })
 
 const sophosCardActiveCalcSummary = computed(() => {
   const st = sophosCardCalcState.value
-  if (st.activeTab === 'product' && sophosCardProductEval.value) {
+  const isProdMode = st.activeTab === 'product' || (st.activeTab === 'sources' && st.calcMode === 'product')
+  if (isProdMode && sophosCardProductEval.value) {
     const ev = sophosCardProductEval.value
     const sh = st.nativeSheet && st.nativeSheet !== 'Firewall' ? st.nativeSheet : 'Universal Calculator'
     const rawSh = sophosCalcRefData.value?.calcSheetsRaw?.[sh] || []
     const ov = sophosCalcRefData.value
       ? overlayCalculatedSheetAoa(sophosCalcRefData.value, sh, rawSh, {
+          sku: st.preferredSku || ev.sku || '',
           calcType: 'product',
           nativeSheet: sh,
           targetFirewallRowKey: '',
@@ -13206,7 +14145,11 @@ const sophosCardActiveCalcSummary = computed(() => {
   }
 
   const fwRows = sophosCardFirewallEval.value.rows || []
-  const hitRow = fwRows.find(r => r.key === st.targetFirewallRowKey) || fwRows.find(r => r.cells?.[0]?.available) || fwRows[0]
+  const hitRow =
+    fwRows.find(r => r.key === st.targetFirewallRowKey && r.cells?.[0]?.available) ||
+    fwRows.find(r => r.cells?.[0]?.available) ||
+    fwRows.find(r => r.key === st.targetFirewallRowKey) ||
+    fwRows[0]
   const c0 = hitRow?.cells?.[0]
   return {
     mode: 'firewall',
@@ -13227,20 +14170,32 @@ const sophosCardActiveCalcSummary = computed(() => {
 
 const buildActiveCalcContextForViewer = (overrideSku = '', overrideName = '') => {
   const calcObj = sophosCalcRefData.value
+  const cleanOverrideSku = String(overrideSku || '').trim().toUpperCase()
+
   if (showCardRefCompareModal.value && cardRefCompareData.value?.vendor === 'sophos') {
     const st = sophosCardCalcState.value
-    const isProd = st.activeTab === 'product'
+    const activeSum = sophosCardActiveCalcSummary.value
+    const curCardSku = String(activeSum?.sku || st.preferredSku || cardRefCompareData.value?.sku || '').trim().toUpperCase()
+    if (cleanOverrideSku && curCardSku && cleanOverrideSku !== curCardSku && cleanOverrideSku !== String(activeSum?.newSku || '').toUpperCase() && calcObj) {
+      return inferSophosCalculatorContext(calcObj, cleanOverrideSku, overrideName ? { Ten_hang: overrideName } : cardRefCompareData.value?.item)
+    }
+    const isProd = st.activeTab === 'product' || (st.activeTab === 'sources' && st.calcMode === 'product')
     const sh = isProd ? (st.nativeSheet && st.nativeSheet !== 'Firewall' ? st.nativeSheet : 'Universal Calculator') : 'Firewall'
-    const hitFw = (sophosCardFirewallEval.value.rows || []).find(r => r.key === st.targetFirewallRowKey)
+    const fwRows = sophosCardFirewallEval.value.rows || []
+    const hitFw =
+      fwRows.find(r => r.key === st.targetFirewallRowKey && r.cells?.[0]?.available) ||
+      fwRows.find(r => r.cells?.[0]?.available) ||
+      fwRows.find(r => r.key === st.targetFirewallRowKey)
     return {
+      sku: cleanOverrideSku || curCardSku,
       calcType: isProd ? 'product' : 'firewall',
       nativeSheet: sh,
-      targetFirewallRowKey: st.targetFirewallRowKey || 'hw_appliance',
+      targetFirewallRowKey: hitFw?.key || st.targetFirewallRowKey || 'hw_appliance',
       targetFirewallSheetRow: hitFw?.sheetRowNum || 29,
       partnerLevel: st.partnerLevel || 'Authorized',
       sector: st.sector || 'Corporate',
       dealType: st.dealType || 'New - Standard',
-      termHwBundle: st.termHwBundle || '1-Year',
+      termHwBundle: st.termHwBundle !== undefined && st.termHwBundle !== null ? st.termHwBundle : '1-Year',
       termSubscription: st.termSubscription || '12 MOS',
       qty: Math.max(1, Number(st.qty) || 1),
       specialAttribute: st.specialAttribute || 'AU',
@@ -13254,8 +14209,37 @@ const buildActiveCalcContextForViewer = (overrideSku = '', overrideName = '') =>
 
   if (showImageCheckModal.value) {
     const s = imageCheckSettings.value
-    const fwRow = getCalcFirewallSheetRowNumForItem(overrideName, overrideSku) || 29
+    const firstValidCmp = comparisonRows.value?.find(r => r.calcFound && r.sku)
+    const firstValidImg = imageCheckRows.value?.find(r => r.available && r.sku && r.sku !== 'Not Available')
+    const effSku = cleanOverrideSku || String(firstValidCmp?.calcAltSku || firstValidCmp?.sku || firstValidImg?.sku || '').trim().toUpperCase()
+    const effName =
+      overrideName ||
+      comparisonRows.value?.find(r => r.sku === effSku || r.calcAltSku === effSku)?.name ||
+      imageCheckRows.value?.find(r => r.sku === effSku)?.name ||
+      ''
+    if (calcObj && (effSku || effName)) {
+      const inferred = inferSophosCalculatorContext(calcObj, effSku, effName ? { Ten_hang: effName } : undefined)
+      const isFw = inferred.calcType === 'firewall'
+      const useModel = isFw
+        ? (cleanOverrideSku ? (inferred.model || s.model || 'XGS 2300') : (s.model || inferred.model || 'XGS 2300'))
+        : inferred.model
+      return {
+        ...inferred,
+        sku: effSku || inferred.sku || '',
+        partnerLevel: s.partnerLevel || inferred.partnerLevel || 'Authorized',
+        sector: s.sector || inferred.sector || 'Corporate',
+        dealType: s.dealType || inferred.dealType || 'New - Standard',
+        termHwBundle: s.termHwBundle !== undefined && s.termHwBundle !== null ? s.termHwBundle : (inferred.termHwBundle ?? '1-Year'),
+        termSubscription: s.termSubscription || inferred.termSubscription || '12 MOS',
+        qty: Math.max(1, Number(s.qty) || inferred.qty || 1),
+        specialAttribute: isFw ? (s.specialAttribute || inferred.specialAttribute || 'AU') : inferred.specialAttribute,
+        model: useModel,
+        models: [useModel]
+      }
+    }
+    const fwRow = getCalcFirewallSheetRowNumForItem(overrideName, cleanOverrideSku) || 29
     return {
+      sku: cleanOverrideSku,
       calcType: 'firewall',
       nativeSheet: 'Firewall',
       targetFirewallRowKey: '',
@@ -13263,7 +14247,7 @@ const buildActiveCalcContextForViewer = (overrideSku = '', overrideName = '') =>
       partnerLevel: s.partnerLevel || 'Authorized',
       sector: s.sector || 'Corporate',
       dealType: s.dealType || 'New - Standard',
-      termHwBundle: s.termHwBundle || '1-Year',
+      termHwBundle: s.termHwBundle !== undefined && s.termHwBundle !== null ? s.termHwBundle : '1-Year',
       termSubscription: s.termSubscription || '12 MOS',
       qty: Math.max(1, Number(s.qty) || 1),
       specialAttribute: s.specialAttribute || 'AU',
@@ -13276,10 +14260,11 @@ const buildActiveCalcContextForViewer = (overrideSku = '', overrideName = '') =>
   }
 
   if (calcObj) {
-    return inferSophosCalculatorContext(calcObj, overrideSku, overrideName ? { Ten_hang: overrideName } : undefined)
+    return inferSophosCalculatorContext(calcObj, cleanOverrideSku, overrideName ? { Ten_hang: overrideName } : undefined)
   }
 
   return {
+    sku: cleanOverrideSku,
     calcType: 'firewall',
     nativeSheet: 'Firewall',
     targetFirewallRowKey: 'hw_appliance',
@@ -13563,7 +14548,8 @@ const excelNavRenderedRows = computed(() => {
 
     const rawSheet = (calcObj.calcSheetsRaw && calcObj.calcSheetsRaw[sheet]) || []
     const ctx = buildActiveCalcContextForViewer(excelNavState.value.sku, excelNavState.value.itemName)
-    const overlaid = overlayCalculatedSheetAoa(calcObj, sheet, rawSheet, ctx)
+    const sheetCtx = resolveSheetContextForWorkbook(calcObj, sheet, ctx, ctx.nativeSheet || sheet)
+    const overlaid = overlayCalculatedSheetAoa(calcObj, sheet, rawSheet, sheetCtx)
     return overlaid.rows.map((r, idx) => ({
       rowNum: idx + 1,
       cells: r || [],
@@ -13712,12 +14698,40 @@ const isSkuLikeCell = (cellVal, activeSku) => {
   if (!cellVal || typeof cellVal !== 'string') return false
   const s = cellVal.trim().toUpperCase()
   if (activeSku && s === String(activeSku).trim().toUpperCase()) return true
-  return /^[A-Z0-9]{8,16}$/.test(s) && /\d/.test(s)
+  return /^[A-Z0-9][A-Z0-9._-]{5,22}$/.test(s) && /[A-Z]/.test(s) && /\d/.test(s)
 }
 
-const formatExcelCellValue = (val) => {
+const isNumericOrMoneyExcelCell = (cellVal) => {
+  if (typeof cellVal === 'number' && Number.isFinite(cellVal)) return true
+  if (typeof cellVal !== 'string') return false
+  const s = cellVal.trim()
+  if (!s || s.length > 26) return false
+  return /^\$?\s*-?[\d,]+(?:\.\d+)?\s*(?:%|₫|USD)?$/i.test(s)
+}
+
+const formatExcelCellValue = (val, rowNum = 0, cIdx = 0, rowCells = null) => {
   if (val === null || val === undefined || val === '') return ''
   if (typeof val === 'number') {
+    if (excelNavState.value.fileType === 'calc') {
+      const sh = excelNavState.value.sheet
+      if (sh === 'MSRPs&BuyCost') {
+        if (cIdx >= 2) {
+          return '$' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        }
+      } else if (cIdx >= 5 && rowNum >= 11) {
+        const leftLbl = Array.isArray(rowCells)
+          ? String(rowCells[2] ?? rowCells[1] ?? '').trim().toLowerCase()
+          : ''
+        const isQtyRow =
+          leftLbl.startsWith('qty') ||
+          leftLbl.startsWith('quantity') ||
+          leftLbl.includes('user') ||
+          leftLbl.includes('server')
+        if (!isQtyRow && val > 1) {
+          return '$' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        }
+      }
+    }
     return Number.isInteger(val)
       ? val.toLocaleString('en-US')
       : val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -13742,9 +14756,10 @@ const scrollToExcelTargetRow = () => {
     setTimeout(() => {
       const wrap = excelNavGridWrapRef.value
       if (!wrap) return
-      const targetEl = wrap.querySelector(`#excel-nav-row-${excelNavState.value.targetRow}`)
+      const targetCell = wrap.querySelector('.excel-cell-target')
+      const targetEl = targetCell || wrap.querySelector(`#excel-nav-row-${excelNavState.value.targetRow}`)
       if (targetEl) {
-        targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        targetEl.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' })
       }
     }, 50)
   })
@@ -13754,7 +14769,10 @@ const scrollToExcelTargetRow = () => {
  * Mở Tab mới hiển thị file Excel (file_goc_SOPHOS.xlsx / file_trung_gian_SOPHOS.xlsx)
  * với định dạng màu sắc y hệt file gốc, tự cuộn tới thẳng dòng mục tiêu và highlight toàn dòng.
  */
-const openExcelNavigator = ({ fileType = 'tg', sheet = '', rowNum = 1, colLetter = 'B', sku = '', itemName = '' }) => {
+const openExcelNavigator = (
+  { fileType = 'tg', sheet = '', rowNum = 1, colLetter = 'B', sku = '', itemName = '' },
+  preOpenedWin = null
+) => {
   const colIndex = letterToColIndex(colLetter)
   const cleanSku = String(sku || '').trim().toUpperCase()
   const targetR = Number(rowNum) || 1
@@ -13791,8 +14809,16 @@ const openExcelNavigator = ({ fileType = 'tg', sheet = '', rowNum = 1, colLetter
     sku: cleanSku,
     name: itemName || ''
   }).toString()
+  const viewerUrl = `/template_excel/sophos_excel_viewer.html?${qs}`
 
-  window.open(`/template_excel/sophos_excel_viewer.html?${qs}`, '_blank')
+  if (preOpenedWin && !preOpenedWin.closed) {
+    preOpenedWin.location.href = viewerUrl
+    return
+  }
+  const opened = window.open(viewerUrl, '_blank')
+  if (!opened) {
+    window.location.href = viewerUrl
+  }
 }
 
 /**
@@ -13800,10 +14826,23 @@ const openExcelNavigator = ({ fileType = 'tg', sheet = '', rowNum = 1, colLetter
  * hoặc trong file Gốc / file Trung Gian rồi mở Tab mới nhảy thẳng tới dòng đó.
  */
 const openExcelNavigatorForSku = async (rawSku, preferredFileType = 'tg', itemName = '') => {
-  await Promise.all([
-    !sophosRefData.value ? loadSophosRefData() : Promise.resolve(),
-    (preferredFileType === 'calc' && !sophosCalcRefData.value) ? loadSophosCalcRefData() : Promise.resolve()
-  ])
+  const needsAsyncLoad =
+    !sophosRefData.value || (preferredFileType === 'calc' && !sophosCalcRefData.value)
+  const preWin = needsAsyncLoad ? window.open('about:blank', '_blank') : null
+  if (preWin && preWin.document) {
+    preWin.document.write(
+      '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Đang mở Bảng Sheet...</title></head><body style="margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:#0f172a;color:#e2e8f0;font-family:system-ui,sans-serif;"><div style="text-align:center;padding:20px;"><div style="font-size:16px;font-weight:700;color:#38bdf8;">⏳ Đang tải dữ liệu Sheet đối chiếu...</div></div></body></html>'
+    )
+    preWin.document.close()
+  }
+
+  try {
+    await Promise.all([
+      !sophosRefData.value ? loadSophosRefData() : Promise.resolve(),
+      preferredFileType === 'calc' && !sophosCalcRefData.value ? loadSophosCalcRefData() : Promise.resolve()
+    ])
+  } catch (_) {}
+
   const sku = String(rawSku || '').trim().toUpperCase()
   const refObj = sophosRefData.value || {}
   const calcObj = sophosCalcRefData.value || {}
@@ -13811,45 +14850,55 @@ const openExcelNavigatorForSku = async (rawSku, preferredFileType = 'tg', itemNa
   if (preferredFileType === 'calc') {
     const calcMap = calcObj.calcSkus || {}
     const targetSku = sku === 'CFRAAB12ZZCAA' && !calcMap[sku] ? 'CFRAAB12BANCAA' : sku
-    const ctx = (showCardRefCompareModal.value && cardRefCompareData.value?.vendor === 'sophos')
-      ? buildActiveCalcContextForViewer(targetSku, itemName)
-      : inferSophosCalculatorContext(calcObj, targetSku, itemName ? { Ten_hang: itemName } : undefined)
+    const ctx =
+      showCardRefCompareModal.value && cardRefCompareData.value?.vendor === 'sophos'
+        ? buildActiveCalcContextForViewer(targetSku, itemName)
+        : inferSophosCalculatorContext(calcObj, targetSku, itemName ? { Ten_hang: itemName } : undefined)
     const targetSheet = ctx.nativeSheet || 'Firewall'
     const rawSheet = (calcObj.calcSheetsRaw && calcObj.calcSheetsRaw[targetSheet]) || []
     const ov = overlayCalculatedSheetAoa(calcObj, targetSheet, rawSheet, ctx)
-    return openExcelNavigator({
-      fileType: 'calc',
-      sheet: targetSheet,
-      rowNum: ov.targetRow || 29,
-      colLetter: ov.targetColLetter || 'H',
-      sku: targetSku,
-      itemName
-    })
+    return openExcelNavigator(
+      {
+        fileType: 'calc',
+        sheet: targetSheet,
+        rowNum: ov.targetRow || 29,
+        colLetter: ov.targetColLetter || 'H',
+        sku: targetSku,
+        itemName
+      },
+      preWin
+    )
   }
 
   if (preferredFileType === 'tg') {
     const tgLocs = (refObj.tgSkuLocations && refObj.tgSkuLocations[sku]) || []
     if (tgLocs.length > 0) {
-      return openExcelNavigator({
-        fileType: 'tg',
-        sheet: tgLocs[0].sheet,
-        rowNum: tgLocs[0].rowNum,
-        colLetter: tgLocs[0].colLetter || 'B',
-        sku,
-        itemName
-      })
+      return openExcelNavigator(
+        {
+          fileType: 'tg',
+          sheet: tgLocs[0].sheet,
+          rowNum: tgLocs[0].rowNum,
+          colLetter: tgLocs[0].colLetter || 'B',
+          sku,
+          itemName
+        },
+        preWin
+      )
     }
     const modelStr = String(imageCheckSettings.value.model || '').trim().toUpperCase()
     const lpRow = (refObj.lpSophos || []).find(x => String(x.model || '').toUpperCase() === modelStr)
     if (lpRow && lpRow.rowNum) {
-      return openExcelNavigator({
-        fileType: 'tg',
-        sheet: 'LP Sophos',
-        rowNum: lpRow.rowNum,
-        colLetter: 'A',
-        sku,
-        itemName
-      })
+      return openExcelNavigator(
+        {
+          fileType: 'tg',
+          sheet: 'LP Sophos',
+          rowNum: lpRow.rowNum,
+          colLetter: 'A',
+          sku,
+          itemName
+        },
+        preWin
+      )
     }
   }
 
@@ -13859,60 +14908,75 @@ const openExcelNavigatorForSku = async (rawSku, preferredFileType = 'tg', itemNa
     const gocEntry = gocMap[sku] || (sku === 'CFRAAB12ZZCAA' ? gocMap['CFRAAB12BANCAA'] : null)
     const targetSku = sku === 'CFRAAB12ZZCAA' && !gocMap[sku] ? 'CFRAAB12BANCAA' : sku
     if (gocEntry && gocEntry.skuTabRow) {
-      return openExcelNavigator({
+      return openExcelNavigator(
+        {
+          fileType: 'skulist',
+          sheet: 'SKU_Tab',
+          rowNum: gocEntry.skuTabRow,
+          colLetter: 'G',
+          sku: targetSku,
+          itemName
+        },
+        preWin
+      )
+    }
+    return openExcelNavigator(
+      {
         fileType: 'skulist',
         sheet: 'SKU_Tab',
-        rowNum: gocEntry.skuTabRow,
+        rowNum: 8,
         colLetter: 'G',
-        sku: targetSku,
+        sku,
         itemName
-      })
-    }
-    return openExcelNavigator({
-      fileType: 'skulist',
-      sheet: 'SKU_Tab',
-      rowNum: 8,
-      colLetter: 'G',
-      sku,
-      itemName
-    })
+      },
+      preWin
+    )
   }
 
   // Kiểm tra trong file_goc_SOPHOS
   const gocMap = refObj.gocSkus || {}
   const gocEntry = gocMap[sku] || (sku === 'CFRAAB12ZZCAA' ? gocMap['CFRAAB12BANCAA'] : null)
   if (gocEntry && gocEntry.rowNum) {
-    return openExcelNavigator({
-      fileType: 'goc',
-      sheet: 'MSRPs&BuyCost',
-      rowNum: gocEntry.rowNum,
-      colLetter: 'B',
-      sku,
-      itemName
-    })
+    return openExcelNavigator(
+      {
+        fileType: 'goc',
+        sheet: 'MSRPs&BuyCost',
+        rowNum: gocEntry.rowNum,
+        colLetter: 'B',
+        sku,
+        itemName
+      },
+      preWin
+    )
   }
 
   const fwRow = getFirewallSheetRowNumForItem(itemName, sku)
   if (fwRow) {
-    return openExcelNavigator({
-      fileType: 'goc',
-      sheet: 'Firewall',
-      rowNum: fwRow,
-      colLetter: 'H',
-      sku,
-      itemName
-    })
+    return openExcelNavigator(
+      {
+        fileType: 'goc',
+        sheet: 'Firewall',
+        rowNum: fwRow,
+        colLetter: 'H',
+        sku,
+        itemName
+      },
+      preWin
+    )
   }
 
   // Fallback mở sheet đầu tiên
-  return openExcelNavigator({
-    fileType: preferredFileType,
-    sheet: preferredFileType === 'goc' ? 'MSRPs&BuyCost' : 'XGS - 1U + 10%',
-    rowNum: 3,
-    colLetter: 'B',
-    sku,
-    itemName
-  })
+  return openExcelNavigator(
+    {
+      fileType: preferredFileType,
+      sheet: preferredFileType === 'goc' ? 'MSRPs&BuyCost' : 'XGS - 1U + 10%',
+      rowNum: 3,
+      colLetter: 'B',
+      sku,
+      itemName
+    },
+    preWin
+  )
 }
 
 const switchExcelNavFileType = async (newFileType) => {
@@ -15699,19 +16763,26 @@ const getCardVendorType = (item) => {
   const th = String(item.Ten_hang || '').trim().toUpperCase()
   const mh = String(item.Ma_hang || '').trim().toUpperCase()
 
-  if (ncc.includes('SOPHOS') || dm.includes('SOPHOS') || th.startsWith('SOPHOS')) {
-    return 'sophos'
-  }
   if (ncc.includes('KASPERSKY') || dm.includes('KASPERSKY') || th.startsWith('KASPERSKY') || /^KL\d{4}/i.test(mh)) {
     return 'kaspersky'
   }
   if (ncc.includes('ACRONIS') || dm.includes('ACRONIS') || th.includes('ACRONIS')) {
     return 'acronis'
   }
+  if (
+    ncc.includes('SOPHOS') ||
+    dm.includes('SOPHOS') ||
+    th.includes('SOPHOS') ||
+    mh.includes('SOPHOS') ||
+    /\b(XGS?\s*\d{2,4}W?|SFV[\s-]*(?:UNLIMITED|\d+C\d+)|XRP\d+|SD-RED\s*\d+|CS(?:101|110|210|1010)|AP6\s*\d{3}|CZTNA|MDRNDU)\b/i.test(`${th} ${mh}`)
+  ) {
+    return 'sophos'
+  }
   return null
 }
 
 const resolveSophosCardCompare = async (item) => {
+  await fetchVendorRefFilesMeta()
   await Promise.all([
     loadSophosRefData(),
     loadSophosCalcRefData()
@@ -15719,6 +16790,7 @@ const resolveSophosCardCompare = async (item) => {
   const sRef = sophosRefData.value || { gocSkus: {}, trungGianItems: [], lpSophos: [], tgSkuLocations: {} }
   const gocMap = sRef.gocSkus || {}
   const calcMap = sophosCalcRefData.value?.calcSkus || {}
+  const calcDd = sophosCalcRefData.value?.engineRuntime?.dropDowns
   const tgList = sRef.trungGianItems || []
   const lpList = sRef.lpSophos || []
   const tgLocMap = sRef.tgSkuLocations || {}
@@ -15727,36 +16799,68 @@ const resolveSophosCardCompare = async (item) => {
   const itemSkuCode = String(item.sku_code || '').trim().toUpperCase()
   const gc = String(item.Ghi_chu || '')
   const skuFromNote = ((gc.match(/SKU:\s*([A-Z0-9]+)/i) || [])[1] || '').toUpperCase()
+  const embeddedCalcSku = sophosCalcRefData.value ? extractValidatedEmbeddedCalcSku(item, sophosCalcRefData.value) : ''
+  const itemVolRange = extractVolumeRangeFromSophosItem(item)
 
   let sku = ''
   if (itemSkuCode && (calcMap[itemSkuCode] || gocMap[itemSkuCode])) sku = itemSkuCode
   else if (calcMap[mh] || gocMap[mh]) sku = mh
   else if (skuFromNote && (calcMap[skuFromNote] || gocMap[skuFromNote])) sku = skuFromNote
+  else if (embeddedCalcSku) sku = embeddedCalcSku
   else if (itemSkuCode) sku = itemSkuCode
 
-  // Tìm trong file_trung_gian_SOPHOS
+  const matchesTgVolRange = (t) => {
+    if (!itemVolRange) return true
+    const tSku = String(t?.sku || '').trim().toUpperCase()
+    const tText = `${t?.description || ''} ${t?.moTa || ''}`
+    if (tText.includes(`${itemVolRange.min}-${itemVolRange.max}`)) return true
+    const mappedNew = (tSku && calcDd?.newSkuByOldSku?.[tSku]) || (tSku.length === 14 ? tSku : '')
+    if (mappedNew.length === 14 && calcDd?.volBandTables) {
+      const bCode = mappedNew.slice(8, 10)
+      if (bCode !== 'ZZ') {
+        const tbl = calcDd.volBandTables[bCode[0]] || []
+        const hitBand = tbl.find(b => b[2] === bCode)
+        if (hitBand) {
+          return itemVolRange.min >= hitBand[0] && itemVolRange.min <= hitBand[1]
+        }
+      }
+    }
+    return false
+  }
+
+  const itemModelMatch = `${item.Ma_hang || ''} ${item.Ten_hang || ''} ${item.Danh_muc || ''}`.match(/\b(XGS?\s*\d{2,4}w?)\b/i)
+  const itemModelNorm = itemModelMatch ? itemModelMatch[1].replace(/\s+/g, '').toUpperCase() : ''
+  const matchesTgModel = (t) => {
+    if (!itemModelNorm) return true
+    const tText = `${t?.group || ''} ${t?.model || ''} ${t?.description || ''} ${t?.moTa || ''}`
+    const m = tText.match(/\b(XGS?\s*\d{2,4}w?)\b/i)
+    if (!m) return true
+    return m[1].replace(/\s+/g, '').toUpperCase() === itemModelNorm
+  }
+
+  // Tìm trong file_trung_gian_SOPHOS (có kiểm tra đúng dải số lượng Volume Band & Model Firewall nếu có)
   let tgEntry = tgList.find(t => (sku && t.sku === sku) || t.sku === mh || (skuFromNote && t.sku === skuFromNote)) || null
   if (!tgEntry) {
     const dmLower = String(item.Danh_muc || '').trim().toLowerCase()
     const thLower = String(item.Ten_hang || '').trim().replace(/:$/, '').toLowerCase()
-    // 1. Khớp chính xác group + dòng đầu moTa
+    // 1. Khớp chính xác group + dòng đầu moTa + đúng Volume Band
     tgEntry = tgList.find(t => {
       const grp = String(t.group || '').trim().toLowerCase()
       const firstLine = String(t.moTa || '').split('\n')[0].trim().replace(/:$/, '').toLowerCase()
-      return grp === dmLower && firstLine === thLower
+      return grp === dmLower && firstLine === thLower && matchesTgVolRange(t) && matchesTgModel(t)
     }) || null
-    // 2. Khớp group + moTa chứa Ten_hang
+    // 2. Khớp group + moTa chứa Ten_hang + đúng Volume Band
     if (!tgEntry && dmLower && thLower) {
       tgEntry = tgList.find(t => {
         const grp = String(t.group || '').trim().toLowerCase()
-        return grp === dmLower && String(t.moTa || '').toLowerCase().includes(thLower)
+        return grp === dmLower && String(t.moTa || '').toLowerCase().includes(thLower) && matchesTgVolRange(t) && matchesTgModel(t)
       }) || null
     }
-    // 3. Khớp dòng đầu moTa trên toàn bộ danh sách
+    // 3. Khớp dòng đầu moTa trên toàn bộ danh sách + đúng Volume Band + đúng Model Firewall
     if (!tgEntry && thLower) {
       tgEntry = tgList.find(t => {
         const firstLine = String(t.moTa || '').split('\n')[0].trim().replace(/:$/, '').toLowerCase()
-        return firstLine === thLower
+        return firstLine === thLower && matchesTgVolRange(t) && matchesTgModel(t)
       }) || null
     }
   }
@@ -15776,7 +16880,9 @@ const resolveSophosCardCompare = async (item) => {
     const inferredCtx = inferSophosCalculatorContext(sophosCalcRefData.value, sku, item)
     sophosCardCalcState.value = {
       activeTab: inferredCtx.calcType === 'firewall' ? 'firewall' : 'product',
+      calcMode: inferredCtx.calcType === 'firewall' ? 'firewall' : 'product',
       nativeSheet: inferredCtx.nativeSheet || 'Firewall',
+      preferredSku: inferredCtx.sku || sku || '',
       partnerLevel: inferredCtx.partnerLevel || 'Authorized',
       sector: inferredCtx.sector || 'Corporate',
       dealType: inferredCtx.dealType || 'New - Standard',
@@ -15801,8 +16907,10 @@ const resolveSophosCardCompare = async (item) => {
       calcNativeSheet = activeSum.sheetName || inferredCtx.nativeSheet || 'Firewall'
       calcSheetRowNum = activeSum.sheetRowNum || null
       calcSheetColLetter = activeSum.sheetColLetter || 'H'
-      if (!sku && activeSum.available && activeSum.sku && activeSum.sku !== 'Not Available') {
-        sku = String(activeSum.sku).trim().toUpperCase()
+      if (activeSum.available && activeSum.sku && activeSum.sku !== 'Not Available') {
+        if (!sku || (!calcMap[sku] && calcMap[activeSum.sku])) {
+          sku = String(activeSum.sku).trim().toUpperCase()
+        }
       }
     }
   }
@@ -16227,6 +17335,1307 @@ const syncCardFromActiveCalculator = async () => {
     showAsyncError('Lỗi cập nhật Database', err.message)
   } finally {
     syncingCardRefToDb.value = false
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ĐỒNG BỘ HÀNG LOẠT THEO FILE CALCULATOR SOPHOS:
+//   1. Đồng bộ List Price hàng Sophos trong Database (hang_hoa) theo File Calculator
+//   2. Đồng bộ Giá tham khảo (Cột F) của File Trung Gian theo File Calculator
+// ═══════════════════════════════════════════════════════════════════════════
+const showSophosDbSyncModal = ref(false)
+const sophosDbSyncLoading = ref(false)
+const syncingSophosDbFromCalc = ref(false)
+const sophosDbSyncRows = ref([])
+const sophosDbSyncFilter = ref('need_sync')
+const sophosDbSyncSearch = ref('')
+const sophosDbSyncUpdateSku2026 = ref(true)
+
+const showSophosTgSyncModal = ref(false)
+const sophosTgSyncLoading = ref(false)
+const syncingSophosTgFromCalc = ref(false)
+const exportingSophosTgFromCalc = ref(false)
+const sophosTgLoadedWorkbook = ref(null)
+const sophosTgSyncFileName = ref('file_trung_gian_SOPHOS.xlsx')
+const sophosTgBomSheetList = ref([])
+const sophosTgSyncRows = ref([])
+const sophosTgSyncSheetFilter = ref('ALL')
+const sophosTgSyncFilter = ref('need_sync')
+const sophosTgSyncSearch = ref('')
+const sophosTgSyncUpdateSku2026 = ref(true)
+const sophosTgAutoDownloadAfterSync = ref(false)
+
+/**
+ * Tra cứu chuẩn xác SKU & Giá MSRP trong File Calculator (calculate_sophos.xlsx)
+ * cho 1 mặt hàng trong Database hoặc 1 dòng BOM trong File Trung Gian (Không gán nhầm fallback).
+ */
+const resolveSophosItemAgainstCalculator = (calcObj, rawCandidates = [], pseudoItem = null, tgList = []) => {
+  const calcMap = calcObj?.calcSkus || {}
+  const runtime = calcObj?.engineRuntime || null
+  const calcDd = runtime?.dropDowns || null
+  const newByOld = calcDd?.newSkuByOldSku || {}
+
+  const normalizedCands = Array.from(
+    new Set(
+      (rawCandidates || [])
+        .map(x => String(x || '').trim().toUpperCase())
+        .filter(Boolean)
+    )
+  )
+
+  // 1. Khớp trực tiếp mã SKU 2026 hoặc qua bảng ánh xạ OldSKU -> NewSKU chính thức của Calculator
+  for (const cand of normalizedCands) {
+    if (calcMap[cand]) {
+      return {
+        found: true,
+        resolvedSku: cand,
+        matchedFromSku: cand,
+        matchSource: 'exact',
+        msrp: Number(calcMap[cand].msrp) || 0,
+        rowNum: calcMap[cand].rowNum || null,
+        desc: calcMap[cand].desc || ''
+      }
+    }
+    const mappedNew = newByOld[cand] || (cand === 'CFRAAB12ZZCAA' ? 'CFRAAB12BANCAA' : '')
+    if (mappedNew && calcMap[mappedNew]) {
+      return {
+        found: true,
+        resolvedSku: mappedNew,
+        matchedFromSku: cand,
+        matchSource: 'mapped_2026',
+        msrp: Number(calcMap[mappedNew].msrp) || 0,
+        rowNum: calcMap[mappedNew].rowNum || null,
+        desc: calcMap[mappedNew].desc || ''
+      }
+    }
+  }
+
+  // 2. Thử trích xuất mã SKU nhúng hợp lệ trong tên / mô tả / ghi chú
+  if (pseudoItem && calcObj) {
+    const embedded = extractValidatedEmbeddedCalcSku(pseudoItem, calcObj)
+    if (embedded && calcMap[embedded]) {
+      return {
+        found: true,
+        resolvedSku: embedded,
+        matchedFromSku: normalizedCands[0] || '',
+        matchSource: 'embedded_sku',
+        msrp: Number(calcMap[embedded].msrp) || 0,
+        rowNum: calcMap[embedded].rowNum || null,
+        desc: calcMap[embedded].desc || ''
+      }
+    }
+  }
+
+  // 3. Đối với hàng DB có mã nội bộ riêng: dò qua BOM File Trung Gian (kiểm tra chặt Model & Volume Band)
+  if (pseudoItem && Array.isArray(tgList) && tgList.length > 0) {
+    const itemVolRange = extractVolumeRangeFromSophosItem(pseudoItem)
+    const matchesTgVol = (t) => {
+      if (!itemVolRange) return true
+      const tSku = String(t?.sku || '').trim().toUpperCase()
+      const tText = `${t?.description || ''} ${t?.moTa || ''}`
+      if (tText.includes(`${itemVolRange.min}-${itemVolRange.max}`)) return true
+      const mapped = (tSku && newByOld[tSku]) || (tSku.length === 14 ? tSku : '')
+      if (mapped.length === 14 && calcDd?.volBandTables) {
+        const bCode = mapped.slice(8, 10)
+        if (bCode !== 'ZZ') {
+          const tbl = calcDd.volBandTables[bCode[0]] || []
+          const hitBand = tbl.find(b => b[2] === bCode)
+          if (hitBand) return itemVolRange.min >= hitBand[0] && itemVolRange.min <= hitBand[1]
+        }
+      }
+      return false
+    }
+    const modelMatch = `${pseudoItem.Ma_hang || ''} ${pseudoItem.Ten_hang || ''} ${pseudoItem.Danh_muc || ''}`.match(/\b(XGS?\s*\d{2,4}w?)\b/i)
+    const itemModelNorm = modelMatch ? modelMatch[1].replace(/\s+/g, '').toUpperCase() : ''
+    const matchesTgModel = (t) => {
+      if (!itemModelNorm) return true
+      const tText = `${t?.group || ''} ${t?.model || ''} ${t?.description || ''} ${t?.moTa || ''}`
+      const m = tText.match(/\b(XGS?\s*\d{2,4}w?)\b/i)
+      if (!m) return true
+      return m[1].replace(/\s+/g, '').toUpperCase() === itemModelNorm
+    }
+
+    const dmLower = String(pseudoItem.Danh_muc || '').trim().toLowerCase()
+    const thLower = String(pseudoItem.Ten_hang || '').trim().replace(/:$/, '').toLowerCase()
+    let tgHit = null
+    if (thLower) {
+      tgHit =
+        tgList.find(t => {
+          const grp = String(t.group || '').trim().toLowerCase()
+          const firstLine = String(t.moTa || '').split('\n')[0].trim().replace(/:$/, '').toLowerCase()
+          return grp === dmLower && firstLine === thLower && matchesTgVol(t) && matchesTgModel(t)
+        }) ||
+        tgList.find(t => {
+          const firstLine = String(t.moTa || '').split('\n')[0].trim().replace(/:$/, '').toLowerCase()
+          return firstLine === thLower && matchesTgVol(t) && matchesTgModel(t)
+        }) ||
+        null
+    }
+    if (tgHit?.sku) {
+      const tgSku = String(tgHit.sku).trim().toUpperCase()
+      const resolvedTgSku = calcMap[tgSku]
+        ? tgSku
+        : ((newByOld[tgSku] && calcMap[newByOld[tgSku]]) ? newByOld[tgSku] : '')
+      if (resolvedTgSku && calcMap[resolvedTgSku]) {
+        return {
+          found: true,
+          resolvedSku: resolvedTgSku,
+          matchedFromSku: tgSku,
+          matchSource: 'tg_bom',
+          msrp: Number(calcMap[resolvedTgSku].msrp) || 0,
+          rowNum: calcMap[resolvedTgSku].rowNum || null,
+          desc: calcMap[resolvedTgSku].desc || ''
+        }
+      }
+    }
+  }
+
+  // 4. Suy luận qua Engine của Calculator (chỉ chấp nhận khi khớp thật sự Model Firewall hoặc Product2 cụ thể, tuyệt đối không nhận fallback Endpoint mặc định)
+  if (pseudoItem && runtime) {
+    const primaryRaw = normalizedCands[0] || ''
+    const combinedText = `${pseudoItem.Ma_hang || ''} ${pseudoItem.Ten_hang || ''} ${pseudoItem.Description || ''} ${pseudoItem.Danh_muc || ''}`
+    if (!/\butm\s*\d+\b/i.test(combinedText)) {
+      const ctx = inferSophosCalculatorContext(calcObj, primaryRaw, pseudoItem)
+      const ctxSku = String(ctx?.sku || '').trim().toUpperCase()
+      if (ctxSku && calcMap[ctxSku]) {
+        const hasExplicitPartPrefix =
+          primaryRaw.length >= 6 &&
+          (Boolean(runtime.partIdToProducts?.[primaryRaw.slice(0, 6)]) ||
+            primaryRaw.startsWith('CZTNA') ||
+            primaryRaw.startsWith('MDRNDU'))
+        const isFirewallGenuine =
+          ctx.calcType === 'firewall' &&
+          (/\b(XGS?\s*\d{2,4}w?|SFv[\s-]*(?:Unlimited|\d+C\d+)|central\s+firewall\s+reporting)\b/i.test(combinedText) ||
+            primaryRaw.startsWith('CFR'))
+        const isProductGenuine =
+          ctx.calcType === 'product' &&
+          (hasExplicitPartPrefix ||
+            (ctx.product && ctx.product !== 'Sophos Endpoint - User') ||
+            /\bendpoint\b/i.test(combinedText))
+
+        if (isFirewallGenuine || isProductGenuine) {
+          return {
+            found: true,
+            resolvedSku: ctxSku,
+            matchedFromSku: primaryRaw,
+            matchSource: 'calc_engine',
+            msrp: Number(calcMap[ctxSku].msrp) || 0,
+            rowNum: calcMap[ctxSku].rowNum || null,
+            desc: calcMap[ctxSku].desc || ctx.product || ''
+          }
+        }
+      }
+    }
+  }
+
+  return {
+    found: false,
+    resolvedSku: '',
+    matchedFromSku: normalizedCands[0] || '',
+    matchSource: 'none',
+    msrp: 0,
+    rowNum: null,
+    desc: ''
+  }
+}
+
+// ---------------------------------------------------------------------------
+// TÍNH NĂNG 1: ĐỒNG BỘ LIST PRICE HÀNG SOPHOS TRONG DB THEO FILE CALCULATOR
+// ---------------------------------------------------------------------------
+const rowNeedsDbSync = (row) => {
+  if (!row || !row.calcFound || !(row.newPrice > 0)) return false
+  if (row.hasPriceDiff) return true
+  if (sophosDbSyncUpdateSku2026.value && row.hasSkuUpgrade) return true
+  return false
+}
+
+const buildSophosDbSyncPreviewRows = () => {
+  const calcObj = sophosCalcRefData.value
+  const tgList = sophosRefData.value?.trungGianItems || []
+  const sophosItems = (items.value || []).filter(it => getCardVendorType(it) === 'sophos')
+
+  const built = sophosItems.map((it, idx) => {
+    const currentSku = String(it.sku_code || '').trim().toUpperCase()
+    const maHang = String(it.Ma_hang || '').trim()
+    const mhUpper = maHang.toUpperCase()
+    const skuFromNote = ((String(it.Ghi_chu || '').match(/SKU:\s*([A-Z0-9]+)/i) || [])[1] || '').toUpperCase()
+
+    const cands = [
+      currentSku,
+      /^[A-Z0-9]{8,16}$/.test(mhUpper) && /\d/.test(mhUpper) ? mhUpper : '',
+      skuFromNote
+    ].filter(Boolean)
+
+    const match = resolveSophosItemAgainstCalculator(calcObj, cands, it, tgList)
+    const oldCurrency = String(it.Don_vi_tien_te || 'USD').trim().toUpperCase()
+    const oldPrice = Number(it.Don_gia) || 0
+    const oldStdCost = Number(it.Gia_tieu_chuan) || 0
+    const newPrice = match.found ? Number(match.msrp.toFixed(2)) : 0
+
+    const hasPriceDiff =
+      match.found &&
+      newPrice > 0 &&
+      (oldCurrency !== 'USD' || Math.abs(newPrice - oldPrice) >= 0.01)
+
+    const diffUsd = match.found
+      ? (oldCurrency === 'USD' ? Number((newPrice - oldPrice).toFixed(2)) : newPrice)
+      : 0
+    const diffPct = match.found && oldCurrency === 'USD' && oldPrice > 0
+      ? ((newPrice - oldPrice) / oldPrice) * 100
+      : 0
+
+    const hasSkuUpgrade = Boolean(match.found && match.resolvedSku && currentSku !== match.resolvedSku)
+    const preserveCustomCost =
+      oldCurrency === 'USD' &&
+      oldStdCost > 0 &&
+      Math.abs(oldStdCost - oldPrice) >= 0.01
+
+    const displaySku = match.resolvedSku || currentSku || skuFromNote || (/^[A-Z0-9]{8,16}$/.test(mhUpper) ? mhUpper : '')
+    const needsSync = hasPriceDiff || (sophosDbSyncUpdateSku2026.value && hasSkuUpgrade)
+
+    return {
+      id: it._firebaseKey || `db-sophos-${idx}`,
+      dbItem: it,
+      maHang,
+      currentSku,
+      displaySku,
+      resolvedSku: match.resolvedSku,
+      matchSource: match.matchSource,
+      calcFound: match.found,
+      calcRowNum: match.rowNum,
+      calcDesc: match.desc,
+      name: String(it.Ten_hang || '').trim() || maHang,
+      category: String(it.Danh_muc || '').trim(),
+      oldCurrency,
+      oldPrice,
+      oldStdCost,
+      preserveCustomCost,
+      newPrice,
+      diffUsd,
+      diffPct,
+      hasPriceDiff,
+      hasSkuUpgrade,
+      selected: Boolean(match.found && newPrice > 0 && needsSync)
+    }
+  })
+
+  // Ưu tiên hiển thị các dòng lệch giá lên đầu, tiếp đến là đổi SKU, khớp giá, và không tìm thấy
+  built.sort((a, b) => {
+    const score = (r) => {
+      if (!r.calcFound) return 3
+      if (r.hasPriceDiff) return 0
+      if (r.hasSkuUpgrade) return 1
+      return 2
+    }
+    const diffScore = score(a) - score(b)
+    if (diffScore !== 0) return diffScore
+    return Math.abs(b.diffUsd) - Math.abs(a.diffUsd)
+  })
+
+  sophosDbSyncRows.value = built
+}
+
+watch(sophosDbSyncUpdateSku2026, (enableSkuUpdate) => {
+  sophosDbSyncRows.value.forEach(r => {
+    if (r.calcFound && r.newPrice > 0 && !r.hasPriceDiff && r.hasSkuUpgrade) {
+      r.selected = Boolean(enableSkuUpdate)
+    }
+  })
+})
+
+const sophosDbSyncSummary = computed(() => {
+  const rows = sophosDbSyncRows.value
+  const total = rows.length
+  const notFound = rows.filter(r => !r.calcFound).length
+  const priceDiff = rows.filter(r => r.calcFound && r.hasPriceDiff).length
+  const skuDiff = rows.filter(r => r.calcFound && r.hasSkuUpgrade).length
+  const needSync = rows.filter(r => rowNeedsDbSync(r)).length
+  const matched = rows.filter(r => r.calcFound && !rowNeedsDbSync(r)).length
+  return { total, needSync, priceDiff, skuDiff, matched, notFound }
+})
+
+const filteredSophosDbSyncRows = computed(() => {
+  let list = sophosDbSyncRows.value
+  const mode = sophosDbSyncFilter.value
+  if (mode === 'need_sync') list = list.filter(r => rowNeedsDbSync(r))
+  else if (mode === 'price_diff') list = list.filter(r => r.calcFound && r.hasPriceDiff)
+  else if (mode === 'sku_diff') list = list.filter(r => r.calcFound && r.hasSkuUpgrade)
+  else if (mode === 'matched') list = list.filter(r => r.calcFound && !rowNeedsDbSync(r))
+  else if (mode === 'not_found') list = list.filter(r => !r.calcFound)
+
+  const q = String(sophosDbSyncSearch.value || '').trim().toLowerCase()
+  if (q) {
+    list = list.filter(r =>
+      String(r.displaySku || '').toLowerCase().includes(q) ||
+      String(r.currentSku || '').toLowerCase().includes(q) ||
+      String(r.resolvedSku || '').toLowerCase().includes(q) ||
+      String(r.maHang || '').toLowerCase().includes(q) ||
+      String(r.name || '').toLowerCase().includes(q) ||
+      String(r.category || '').toLowerCase().includes(q)
+    )
+  }
+  return list
+})
+
+const selectableFilteredSophosDbRows = computed(() =>
+  filteredSophosDbSyncRows.value.filter(r => r.calcFound && r.newPrice > 0)
+)
+
+const allFilteredSophosDbSelected = computed(() => {
+  const selectable = selectableFilteredSophosDbRows.value
+  return selectable.length > 0 && selectable.every(r => r.selected)
+})
+
+const selectedSophosDbSyncCount = computed(() =>
+  sophosDbSyncRows.value.filter(r => r.selected && r.calcFound && r.newPrice > 0).length
+)
+
+const toggleSelectAllFilteredSophosDb = (checked) => {
+  selectableFilteredSophosDbRows.value.forEach(r => {
+    r.selected = Boolean(checked)
+  })
+}
+
+const selectAllNeedSyncSophosDbRows = () => {
+  sophosDbSyncRows.value.forEach(r => {
+    r.selected = rowNeedsDbSync(r)
+  })
+}
+
+const refreshSophosDbSyncModal = async () => {
+  sophosDbSyncLoading.value = true
+  try {
+    await fetchVendorRefFilesMeta(true)
+    if (!items.value.length) {
+      await fetchData()
+    }
+    await Promise.all([
+      loadSophosCalcRefData(),
+      loadSophosRefData().catch(() => null)
+    ])
+    if (!sophosCalcRefData.value?.calcSkus || !Object.keys(sophosCalcRefData.value.calcSkus).length) {
+      showAsyncError(
+        'Chưa có dữ liệu File Calculator Sophos',
+        'Vui lòng upload file calculate_sophos.xlsx lên Cloudinary tại mục ☁️ File Calculator trước khi đồng bộ!'
+      )
+      return
+    }
+    buildSophosDbSyncPreviewRows()
+    sophosDbSyncFilter.value = sophosDbSyncSummary.value.needSync > 0 ? 'need_sync' : 'all'
+  } catch (err) {
+    console.error('Lỗi quét dữ liệu đồng bộ ListPrice Sophos:', err)
+    showAsyncError('Lỗi tải dữ liệu đối chiếu', err.message)
+  } finally {
+    sophosDbSyncLoading.value = false
+  }
+}
+
+const openSophosDbListPriceSyncModal = async () => {
+  sophosDbSyncSearch.value = ''
+  showSophosDbSyncModal.value = true
+  await refreshSophosDbSyncModal()
+}
+
+const buildUpdatedHangHoaPayloadForSophosCalcSync = (row, calcFileMeta) => {
+  const existing = row.dbItem || {}
+  const newPrice = Number(row.newPrice.toFixed(2))
+  const oldPrice = Number(existing.Don_gia) || 0
+  const oldStd = Number(existing.Gia_tieu_chuan) || 0
+  const oldCurrency = String(existing.Don_vi_tien_te || 'USD').trim().toUpperCase()
+
+  // Quy tắc A1 đã chốt: nếu Gia_tieu_chuan trước đó đang bằng Don_gia cũ (hoặc <= 0) thì cập nhật theo Giá mới;
+  // nếu mặt hàng đã có Giá vốn riêng khác Don_gia cũ thì giữ nguyên hoàn toàn Gia_tieu_chuan.
+  const preserveCost = oldCurrency === 'USD' && oldStd > 0 && Math.abs(oldStd - oldPrice) >= 0.01
+  const nextGiaTieuChuan = preserveCost ? oldStd : newPrice
+
+  let nextSkuCode = String(existing.sku_code || '').trim()
+  let nextNote = String(existing.Ghi_chu || '').trim()
+  if (sophosDbSyncUpdateSku2026.value && row.resolvedSku) {
+    nextSkuCode = row.resolvedSku
+    if (!nextNote) {
+      nextNote = `SKU: ${row.resolvedSku}`
+    } else if (!nextNote.toUpperCase().includes(row.resolvedSku)) {
+      if (/SKU:\s*[A-Z0-9]+/i.test(nextNote)) {
+        nextNote = nextNote.replace(/SKU:\s*([A-Z0-9]+)/i, (_, oldCode) =>
+          oldCode.toUpperCase() === row.resolvedSku
+            ? `SKU: ${row.resolvedSku}`
+            : `SKU: ${row.resolvedSku} (SKU cũ: ${oldCode.toUpperCase()})`
+        )
+      } else {
+        nextNote = `${nextNote} | SKU: ${row.resolvedSku}`
+      }
+    }
+  }
+
+  const nextRate = Number(existing.Ti_gia) > 1
+    ? Number(existing.Ti_gia)
+    : (currentSystemUsdRate.value || sophosRefData.value?.tiGiaTrungGian || 26200)
+
+  const payload = buildFirebaseHangHoaPayload({
+    ...existing,
+    Ma_hang: existing.Ma_hang,
+    sku_code: nextSkuCode,
+    Description: existing.Description || row.calcDesc || '',
+    Don_gia: newPrice,
+    Gia_tieu_chuan: nextGiaTieuChuan,
+    Don_vi_tien_te: 'USD',
+    Ti_gia: nextRate,
+    Ghi_chu: nextNote
+  })
+
+  if (calcFileMeta && calcFileMeta.file_name) {
+    payload.danh_sach_file = appendFileEntryToProductHistory(
+      existing.danh_sach_file || [],
+      calcFileMeta,
+      {
+        gia_von: payload.Gia_tieu_chuan,
+        don_gia: payload.Don_gia,
+        gia_nhap: payload.gia_nhap,
+        don_vi_tien_te: payload.Don_vi_tien_te
+      }
+    )
+  }
+
+  return payload
+}
+
+const getActiveCalcHistoryFileMeta = () => {
+  const sMeta = vendorRefFilesMeta.value?.sophos || {}
+  const fName = sMeta.calc_file_name || sophosCalcRefData.value?.fileName || 'calculate_sophos.xlsx'
+  return {
+    file_name: fName,
+    file_url: sMeta.calc_file_url || '',
+    file_type: 'sophos_calculator_sync',
+    file_uploaded_at: sMeta.calc_updated_at
+      ? new Date(sMeta.calc_updated_at).toISOString()
+      : new Date().toISOString(),
+    ghi_chu_file: `Đồng bộ List Price từ File Calculator Sophos${sMeta.calc_version ? ' (v' + sMeta.calc_version + ')' : ''}`
+  }
+}
+
+const syncSingleSophosDbRow = async (row) => {
+  if (!row?.dbItem?._firebaseKey || !row.calcFound || !(row.newPrice > 0)) return
+  syncingSophosDbFromCalc.value = true
+  try {
+    const calcFileMeta = getActiveCalcHistoryFileMeta()
+    const payload = buildUpdatedHangHoaPayloadForSophosCalcSync(row, calcFileMeta)
+    await update(dbRef(database, `hang_hoa/${row.dbItem._firebaseKey}`), payload)
+    await fetchData()
+    await syncAutoUpdatePriceListsInFirebase()
+    buildSophosDbSyncPreviewRows()
+    showAsyncSuccess(
+      'Đã đồng bộ List Price vào DB!',
+      `${row.name} → ${formatUsdPrice(payload.Don_gia)}`
+    )
+  } catch (err) {
+    console.error('Lỗi đồng bộ dòng Sophos vào DB:', err)
+    showAsyncError('Lỗi đồng bộ Database', err.message)
+  } finally {
+    syncingSophosDbFromCalc.value = false
+  }
+}
+
+const applySophosDbListPriceSync = async () => {
+  const selectedRows = sophosDbSyncRows.value.filter(
+    r => r.selected && r.calcFound && r.newPrice > 0 && r.dbItem?._firebaseKey
+  )
+  if (!selectedRows.length) return
+
+  syncingSophosDbFromCalc.value = true
+  showAsyncLoading(
+    'Đang đồng bộ List Price hàng Sophos vào Database...',
+    `Đang cập nhật ${selectedRows.length} mặt hàng theo File Calculator...`
+  )
+  try {
+    const calcFileMeta = getActiveCalcHistoryFileMeta()
+    const CHUNK_SIZE = 250
+    for (let i = 0; i < selectedRows.length; i += CHUNK_SIZE) {
+      const chunk = selectedRows.slice(i, i + CHUNK_SIZE)
+      const batchUpdates = {}
+      for (const row of chunk) {
+        batchUpdates[row.dbItem._firebaseKey] = buildUpdatedHangHoaPayloadForSophosCalcSync(row, calcFileMeta)
+      }
+      await update(dbRef(database, 'hang_hoa'), batchUpdates)
+    }
+
+    await fetchData()
+    await syncAutoUpdatePriceListsInFirebase()
+    buildSophosDbSyncPreviewRows()
+    if (sophosDbSyncSummary.value.needSync === 0) {
+      sophosDbSyncFilter.value = 'all'
+    }
+
+    showAsyncSuccess(
+      'Đồng bộ List Price Sophos vào DB thành công!',
+      `Đã cập nhật ${selectedRows.length} mặt hàng Sophos theo File Calculator${vendorRefFilesMeta.value.sophos?.calc_version ? ' (v' + vendorRefFilesMeta.value.sophos.calc_version + ')' : ''}.`
+    )
+  } catch (err) {
+    console.error('Lỗi đồng bộ hàng loạt List Price Sophos vào DB:', err)
+    showAsyncError('Lỗi đồng bộ Database', err.message)
+  } finally {
+    syncingSophosDbFromCalc.value = false
+  }
+}
+
+// ---------------------------------------------------------------------------
+// TÍNH NĂNG 2: ĐỒNG BỘ GIÁ FILE TRUNG GIAN SOPHOS THEO FILE CALCULATOR
+// ---------------------------------------------------------------------------
+const rowNeedsTgSync = (row) => {
+  if (!row || !row.calcFound || !(row.newPrice > 0)) return false
+  if (row.hasPriceDiff) return true
+  if (sophosTgSyncUpdateSku2026.value && row.hasSkuUpgrade) return true
+  return false
+}
+
+const loadCurrentSophosTrungGianWorkbook = async () => {
+  const tgMeta = getVendorCompareFileMeta('sophos', 'tg')
+  const fName = tgMeta?.name || vendorRefFilesMeta.value?.sophos?.tg_file_name || 'file_trung_gian_SOPHOS.xlsx'
+  sophosTgSyncFileName.value = fName.replace(/\.(xlsb|xls)$/i, '.xlsx')
+
+  const candidateUrls = []
+  const rawUrl = String(tgMeta?.url || vendorRefFilesMeta.value?.sophos?.tg_file_url || '').trim()
+  if (rawUrl && !rawUrl.toLowerCase().endsWith('.json')) {
+    candidateUrls.push(`${rawUrl}${rawUrl.includes('?') ? '&' : '?'}_t=${Date.now()}`)
+  }
+  candidateUrls.push(`/template_excel/file_trung_gian_SOPHOS.xlsx?_t=${Date.now()}`)
+
+  for (const url of candidateUrls) {
+    try {
+      const res = await fetch(url, { cache: 'no-store' })
+      if (res.ok) {
+        const buf = await res.arrayBuffer()
+        if (buf && buf.byteLength > 200) {
+          return XLSX.read(buf, {
+            type: 'array',
+            cellStyles: true,
+            cellFormula: true,
+            cellNF: true,
+            cellDates: true
+          })
+        }
+      }
+    } catch (err) {
+      console.warn('Không tải trực tiếp được binary File Trung Gian từ URL, thử nguồn dự phòng:', url, err)
+    }
+  }
+
+  return await buildVendorRefWorkbookFromCloudinary('sophos', 'tg', sophosTgSyncFileName.value)
+}
+
+const getExcelJsCellPlainVal = (cell) => {
+  if (!cell) return null
+  const v = cell.value
+  if (v === null || v === undefined) return null
+  if (typeof v === 'object') {
+    if (Array.isArray(v.richText)) {
+      return v.richText.map(rt => rt?.text || '').join('')
+    }
+    if ('result' in v && v.result !== undefined) return v.result
+    if ('text' in v && typeof v.text === 'string') return v.text
+    return null
+  }
+  return v
+}
+
+const loadSophosTrungGianExcelJsWorkbook = async () => {
+  const tgMeta = getVendorCompareFileMeta('sophos', 'tg')
+  const fName = (tgMeta?.name || vendorRefFilesMeta.value?.sophos?.tg_file_name || 'file_trung_gian_SOPHOS.xlsx')
+    .replace(/\.(xlsb|xls)$/i, '.xlsx')
+  sophosTgSyncFileName.value = fName
+
+  const candidateUrls = []
+  const rawUrl = String(tgMeta?.url || vendorRefFilesMeta.value?.sophos?.tg_file_url || '').trim()
+  if (rawUrl && !rawUrl.toLowerCase().endsWith('.json')) {
+    candidateUrls.push(`${rawUrl}${rawUrl.includes('?') ? '&' : '?'}_t=${Date.now()}`)
+  }
+  candidateUrls.push(`/template_excel/file_trung_gian_SOPHOS.xlsx?_t=${Date.now()}`)
+
+  for (const url of candidateUrls) {
+    try {
+      const res = await fetch(url, { cache: 'no-store' })
+      if (!res.ok) continue
+      const buf = await res.arrayBuffer()
+      if (!buf || buf.byteLength < 200) continue
+      const exWb = new ExcelJS.Workbook()
+      await exWb.xlsx.load(buf)
+      if (exWb.worksheets && exWb.worksheets.length > 0) {
+        return { exWb, fileName: fName }
+      }
+    } catch (err) {
+      console.warn('Không nạp được workbook ExcelJS từ URL, chuyển sang nguồn kế tiếp:', url, err)
+    }
+  }
+
+  const fallbackSheetJsWb = await buildVendorRefWorkbookFromCloudinary('sophos', 'tg', fName)
+  const fallbackArr = XLSX.write(fallbackSheetJsWb, { bookType: 'xlsx', type: 'array', compression: true })
+  const exWb = new ExcelJS.Workbook()
+  await exWb.xlsx.load(fallbackArr)
+  return { exWb, fileName: fName }
+}
+
+/**
+ * Cập nhật bảng giá gốc USD (cột T..Z & các hằng số USD cột C/D/F/G) trong sheet "LP Sophos"
+ * theo File Calculator, đồng thời tính lại giá trị hiển thị (.result) của toàn bộ công thức VNĐ
+ * mà vẫn bảo toàn 100% chuỗi công thức Excel gốc (sharedFormula / formula) và màu sắc/định dạng.
+ */
+const updateSophosLpSheetWithCalc = (exWb, calcObj) => {
+  const wsLp = exWb?.getWorksheet('LP Sophos')
+  if (!wsLp || !calcObj) {
+    return { updatedModels: 0, updatedUsdCells: 0 }
+  }
+
+  const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100
+  const lpRate = Number(getExcelJsCellPlainVal(wsLp.getCell('H19'))) || 26600
+
+  const setFormulaCachedResult = (cell, nextResult) => {
+    if (!cell || !Number.isFinite(nextResult)) return
+    const cur = cell.value
+    if (cur && typeof cur === 'object' && ('formula' in cur || 'sharedFormula' in cur)) {
+      cell.value = { ...cur, result: nextResult }
+    }
+  }
+
+  const updateDirectUsdRateFormula = (cell, newUsd) => {
+    if (!cell || !(newUsd > 0)) return false
+    const cur = cell.value
+    if (!cur || typeof cur !== 'object' || !('formula' in cur) || typeof cur.formula !== 'string') return false
+    const m = cur.formula.trim().match(/^([\d.]+)\s*\*\s*(\$?H\$?19)$/i)
+    if (!m) return false
+    const rateToken = m[2]
+    const cleanUsd = round2(newUsd)
+    cell.value = {
+      ...cur,
+      formula: `${cleanUsd}*${rateToken}`,
+      result: round2(cleanUsd * lpRate)
+    }
+    return true
+  }
+
+  const extractEvalRowMsrp = (evalRes, key) => {
+    const foundRow = evalRes?.rows?.find(x => x.key === key)
+    const c0 = foundRow?.cells?.[0]
+    if (!c0 || !c0.available) return 0
+    const v = Number(c0.unitMsrp ?? c0.msrp) || 0
+    return v > 0 ? round2(v) : 0
+  }
+
+  const resolveFallbackDescMsrp = (descText) => {
+    const hit = resolveSophosItemAgainstCalculator(
+      calcObj,
+      [],
+      { Ten_hang: descText, Description: descText },
+      []
+    )
+    return hit.found && hit.msrp > 0 ? round2(hit.msrp) : 0
+  }
+
+  let updatedModels = 0
+  let updatedUsdCells = 0
+
+  for (let r = 3; r <= wsLp.rowCount; r++) {
+    const modelName = String(getExcelJsCellPlainVal(wsLp.getCell(r, 1)) || '').trim()
+    if (!/^(?:XGS|XG|SFV)\s*\d+/i.test(modelName)) continue
+
+    let hwUsd = 0
+    let std1Y = 0
+    let std3Y = 0
+    let std5Y = 0
+    let xst1Y = 0
+    let xst3Y = 0
+    let xst5Y = 0
+    let net1Y = 0
+    let enh1Y = 0
+    let webSrv1Y = 0
+    let email1Y = 0
+
+    if (calcObj.engineRuntime) {
+      const baseCfg = {
+        partnerLevel: 'Authorized',
+        sector: 'Corporate',
+        dealType: 'New - Standard',
+        models: [modelName],
+        qty: 1,
+        specialAttribute: 'AU'
+      }
+      const eval1Y = evaluateFirewallCalculator(calcObj, {
+        ...baseCfg,
+        termHwBundle: '1-Year',
+        termSubscription: '12 MOS'
+      })
+      const eval3Y = evaluateFirewallCalculator(calcObj, {
+        ...baseCfg,
+        termHwBundle: '3-Year',
+        termSubscription: '36 MOS'
+      })
+      const eval5Y = evaluateFirewallCalculator(calcObj, {
+        ...baseCfg,
+        termHwBundle: '5-Year',
+        termSubscription: '60 MOS'
+      })
+
+      hwUsd = extractEvalRowMsrp(eval1Y, 'hw_appliance')
+      std1Y = extractEvalRowMsrp(eval1Y, 'std_prot')
+      std3Y = extractEvalRowMsrp(eval3Y, 'std_prot')
+      std5Y = extractEvalRowMsrp(eval5Y, 'std_prot')
+      xst1Y = extractEvalRowMsrp(eval1Y, 'xstream_prot')
+      xst3Y = extractEvalRowMsrp(eval3Y, 'xstream_prot')
+      xst5Y = extractEvalRowMsrp(eval5Y, 'xstream_prot')
+      net1Y = extractEvalRowMsrp(eval1Y, 'net_prot')
+      enh1Y = extractEvalRowMsrp(eval1Y, 'enhanced_sup')
+      webSrv1Y = extractEvalRowMsrp(eval1Y, 'webserver_prot')
+      email1Y = extractEvalRowMsrp(eval1Y, 'email_prot')
+    } else {
+      hwUsd = resolveFallbackDescMsrp(`${modelName} Security Appliance - AU power cord`)
+      std1Y = resolveFallbackDescMsrp(`${modelName} Standard Protection - 12 MOS`)
+      std3Y = resolveFallbackDescMsrp(`${modelName} Standard Protection - 36 MOS`)
+      std5Y = resolveFallbackDescMsrp(`${modelName} Standard Protection - 60 MOS`)
+      xst1Y = resolveFallbackDescMsrp(`${modelName} Xstream Protection - 12 MOS`)
+      xst3Y = resolveFallbackDescMsrp(`${modelName} Xstream Protection - 36 MOS`)
+      xst5Y = resolveFallbackDescMsrp(`${modelName} Xstream Protection - 60 MOS`)
+    }
+
+    let rowTouched = false
+    const cellS = wsLp.getCell(r, 19)
+    if (getExcelJsCellPlainVal(cellS)) {
+      cellS.value = modelName
+    }
+
+    const usdColsToWrite = [
+      [20, hwUsd],   // T: HW
+      [21, std1Y],   // U: License 1Y Standard
+      [22, std3Y],   // V: License 3Y Standard
+      [23, std5Y],   // W: License 5Y Standard
+      [24, xst1Y],   // X: License 1Y Xstream
+      [25, xst3Y],   // Y: License 3Y Xstream
+      [26, xst5Y]    // Z: License 5Y Xstream
+    ]
+
+    for (const [colIdx, nextUsd] of usdColsToWrite) {
+      if (nextUsd > 0) {
+        const cObj = wsLp.getCell(r, colIdx)
+        const prevNum = Number(getExcelJsCellPlainVal(cObj)) || 0
+        cObj.value = nextUsd
+        if (Math.abs(prevNum - nextUsd) >= 0.01) {
+          updatedUsdCells++
+        }
+        rowTouched = true
+      }
+    }
+
+    if (updateDirectUsdRateFormula(wsLp.getCell(r, 3), webSrv1Y)) updatedUsdCells++
+    if (updateDirectUsdRateFormula(wsLp.getCell(r, 4), email1Y)) updatedUsdCells++
+    if (updateDirectUsdRateFormula(wsLp.getCell(r, 6), net1Y)) updatedUsdCells++
+    if (updateDirectUsdRateFormula(wsLp.getCell(r, 7), enh1Y)) updatedUsdCells++
+
+    if (rowTouched) updatedModels++
+
+    // Cập nhật giá trị hiển thị (.result) của các cột công thức VNĐ trên dòng r
+    const valT = Number(getExcelJsCellPlainVal(wsLp.getCell(r, 20))) || 0
+    const valU = Number(getExcelJsCellPlainVal(wsLp.getCell(r, 21))) || 0
+    const valV = Number(getExcelJsCellPlainVal(wsLp.getCell(r, 22))) || 0
+    const valW = Number(getExcelJsCellPlainVal(wsLp.getCell(r, 23))) || 0
+    const valX = Number(getExcelJsCellPlainVal(wsLp.getCell(r, 24))) || 0
+    const valY = Number(getExcelJsCellPlainVal(wsLp.getCell(r, 25))) || 0
+    const valZ = Number(getExcelJsCellPlainVal(wsLp.getCell(r, 26))) || 0
+    const valR = Number(getExcelJsCellPlainVal(wsLp.getCell(r, 18))) || 0
+
+    const resB = round2(valT * lpRate)
+    const resH = round2(valU * lpRate)
+    const resI = round2(valV * lpRate)
+    const resJ = round2(valW * lpRate)
+    const resK = round2(valX * lpRate)
+    const resL = round2(valY * lpRate)
+    const resM = round2(valZ * lpRate)
+    const resO = round2(valR * lpRate)
+
+    setFormulaCachedResult(wsLp.getCell(r, 2), resB)  // B: HW (VND)
+    setFormulaCachedResult(wsLp.getCell(r, 8), resH)  // H: 1Y Std
+    setFormulaCachedResult(wsLp.getCell(r, 9), resI)  // I: 3Y Std
+    setFormulaCachedResult(wsLp.getCell(r, 10), resJ) // J: 5Y Std
+    setFormulaCachedResult(wsLp.getCell(r, 11), resK) // K: 1Y Xstream
+    setFormulaCachedResult(wsLp.getCell(r, 12), resL) // L: 3Y Xstream
+    setFormulaCachedResult(wsLp.getCell(r, 13), resM) // M: 5Y Xstream
+    setFormulaCachedResult(wsLp.getCell(r, 15), resO) // O: Giá nhập thiết bị
+    setFormulaCachedResult(wsLp.getCell(r, 16), round2(resB + resO)) // P: HW+nhap
+    setFormulaCachedResult(wsLp.getCell(r, 17), round2(resO + resH + resB)) // Q: HW+nhap+Lic STD 1Y
+
+    const valF = Number(getExcelJsCellPlainVal(wsLp.getCell(r, 6))) || 0
+    const valG = Number(getExcelJsCellPlainVal(wsLp.getCell(r, 7))) || 0
+    if (valF > 0 || valG > 0) {
+      setFormulaCachedResult(wsLp.getCell(r, 5), round2(valF + valG)) // E: F+G
+    }
+  }
+
+  // Cập nhật các ô công thức tham chiếu chéo cuối bảng LP Sophos (nếu có)
+  const valI7 = Number(getExcelJsCellPlainVal(wsLp.getCell('I7'))) || 0
+  const valL7 = Number(getExcelJsCellPlainVal(wsLp.getCell('L7'))) || 0
+  if (valI7 > 0) {
+    setFormulaCachedResult(wsLp.getCell('I19'), valL7 / valI7)
+    setFormulaCachedResult(wsLp.getCell('I20'), round2(valI7 * 0.85))
+  }
+  const valB8 = Number(getExcelJsCellPlainVal(wsLp.getCell('B8'))) || 0
+  const valH8 = Number(getExcelJsCellPlainVal(wsLp.getCell('H8'))) || 0
+  if (valB8 > 0 || valH8 > 0) {
+    setFormulaCachedResult(wsLp.getCell('B20'), round2(valB8 + valH8))
+  }
+  const valF9 = Number(getExcelJsCellPlainVal(wsLp.getCell('F9'))) || 0
+  const valG9 = Number(getExcelJsCellPlainVal(wsLp.getCell('G9'))) || 0
+  if (valF9 > 0 || valG9 > 0) {
+    setFormulaCachedResult(wsLp.getCell('F23'), round2(valF9 + valG9))
+  }
+
+  return { updatedModels, updatedUsdCells }
+}
+
+/**
+ * Dựng buffer .xlsx của File Trung Gian đã cập nhật theo File Calculator bằng ExcelJS
+ * (giữ nguyên 100% màu sắc, đường viền, độ rộng cột, richText mô tả sản phẩm, cột Nhập khẩu và toàn bộ công thức).
+ */
+const buildUpdatedSophosTrungGianExcelJs = async ({ selectedRowMap = null, updateSku2026 = true } = {}) => {
+  const calcObj = sophosCalcRefData.value
+  const { exWb, fileName } = await loadSophosTrungGianExcelJsWorkbook()
+
+  let updatedPriceCells = 0
+  let updatedSkuCells = 0
+
+  for (const ws of exWb.worksheets) {
+    const headerSample = []
+    const sampleLimit = Math.min(ws.rowCount || 0, 15)
+    for (let r = 1; r <= sampleLimit; r++) {
+      const row = ws.getRow(r)
+      const arr = []
+      for (let c = 1; c <= 10; c++) {
+        arr.push(getExcelJsCellPlainVal(row.getCell(c)))
+      }
+      headerSample.push(arr)
+    }
+
+    if (!isSophosTrungGianBomSheet(ws.name, headerSample)) continue
+
+    let currentGroup = ''
+    for (let r = 5; r <= ws.rowCount; r++) {
+      const row = ws.getRow(r)
+      const colA = getExcelJsCellPlainVal(row.getCell(1))
+      const colB = getExcelJsCellPlainVal(row.getCell(2))
+      const colF = getExcelJsCellPlainVal(row.getCell(6))
+
+      if (colA && !colB && (colF === null || colF === '')) {
+        currentGroup = String(colA).trim()
+        continue
+      }
+      if (!colB || colF === null || colF === '') continue
+
+      const rowId = `${ws.name}::R${r}`
+      const rawSku = String(colB).trim().toUpperCase()
+      const oldPrice = Number(colF) || 0
+
+      if (selectedRowMap) {
+        const picked = selectedRowMap.get(rowId)
+        if (!picked || !(picked.newPrice > 0)) continue
+
+        const cellF = row.getCell(6)
+        cellF.value = Number(picked.newPrice.toFixed(2))
+        if (!cellF.numFmt) {
+          cellF.numFmt = '_(* #,##0.00_);_(* \\(#,##0.00\\);_(* "-"??_);_(@_)'
+        }
+        updatedPriceCells++
+
+        if (updateSku2026 && picked.hasSkuUpgrade && picked.resolvedSku) {
+          row.getCell(2).value = picked.resolvedSku
+          updatedSkuCells++
+        }
+      } else {
+        const modelText = String(getExcelJsCellPlainVal(row.getCell(3)) || '').trim()
+        const descText = String(getExcelJsCellPlainVal(row.getCell(4)) || '').trim()
+        const moTaText = String(getExcelJsCellPlainVal(row.getCell(5)) || '').trim()
+        const pseudoItem = {
+          Ma_hang: rawSku,
+          sku_code: rawSku,
+          Ten_hang: modelText || descText,
+          Description: descText,
+          Danh_muc: currentGroup,
+          Ghi_chu: moTaText
+        }
+        const match = resolveSophosItemAgainstCalculator(calcObj, [rawSku], pseudoItem, [])
+        if (!match.found || !(match.msrp > 0)) continue
+
+        const newPrice = Number(match.msrp.toFixed(2))
+        const cellF = row.getCell(6)
+        cellF.value = newPrice
+        if (!cellF.numFmt) {
+          cellF.numFmt = '_(* #,##0.00_);_(* \\(#,##0.00\\);_(* "-"??_);_(@_)'
+        }
+        if (Math.abs(newPrice - oldPrice) >= 0.01) {
+          updatedPriceCells++
+        }
+
+        if (updateSku2026 && match.resolvedSku && match.resolvedSku !== rawSku) {
+          row.getCell(2).value = match.resolvedSku
+          updatedSkuCells++
+        }
+      }
+    }
+  }
+
+  const lpStats = updateSophosLpSheetWithCalc(exWb, calcObj)
+  exWb.calcProperties.fullCalcOnLoad = true
+
+  const outBuffer = await exWb.xlsx.writeBuffer()
+  return {
+    outBuffer,
+    baseFileName: fileName,
+    updatedPriceCells,
+    updatedSkuCells,
+    updatedLpModels: lpStats.updatedModels,
+    updatedLpUsdCells: lpStats.updatedUsdCells
+  }
+}
+
+const triggerExcelArrayBufferDownload = (buffer, fileName) => {
+  const blob = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = fileName
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  setTimeout(() => URL.revokeObjectURL(url), 6000)
+}
+
+/**
+ * Nút "Xuất File Trung Gian (Calc)": lấy File Trung Gian hiện tại làm khung,
+ * cập nhật toàn bộ 5 sheet BOM + sheet LP Sophos theo File Calculator rồi tải .xlsx về máy (không ghi đè Cloudinary).
+ */
+const exportSophosTrungGianFromCalc = async ({ onlySelectedFromModal = false } = {}) => {
+  if (exportingSophosTgFromCalc.value) return
+  exportingSophosTgFromCalc.value = true
+  showAsyncLoading(
+    '📥 Đang xuất File Trung Gian theo File Calculator...',
+    'Đang giữ nguyên định dạng/công thức gốc và cập nhật giá MSRP, mã SKU 2026 cho 5 sheet BOM + sheet LP Sophos...'
+  )
+  try {
+    await fetchVendorRefFilesMeta(true)
+    await Promise.all([
+      loadSophosCalcRefData(),
+      loadSophosRefData().catch(() => null)
+    ])
+    if (!sophosCalcRefData.value?.calcSkus || !Object.keys(sophosCalcRefData.value.calcSkus).length) {
+      showAsyncError(
+        'Chưa có dữ liệu File Calculator Sophos',
+        'Vui lòng upload file calculate_sophos.xlsx lên Cloudinary tại mục ☁️ File Calculator trước khi xuất File Trung Gian!'
+      )
+      return
+    }
+
+    let selectedMap = null
+    let useSkuUpgrade = true
+    if (onlySelectedFromModal && showSophosTgSyncModal.value && sophosTgSyncRows.value.length > 0) {
+      useSkuUpgrade = Boolean(sophosTgSyncUpdateSku2026.value)
+      const activeRows = sophosTgSyncRows.value.filter(r => r.selected && r.calcFound && r.newPrice > 0)
+      if (activeRows.length > 0) {
+        selectedMap = new Map(activeRows.map(r => [r.id, r]))
+      }
+    }
+
+    const {
+      outBuffer,
+      baseFileName,
+      updatedPriceCells,
+      updatedSkuCells,
+      updatedLpModels
+    } = await buildUpdatedSophosTrungGianExcelJs({
+      selectedRowMap: selectedMap,
+      updateSku2026: useSkuUpgrade
+    })
+
+    const calcVer = String(
+      vendorRefFilesMeta.value?.sophos?.calc_version || sophosCalcRefData.value?.version || ''
+    ).trim()
+    const cleanVer = calcVer ? `_v${calcVer.replace(/[^a-zA-Z0-9._-]+/g, '_')}` : ''
+    const stem = String(baseFileName || 'file_trung_gian_SOPHOS.xlsx').replace(/\.(xlsx|xlsb|xls)$/i, '')
+    const exportFileName = `${stem}_theo_Calc${cleanVer}.xlsx`
+
+    triggerExcelArrayBufferDownload(outBuffer, exportFileName)
+
+    showAsyncSuccess(
+      '📥 Đã xuất File Trung Gian theo File Calculator!',
+      `Đã tải "${exportFileName}" về máy • Cập nhật ${updatedPriceCells} ô giá BOM${updatedSkuCells > 0 ? `, ${updatedSkuCells} mã SKU 2026` : ''} và ${updatedLpModels} dòng Model trong sheet LP Sophos.`
+    )
+  } catch (err) {
+    console.error('Lỗi xuất File Trung Gian theo File Calculator:', err)
+    showAsyncError('Lỗi xuất File Trung Gian', err.message || String(err))
+  } finally {
+    exportingSophosTgFromCalc.value = false
+  }
+}
+
+const buildSophosTgSyncPreviewRowsFromWorkbook = (wb) => {
+  const calcObj = sophosCalcRefData.value
+  if (!wb || !Array.isArray(wb.SheetNames)) {
+    sophosTgBomSheetList.value = []
+    sophosTgSyncRows.value = []
+    return
+  }
+
+  const sheetRowsMap = {}
+  for (const s of wb.SheetNames) {
+    sheetRowsMap[s] = XLSX.utils.sheet_to_json(wb.Sheets[s], { header: 1, defval: null })
+  }
+
+  // Quy tắc A4 đã chốt: chỉ quét đúng 5 sheet BOM chuẩn, giữ nguyên các sheet tính nháp/công thức khác
+  const bomSheets = wb.SheetNames.filter(s => isSophosTrungGianBomSheet(s, sheetRowsMap[s]))
+  sophosTgBomSheetList.value = bomSheets
+
+  const previewRows = []
+  for (const s of bomSheets) {
+    const rows = sheetRowsMap[s] || []
+    let currentGroup = ''
+    for (let i = 4; i < rows.length; i++) {
+      const r = rows[i]
+      if (!r || !r.some(x => x !== null && x !== '')) continue
+      if (r[0] && !r[1] && (r[5] === null || r[5] === '')) {
+        currentGroup = String(r[0]).trim()
+        continue
+      }
+      if (r[1] && r[5] !== null && r[5] !== '') {
+        const rowNum = i + 1
+        const rawSku = String(r[1]).trim().toUpperCase()
+        const modelText = String(r[2] || '').trim()
+        const descText = String(r[3] || '').trim()
+        const moTaText = String(r[4] || '').trim()
+        const oldPrice = Number(r[5]) || 0
+        const nhapKhau = r[6] !== null && r[6] !== '' ? (Number(r[6]) || 0) : 0
+
+        const pseudoItem = {
+          Ma_hang: rawSku,
+          sku_code: rawSku,
+          Ten_hang: modelText || descText,
+          Description: descText,
+          Danh_muc: currentGroup,
+          Ghi_chu: moTaText
+        }
+        const match = resolveSophosItemAgainstCalculator(calcObj, [rawSku], pseudoItem, [])
+        const newPrice = match.found ? Number(match.msrp.toFixed(2)) : 0
+        const hasPriceDiff = match.found && newPrice > 0 && Math.abs(newPrice - oldPrice) >= 0.01
+        const diffUsd = match.found ? Number((newPrice - oldPrice).toFixed(2)) : 0
+        const diffPct = match.found && oldPrice > 0 ? ((newPrice - oldPrice) / oldPrice) * 100 : 0
+        const hasSkuUpgrade = Boolean(match.found && match.resolvedSku && match.resolvedSku !== rawSku)
+        const needsSync = hasPriceDiff || (sophosTgSyncUpdateSku2026.value && hasSkuUpgrade)
+
+        previewRows.push({
+          id: `${s}::R${rowNum}`,
+          sheet: s,
+          rowNum,
+          group: currentGroup,
+          rawSku,
+          resolvedSku: match.resolvedSku,
+          calcFound: match.found,
+          calcRowNum: match.rowNum,
+          name: modelText || (moTaText.split('\n')[0] || '').trim() || rawSku,
+          description: descText,
+          nhapKhau,
+          oldPrice,
+          newPrice,
+          diffUsd,
+          diffPct,
+          hasPriceDiff,
+          hasSkuUpgrade,
+          selected: Boolean(match.found && newPrice > 0 && needsSync)
+        })
+      }
+    }
+  }
+
+  sophosTgSyncRows.value = previewRows
+}
+
+watch(sophosTgSyncUpdateSku2026, (enableSkuUpdate) => {
+  sophosTgSyncRows.value.forEach(r => {
+    if (r.calcFound && r.newPrice > 0 && !r.hasPriceDiff && r.hasSkuUpgrade) {
+      r.selected = Boolean(enableSkuUpdate)
+    }
+  })
+})
+
+const sophosTgSyncSummary = computed(() => {
+  const rows = sophosTgSyncRows.value
+  const total = rows.length
+  const notFound = rows.filter(r => !r.calcFound).length
+  const priceDiff = rows.filter(r => r.calcFound && r.hasPriceDiff).length
+  const skuDiff = rows.filter(r => r.calcFound && r.hasSkuUpgrade).length
+  const needSync = rows.filter(r => rowNeedsTgSync(r)).length
+  const matched = rows.filter(r => r.calcFound && !rowNeedsTgSync(r)).length
+  return { total, needSync, priceDiff, skuDiff, matched, notFound }
+})
+
+const filteredSophosTgSyncRows = computed(() => {
+  let list = sophosTgSyncRows.value
+  if (sophosTgSyncSheetFilter.value !== 'ALL') {
+    list = list.filter(r => r.sheet === sophosTgSyncSheetFilter.value)
+  }
+  const mode = sophosTgSyncFilter.value
+  if (mode === 'need_sync') list = list.filter(r => rowNeedsTgSync(r))
+  else if (mode === 'matched') list = list.filter(r => r.calcFound && !rowNeedsTgSync(r))
+  else if (mode === 'not_found') list = list.filter(r => !r.calcFound)
+
+  const q = String(sophosTgSyncSearch.value || '').trim().toLowerCase()
+  if (q) {
+    list = list.filter(r =>
+      String(r.rawSku || '').toLowerCase().includes(q) ||
+      String(r.resolvedSku || '').toLowerCase().includes(q) ||
+      String(r.name || '').toLowerCase().includes(q) ||
+      String(r.description || '').toLowerCase().includes(q) ||
+      String(r.group || '').toLowerCase().includes(q) ||
+      String(r.sheet || '').toLowerCase().includes(q)
+    )
+  }
+  return list
+})
+
+const selectableFilteredSophosTgRows = computed(() =>
+  filteredSophosTgSyncRows.value.filter(r => r.calcFound && r.newPrice > 0)
+)
+
+const allFilteredSophosTgSelected = computed(() => {
+  const selectable = selectableFilteredSophosTgRows.value
+  return selectable.length > 0 && selectable.every(r => r.selected)
+})
+
+const selectedSophosTgSyncCount = computed(() =>
+  sophosTgSyncRows.value.filter(r => r.selected && r.calcFound && r.newPrice > 0).length
+)
+
+const toggleSelectAllFilteredSophosTg = (checked) => {
+  selectableFilteredSophosTgRows.value.forEach(r => {
+    r.selected = Boolean(checked)
+  })
+}
+
+const selectAllNeedSyncSophosTgRows = () => {
+  sophosTgSyncRows.value.forEach(r => {
+    r.selected = rowNeedsTgSync(r)
+  })
+}
+
+const refreshSophosTgSyncModal = async () => {
+  sophosTgSyncLoading.value = true
+  try {
+    await fetchVendorRefFilesMeta(true)
+    await Promise.all([
+      loadSophosCalcRefData(),
+      loadSophosRefData().catch(() => null)
+    ])
+    if (!sophosCalcRefData.value?.calcSkus || !Object.keys(sophosCalcRefData.value.calcSkus).length) {
+      showAsyncError(
+        'Chưa có dữ liệu File Calculator Sophos',
+        'Vui lòng upload file calculate_sophos.xlsx lên Cloudinary tại mục ☁️ File Calculator trước khi đồng bộ!'
+      )
+      return
+    }
+    const wb = await loadCurrentSophosTrungGianWorkbook()
+    sophosTgLoadedWorkbook.value = wb
+    buildSophosTgSyncPreviewRowsFromWorkbook(wb)
+    sophosTgSyncFilter.value = sophosTgSyncSummary.value.needSync > 0 ? 'need_sync' : 'all'
+  } catch (err) {
+    console.error('Lỗi tải File Trung Gian Sophos để đối chiếu với Calculator:', err)
+    showAsyncError('Lỗi đọc File Trung Gian Sophos', err.message)
+  } finally {
+    sophosTgSyncLoading.value = false
+  }
+}
+
+const openSophosTrungGianCalcSyncModal = async () => {
+  sophosTgSyncSearch.value = ''
+  sophosTgSyncSheetFilter.value = 'ALL'
+  showSophosTgSyncModal.value = true
+  await refreshSophosTgSyncModal()
+}
+
+const downloadWorkbookBufferAsFile = (wb, fileName) => {
+  const outArray = XLSX.write(wb, { bookType: 'xlsx', type: 'array', compression: true })
+  const blob = new Blob([outArray], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = fileName
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  setTimeout(() => URL.revokeObjectURL(url), 6000)
+}
+
+const downloadCurrentLoadedSophosTgWorkbook = () => {
+  if (!sophosTgLoadedWorkbook.value) return
+  downloadWorkbookBufferAsFile(sophosTgLoadedWorkbook.value, sophosTgSyncFileName.value)
+}
+
+const applySophosTrungGianCalcSync = async () => {
+  const wb = sophosTgLoadedWorkbook.value
+  const selectedRows = sophosTgSyncRows.value.filter(r => r.selected && r.calcFound && r.newPrice > 0)
+  if (!wb || !selectedRows.length) return
+
+  syncingSophosTgFromCalc.value = true
+  showAsyncLoading(
+    '☁️ Đang đồng bộ giá vào File Trung Gian Sophos...',
+    `Đang ghi ${selectedRows.length} dòng BOM + bảng LP Sophos và đẩy lên Cloudinary...`
+  )
+  try {
+    const selectedMap = new Map(selectedRows.map(r => [r.id, r]))
+    const {
+      outBuffer,
+      baseFileName,
+      updatedPriceCells,
+      updatedSkuCells,
+      updatedLpModels
+    } = await buildUpdatedSophosTrungGianExcelJs({
+      selectedRowMap: selectedMap,
+      updateSku2026: Boolean(sophosTgSyncUpdateSku2026.value)
+    })
+
+    const targetFileName = sophosTgSyncFileName.value || baseFileName || 'file_trung_gian_SOPHOS.xlsx'
+    const syncedFile = new File([outBuffer], targetFileName, {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    })
+    const updatedSheetJsWb = XLSX.read(outBuffer, {
+      type: 'array',
+      cellStyles: true,
+      cellFormula: true,
+      cellNF: true,
+      cellDates: true
+    })
+    sophosTgLoadedWorkbook.value = updatedSheetJsWb
+
+    await uploadAndPersistVendorRefWorkbook('sophos', syncedFile, updatedSheetJsWb, 'tg')
+
+    if (sophosTgAutoDownloadAfterSync.value) {
+      triggerExcelArrayBufferDownload(outBuffer, targetFileName)
+    }
+
+    buildSophosTgSyncPreviewRowsFromWorkbook(updatedSheetJsWb)
+    if (sophosTgSyncSummary.value.needSync === 0) {
+      sophosTgSyncFilter.value = 'all'
+    }
+
+    // Cập nhật luôn bảng đối chiếu ảnh hoặc card nếu đang mở
+    await runImagePriceComparison().catch(() => {})
+    if (showCardRefCompareModal.value && cardRefCompareData.value?.vendor === 'sophos' && cardRefCompareData.value?.item) {
+      cardRefCompareData.value = await resolveSophosCardCompare(cardRefCompareData.value.item)
+    }
+
+    showAsyncSuccess(
+      '☁️ Đồng bộ File Trung Gian thành công!',
+      `Đã cập nhật ${updatedPriceCells} ô Giá BOM${updatedSkuCells > 0 ? `, ${updatedSkuCells} mã SKU 2026` : ''} và ${updatedLpModels} dòng Model trong LP Sophos lên Cloudinary ("${targetFileName}").`
+    )
+  } catch (err) {
+    console.error('Lỗi đồng bộ File Trung Gian theo File Calculator:', err)
+    showAsyncError('Lỗi đồng bộ File Trung Gian', err.message)
+  } finally {
+    syncingSophosTgFromCalc.value = false
   }
 }
 
@@ -19987,13 +22396,27 @@ onUnmounted(() => {
 }
 .excel-cell-num {
   text-align: right;
-  font-family: monospace;
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  font-variant-numeric: tabular-nums;
   color: #34d399;
+  white-space: nowrap !important;
+  max-width: none !important;
 }
 .excel-cell-sku {
-  font-family: monospace;
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  font-variant-numeric: tabular-nums;
   font-weight: 700;
   color: #38bdf8;
+  white-space: nowrap !important;
+  max-width: none !important;
+}
+.excel-cell-num .excel-cell-inner,
+.excel-cell-sku .excel-cell-inner {
+  white-space: nowrap !important;
+  word-break: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  max-height: none !important;
 }
 .excel-row-header td {
   background: rgba(30, 41, 59, 0.92);
@@ -20112,6 +22535,59 @@ onUnmounted(() => {
 .excel-nav-statusbar {
   font-size: 11.5px;
   color: #94a3b8;
+}
+.excel-nav-table {
+  width: max-content;
+  min-width: 100%;
+}
+@media (max-width: 768px) {
+  .excel-nav-modal {
+    width: 100vw;
+    max-width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+  }
+  .excel-nav-header {
+    padding: 8px 10px;
+    gap: 6px;
+  }
+  .excel-nav-file-switcher {
+    overflow-x: auto;
+    max-width: 100%;
+  }
+  .excel-nav-file-btn {
+    white-space: nowrap;
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+  .excel-nav-locations-bar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 5px 10px;
+  }
+  .excel-nav-locations-bar > div {
+    flex-wrap: nowrap !important;
+  }
+  .excel-nav-loc-pill {
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .excel-nav-formulabar {
+    padding: 5px 8px;
+    gap: 5px;
+  }
+  .excel-nav-searchinput {
+    width: 130px;
+  }
+  .excel-nav-grid-wrap {
+    flex: 1 1 auto;
+    min-height: 55dvh;
+    -webkit-overflow-scrolling: touch;
+  }
+  .excel-nav-statusbar {
+    display: none;
+  }
 }
 
 .card-ref-compare-btn {
@@ -20871,5 +23347,417 @@ onUnmounted(() => {
   background: linear-gradient(135deg, #059669 0%, #047857 100%);
   box-shadow: 0 6px 20px rgba(16, 185, 129, 0.55);
   transform: translateY(-1px);
+}
+
+/* =========================================================
+   NÚT & MODAL ĐỒNG BỘ LISTPRICE SOPHOS (DB & FILE TRUNG GIAN)
+   ========================================================= */
+.vendor-ref-sync-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: auto;
+  margin: 0;
+  padding: 5px 10px;
+  border-radius: 7px;
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.vendor-ref-sync-btn--calc-db {
+  border: 1px solid rgba(16, 185, 129, 0.55);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(13, 148, 136, 0.28));
+  color: #6ee7b7;
+}
+
+.vendor-ref-sync-btn--calc-db:hover {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.36), rgba(13, 148, 136, 0.45));
+  border-color: #34d399;
+  color: #ecfdf5;
+  transform: translateY(-1px);
+}
+
+.vendor-ref-sync-btn--tg-calc {
+  border: 1px solid rgba(192, 132, 252, 0.55);
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.22), rgba(107, 33, 168, 0.3));
+  color: #e9d5ff;
+}
+
+.vendor-ref-sync-btn--tg-calc:hover {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.38), rgba(126, 34, 206, 0.46));
+  border-color: #c084fc;
+  color: #faf5ff;
+  transform: translateY(-1px);
+}
+
+.vendor-ref-sync-btn--tg-export {
+  border: 1px solid rgba(56, 189, 248, 0.58);
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.24), rgba(2, 132, 199, 0.34));
+  color: #bae6fd;
+}
+
+.vendor-ref-sync-btn--tg-export:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.42), rgba(3, 105, 161, 0.52));
+  border-color: #38bdf8;
+  color: #f0f9ff;
+  transform: translateY(-1px);
+}
+
+.vendor-ref-sync-btn:disabled {
+  opacity: 0.58;
+  cursor: wait;
+  transform: none;
+}
+
+.sophos-sync-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.sophos-sync-pill--db {
+  background: rgba(16, 185, 129, 0.2);
+  color: #6ee7b7;
+  border: 1px solid rgba(16, 185, 129, 0.45);
+}
+
+.sophos-sync-pill--tg {
+  background: rgba(168, 85, 247, 0.22);
+  color: #e9d5ff;
+  border: 1px solid rgba(192, 132, 252, 0.48);
+}
+
+.sophos-sync-ver-badge {
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: rgba(20, 184, 166, 0.2);
+  border: 1px solid rgba(20, 184, 166, 0.4);
+  color: #5eead4;
+  font-size: 11px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.sophos-sync-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.sophos-sync-kpi-card {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(15, 23, 42, 0.72);
+  min-width: 0;
+}
+
+.sophos-sync-kpi-card--slate {
+  border-color: rgba(56, 189, 248, 0.32);
+  background: rgba(14, 116, 144, 0.14);
+}
+
+.sophos-sync-kpi-card--violet {
+  border-color: rgba(192, 132, 252, 0.35);
+  background: rgba(107, 33, 168, 0.16);
+}
+
+.sophos-sync-kpi-card--amber {
+  border-color: rgba(245, 158, 11, 0.38);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.sophos-sync-kpi-card--emerald {
+  border-color: rgba(16, 185, 129, 0.36);
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.sophos-sync-kpi-card--rose {
+  border-color: rgba(244, 63, 94, 0.32);
+  background: rgba(244, 63, 94, 0.08);
+}
+
+.sophos-sync-kpi-label {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: #cbd5e1;
+}
+
+.sophos-sync-kpi-val {
+  margin-top: 3px;
+  font-size: 20px;
+  font-weight: 800;
+  color: #f8fafc;
+  font-variant-numeric: tabular-nums;
+}
+
+.sophos-sync-kpi-card--amber .sophos-sync-kpi-val {
+  color: #fbbf24;
+}
+
+.sophos-sync-kpi-card--emerald .sophos-sync-kpi-val {
+  color: #34d399;
+}
+
+.sophos-sync-kpi-card--rose .sophos-sync-kpi-val {
+  color: #fb7185;
+}
+
+.sophos-sync-kpi-sub {
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: #94a3b8;
+  font-variant-numeric: tabular-nums;
+}
+
+.sophos-sync-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.sophos-sync-filter-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 8px;
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.sophos-sync-tab-btn {
+  width: auto;
+  margin: 0;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+  transition: all 0.16s ease;
+}
+
+.sophos-sync-tab-btn:hover {
+  color: #f1f5f9;
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.sophos-sync-tab-btn.active {
+  background: rgba(20, 184, 166, 0.25);
+  color: #5eead4;
+  box-shadow: inset 0 0 0 1px rgba(20, 184, 166, 0.45);
+}
+
+.sophos-sync-sheet-select {
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(192, 132, 252, 0.42);
+  background: rgba(30, 41, 59, 0.92);
+  color: #f3e8ff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.sophos-sync-search-input {
+  height: 34px;
+  min-width: 220px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(9, 13, 22, 0.88);
+  color: #f8fafc;
+  font-size: 12.5px;
+}
+
+.sophos-sync-search-input:focus {
+  outline: none;
+  border-color: #2dd4bf;
+  box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.18);
+}
+
+.sophos-sync-check-opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 7px;
+  background: rgba(30, 41, 59, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  color: #e2e8f0;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.sophos-sync-check-opt input[type='checkbox'] {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: #14b8a6;
+}
+
+.sophos-sync-btn-tg-submit {
+  background: linear-gradient(135deg, #7c3aed, #6d28d9) !important;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.32) !important;
+}
+
+.sophos-sync-btn-tg-submit:hover:not(:disabled) {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed) !important;
+}
+
+.sophos-sync-rule-note {
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(14, 116, 144, 0.14);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  color: #bae6fd;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.sophos-sync-rule-note--tg {
+  background: rgba(107, 33, 168, 0.14);
+  border-color: rgba(192, 132, 252, 0.28);
+  color: #e9d5ff;
+}
+
+.sophos-sync-loading-box {
+  padding: 36px 20px;
+  text-align: center;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px dashed rgba(148, 163, 184, 0.28);
+  color: #5eead4;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.sophos-sync-table-wrap {
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 10px;
+  overflow: auto;
+  max-height: 52vh;
+  background: rgba(9, 13, 22, 0.55);
+}
+
+.sophos-sync-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.sophos-sync-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: #0f172a;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.26);
+}
+
+.sophos-sync-table th {
+  padding: 10px 10px;
+  color: #94a3b8;
+  font-size: 11.5px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.sophos-sync-table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.11);
+  vertical-align: middle;
+}
+
+.sophos-sync-row--diff {
+  background: rgba(245, 158, 11, 0.055);
+}
+
+.sophos-sync-row--miss {
+  background: rgba(244, 63, 94, 0.045);
+}
+
+.sophos-sync-num {
+  font-variant-numeric: tabular-nums;
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+}
+
+.sophos-sync-sku-code {
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.sophos-sync-sku-upgrade-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(56, 189, 248, 0.14);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #bae6fd;
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 10.5px;
+}
+
+.sophos-sync-meta-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(148, 163, 184, 0.14);
+  color: #cbd5e1;
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sophos-sync-meta-tag--cat {
+  background: rgba(56, 189, 248, 0.12);
+  color: #7dd3fc;
+}
+
+.sophos-sync-meta-tag--cost {
+  background: rgba(139, 92, 246, 0.16);
+  border: 1px solid rgba(167, 139, 250, 0.35);
+  color: #ddd6fe;
+  font-weight: 700;
+}
+
+.sophos-sync-meta-tag--nk {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #6ee7b7;
+  font-weight: 600;
+}
+
+@media (max-width: 960px) {
+  .sophos-sync-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 </style>

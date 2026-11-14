@@ -7,65 +7,105 @@
     }"
   >
     <!-- =========================================================
-         MINIMALIST SINGLE-BAR WORKFLOW COMMAND STRIP
+         MOBILE UNIFIED 1-ROW SEARCH + REFRESH + THEME CYCLE (TAB WORKFLOW)
          ========================================================= -->
-    <div class="wf-minimal-toolbar">
-      <div class="bg-seg-switch" role="tablist" aria-label="Chế độ quản lý Workflow">
-        <button
-          type="button"
-          class="bg-seg-btn"
-          :class="{ 'is-active': subTab === 'customer' }"
-          @click="subTab = 'customer'"
+    <div class="wf-mob-unified-bar">
+      <div
+        class="bg-search-shell wf-mob-search-shell"
+        :class="{ 'has-query': Boolean(workflowSearch && workflowSearch.trim()) }"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" class="bg-search-ic"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input
+          v-model="workflowSearch"
+          type="text"
+          class="bg-search-inp"
+          placeholder="Tìm tên Workflow, tên bước..."
+        />
+        <span
+          v-if="workflowSearch && workflowSearch.trim()"
+          class="wf-mob-match-pill wf-tabular"
+          :class="{ 'is-zero': filteredWorkflowGroups.length === 0 && !showBaselineCard }"
         >
-          <span>Workflow Khách Hàng</span>
-          <span class="wf-tab-count wf-tabular">({{ flatCustomerFlows.length }})</span>
-        </button>
-
+          {{ filteredWorkflowGroups.length + (showBaselineCard ? 1 : 0) }}
+        </span>
         <button
+          v-if="workflowSearch"
           type="button"
-          class="bg-seg-btn"
-          :class="{ 'is-active': subTab === 'templates' }"
-          @click="subTab = 'templates'"
+          class="bg-search-clr"
+          aria-label="Xóa tìm kiếm"
+          @click="workflowSearch = ''"
         >
-          <span>Kho Workflow Mẫu</span>
-          <span class="wf-tab-count wf-tabular">({{ libraryWorkflowGroups.length + 1 }})</span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
         </button>
       </div>
 
-      <div class="wf-toolbar-right">
-        <div v-if="subTab === 'customer'" class="bg-search-shell wf-slim-search">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14.5" height="14.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" class="bg-search-ic"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-          <input
-            v-model="customerSearch"
-            type="text"
-            class="bg-search-inp"
-            placeholder="Tìm Workflow, Công ty, Khách hàng..."
-          />
-          <button
-            v-if="customerSearch"
-            type="button"
-            class="bg-search-clr"
-            aria-label="Xóa tìm kiếm"
-            @click="customerSearch = ''"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-          </button>
-        </div>
+      <button
+        type="button"
+        class="wf-mob-sq-btn"
+        :disabled="loading"
+        title="Làm mới dữ liệu"
+        aria-label="Làm mới dữ liệu"
+        @click="refreshAllData"
+      >
+        <svg v-if="!loading" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 2v6h6M21.5 22v-6h-6"/><path d="M22 11.5A10 10 0 0 0 3.2 7.2M2 12.5a10 10 0 0 0 18.8 4.2"/></svg>
+        <span v-else class="wf-spinner-sm"></span>
+      </button>
 
-        <div v-else class="bg-search-shell wf-slim-search">
+      <button
+        type="button"
+        class="wf-mob-sq-btn is-theme-btn"
+        title="Đổi chế độ giao diện"
+        aria-label="Đổi chế độ giao diện"
+        @click="emit('cycle-theme', $event)"
+      >
+        <svg v-if="effectiveTheme === 'dark'" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+        <svg v-else-if="effectiveTheme === 'light'" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line></svg>
+        <svg v-else xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3" ry="3"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+      </button>
+    </div>
+
+    <div class="wf-mob-section-bar">
+      <div class="wf-mob-sec-left">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14.5" height="14.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" class="wf-toolbar-ic"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+        <span class="wf-mob-sec-title">Danh Sách Workflow</span>
+        <span class="wf-mob-sec-cnt wf-tabular">{{ filteredWorkflowGroups.length + (showBaselineCard ? 1 : 0) }}</span>
+      </div>
+      <button
+        type="button"
+        class="wf-mob-create-btn"
+        :disabled="saving"
+        @click="openWorkflowStudioCreate()"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="12.5" height="12.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        <span>Tạo mới</span>
+      </button>
+    </div>
+
+    <!-- =========================================================
+         MINIMALIST SINGLE-BAR WORKFLOW COMMAND STRIP (UNIFIED WORKFLOWS)
+         ========================================================= -->
+    <div class="wf-minimal-toolbar">
+      <div class="wf-toolbar-heading">
+        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" class="wf-toolbar-ic"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+        <span class="wf-toolbar-title">Danh Sách Workflow</span>
+        <span class="wf-card-mini-pill is-sky wf-tabular" style="margin-left: 2px;">{{ unifiedWorkflowGroups.length + 1 }}</span>
+      </div>
+
+      <div class="wf-toolbar-right">
+        <div class="bg-search-shell wf-slim-search">
           <svg xmlns="http://www.w3.org/2000/svg" width="14.5" height="14.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" class="bg-search-ic"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
           <input
-            v-model="templateSearch"
+            v-model="workflowSearch"
             type="text"
             class="bg-search-inp"
-            placeholder="Tìm Workflow mẫu, tên bước..."
+            placeholder="Tìm tên Workflow, tên bước..."
           />
           <button
-            v-if="templateSearch"
+            v-if="workflowSearch"
             type="button"
             class="bg-search-clr"
             aria-label="Xóa tìm kiếm"
-            @click="templateSearch = ''"
+            @click="workflowSearch = ''"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
           </button>
@@ -75,7 +115,7 @@
           type="button"
           class="wf-btn wf-btn-primary wf-btn-sm"
           :disabled="saving"
-          @click="subTab === 'customer' ? openWorkflowStudioCreate('customer', focusedCustomerRow) : openWorkflowStudioCreate('template')"
+          @click="openWorkflowStudioCreate()"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
           <span>Tạo Workflow</span>
@@ -96,187 +136,28 @@
     </div>
 
     <!-- LOADING STATE -->
-    <div v-if="loading && items.length === 0 && customerRows.length === 0" class="wf-empty-card">
+    <div v-if="loading && items.length === 0" class="wf-empty-card">
       <div class="wf-spinner-lg"></div>
       <div class="wf-empty-title">Đang tải danh sách Workflow...</div>
     </div>
 
     <!-- =========================================================
-         SUBTAB 1: WORKFLOW KHÁCH HÀNG (CLICK CARD -> OPEN STUDIO MODAL)
-         ========================================================= -->
-    <div v-else-if="subTab === 'customer'" class="wf-flat-list">
-      <div v-if="filteredFlatCustomerFlows.length === 0" class="wf-empty-card">
-        <div class="wf-empty-title">
-          {{
-            flatCustomerFlows.length === 0
-              ? 'Chưa có Workflow riêng nào của khách hàng'
-              : focusedCustomerRow
-                ? `Chưa có Workflow riêng cho "${focusedCustomerRow.ten_cong_ty || focusedCustomerRow.ten_khach_hang}"`
-                : 'Không tìm thấy Workflow nào phù hợp'
-          }}
-        </div>
-        <div class="wf-empty-sub">
-          {{
-            flatCustomerFlows.length === 0 || focusedCustomerRow
-              ? 'Nhấn Tạo Workflow bên dưới để thiết kế chuỗi bước tiến độ riêng cho khách hàng.'
-              : 'Hãy thử từ khóa khác theo tên Workflow, tên Công ty hoặc tên Khách hàng.'
-          }}
-        </div>
-        <button
-          v-if="flatCustomerFlows.length === 0 || focusedCustomerRow"
-          type="button"
-          class="wf-btn wf-btn-primary wf-btn-sm"
-          style="margin-top: 6px;"
-          @click="openWorkflowStudioCreate('customer', focusedCustomerRow)"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-          <span>{{ focusedCustomerRow ? 'Tạo Workflow Cho Khách Hàng Này' : 'Tạo Workflow Mới' }}</span>
-        </button>
-      </div>
-
-      <div
-        v-for="flow in filteredFlatCustomerFlows"
-        :key="flow.id_workflow"
-        class="wf-flat-card is-clickable"
-        :class="{ 'is-highlighted': highlightedCustomerKey && flow.customerRowKey === highlightedCustomerKey }"
-        title="Nhấn vào thẻ để mở chỉnh sửa Workflow toàn diện"
-        @click="openWorkflowStudioEdit(flow)"
-      >
-        <!-- ROW 1: FLOW NAME — COMPANY • CUSTOMER + QUICK ACTIONS -->
-        <div class="wf-flat-head">
-          <div class="wf-flat-meta">
-            <span class="wf-flat-name">{{ flow.name_workflow }}</span>
-            <template v-if="flow.displayCompanyName || flow.displayCustomerName">
-              <span class="wf-em-sep">—</span>
-              <span class="wf-flat-party">
-                <span v-if="flow.displayCompanyName">{{ flow.displayCompanyName }}</span>
-                <span v-if="flow.displayCompanyName && flow.displayCustomerName" class="wf-dot-sep">•</span>
-                <span v-if="flow.displayCustomerName">{{ flow.displayCustomerName }}</span>
-              </span>
-            </template>
-            <span v-if="flow.is_company_default" class="wf-card-mini-pill is-emerald">Mặc định KH</span>
-            <span
-              v-if="getDealCountForWorkflow(flow.id_workflow) > 0"
-              class="wf-card-mini-pill is-sky wf-tabular"
-            >
-              {{ getDealCountForWorkflow(flow.id_workflow) }} việc
-            </span>
-          </div>
-
-          <div class="wf-flat-tools" @click.stop>
-            <button
-              type="button"
-              class="wf-flat-txt-btn"
-              title="Mở Workflow này trên tab Công Việc Pipeline"
-              @click.stop="emitOpenKanban(flow.id_workflow, flow)"
-            >
-              Mở Công Việc ↗
-            </button>
-
-            <button
-              type="button"
-              class="wf-ghost-ic-btn"
-              title="Nhân bản Workflow này"
-              aria-label="Nhân bản Workflow này"
-              @click.stop="openWorkflowStudioClone(flow)"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-            </button>
-
-            <button
-              type="button"
-              class="wf-ghost-ic-btn is-danger"
-              title="Xóa Workflow này"
-              aria-label="Xóa Workflow này"
-              @click.stop="deleteCustomerFlowFlat(flow)"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-            </button>
-          </div>
-        </div>
-
-        <!-- ROW 2: SINGLE-LINE HORIZONTAL DRAGGABLE STEPS + INLINE ADD STEP -->
-        <div class="wf-flat-track-scroll">
-          <draggable
-            v-model="flow.statuses"
-            :group="'wf-cus-' + flow.id_workflow"
-            item-key="id_status_workflow"
-            @change="onListChange($event, flow)"
-            animation="180"
-            ghost-class="wf-ghost-chip"
-            drag-class="wf-drag-chip"
-            direction="horizontal"
-            :disabled="isMobile"
-            class="wf-flat-draggable-list"
-          >
-            <template #item="{ element, index }">
-              <div class="wf-flat-step-unit">
-                <div
-                  class="wf-flat-step-chip"
-                  :class="{
-                    'is-flash': element.isDraggingSuccess,
-                    'is-swap-source': swapSourceItem && swapSourceItem.id_status_workflow === element.id_status_workflow
-                  }"
-                  :style="{ '--step-clr': element.status_color || '#3b82f6' }"
-                  title="Kéo để đổi thứ tự nhanh • Nhấn để mở chỉnh sửa trong Studio"
-                  @click.stop="handleCardChipClick(flow, element)"
-                >
-                  <span v-if="!isMobile" class="wf-step-grip" aria-hidden="true">⠿</span>
-                  <span class="wf-step-dot"></span>
-                  <span class="wf-step-chip-name">{{ element.status_name || '---' }}</span>
-                  <span class="wf-step-chip-pct wf-tabular">({{ element['%status'] || '0%' }})</span>
-
-                  <button
-                    v-if="isMobile && (!swapSourceItem || swapSourceItem.id_workflow === element.id_workflow)"
-                    type="button"
-                    class="wf-mobile-swap-inline"
-                    :class="{
-                      'is-active': swapSourceItem && swapSourceItem.id_status_workflow === element.id_status_workflow,
-                      'is-target': swapSourceItem && swapSourceItem.id_status_workflow !== element.id_status_workflow
-                    }"
-                    title="Đổi vị trí bước"
-                    @click.stop="handleSwapAction(element)"
-                  >
-                    ⇄
-                  </button>
-                </div>
-
-                <span
-                  v-if="index < flow.statuses.length - 1"
-                  class="wf-step-arrow"
-                  aria-hidden="true"
-                >→</span>
-              </div>
-            </template>
-          </draggable>
-
-          <button
-            type="button"
-            class="wf-inline-add-step-btn"
-            @click.stop="openWorkflowStudioAddStep(flow)"
-          >
-            + Thêm bước
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- =========================================================
-         SUBTAB 2: KHO WORKFLOW MẪU (CLICK CARD -> OPEN STUDIO MODAL)
+         UNIFIED WORKFLOW DIRECTORY (CUSTOMER-FREE, REUSABLE ACROSS ALL PROJECTS)
          ========================================================= -->
     <div v-else class="wf-flat-list">
       <!-- SYSTEM BASELINE FLOW CARD -->
       <div
-        v-if="showBaselineInTemplates"
+        v-if="showBaselineCard"
+        id="wf-card-WF_DEFAULT"
         class="wf-flat-card is-clickable"
+        :class="{ 'is-nav-highlighted': highlightedWorkflowId === 'WF_DEFAULT' }"
         title="Nhấn để xem chi tiết cấu trúc Workflow Chuẩn Hệ Thống"
         @click="openWorkflowStudioBaseline"
       >
         <div class="wf-flat-head">
           <div class="wf-flat-meta">
             <span class="wf-flat-name">Workflow Chuẩn Hệ Thống</span>
-            <span class="wf-em-sep">—</span>
-            <span class="wf-flat-party">Mặc định hệ thống</span>
+            <span class="wf-card-mini-pill is-slate">Mặc định hệ thống</span>
             <span
               v-if="getDealCountForWorkflow('WF_DEFAULT') > 0"
               class="wf-card-mini-pill is-sky wf-tabular"
@@ -289,25 +170,17 @@
             <button
               type="button"
               class="wf-flat-txt-btn"
-              @click.stop="emitOpenKanban('WF_DEFAULT', null)"
+              @click.stop="emitOpenKanban('WF_DEFAULT')"
             >
               Mở Công Việc ↗
             </button>
 
             <button
               type="button"
-              class="wf-flat-txt-btn"
-              @click.stop="openApplyBlueprintModal(baselineBlueprint)"
-            >
-              Áp vào Công ty
-            </button>
-
-            <button
-              type="button"
               class="wf-ghost-ic-btn"
-              title="Nhân bản thành Workflow Mẫu mới"
-              aria-label="Nhân bản thành Workflow Mẫu mới"
-              @click.stop="openWorkflowStudioCreate('template', null, STANDARD_FLOW_STEPS, 'Workflow mẫu — Bản sao Chuẩn')"
+              title="Nhân bản thành Workflow mới"
+              aria-label="Nhân bản thành Workflow mới"
+              @click.stop="openWorkflowStudioCreate(STANDARD_FLOW_STEPS, 'Workflow — Bản sao Chuẩn')"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
             </button>
@@ -325,7 +198,6 @@
                 class="wf-flat-step-chip is-readonly"
                 :style="{ '--step-clr': st.status_color || '#3b82f6' }"
               >
-                <span class="wf-step-dot"></span>
                 <span class="wf-step-chip-name">{{ st.short_label || st.status_name }}</span>
                 <span class="wf-step-chip-pct wf-tabular">({{ st['%status'] }})</span>
               </div>
@@ -339,27 +211,37 @@
         </div>
       </div>
 
-      <!-- EMPTY SEARCH / NO MATCHING LIBRARY FLOWS -->
+      <!-- EMPTY SEARCH -->
       <div
-        v-if="filteredLibraryGroups.length === 0 && !showBaselineInTemplates"
+        v-if="filteredWorkflowGroups.length === 0 && !showBaselineCard"
         class="wf-empty-card"
       >
-        <div class="wf-empty-title">Không tìm thấy Workflow mẫu phù hợp</div>
-        <div class="wf-empty-sub">Hãy thử từ khóa khác hoặc tạo Workflow mẫu mới.</div>
+        <div class="wf-empty-title">Không tìm thấy Workflow nào phù hợp</div>
+        <div class="wf-empty-sub">Hãy thử từ khóa khác theo tên Workflow, tên bước hoặc nhấn Tạo Workflow mới.</div>
+        <button
+          type="button"
+          class="wf-btn wf-btn-primary wf-btn-sm"
+          style="margin-top: 6px;"
+          @click="openWorkflowStudioCreate()"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          <span>Tạo Workflow Mới</span>
+        </button>
       </div>
 
-      <!-- ALL LIBRARY CARDS (SHARED BLUEPRINTS ONLY — NO CUSTOMER INFO) -->
+      <!-- ALL WORKFLOW CARDS (UNIFIED, CUSTOMER-FREE) -->
       <div
-        v-for="group in filteredLibraryGroups"
-        :key="'lib-' + group.id_workflow"
+        v-for="group in filteredWorkflowGroups"
+        :id="'wf-card-' + group.id_workflow"
+        :key="'wf-' + group.id_workflow"
         class="wf-flat-card is-clickable"
-        title="Nhấn vào thẻ để mở chỉnh sửa Workflow mẫu"
+        :class="{ 'is-nav-highlighted': highlightedWorkflowId === group.id_workflow }"
+        title="Nhấn vào thẻ để mở chỉnh sửa Workflow toàn diện"
         @click="openWorkflowStudioEdit(group)"
       >
         <div class="wf-flat-head">
           <div class="wf-flat-meta">
-            <span class="wf-flat-name">{{ group.name_workflow || 'Workflow mẫu chưa đặt tên' }}</span>
-            <span class="wf-card-mini-pill is-slate">Mẫu dùng chung</span>
+            <span class="wf-flat-name">{{ group.name_workflow || 'Workflow chưa đặt tên' }}</span>
             <span
               v-if="getDealCountForWorkflow(group.id_workflow) > 0"
               class="wf-card-mini-pill is-sky wf-tabular"
@@ -371,19 +253,29 @@
           <div class="wf-flat-tools" @click.stop>
             <button
               type="button"
-              class="wf-flat-txt-btn"
-              title="Áp Workflow mẫu này thành luồng riêng cho Công ty / Khách hàng"
-              @click.stop="openApplyBlueprintModal(group)"
+              class="wf-flat-txt-btn is-edit-btn"
+              title="Mở modal chỉnh sửa các bước của Workflow này"
+              @click.stop="openWorkflowStudioEdit(group)"
             >
-              Áp vào Công ty
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+              <span>Sửa</span>
+            </button>
+
+            <button
+              type="button"
+              class="wf-flat-txt-btn"
+              title="Mở Workflow này trên tab Công Việc Pipeline"
+              @click.stop="emitOpenKanban(group.id_workflow)"
+            >
+              Mở Công Việc ↗
             </button>
 
             <button
               type="button"
               class="wf-ghost-ic-btn"
-              title="Nhân bản thành Workflow Mẫu mới"
-              aria-label="Nhân bản thành Workflow Mẫu mới"
-              @click.stop="openWorkflowStudioCreate('template', null, group.statuses, extractCleanFlowSuffix(group.name_workflow) + ' (Bản sao)')"
+              title="Nhân bản Workflow này"
+              aria-label="Nhân bản Workflow này"
+              @click.stop="openWorkflowStudioClone(group)"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
             </button>
@@ -391,8 +283,8 @@
             <button
               type="button"
               class="wf-ghost-ic-btn is-danger"
-              title="Xóa Workflow Mẫu"
-              aria-label="Xóa Workflow Mẫu"
+              title="Xóa Workflow này"
+              aria-label="Xóa Workflow này"
               @click.stop="confirmDeleteWorkflowGroup(group)"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
@@ -403,7 +295,7 @@
         <div class="wf-flat-track-scroll">
           <draggable
             v-model="group.statuses"
-            :group="'wf-tpl-' + group.id_workflow"
+            :group="'wf-grp-' + group.id_workflow"
             item-key="id_status_workflow"
             @change="onListChange($event, group)"
             animation="180"
@@ -426,7 +318,6 @@
                   @click.stop="handleCardChipClick(group, element)"
                 >
                   <span v-if="!isMobile" class="wf-step-grip" aria-hidden="true">⠿</span>
-                  <span class="wf-step-dot"></span>
                   <span class="wf-step-chip-name">{{ element.status_name || '---' }}</span>
                   <span class="wf-step-chip-pct wf-tabular">({{ element['%status'] || '0%' }})</span>
 
@@ -466,6 +357,69 @@
     </div>
 
     <!-- =========================================================
+         MODAL 0: STEP 1 — NHẬP TÊN WORKFLOW TRƯỚC KHI MỞ MODAL LỚN
+         ========================================================= -->
+    <Teleport to="body">
+      <div
+        v-if="showCreateNameModal"
+        class="bg-modal-overlay wf-modal-overlay is-create-name-overlay"
+        :class="{
+          'theme-light-blue': effectiveTheme === 'light',
+          'theme-custom-glass': effectiveTheme === 'custom'
+        }"
+        @click.self="closeCreateNameModal"
+      >
+        <div class="wf-modal-card" role="dialog" aria-modal="true">
+          <div class="wf-modal-grab" aria-hidden="true"></div>
+          <div class="wf-modal-header">
+            <div class="wf-modal-title-wrap">
+              <div class="wf-modal-ic is-sky">
+                <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+              </div>
+              <div>
+                <h3 class="wf-modal-title">
+                  {{ isCloneNameModal ? 'Nhân Bản Workflow' : 'Tạo Workflow Mới' }}
+                </h3>
+                <p class="wf-modal-sub">
+                  Nhập tên Workflow trước khi mở màn hình thiết kế các bước tiến độ
+                </p>
+              </div>
+            </div>
+            <button type="button" class="wf-modal-close" aria-label="Đóng" @click="closeCreateNameModal">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+          </div>
+
+          <div class="wf-modal-body">
+            <div class="wf-field">
+              <label class="wf-label">
+                Tên Workflow <span class="wf-req">*</span>
+              </label>
+              <input
+                ref="createNameInputRef"
+                v-model="createNameDraft"
+                type="text"
+                class="bg-input wf-input-hero-title"
+                placeholder="VD: Quy trình Đấu thầu / Bán thương mại / Gia hạn License..."
+                @keydown.enter.prevent="confirmCreateNameAndOpenStudio"
+              />
+            </div>
+          </div>
+
+          <div class="wf-modal-footer">
+            <button type="button" class="wf-btn wf-btn-slate" @click="closeCreateNameModal">
+              Hủy
+            </button>
+            <button type="button" class="wf-btn wf-btn-primary" @click="confirmCreateNameAndOpenStudio">
+              <span>Tiếp tục thiết kế bước</span>
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- =========================================================
          MODAL 1: UNIFIED 2-COLUMN WORKFLOW STUDIO (100% FULLSCREEN)
          ========================================================= -->
     <Teleport to="body">
@@ -484,10 +438,7 @@
           <!-- STUDIO HEADER -->
           <div class="wf-modal-header wf-studio-header">
             <div class="wf-studio-head-left">
-              <div
-                class="wf-modal-ic"
-                :class="{ 'is-sky': studioMode === 'baseline' || studioForm.mode === 'template' }"
-              >
+              <div class="wf-modal-ic is-sky">
                 <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
               </div>
               <div class="wf-studio-head-titles">
@@ -502,51 +453,28 @@
                     }}
                   </h3>
                   <div class="wf-studio-pills">
-                    <span
-                      class="wf-ctx-pill"
-                      :class="studioMode === 'baseline' || studioForm.mode === 'template' ? 'is-sky' : 'is-emerald'"
-                    >
-                      {{
-                        studioMode === 'baseline'
-                          ? 'Chuẩn Hệ Thống'
-                          : studioForm.mode === 'customer'
-                            ? 'Workflow Khách Hàng'
-                            : 'Workflow Mẫu (Blueprint)'
-                      }}
+                    <span v-if="studioMode === 'baseline'" class="wf-ctx-pill is-sky">
+                      Chuẩn Hệ Thống
                     </span>
                     <span class="wf-ctx-pill is-slate wf-tabular">{{ studioForm.steps.length }} bước</span>
                     <span v-if="studioActiveDealCount > 0" class="wf-ctx-pill is-amber wf-tabular">
                       {{ studioActiveDealCount }} công việc đang chạy
-                    </span>
-                    <span
-                      v-if="studioMode !== 'baseline' && studioForm.mode === 'customer' && studioForm.setAsDefault"
-                      class="wf-ctx-pill is-emerald"
-                    >
-                      ★ Mặc định KH
                     </span>
                   </div>
                 </div>
                 <p class="wf-modal-sub">
                   {{
                     studioMode === 'baseline'
-                      ? 'Cấu trúc 5 bước mặc định áp cho các khách hàng chưa thiết lập Workflow riêng'
+                      ? 'Cấu trúc 5 bước mặc định dùng chung trên toàn hệ thống'
                       : studioMode === 'edit'
-                        ? 'Cập nhật tên, khách hàng sở hữu và kéo-thả sắp xếp chuỗi bước tiến độ trong một lần lưu'
-                        : 'Định danh phạm vi Workflow ở cột trái và thiết kế chuỗi bước tiến độ ở cột phải'
+                        ? 'Cập nhật tên quy trình và kéo-thả sắp xếp chuỗi bước tiến độ trong một lần lưu'
+                        : 'Đặt tên quy trình ở cột trái và thiết kế chuỗi bước tiến độ ở cột phải'
                   }}
                 </p>
               </div>
             </div>
 
             <div class="wf-studio-head-right">
-              <button
-                v-if="studioMode === 'baseline' || (studioMode === 'edit' && studioForm.mode === 'template')"
-                type="button"
-                class="wf-btn wf-btn-slate wf-btn-sm bg-hide-sm"
-                @click="triggerApplyBlueprintFromStudio"
-              >
-                Áp vào Công ty
-              </button>
               <button
                 v-if="studioMode !== 'create'"
                 type="button"
@@ -564,13 +492,13 @@
           <!-- 2-COLUMN STUDIO WORKSPACE BODY -->
           <div class="wf-studio-body-grid">
             <!-- ===================================================
-                 COLUMN 1 (LEFT ~38%): IDENTITY, SCOPE & CUSTOMER
+                 COLUMN 1 (LEFT ~38%): WORKFLOW IDENTITY & PRESET LOADER
                  =================================================== -->
             <section class="modal-group wf-studio-col wf-studio-col-left">
               <div class="modal-banner-header is-sky">
                 <div class="modal-banner-title">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                  <span>ĐỊNH DANH &amp; PHẠM VI WORKFLOW</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                  <span>THÔNG TIN WORKFLOW</span>
                 </div>
               </div>
 
@@ -580,7 +508,7 @@
                   <div class="wf-baseline-info-box">
                     <div class="wf-baseline-info-title">Khung vận hành mặc định toàn hệ thống</div>
                     <div class="wf-baseline-info-desc">
-                      Mọi Công việc Pipeline của khách hàng chưa có Workflow riêng sẽ tự động chạy trên 5 bước chuẩn này (kèm 2 cột kết thúc <strong>100% Thành công</strong> và <strong>0% Thất bại</strong>).
+                      Các Dự án và Công việc chưa gắn Workflow khác sẽ chạy trên 5 bước chuẩn này (kèm 2 cột kết thúc <strong>100% Thành công</strong> và <strong>0% Thất bại</strong>).
                     </div>
                     <div class="wf-baseline-stat-row wf-tabular">
                       <span>Công việc đang chạy trên khung chuẩn:</span>
@@ -592,224 +520,35 @@
                     <button
                       type="button"
                       class="wf-studio-action-card"
-                      @click="openWorkflowStudioCreate('customer', null, STANDARD_FLOW_STEPS, '')"
+                      @click="openWorkflowStudioCreate(STANDARD_FLOW_STEPS, 'Workflow — Bản sao Chuẩn')"
                     >
-                      <div class="wf-sac-title">+ Tạo Workflow riêng cho Khách hàng từ khung này</div>
-                      <div class="wf-sac-sub">Chọn 1 Công ty / Khách hàng và tùy biến lại các bước theo thực tế</div>
-                    </button>
-
-                    <button
-                      type="button"
-                      class="wf-studio-action-card"
-                      @click="openWorkflowStudioCreate('template', null, STANDARD_FLOW_STEPS, 'Workflow mẫu — Bản sao Chuẩn')"
-                    >
-                      <div class="wf-sac-title">+ Nhân bản thành Workflow Mẫu (Blueprint)</div>
-                      <div class="wf-sac-sub">Tạo mẫu dùng chung mới dựa trên 5 bước chuẩn để áp cho nhiều công ty</div>
-                    </button>
-
-                    <button
-                      type="button"
-                      class="wf-studio-action-card"
-                      @click="triggerApplyBlueprintFromStudio"
-                    >
-                      <div class="wf-sac-title">Áp thẳng khung chuẩn cho nhiều Công ty</div>
-                      <div class="wf-sac-sub">Khởi tạo nhanh Workflow riêng hàng loạt cho danh sách công ty được chọn</div>
+                      <div class="wf-sac-title">+ Nhân bản thành Workflow mới từ khung chuẩn</div>
+                      <div class="wf-sac-sub">Tạo quy trình mới dựa trên 5 bước chuẩn để tùy biến và gắn vào các Dự án</div>
                     </button>
                   </div>
                 </template>
 
-                <!-- CREATE / EDIT LEFT PANE -->
+                <!-- CREATE / EDIT LEFT PANE (PURE WORKFLOW — NO CUSTOMER FIELDS) -->
                 <template v-else>
-                  <!-- 1. SCOPE CHOICE GRID (2 BUTTONS) -->
-                  <div class="wf-field">
-                    <label class="wf-label">1. Loại Workflow</label>
-                    <div class="wf-scope-choice-grid">
-                      <button
-                        type="button"
-                        class="wf-scope-choice-btn"
-                        :class="{ 'is-active': studioForm.mode === 'customer' }"
-                        @click="switchStudioScope('customer')"
-                      >
-                        <span class="wf-scope-choice-main">Theo Khách Hàng</span>
-                        <span class="wf-scope-choice-sub">Gắn riêng 1 Công ty / KH</span>
-                      </button>
-                      <button
-                        type="button"
-                        class="wf-scope-choice-btn is-sky-tone"
-                        :class="{ 'is-active': studioForm.mode === 'template' }"
-                        @click="switchStudioScope('template')"
-                      >
-                        <span class="wf-scope-choice-main">Workflow Mẫu</span>
-                        <span class="wf-scope-choice-sub">Blueprint dùng chung</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  <!-- 2. WORKFLOW NAME (#1 PRIMARY INPUT) -->
+                  <!-- WORKFLOW NAME (#1 PRIMARY INPUT) -->
                   <div class="wf-field">
                     <label class="wf-label">
-                      2. {{ studioForm.mode === 'customer' ? 'Tên Workflow' : 'Tên Workflow Mẫu' }}
-                      <span class="wf-req">*</span>
+                      Tên Workflow <span class="wf-req">*</span>
                     </label>
                     <input
                       ref="studioNameInputRef"
                       v-model="studioForm.name_workflow"
                       type="text"
                       class="bg-input wf-input-hero-title"
-                      :placeholder="
-                        studioForm.mode === 'customer'
-                          ? 'VD: ACB — Đấu thầu thiết bị / Gia hạn License...'
-                          : 'VD: Workflow Đấu Thầu Ngân Hàng / Gia Hạn License...'
-                      "
+                      placeholder="VD: Quy trình Đấu thầu / Bán thương mại / Gia hạn License..."
                     />
                   </div>
 
-                  <!-- 3. STANDARDIZED CUSTOMER PICKER (WHEN MODE === 'customer') -->
-                  <div v-if="studioForm.mode === 'customer'" class="wf-customer-group-box">
-                    <div class="wf-customer-group-head">
-                      <span class="wf-label">3. Khách hàng sở hữu Workflow</span>
-                      <button
-                        type="button"
-                        class="wf-link-action-btn"
-                        @click="openStudioAddCustomerModal"
-                      >
-                        + Thêm KH mới
-                      </button>
-                    </div>
-
-                    <div class="wf-field">
-                      <label class="wf-sub-label">Tên Công ty <span class="wf-req">*</span></label>
-                      <div class="wf-input-with-picker">
-                        <input
-                          :value="studioForm.ten_cong_ty"
-                          type="text"
-                          class="bg-input has-inline-picker"
-                          readonly
-                          placeholder="Nhấn Chọn để gán Công ty..."
-                          @click="openStudioCustomerPicker('company')"
-                        />
-                        <button
-                          v-if="studioForm.ten_cong_ty"
-                          type="button"
-                          class="wf-inline-clear-btn"
-                          title="Xóa Công ty đang chọn"
-                          @click.stop="clearStudioCompany"
-                        >
-                          ×
-                        </button>
-                        <button
-                          type="button"
-                          class="wf-inline-pick-btn"
-                          @click="openStudioCustomerPicker('company')"
-                        >
-                          Chọn
-                        </button>
-                      </div>
-                    </div>
-
-                    <div class="wf-field">
-                      <label class="wf-sub-label">Người liên hệ / Khách hàng</label>
-                      <div class="wf-input-with-picker">
-                        <input
-                          :value="studioForm.ten_khach_hang"
-                          type="text"
-                          class="bg-input has-inline-picker"
-                          readonly
-                          placeholder="Chọn người liên hệ (tùy chọn)..."
-                          @click="openStudioCustomerPicker('contact')"
-                        />
-                        <button
-                          v-if="studioForm.ten_khach_hang"
-                          type="button"
-                          class="wf-inline-clear-btn"
-                          title="Xóa người liên hệ"
-                          @click.stop="clearStudioContact"
-                        >
-                          ×
-                        </button>
-                        <button
-                          type="button"
-                          class="wf-inline-pick-btn"
-                          @click="openStudioCustomerPicker('contact')"
-                        >
-                          Chọn
-                        </button>
-                      </div>
-                    </div>
-
-                    <!-- DEFAULT TOGGLE CARD -->
-                    <div
-                      class="wf-toggle-card"
-                      :class="{ 'is-on': studioForm.setAsDefault }"
-                      @click="studioForm.setAsDefault = !studioForm.setAsDefault"
-                    >
-                      <span class="wf-apply-check-box" :class="{ 'is-on': studioForm.setAsDefault }">
-                        <svg v-if="studioForm.setAsDefault" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                      </span>
-                      <div class="wf-toggle-card-copy">
-                        <div class="wf-toggle-card-title">Đặt làm Workflow mặc định của khách hàng</div>
-                        <div class="wf-toggle-card-sub">Tự động gán khi tạo Công việc mới cho công ty này</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- 4. QUICK PRESET LOADER -->
-                  <div class="wf-field">
-                    <label class="wf-label">
-                      {{ studioForm.mode === 'customer' ? '4.' : '3.' }} Nạp nhanh chuỗi bước từ mẫu có sẵn
-                    </label>
-                    <select
-                      v-model="studioForm.selectedPresetId"
-                      class="bg-input"
-                      @change="handleStudioPresetSelect(studioForm.selectedPresetId)"
-                    >
-                      <option value="">-- Giữ chuỗi bước đang thiết kế bên phải --</option>
-                      <option value="WF_DEFAULT">Workflow Chuẩn Hệ Thống (5 bước)</option>
-                      <optgroup v-if="templateWorkflowGroups.length > 0" label="Kho Workflow Mẫu (Blueprint)">
-                        <option
-                          v-for="tpl in templateWorkflowGroups"
-                          :key="'st-opt-' + tpl.id_workflow"
-                          :value="tpl.id_workflow"
-                        >
-                          {{ tpl.name_workflow }} ({{ tpl.statuses.length }} bước)
-                        </option>
-                      </optgroup>
-                      <optgroup v-if="flatCustomerFlows.length > 0" label="Workflow Của Khách Hàng Khác">
-                        <option
-                          v-for="cg in flatCustomerFlows"
-                          :key="'st-opt-cg-' + cg.id_workflow"
-                          :value="cg.id_workflow"
-                        >
-                          {{ cg.name_workflow }}{{ cg.displayCompanyName ? ' — ' + cg.displayCompanyName : '' }} ({{ cg.statuses.length }} bước)
-                        </option>
-                      </optgroup>
-                      <option value="__BLANK__">Khung trắng (1 bước khởi tạo 10%)</option>
-                    </select>
-                  </div>
-
-                  <!-- 5. EXTRA SHORTCUTS WHEN EDITING EXISTING WORKFLOW -->
+                  <!-- USAGE SUMMARY WHEN EDITING EXISTING WORKFLOW -->
                   <div v-if="studioMode === 'edit'" class="wf-edit-utility-box">
                     <div class="wf-edit-utility-row wf-tabular">
                       <span>Công việc đang chạy trên Workflow này:</span>
                       <strong>{{ studioActiveDealCount }} việc</strong>
-                    </div>
-                    <div class="wf-edit-utility-actions">
-                      <button
-                        v-if="studioForm.mode === 'customer'"
-                        type="button"
-                        class="wf-flat-txt-btn"
-                        @click="cloneCurrentStudioAsBlueprint"
-                      >
-                        Lưu bản sao vào Kho Workflow Mẫu
-                      </button>
-                      <button
-                        v-else
-                        type="button"
-                        class="wf-flat-txt-btn"
-                        @click="triggerApplyBlueprintFromStudio"
-                      >
-                        Áp mẫu này cho Công ty / KH
-                      </button>
                     </div>
                   </div>
                 </template>
@@ -1090,369 +829,6 @@
     </Teleport>
 
     <!-- =========================================================
-         MODAL 2: CUSTOMER / CONTACT PICKER POPUP (SYNCED WITH PIPELINE)
-         ========================================================= -->
-    <Teleport to="body">
-      <div
-        v-if="showStudioCustomerPicker"
-        class="bg-modal-overlay wf-modal-overlay is-sub-picker-overlay"
-        :class="{
-          'theme-light-blue': effectiveTheme === 'light',
-          'theme-custom-glass': effectiveTheme === 'custom'
-        }"
-        @click.self="showStudioCustomerPicker = false"
-      >
-        <div class="wf-modal-card wf-modal-md">
-          <div class="wf-modal-grab" aria-hidden="true"></div>
-          <div class="wf-modal-header">
-            <div>
-              <h3 class="wf-modal-title">
-                {{
-                  studioCustomerPickerFocus === 'contact'
-                    ? 'Chọn Người Liên Hệ / Khách Hàng'
-                    : 'Chọn Tên Công Ty / Khách Hàng'
-                }}
-              </h3>
-              <p
-                v-if="studioCustomerPickerFocus === 'contact' && studioForm.ten_cong_ty"
-                class="wf-modal-sub"
-              >
-                Đang ưu tiên người liên hệ thuộc: <strong>{{ studioForm.ten_cong_ty }}</strong>
-              </p>
-            </div>
-            <button type="button" class="wf-modal-close" @click="showStudioCustomerPicker = false" aria-label="Đóng">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            </button>
-          </div>
-
-          <div class="wf-modal-body">
-            <div class="wf-picker-top-bar">
-              <input
-                ref="studioCustomerSearchInputRef"
-                v-model="studioCustomerPickerSearch"
-                type="text"
-                class="bg-input"
-                style="flex: 1; min-width: 180px;"
-                :placeholder="
-                  studioCustomerPickerFocus === 'contact'
-                    ? 'Tìm hoặc nhập tên người liên hệ, công ty...'
-                    : 'Tìm hoặc nhập tên công ty, người liên hệ, mã KH...'
-                "
-                @keydown.enter.prevent="studioCustomerPickerSearch.trim() && filteredStudioCustomers.length === 0 && applyManualStudioCustomerSearch()"
-              />
-              <button
-                v-if="studioCustomerPickerSearch.trim()"
-                type="button"
-                class="wf-btn wf-btn-sky-soft wf-btn-sm"
-                @click="applyManualStudioCustomerSearch"
-              >
-                Dùng "{{ studioCustomerPickerSearch.trim() }}"
-              </button>
-              <button
-                type="button"
-                class="wf-btn wf-btn-primary wf-btn-sm"
-                @click="openStudioAddCustomerModal"
-              >
-                + Thêm KH mới
-              </button>
-            </div>
-
-            <div class="wf-picker-rows-list">
-              <div v-if="filteredStudioCustomers.length === 0" class="wf-empty-inline">
-                <div>Không tìm thấy khách hàng có sẵn khớp từ khóa.</div>
-                <div v-if="studioCustomerPickerSearch.trim()" style="margin-top: 8px;">
-                  <button type="button" class="wf-btn wf-btn-primary wf-btn-sm" @click="applyManualStudioCustomerSearch">
-                    + Chọn nhanh "{{ studioCustomerPickerSearch.trim() }}"
-                  </button>
-                </div>
-              </div>
-
-              <div
-                v-for="c in filteredStudioCustomers"
-                :key="c.pickKey"
-                class="wf-picker-row-item"
-                :class="{ 'is-selected': isStudioCustomerActive(c) }"
-                @click="selectStudioCustomerOption(c)"
-              >
-                <div class="wf-picker-row-main">
-                  <div class="wf-picker-row-title">
-                    {{
-                      studioCustomerPickerFocus === 'contact'
-                        ? c.ten_khach_hang || c.ten_cong_ty
-                        : c.ten_cong_ty || c.ten_khach_hang
-                    }}
-                  </div>
-                  <div class="wf-picker-row-sub">
-                    <template v-if="studioCustomerPickerFocus === 'contact'">
-                      {{ c.ten_cong_ty || 'Chưa rõ công ty' }}
-                      <template v-if="c.ma_khach_hang"> • <span class="wf-mono">{{ c.ma_khach_hang }}</span></template>
-                    </template>
-                    <template v-else>
-                      {{ c.ten_khach_hang || 'Chưa có người liên hệ' }}
-                      <template v-if="c.ma_khach_hang"> • <span class="wf-mono">{{ c.ma_khach_hang }}</span></template>
-                    </template>
-                  </div>
-                </div>
-
-                <div class="wf-picker-row-right">
-                  <span v-if="c._isSameCompany" class="wf-card-mini-pill is-sky">Cùng công ty</span>
-                  <span v-if="c.existingFlowCount > 0" class="wf-card-mini-pill is-emerald wf-tabular">
-                    {{ c.existingFlowCount }} Workflow
-                  </span>
-                  <button
-                    type="button"
-                    class="wf-picker-choose-btn"
-                    :class="{ 'is-selected': isStudioCustomerActive(c) }"
-                    @click.stop="selectStudioCustomerOption(c)"
-                  >
-                    {{ isStudioCustomerActive(c) ? 'Đang chọn' : 'Chọn' }}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="wf-modal-footer">
-            <button type="button" class="wf-btn wf-btn-slate" @click="showStudioCustomerPicker = false">Đóng</button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
-
-    <!-- =========================================================
-         MODAL 3: QUICK ADD NEW CUSTOMER TO DIRECTORY
-         ========================================================= -->
-    <Teleport to="body">
-      <div
-        v-if="showStudioAddCustomerModal"
-        class="bg-modal-overlay wf-modal-overlay is-top-picker-overlay"
-        :class="{
-          'theme-light-blue': effectiveTheme === 'light',
-          'theme-custom-glass': effectiveTheme === 'custom'
-        }"
-        @click.self="showStudioAddCustomerModal = false"
-      >
-        <div class="wf-modal-card" style="max-width: 440px;">
-          <div class="wf-modal-grab" aria-hidden="true"></div>
-          <div class="wf-modal-header">
-            <h3 class="wf-modal-title">Thêm Khách Hàng Mới</h3>
-            <button type="button" class="wf-modal-close" @click="showStudioAddCustomerModal = false" aria-label="Đóng">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            </button>
-          </div>
-          <div class="wf-modal-body">
-            <div class="wf-field">
-              <label class="wf-label">Tên Công Ty <span class="wf-req">*</span></label>
-              <input
-                v-model="newStudioCustomerForm.ten_cong_ty"
-                type="text"
-                class="bg-input"
-                placeholder="VD: CÔNG TY CỔ PHẦN ABC..."
-              />
-            </div>
-            <div class="wf-field">
-              <label class="wf-label">Tên Người Liên Hệ / Khách Hàng <span class="wf-req">*</span></label>
-              <input
-                v-model="newStudioCustomerForm.ten_khach_hang"
-                type="text"
-                class="bg-input"
-                placeholder="VD: ANH MINH..."
-                @keydown.enter.prevent="submitNewStudioCustomer"
-              />
-            </div>
-          </div>
-          <div class="wf-modal-footer">
-            <button type="button" class="wf-btn wf-btn-slate" @click="showStudioAddCustomerModal = false">Hủy</button>
-            <button
-              type="button"
-              class="wf-btn wf-btn-primary"
-              :disabled="isSavingNewCustomer"
-              @click="submitNewStudioCustomer"
-            >
-              <span v-if="isSavingNewCustomer" class="wf-spinner-sm"></span>
-              <span>Lưu Khách Hàng</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
-
-    <!-- =========================================================
-         MODAL 4: APPLY WORKFLOW BLUEPRINT TO ONE OR MULTIPLE COMPANIES
-         ========================================================= -->
-    <Teleport to="body">
-      <div
-        v-if="showApplyBlueprintModal"
-        class="bg-modal-overlay wf-modal-overlay is-sub-picker-overlay"
-        :class="{
-          'theme-light-blue': effectiveTheme === 'light',
-          'theme-custom-glass': effectiveTheme === 'custom'
-        }"
-        @click.self="showApplyBlueprintModal = false"
-      >
-        <div class="wf-modal-card wf-modal-lg">
-          <div class="wf-modal-grab" aria-hidden="true"></div>
-          <div class="wf-modal-header">
-            <div class="wf-modal-title-wrap">
-              <div class="wf-modal-ic is-sky">
-                <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
-              </div>
-              <div>
-                <h3 class="wf-modal-title">Áp Workflow Mẫu Vào Công Ty / Khách Hàng</h3>
-                <p class="wf-modal-sub">
-                  Workflow gốc: {{ applyBlueprintState.blueprint?.name_workflow }} ({{ (applyBlueprintState.blueprint?.statuses || []).length }} bước)
-                </p>
-              </div>
-            </div>
-            <button type="button" class="wf-modal-close" @click="showApplyBlueprintModal = false" aria-label="Đóng">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            </button>
-          </div>
-
-          <div class="wf-modal-body">
-            <!-- GROUP 1: BLUEPRINT PREVIEW & NAMING SUFFIX -->
-            <div class="modal-group">
-              <div class="wf-clean-group-head">
-                <span>1. Đặt tên Workflow khi áp vào Công ty</span>
-              </div>
-              <div class="modal-group-body">
-                <div class="wf-flat-track-scroll">
-                  <div class="wf-flat-draggable-list">
-                    <div
-                      v-for="(st, sIdx) in (applyBlueprintState.blueprint?.statuses || [])"
-                      :key="'bp-prev-' + sIdx"
-                      class="wf-flat-step-unit"
-                    >
-                      <div class="wf-flat-step-chip is-readonly">
-                        <span class="wf-step-dot" :style="{ backgroundColor: st.status_color || '#3b82f6' }"></span>
-                        <span class="wf-step-chip-name">{{ st.short_label || st.status_name }}</span>
-                        <span class="wf-step-chip-pct wf-tabular">({{ st['%status'] }})</span>
-                      </div>
-                      <span
-                        v-if="sIdx < (applyBlueprintState.blueprint?.statuses || []).length - 1"
-                        class="wf-step-arrow"
-                        aria-hidden="true"
-                      >→</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="wf-form-row-2">
-                  <div class="wf-field">
-                    <label class="wf-label">Nhãn quy trình gắn sau tên Công ty <span class="wf-req">*</span></label>
-                    <input
-                      v-model="applyBlueprintState.flowSuffix"
-                      type="text"
-                      class="bg-input"
-                      placeholder="VD: Đấu thầu thiết bị / Gia hạn License..."
-                    />
-                  </div>
-                  <div class="wf-field">
-                    <label class="wf-label">Xem trước tên Workflow sẽ tạo</label>
-                    <div class="wf-name-preview-box">
-                      [Tên Công Ty] — <strong>{{ applyBlueprintState.flowSuffix || applyBlueprintState.blueprint?.name_workflow || 'Quy trình riêng' }}</strong>
-                    </div>
-                  </div>
-                </div>
-
-                <label class="wf-check-line">
-                  <input v-model="applyBlueprintState.setAsDefault" type="checkbox" />
-                  <span>Đặt làm Workflow mặc định cho các Công ty được chọn</span>
-                </label>
-              </div>
-            </div>
-
-            <!-- GROUP 2: MULTI-SELECT COMPANIES -->
-            <div class="modal-group">
-              <div class="wf-clean-group-head">
-                <span class="wf-tabular">2. Chọn Công ty áp dụng ({{ applyBlueprintState.selectedKeys.length }} đã chọn)</span>
-                <div style="display: flex; gap: 6px;">
-                  <button type="button" class="wf-flat-txt-btn" @click="selectAllFilteredApplyCompanies">
-                    Chọn tất cả
-                  </button>
-                  <button
-                    v-if="applyBlueprintState.selectedKeys.length > 0"
-                    type="button"
-                    class="wf-flat-txt-btn"
-                    @click="applyBlueprintState.selectedKeys = []"
-                  >
-                    Bỏ chọn
-                  </button>
-                </div>
-              </div>
-
-              <div class="modal-group-body">
-                <div class="bg-search-shell">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" class="bg-search-ic"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                  <input
-                    v-model="applyBlueprintState.search"
-                    type="text"
-                    class="bg-search-inp"
-                    placeholder="Gõ tìm Công ty, Khách hàng..."
-                  />
-                  <button
-                    v-if="applyBlueprintState.search"
-                    type="button"
-                    class="bg-search-clr"
-                    @click="applyBlueprintState.search = ''"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                  </button>
-                </div>
-
-                <div class="wf-apply-company-list">
-                  <div v-if="filteredApplyCompanyRows.length === 0" class="wf-empty-inline">
-                    Không tìm thấy công ty nào khớp từ khóa.
-                  </div>
-                  <div
-                    v-for="co in filteredApplyCompanyRows"
-                    :key="'ap-' + co.rowKey"
-                    class="wf-apply-company-row"
-                    :class="{ 'is-checked': applyBlueprintState.selectedKeys.includes(co.rowKey) }"
-                    @click="toggleApplyCompanyKey(co.rowKey)"
-                  >
-                    <span class="wf-apply-check-box" :class="{ 'is-on': applyBlueprintState.selectedKeys.includes(co.rowKey) }">
-                      <svg v-if="applyBlueprintState.selectedKeys.includes(co.rowKey)" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                    </span>
-
-                    <div class="wf-apply-company-info">
-                      <div class="wf-apply-company-title">
-                        <span>{{ co.ten_cong_ty || co.ten_khach_hang }}</span>
-                        <span v-if="co.contactsLabel && co.ten_cong_ty && cleanCode(co.contactsLabel) !== cleanCode(co.ten_cong_ty)" class="wf-apply-muted-meta">
-                          • {{ co.contactsLabel }}
-                        </span>
-                      </div>
-                      <div v-if="co.customGroups.length > 0" class="wf-apply-company-sub">
-                        <span>Đang có {{ co.customGroups.length }} Workflow riêng</span>
-                        <span v-if="hasCompanyAppliedBlueprint(co, applyBlueprintState.blueprint?.id_workflow)">• Đã áp mẫu này</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="wf-modal-footer">
-            <button type="button" class="wf-btn wf-btn-slate" :disabled="saving" @click="showApplyBlueprintModal = false">
-              Hủy
-            </button>
-            <button
-              type="button"
-              class="wf-btn wf-btn-primary"
-              :disabled="saving || applyBlueprintState.selectedKeys.length === 0"
-              @click="submitApplyBlueprintToCompanies"
-            >
-              <span v-if="saving" class="wf-spinner-sm"></span>
-              <svg v-else xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-              <span class="wf-tabular">Áp Workflow Cho {{ applyBlueprintState.selectedKeys.length }} Công Ty</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
-
-    <!-- =========================================================
          3-TIER BAOGIA DIALOG (PROMISE ALERT / CONFIRM)
          ========================================================= -->
     <Teleport to="body">
@@ -1530,28 +906,24 @@
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import draggable from 'vuedraggable'
 import { initializeApp, getApps, getApp } from 'firebase/app'
-import { getDatabase, ref as dbRef, get, set, update } from 'firebase/database'
+import { getDatabase, ref as dbRef, get, update } from 'firebase/database'
 
 const props = defineProps({
   uiTheme: {
     type: String,
     default: ''
   },
-  customersExternal: {
-    type: Array,
-    default: () => []
-  },
   pipelinesExternal: {
     type: Array,
     default: () => []
   },
-  focusCustomerKey: {
-    type: String,
-    default: ''
+  workflowsExternal: {
+    type: Array,
+    default: () => []
   }
 })
 
-const emit = defineEmits(['updated', 'open-kanban-workflow'])
+const emit = defineEmits(['updated', 'open-kanban-workflow', 'cycle-theme'])
 
 const firebaseConfig = {
   apiKey: 'AIzaSyB3fHD_sOqyqVygCxP2gZtvaipr-35a1s8',
@@ -1603,31 +975,6 @@ const PRESET_COLORS = [
 
 const sanitizeFirebaseKey = (key) => String(key || '').replace(/[.#$/[\]]/g, '_')
 
-const removeDiacritics = (str) => {
-  if (!str) return ''
-  return String(str)
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/đ/g, 'd')
-    .replace(/Đ/g, 'D')
-}
-
-const cleanCode = (str) =>
-  removeDiacritics(str)
-    .toUpperCase()
-    .replace(/\s+/g, '')
-    .replace(/[^A-Z0-9_-]/g, '')
-
-const genMaCT = (congTy) =>
-  removeDiacritics(congTy).toUpperCase().replace(/\s+/g, '').replace(/[^A-Z0-9]/g, '')
-
-const genMaKH = (tenKH, congTy) => {
-  const tenClean = removeDiacritics(tenKH).toUpperCase().replace(/\s+/g, '').replace(/[^A-Z0-9]/g, '')
-  const maCT = genMaCT(congTy)
-  if (!tenClean && !maCT) return ''
-  return [tenClean, maCT].filter(Boolean).join('-')
-}
-
 const formatPercentStatus = (p) => {
   if (p === '' || p === null || p === undefined) return '0%'
   if (typeof p === 'number') {
@@ -1644,32 +991,15 @@ const formatPercentStatus = (p) => {
   return s.endsWith('%') ? s : s + '%'
 }
 
-const getInitials = (text) => {
-  const s = String(text || '').trim()
-  if (!s) return 'KH'
-  const words = s.split(/\s+/).filter(Boolean)
-  if (words.length === 1) return words[0].substring(0, 2).toUpperCase()
-  return (words[0][0] + words[words.length - 1][0]).toUpperCase()
-}
-
 // STATE
-const subTab = ref('customer')
+const workflowSearch = ref('')
 const items = ref([])
-const internalCustomers = ref([])
 const internalPipelines = ref([])
 const loading = ref(false)
 const saving = ref(false)
 const isReordering = ref(false)
 const isMobile = ref(false)
 const swapSourceItem = ref(null)
-const collapsedGroups = ref({})
-const collapsedCompanies = ref({})
-const highlightedCustomerKey = ref('')
-
-const customerSearch = ref('')
-const customerFilterMode = ref('all')
-const customerVisibleLimit = ref(30)
-const templateSearch = ref('')
 
 const baselineBlueprint = {
   id_workflow: 'WF_DEFAULT',
@@ -1680,6 +1010,13 @@ const baselineBlueprint = {
 
 let stepUidSeed = 1
 const makeStepUid = () => `wfst_${Date.now()}_${stepUidSeed++}`
+
+// STEP 1 CREATE NAME MODAL STATE
+const showCreateNameModal = ref(false)
+const createNameDraft = ref('')
+const isCloneNameModal = ref(false)
+const pendingCreateSeedSteps = ref(null)
+const createNameInputRef = ref(null)
 
 // UNIFIED WORKFLOW STUDIO MODAL STATE
 const showStudioModal = ref(false)
@@ -1711,41 +1048,8 @@ const focusStepInputByUid = (uid) => {
 
 const studioForm = ref({
   id_workflow: '',
-  mode: 'customer',
   name_workflow: '',
-  customer: null,
-  ma_khach_hang: '',
-  ma_cong_ty: '',
-  ten_khach_hang: '',
-  ten_cong_ty: '',
-  selectedPresetId: '',
-  source_template_id: '',
-  source_template_name: '',
-  setAsDefault: true,
   steps: []
-})
-
-// STANDARDIZED CUSTOMER PICKER & QUICK ADD CUSTOMER STATE
-const localAddedCustomers = ref([])
-const showStudioCustomerPicker = ref(false)
-const studioCustomerPickerFocus = ref('company') // 'company' | 'contact'
-const studioCustomerPickerSearch = ref('')
-const studioCustomerSearchInputRef = ref(null)
-
-const showStudioAddCustomerModal = ref(false)
-const isSavingNewCustomer = ref(false)
-const newStudioCustomerForm = ref({
-  ten_cong_ty: '',
-  ten_khach_hang: ''
-})
-
-const showApplyBlueprintModal = ref(false)
-const applyBlueprintState = ref({
-  blueprint: null,
-  flowSuffix: '',
-  setAsDefault: false,
-  search: '',
-  selectedKeys: []
 })
 
 // SMART TOAST
@@ -1823,7 +1127,7 @@ const normalizeWorkflowRecord = (raw, fallbackKey = '') => {
       status_name: String(raw[4] ?? ''),
       status_index: parseInt(raw[5] ?? 0, 10) || 0,
       status_color: String(raw[6] || '#3b82f6'),
-      workflow_scope: idWf.startsWith('WF_CUS_') ? 'customer' : 'template',
+      workflow_scope: 'template',
       ma_khach_hang: '',
       ma_cong_ty: '',
       ten_khach_hang: '',
@@ -1837,9 +1141,6 @@ const normalizeWorkflowRecord = (raw, fallbackKey = '') => {
     const idSt = String(raw.id_status_workflow ?? fallbackKey ?? '')
     if (!idSt) return null
     const idWf = String(raw.id_workflow ?? '')
-    const scope =
-      raw.workflow_scope ||
-      (idWf.startsWith('WF_CUS_') || raw.ma_khach_hang || raw.ma_cong_ty || raw.ten_cong_ty ? 'customer' : 'template')
     return {
       id_workflow: idWf,
       id_status_workflow: idSt,
@@ -1848,26 +1149,20 @@ const normalizeWorkflowRecord = (raw, fallbackKey = '') => {
       status_name: String(raw.status_name ?? ''),
       status_index: parseInt(raw.status_index ?? 0, 10) || 0,
       status_color: String(raw.status_color || '#3b82f6'),
-      workflow_scope: scope,
-      ma_khach_hang: scope === 'customer' ? String(raw.ma_khach_hang ?? '') : '',
-      ma_cong_ty: scope === 'customer' ? String(raw.ma_cong_ty ?? '') : '',
-      ten_khach_hang: scope === 'customer' ? String(raw.ten_khach_hang ?? '') : '',
-      ten_cong_ty: scope === 'customer' ? String(raw.ten_cong_ty ?? '') : '',
-      is_company_default: scope === 'customer' ? Boolean(raw.is_company_default) : false,
-      source_template_id: String(raw.source_template_id ?? ''),
-      source_template_name: String(raw.source_template_name ?? '')
+      workflow_scope: 'template',
+      ma_khach_hang: '',
+      ma_cong_ty: '',
+      ten_khach_hang: '',
+      ten_cong_ty: '',
+      is_company_default: false,
+      source_template_id: '',
+      source_template_name: ''
     }
   }
   return null
 }
 
 const toCleanWorkflowRecord = (item) => {
-  const scope =
-    item.workflow_scope ||
-    (String(item.id_workflow || '').startsWith('WF_CUS_') || item.ma_cong_ty || item.ten_cong_ty || item.ma_khach_hang
-      ? 'customer'
-      : 'template')
-  const isCus = scope === 'customer'
   return {
     id_workflow: String(item.id_workflow ?? ''),
     id_status_workflow: String(item.id_status_workflow ?? ''),
@@ -1876,79 +1171,60 @@ const toCleanWorkflowRecord = (item) => {
     status_name: String(item.status_name ?? ''),
     status_index: parseInt(item.status_index ?? 0, 10) || 0,
     status_color: String(item.status_color || '#3b82f6'),
-    workflow_scope: scope,
-    ma_khach_hang: isCus ? String(item.ma_khach_hang ?? '') : '',
-    ma_cong_ty: isCus ? String(item.ma_cong_ty ?? '') : '',
-    ten_khach_hang: isCus ? String(item.ten_khach_hang ?? '') : '',
-    ten_cong_ty: isCus ? String(item.ten_cong_ty ?? '') : '',
-    is_company_default: isCus ? Boolean(item.is_company_default) : false,
-    source_template_id: isCus ? String(item.source_template_id ?? '') : '',
-    source_template_name: isCus ? String(item.source_template_name ?? '') : ''
+    workflow_scope: 'template',
+    ma_khach_hang: '',
+    ma_cong_ty: '',
+    ten_khach_hang: '',
+    ten_cong_ty: '',
+    is_company_default: false,
+    source_template_id: '',
+    source_template_name: ''
   }
 }
 
-// GROUP ALL WORKFLOWS
-const allWorkflowGroups = computed(() => {
+// UNIFIED CUSTOMER-FREE WORKFLOW GROUPS
+const unifiedWorkflowGroups = computed(() => {
   const groupsMap = new Map()
   items.value.forEach((item) => {
     const wfId = item.id_workflow || 'UNKNOWN'
+    if (!wfId || wfId === 'WF_DEFAULT') return
     if (!groupsMap.has(wfId)) {
       groupsMap.set(wfId, {
         id_workflow: wfId,
         name_workflow: item.name_workflow || 'Quy trình chưa đặt tên',
-        workflow_scope: item.workflow_scope || (wfId.startsWith('WF_CUS_') ? 'customer' : 'template'),
-        ma_khach_hang: item.ma_khach_hang || '',
-        ma_cong_ty: item.ma_cong_ty || '',
-        ten_khach_hang: item.ten_khach_hang || '',
-        ten_cong_ty: item.ten_cong_ty || '',
-        is_company_default: Boolean(item.is_company_default),
-        source_template_id: item.source_template_id || '',
-        source_template_name: item.source_template_name || '',
+        workflow_scope: 'template',
         statuses: []
       })
     }
-    const g = groupsMap.get(wfId)
-    if (!g.ma_khach_hang && item.ma_khach_hang) g.ma_khach_hang = item.ma_khach_hang
-    if (!g.ma_cong_ty && item.ma_cong_ty) g.ma_cong_ty = item.ma_cong_ty
-    if (!g.ten_khach_hang && item.ten_khach_hang) g.ten_khach_hang = item.ten_khach_hang
-    if (!g.ten_cong_ty && item.ten_cong_ty) g.ten_cong_ty = item.ten_cong_ty
-    if (item.is_company_default) g.is_company_default = true
-    if (!g.source_template_id && item.source_template_id) g.source_template_id = item.source_template_id
-    if (!g.source_template_name && item.source_template_name) g.source_template_name = item.source_template_name
-    g.statuses.push(item)
+    groupsMap.get(wfId).statuses.push(item)
   })
 
   const result = Array.from(groupsMap.values())
   result.forEach((g) => {
     g.statuses.sort((a, b) => (parseInt(a.status_index, 10) || 0) - (parseInt(b.status_index, 10) || 0))
   })
-  return result
+  return result.sort((a, b) => (a.name_workflow || '').localeCompare(b.name_workflow || '', 'vi'))
 })
 
-const customerWorkflowGroups = computed(() =>
-  allWorkflowGroups.value.filter((g) => g.workflow_scope === 'customer')
-)
-
-const templateWorkflowGroups = computed(() =>
-  allWorkflowGroups.value.filter((g) => g.workflow_scope !== 'customer')
-)
-
-const filteredTemplateGroups = computed(() => {
-  const kw = templateSearch.value.trim().toLowerCase()
-  if (!kw) return templateWorkflowGroups.value
-  return templateWorkflowGroups.value.filter(
+const filteredWorkflowGroups = computed(() => {
+  const kw = workflowSearch.value.trim().toLowerCase()
+  if (!kw) return unifiedWorkflowGroups.value
+  return unifiedWorkflowGroups.value.filter(
     (g) =>
       (g.name_workflow && g.name_workflow.toLowerCase().includes(kw)) ||
       g.statuses.some((s) => s.status_name && s.status_name.toLowerCase().includes(kw))
   )
 })
 
-const effectiveCustomersSource = computed(() => {
-  const base =
-    props.customersExternal && props.customersExternal.length > 0
-      ? props.customersExternal
-      : internalCustomers.value
-  return localAddedCustomers.value.length > 0 ? [...localAddedCustomers.value, ...base] : base
+const showBaselineCard = computed(() => {
+  const kw = workflowSearch.value.trim().toLowerCase()
+  if (!kw) return true
+  if ('workflow chuẩn hệ thống mặc định'.includes(kw)) return true
+  return STANDARD_FLOW_STEPS.some(
+    (s) =>
+      s.status_name.toLowerCase().includes(kw) ||
+      (s.short_label && s.short_label.toLowerCase().includes(kw))
+  )
 })
 
 const effectivePipelinesSource = computed(() =>
@@ -1957,439 +1233,15 @@ const effectivePipelinesSource = computed(() =>
     : internalPipelines.value
 )
 
-// MERGED COMPANY DIRECTORY + 1-COMPANY-TO-MANY-WORKFLOWS RESOLUTION
-const customerRows = computed(() => {
-  const map = new Map()
-
-  const buildCompanyRowKey = (maKH, maCT, tenCT, tenKH) => {
-    const compKey = cleanCode(tenCT || maCT)
-    if (compKey) return 'CT_' + compKey
-    const khKey = cleanCode(maKH || tenKH)
-    if (khKey) return 'KH_' + khKey
-    return ''
-  }
-
-  const upsertCompanyEntry = ({ ma_khach_hang, ten_khach_hang, ma_cong_ty, ten_cong_ty, addDeal = 0 }) => {
-    const rowKey = buildCompanyRowKey(ma_khach_hang, ma_cong_ty, ten_cong_ty, ten_khach_hang)
-    if (!rowKey) return null
-    if (!map.has(rowKey)) {
-      map.set(rowKey, {
-        rowKey,
-        ma_khach_hang: ma_khach_hang || '',
-        ten_khach_hang: ten_khach_hang || '',
-        ma_cong_ty: ma_cong_ty || '',
-        ten_cong_ty: ten_cong_ty || '',
-        contactsList: [],
-        customerCodesSet: new Set(),
-        companyCodesSet: new Set(),
-        dealCount: 0,
-        customGroups: []
-      })
-    }
-    const row = map.get(rowKey)
-    if (!row.ten_cong_ty && ten_cong_ty) row.ten_cong_ty = ten_cong_ty
-    if (!row.ma_cong_ty && ma_cong_ty) row.ma_cong_ty = ma_cong_ty
-    if (!row.ma_khach_hang && ma_khach_hang) row.ma_khach_hang = ma_khach_hang
-    if (!row.ten_khach_hang && ten_khach_hang) row.ten_khach_hang = ten_khach_hang
-
-    if (ten_khach_hang && !row.contactsList.some((n) => cleanCode(n) === cleanCode(ten_khach_hang))) {
-      row.contactsList.push(ten_khach_hang)
-    }
-    if (ma_khach_hang) row.customerCodesSet.add(cleanCode(ma_khach_hang))
-    if (ma_cong_ty) row.companyCodesSet.add(cleanCode(ma_cong_ty))
-    if (ten_cong_ty) row.companyCodesSet.add(cleanCode(ten_cong_ty))
-    if (addDeal) row.dealCount += addDeal
-    return row
-  }
-
-  effectiveCustomersSource.value.forEach((c) => {
-    upsertCompanyEntry({
-      ma_khach_hang: String(c.Ma_khach_hang ?? c.ma_khach_hang ?? '').trim(),
-      ten_khach_hang: String(c.Ten_khach_hang ?? c.ten_khach_hang ?? '').trim(),
-      ma_cong_ty: String(c.Ma_cong_ty ?? c.ma_cong_ty ?? '').trim(),
-      ten_cong_ty: String(c.Ten_cong_ty ?? c.ten_cong_ty ?? '').trim(),
-      addDeal: 0
-    })
-  })
-
-  effectivePipelinesSource.value.forEach((p) => {
-    const ma_khach_hang = String(p.ma_khach_hang ?? '').trim()
-    const ten_khach_hang = String(p.ten_khach_hang ?? '').trim()
-    const ma_cong_ty = String(p.ma_cong_ty ?? '').trim()
-    const ten_cong_ty = String(p.ten_cong_ty ?? '').trim()
-    if (!ma_khach_hang && !ten_cong_ty && !ten_khach_hang) return
-    upsertCompanyEntry({
-      ma_khach_hang,
-      ten_khach_hang,
-      ma_cong_ty,
-      ten_cong_ty,
-      addDeal: 1
-    })
-  })
-
-  customerWorkflowGroups.value.forEach((cg) => {
-    let matched = null
-    const cgCompCode = cleanCode(cg.ten_cong_ty || cg.ma_cong_ty)
-    const cgKhCode = cleanCode(cg.ma_khach_hang)
-
-    if (cgCompCode && map.has('CT_' + cgCompCode)) {
-      matched = map.get('CT_' + cgCompCode)
-    }
-    if (!matched && cgKhCode && map.has('KH_' + cgKhCode)) {
-      matched = map.get('KH_' + cgKhCode)
-    }
-    if (!matched) {
-      for (const row of map.values()) {
-        if (
-          (cgCompCode && row.companyCodesSet.has(cgCompCode)) ||
-          (cg.ma_cong_ty && row.companyCodesSet.has(cleanCode(cg.ma_cong_ty))) ||
-          (cgKhCode && row.customerCodesSet.has(cgKhCode))
-        ) {
-          matched = row
-          break
-        }
-      }
-    }
-
-    if (matched) {
-      matched.customGroups.push(cg)
-    } else {
-      const fallbackComp = cg.ten_cong_ty || cg.name_workflow.replace(/^Flow KH:\s*/i, '').split('—')[0].trim()
-      const created = upsertCompanyEntry({
-        ma_khach_hang: cg.ma_khach_hang || '',
-        ten_khach_hang: cg.ten_khach_hang || '',
-        ma_cong_ty: cg.ma_cong_ty || '',
-        ten_cong_ty: fallbackComp,
-        addDeal: 0
-      })
-      if (created) {
-        created.customGroups.push(cg)
-      }
-    }
-  })
-
-  const finalized = Array.from(map.values()).map((row) => {
-    row.customGroups.sort((a, b) => {
-      if (Boolean(a.is_company_default) !== Boolean(b.is_company_default)) {
-        return a.is_company_default ? -1 : 1
-      }
-      return (a.name_workflow || '').localeCompare(b.name_workflow || '', 'vi')
-    })
-
-    let contactsLabel = ''
-    if (row.contactsList.length === 1) {
-      contactsLabel = row.contactsList[0]
-    } else if (row.contactsList.length === 2) {
-      contactsLabel = `${row.contactsList[0]}, ${row.contactsList[1]}`
-    } else if (row.contactsList.length > 2) {
-      contactsLabel = `${row.contactsList[0]}, ${row.contactsList[1]} (+${row.contactsList.length - 2} liên hệ)`
-    }
-
-    return {
-      ...row,
-      contactsLabel
-    }
-  })
-
-  return finalized.sort((a, b) => {
-    const aHas = a.customGroups.length > 0
-    const bHas = b.customGroups.length > 0
-    if (aHas !== bHas) return aHas ? -1 : 1
-    if (b.customGroups.length !== a.customGroups.length) {
-      return b.customGroups.length - a.customGroups.length
-    }
-    if (b.dealCount !== a.dealCount) {
-      return b.dealCount - a.dealCount
-    }
-    const labelA = a.ten_cong_ty || a.ten_khach_hang || ''
-    const labelB = b.ten_cong_ty || b.ten_khach_hang || ''
-    return labelA.localeCompare(labelB, 'vi')
-  })
-})
-
-const customFlowCustomerCount = computed(() =>
-  customerRows.value.filter((r) => r.customGroups.length > 0).length
-)
-
-const filteredCustomerRows = computed(() => {
-  let list = customerRows.value
-  if (customerFilterMode.value === 'custom') {
-    list = list.filter((r) => r.customGroups.length > 0)
-  } else if (customerFilterMode.value === 'standard') {
-    list = list.filter((r) => r.customGroups.length === 0)
-  }
-
-  const kw = customerSearch.value.trim().toLowerCase()
-  if (kw) {
-    list = list.filter(
-      (r) =>
-        (r.ten_cong_ty && r.ten_cong_ty.toLowerCase().includes(kw)) ||
-        (r.ten_khach_hang && r.ten_khach_hang.toLowerCase().includes(kw)) ||
-        (r.contactsLabel && r.contactsLabel.toLowerCase().includes(kw)) ||
-        (r.ma_khach_hang && r.ma_khach_hang.toLowerCase().includes(kw)) ||
-        (r.ma_cong_ty && r.ma_cong_ty.toLowerCase().includes(kw)) ||
-        r.customGroups.some((cg) => cg.name_workflow && cg.name_workflow.toLowerCase().includes(kw))
-    )
-  }
-  return list
-})
-
-const paginatedCustomerRows = computed(() =>
-  filteredCustomerRows.value.slice(0, customerVisibleLimit.value)
-)
-
-const resolveDistinctFlowParty = (rawEntity = {}) => {
-  let tenCT = String(rawEntity.ten_cong_ty || '').trim()
-  let tenKH = String(rawEntity.ten_khach_hang || '').trim()
-  const maKH = cleanCode(rawEntity.ma_khach_hang || '')
-  const maCT = cleanCode(rawEntity.ma_cong_ty || '')
-  const codeCT = cleanCode(tenCT)
-  const codeKH = cleanCode(tenKH)
-
-  if ((!tenCT || !tenKH) && effectiveCustomersSource.value.length > 0) {
-    const matched = effectiveCustomersSource.value.find((c) => {
-      if (!c) return false
-      const cMaKH = cleanCode(c.Ma_khach_hang ?? c.ma_khach_hang ?? '')
-      const cMaCT = cleanCode(c.Ma_cong_ty ?? c.ma_cong_ty ?? '')
-      const cTenCT = cleanCode(c.Ten_cong_ty ?? c.ten_cong_ty ?? '')
-      const cTenKH = cleanCode(c.Ten_khach_hang ?? c.ten_khach_hang ?? '')
-      if (maKH && cMaKH && maKH === cMaKH) return true
-      if (maCT && cMaCT && maCT === cMaCT) return true
-      if (codeCT && cTenCT && codeCT === cTenCT) return true
-      if (codeKH && cTenKH && codeKH === cTenKH) return true
-      return false
-    })
-    if (matched) {
-      if (!tenCT) tenCT = String(matched.Ten_cong_ty ?? matched.ten_cong_ty ?? '').trim()
-      if (!tenKH) tenKH = String(matched.Ten_khach_hang ?? matched.ten_khach_hang ?? '').trim()
-    }
-  }
-
-  const sameLabel = Boolean(tenCT && tenKH && cleanCode(tenCT) === cleanCode(tenKH))
-  return {
-    displayCompanyName: tenCT,
-    displayCustomerName: sameLabel ? '' : tenKH
-  }
-}
-
-const flatCustomerFlows = computed(() => {
-  const rowByWfId = new Map()
-  customerRows.value.forEach((r) => {
-    r.customGroups.forEach((cg) => {
-      rowByWfId.set(cg.id_workflow, r)
-    })
-  })
-
-  return customerWorkflowGroups.value
-    .map((cg) => {
-      const matchedRow = rowByWfId.get(cg.id_workflow) || null
-      const party = resolveDistinctFlowParty({
-        ma_khach_hang: cg.ma_khach_hang || matchedRow?.ma_khach_hang || '',
-        ma_cong_ty: cg.ma_cong_ty || matchedRow?.ma_cong_ty || '',
-        ten_cong_ty: cg.ten_cong_ty || matchedRow?.ten_cong_ty || '',
-        ten_khach_hang: cg.ten_khach_hang || matchedRow?.ten_khach_hang || ''
-      })
-      return {
-        ...cg,
-        statuses: cg.statuses,
-        customerRow: matchedRow,
-        customerRowKey: matchedRow?.rowKey || '',
-        displayCompanyName: party.displayCompanyName,
-        displayCustomerName: party.displayCustomerName
-      }
-    })
-    .sort((a, b) => {
-      const partyA = a.displayCompanyName || a.displayCustomerName || a.name_workflow || ''
-      const partyB = b.displayCompanyName || b.displayCustomerName || b.name_workflow || ''
-      const cmpParty = partyA.localeCompare(partyB, 'vi')
-      if (cmpParty !== 0) return cmpParty
-      if (Boolean(a.is_company_default) !== Boolean(b.is_company_default)) {
-        return a.is_company_default ? -1 : 1
-      }
-      return (a.name_workflow || '').localeCompare(b.name_workflow || '', 'vi')
-    })
-})
-
-const filteredFlatCustomerFlows = computed(() => {
-  const kw = customerSearch.value.trim().toLowerCase()
-  if (!kw) return flatCustomerFlows.value
-  return flatCustomerFlows.value.filter(
-    (f) =>
-      (f.name_workflow && f.name_workflow.toLowerCase().includes(kw)) ||
-      (f.displayCompanyName && f.displayCompanyName.toLowerCase().includes(kw)) ||
-      (f.displayCustomerName && f.displayCustomerName.toLowerCase().includes(kw)) ||
-      (f.ten_cong_ty && f.ten_cong_ty.toLowerCase().includes(kw)) ||
-      (f.ten_khach_hang && f.ten_khach_hang.toLowerCase().includes(kw)) ||
-      (f.ma_cong_ty && f.ma_cong_ty.toLowerCase().includes(kw)) ||
-      (f.ma_khach_hang && f.ma_khach_hang.toLowerCase().includes(kw)) ||
-      f.statuses.some((s) => s.status_name && s.status_name.toLowerCase().includes(kw))
-  )
-})
-
-const showBaselineInTemplates = computed(() => {
-  const kw = templateSearch.value.trim().toLowerCase()
-  if (!kw) return true
-  return (
-    'khung chuẩn hệ thống mặc định'.includes(kw) ||
-    STANDARD_FLOW_STEPS.some((s) => s.status_name && s.status_name.toLowerCase().includes(kw))
-  )
-})
-
-const libraryWorkflowGroups = computed(() => {
-  return templateWorkflowGroups.value.map((g) => ({
-    ...g,
-    statuses: g.statuses,
-    ma_khach_hang: '',
-    ma_cong_ty: '',
-    ten_khach_hang: '',
-    ten_cong_ty: '',
-    displayCompanyName: '',
-    displayCustomerName: ''
-  }))
-})
-
-const filteredLibraryGroups = computed(() => {
-  const kw = templateSearch.value.trim().toLowerCase()
-  if (!kw) return libraryWorkflowGroups.value
-  return libraryWorkflowGroups.value.filter(
-    (g) =>
-      (g.name_workflow && g.name_workflow.toLowerCase().includes(kw)) ||
-      g.statuses.some((s) => s.status_name && s.status_name.toLowerCase().includes(kw))
-  )
-})
-
-const focusedCustomerRow = computed(() => {
-  const kw = customerSearch.value.trim()
-  if (!kw) return null
-  const cKw = cleanCode(kw)
-  if (!cKw) return null
-  return (
-    customerRows.value.find(
-      (r) =>
-        cleanCode(r.ten_cong_ty) === cKw ||
-        cleanCode(r.ten_khach_hang) === cKw ||
-        cleanCode(r.ma_cong_ty) === cKw ||
-        cleanCode(r.ma_khach_hang) === cKw
-    ) || null
-  )
-})
-
-const studioCustomerDirectory = computed(() => {
-  const seen = new Set()
-  const list = []
-  const flowCountByComp = new Map()
-  customerRows.value.forEach((r) => {
-    const cKey = cleanCode(r.ten_cong_ty || r.ma_cong_ty || r.ten_khach_hang || r.ma_khach_hang)
-    if (cKey) flowCountByComp.set(cKey, r.customGroups.length)
-  })
-
-  effectiveCustomersSource.value.forEach((c, idx) => {
-    if (!c) return
-    const maKH = String(c.Ma_khach_hang ?? c.ma_khach_hang ?? '').trim()
-    const tenKH = String(c.Ten_khach_hang ?? c.ten_khach_hang ?? '').trim()
-    const maCT = String(c.Ma_cong_ty ?? c.ma_cong_ty ?? '').trim()
-    const tenCT = String(c.Ten_cong_ty ?? c.ten_cong_ty ?? '').trim()
-    if (!tenCT && !tenKH) return
-    const dedupKey = `${cleanCode(tenCT || maCT)}__${cleanCode(tenKH || maKH)}`
-    if (seen.has(dedupKey)) return
-    seen.add(dedupKey)
-    const cKey = cleanCode(tenCT || maCT || tenKH || maKH)
-    list.push({
-      pickKey: 'khsrc_' + idx + '_' + dedupKey,
-      ma_khach_hang: maKH,
-      ten_khach_hang: tenKH,
-      ma_cong_ty: maCT,
-      ten_cong_ty: tenCT,
-      existingFlowCount: flowCountByComp.get(cKey) || 0
-    })
-  })
-
-  customerRows.value.forEach((r) => {
-    const tenCT = String(r.ten_cong_ty || '').trim()
-    const tenKH = String(r.ten_khach_hang || '').trim()
-    if (!tenCT && !tenKH) return
-    const dedupKey = `${cleanCode(tenCT || r.ma_cong_ty)}__${cleanCode(tenKH || r.ma_khach_hang)}`
-    if (seen.has(dedupKey)) return
-    seen.add(dedupKey)
-    list.push({
-      pickKey: 'crow_' + r.rowKey,
-      ma_khach_hang: r.ma_khach_hang || '',
-      ten_khach_hang: tenKH,
-      ma_cong_ty: r.ma_cong_ty || '',
-      ten_cong_ty: tenCT,
-      existingFlowCount: r.customGroups.length
-    })
-  })
-
-  return list
-})
-
-const filteredStudioCustomers = computed(() => {
-  const kw = String(studioCustomerPickerSearch.value || '').trim().toLowerCase()
-  const activeCompCode = cleanCode(studioForm.value.ten_cong_ty)
-  const isContactFocus = studioCustomerPickerFocus.value === 'contact'
-
-  let list = studioCustomerDirectory.value.map((c) => ({
-    ...c,
-    _isSameCompany: Boolean(isContactFocus && activeCompCode && cleanCode(c.ten_cong_ty) === activeCompCode)
-  }))
-
-  if (kw) {
-    list = list.filter(
-      (o) =>
-        (o.ten_cong_ty && o.ten_cong_ty.toLowerCase().includes(kw)) ||
-        (o.ten_khach_hang && o.ten_khach_hang.toLowerCase().includes(kw)) ||
-        (o.ma_cong_ty && o.ma_cong_ty.toLowerCase().includes(kw)) ||
-        (o.ma_khach_hang && o.ma_khach_hang.toLowerCase().includes(kw))
-    )
-  }
-
-  return list
-    .sort((a, b) => {
-      if (a._isSameCompany !== b._isSameCompany) return a._isSameCompany ? -1 : 1
-      const lblA = isContactFocus ? a.ten_khach_hang || a.ten_cong_ty || '' : a.ten_cong_ty || a.ten_khach_hang || ''
-      const lblB = isContactFocus ? b.ten_khach_hang || b.ten_cong_ty || '' : b.ten_cong_ty || b.ten_khach_hang || ''
-      return lblA.localeCompare(lblB, 'vi')
-    })
-    .slice(0, 80)
-})
-
-const filteredApplyCompanyRows = computed(() => {
-  const kw = String(applyBlueprintState.value.search || '').trim().toLowerCase()
-  if (!kw) return customerRows.value
-  return customerRows.value.filter(
-    (r) =>
-      (r.ten_cong_ty && r.ten_cong_ty.toLowerCase().includes(kw)) ||
-      (r.ten_khach_hang && r.ten_khach_hang.toLowerCase().includes(kw)) ||
-      (r.contactsLabel && r.contactsLabel.toLowerCase().includes(kw)) ||
-      (r.ma_cong_ty && r.ma_cong_ty.toLowerCase().includes(kw)) ||
-      (r.ma_khach_hang && r.ma_khach_hang.toLowerCase().includes(kw))
-  )
-})
-
-watch([customerSearch, customerFilterMode], () => {
-  customerVisibleLimit.value = 30
-})
-
 watch(
-  () => props.focusCustomerKey,
-  (val) => {
-    if (!val) return
-    subTab.value = 'customer'
-    customerFilterMode.value = 'all'
-    customerSearch.value = val
-    const foundRow = customerRows.value.find(
-      (r) =>
-        cleanCode(r.ten_cong_ty) === cleanCode(val) ||
-        cleanCode(r.ten_khach_hang) === cleanCode(val) ||
-        cleanCode(r.ma_cong_ty) === cleanCode(val)
-    )
-    highlightedCustomerKey.value = foundRow ? foundRow.rowKey : val
-    setTimeout(() => {
-      highlightedCustomerKey.value = ''
-    }, 2400)
+  () => props.workflowsExternal,
+  (extList) => {
+    if (saving.value || isReordering.value || !Array.isArray(extList) || extList.length === 0) return
+    items.value = extList
+      .map((val, idx) => normalizeWorkflowRecord(val, val?.id_status_workflow || String(idx)))
+      .filter(Boolean)
   },
-  { immediate: true }
+  { deep: false }
 )
 
 // DATA FETCHING
@@ -2416,40 +1268,7 @@ const fetchWorkflows = async () => {
   }
 }
 
-const fetchFallbackDirectoryIfNeeded = async () => {
-  if (!props.customersExternal || props.customersExternal.length === 0) {
-    try {
-      const snap = await get(dbRef(database, 'khach_hang'))
-      if (snap.exists()) {
-        const raw = snap.val()
-        const entries = Array.isArray(raw)
-          ? raw.map((v, i) => [String(i), v])
-          : Object.entries(raw || {})
-        internalCustomers.value = entries
-          .map(([k, r]) => {
-            if (!r) return null
-            if (Array.isArray(r)) {
-              return {
-                Ma_khach_hang: String(r[0] ?? ''),
-                Ten_khach_hang: String(r[1] ?? ''),
-                Ma_cong_ty: String(r[4] ?? ''),
-                Ten_cong_ty: String(r[5] ?? '')
-              }
-            }
-            return {
-              Ma_khach_hang: String(r.ma_khach_hang ?? r.Ma_khach_hang ?? k ?? ''),
-              Ten_khach_hang: String(r.ten_khach_hang ?? r.Ten_khach_hang ?? ''),
-              Ma_cong_ty: String(r.ma_cong_ty ?? r.Ma_cong_ty ?? ''),
-              Ten_cong_ty: String(r.ten_cong_ty ?? r.Ten_cong_ty ?? '')
-            }
-          })
-          .filter(Boolean)
-      }
-    } catch (e) {
-      console.error('Error loading khach_hang in Workflow designer:', e)
-    }
-  }
-
+const fetchFallbackPipelinesIfNeeded = async () => {
   if (!props.pipelinesExternal || props.pipelinesExternal.length === 0) {
     try {
       const snapP = await get(dbRef(database, 'pipeline'))
@@ -2465,100 +1284,28 @@ const fetchFallbackDirectoryIfNeeded = async () => {
 }
 
 const refreshAllData = async () => {
-  await Promise.all([fetchWorkflows(), fetchFallbackDirectoryIfNeeded()])
+  await Promise.all([fetchWorkflows(), fetchFallbackPipelinesIfNeeded()])
 }
 
-const toggleGroup = (wfId) => {
-  collapsedGroups.value[wfId] = !collapsedGroups.value[wfId]
-}
-
-const toggleCompanyCollapse = (rowKey) => {
-  collapsedCompanies.value[rowKey] = !collapsedCompanies.value[rowKey]
-}
-
-const isGroupDefaultForCompany = (cus, cg, cgIdx) => {
-  if (!cus || !Array.isArray(cus.customGroups) || cus.customGroups.length === 0) return false
-  const hasExplicitDefault = cus.customGroups.some((g) => Boolean(g.is_company_default))
-  if (hasExplicitDefault) return Boolean(cg.is_company_default)
-  return cgIdx === 0
-}
-
-const getCompanyPrimaryWfId = (cus) => {
-  if (!cus || !Array.isArray(cus.customGroups) || cus.customGroups.length === 0) return 'WF_DEFAULT'
-  const def = cus.customGroups.find((g) => Boolean(g.is_company_default)) || cus.customGroups[0]
-  return def ? def.id_workflow : 'WF_DEFAULT'
-}
-
-const getDealCountForWorkflow = (wfId, cus = null) => {
+const getDealCountForWorkflow = (wfId) => {
   const normTarget = wfId || 'WF_DEFAULT'
   return effectivePipelinesSource.value.filter((p) => {
     if (!p) return false
     const pWf = p.id_workflow || 'WF_DEFAULT'
-    if (pWf !== normTarget) return false
-    if (!cus) return true
-    if (cus.ten_cong_ty && p.ten_cong_ty) {
-      return cleanCode(cus.ten_cong_ty) === cleanCode(p.ten_cong_ty)
-    }
-    if (cus.ma_khach_hang && p.ma_khach_hang) {
-      return cleanCode(cus.ma_khach_hang) === cleanCode(p.ma_khach_hang)
-    }
-    return true
+    return pWf === normTarget
   }).length
 }
 
-const getAppliedCompanyCount = (tplId) => {
-  if (!tplId) return 0
-  return customerRows.value.filter((co) =>
-    co.customGroups.some((cg) => cg.source_template_id === tplId)
-  ).length
-}
-
-const hasCompanyAppliedBlueprint = (co, tplId) => {
-  if (!co || !tplId) return false
-  return co.customGroups.some((cg) => cg.source_template_id === tplId)
-}
-
-const emitOpenKanban = (wfId, cus) => {
+const emitOpenKanban = (wfId) => {
   emit('open-kanban-workflow', {
     id_workflow: wfId || 'WF_DEFAULT',
-    customer: cus
-      ? {
-          ma_khach_hang: cus.ma_khach_hang || '',
-          ten_khach_hang: cus.ten_khach_hang || '',
-          ma_cong_ty: cus.ma_cong_ty || '',
-          ten_cong_ty: cus.ten_cong_ty || ''
-        }
-      : null
+    customer: null
   })
-}
-
-// CREATE / CLONE / DELETE FLAT CUSTOMER FLOWS & BLUEPRINTS
-const findMatchingCustomerRow = ({ ma_khach_hang = '', ma_cong_ty = '', ten_cong_ty = '', ten_khach_hang = '' }) => {
-  const cCT = cleanCode(ten_cong_ty || ma_cong_ty)
-  const cKH = cleanCode(ma_khach_hang || ten_khach_hang)
-  if (!cCT && !cKH) return null
-  return (
-    customerRows.value.find(
-      (r) =>
-        (cCT && (cleanCode(r.ten_cong_ty) === cCT || cleanCode(r.ma_cong_ty) === cCT || r.companyCodesSet.has(cCT))) ||
-        (cKH && (cleanCode(r.ma_khach_hang) === cKH || cleanCode(r.ten_khach_hang) === cKH || r.customerCodesSet.has(cKH)))
-    ) || null
-  )
 }
 
 // =========================================================
 // UNIFIED 2-COLUMN WORKFLOW STUDIO MODAL LOGIC
 // =========================================================
-const extractCleanFlowSuffix = (rawName = '') => {
-  const s = String(rawName || '').replace(/^Flow KH:\s*/i, '').trim()
-  if (!s) return 'Quy trình riêng'
-  if (s.includes('—')) {
-    const afterDash = s.split('—').slice(1).join('—').trim()
-    if (afterDash) return afterDash
-  }
-  return s
-}
-
 const mapRawStepsToStudioRows = (rawSteps = [], preserveId = false) => {
   const source = Array.isArray(rawSteps) && rawSteps.length > 0 ? rawSteps : STANDARD_FLOW_STEPS
   return source.map((s) => ({
@@ -2595,83 +1342,67 @@ const getStepDealCount = (st) => {
 
 const openWorkflowStudioBaseline = () => {
   closeInlineStepPopovers()
+  showCreateNameModal.value = false
   studioMode.value = 'baseline'
   studioOriginalGroup.value = baselineBlueprint
   focusedStepUid.value = ''
   studioForm.value = {
     id_workflow: 'WF_DEFAULT',
-    mode: 'template',
     name_workflow: 'Workflow Chuẩn Hệ Thống',
-    customer: null,
-    ma_khach_hang: '',
-    ma_cong_ty: '',
-    ten_cong_ty: '',
-    ten_khach_hang: '',
-    selectedPresetId: '',
-    source_template_id: 'WF_DEFAULT',
-    source_template_name: 'Workflow Chuẩn Hệ Thống',
-    setAsDefault: false,
     steps: mapRawStepsToStudioRows(STANDARD_FLOW_STEPS, false)
   }
   showStudioModal.value = true
 }
 
-const openWorkflowStudioCreate = (mode = 'customer', seedCustomer = null, seedSteps = null, suggestedName = '') => {
+const closeCreateNameModal = () => {
+  showCreateNameModal.value = false
+  pendingCreateSeedSteps.value = null
+}
+
+const openWorkflowStudioCreate = (seedSteps = null, suggestedName = '') => {
+  closeInlineStepPopovers()
+  showStudioModal.value = false
+  pendingCreateSeedSteps.value = Array.isArray(seedSteps) && seedSteps.length > 0 ? [...seedSteps] : null
+  isCloneNameModal.value = Boolean(suggestedName)
+  createNameDraft.value = suggestedName || ''
+  showCreateNameModal.value = true
+
+  nextTick(() => {
+    if (createNameInputRef.value && typeof createNameInputRef.value.focus === 'function') {
+      createNameInputRef.value.focus()
+      if (suggestedName && typeof createNameInputRef.value.select === 'function') {
+        createNameInputRef.value.select()
+      }
+    }
+  })
+}
+
+const confirmCreateNameAndOpenStudio = () => {
+  const cleanName = String(createNameDraft.value || '').trim()
+  if (!cleanName) {
+    showToast('Vui lòng nhập Tên Workflow!', 'error')
+    nextTick(() => {
+      if (createNameInputRef.value && typeof createNameInputRef.value.focus === 'function') {
+        createNameInputRef.value.focus()
+      }
+    })
+    return
+  }
+
+  const seed = pendingCreateSeedSteps.value || STANDARD_FLOW_STEPS
+  showCreateNameModal.value = false
+  pendingCreateSeedSteps.value = null
+
   closeInlineStepPopovers()
   studioMode.value = 'create'
   studioOriginalGroup.value = null
   focusedStepUid.value = ''
-
-  const isCus = mode === 'customer'
-  const matchedRow =
-    isCus && seedCustomer
-      ? seedCustomer.rowKey
-        ? seedCustomer
-        : findMatchingCustomerRow(seedCustomer)
-      : null
-
-  const party =
-    isCus && seedCustomer
-      ? resolveDistinctFlowParty({
-          ma_khach_hang: seedCustomer.ma_khach_hang || matchedRow?.ma_khach_hang || '',
-          ma_cong_ty: seedCustomer.ma_cong_ty || matchedRow?.ma_cong_ty || '',
-          ten_cong_ty: seedCustomer.ten_cong_ty || matchedRow?.ten_cong_ty || '',
-          ten_khach_hang: seedCustomer.ten_khach_hang || matchedRow?.ten_khach_hang || ''
-        })
-      : { displayCompanyName: '', displayCustomerName: '' }
-
-  const compLabel = party.displayCompanyName || party.displayCustomerName || ''
-  const existingCount = matchedRow && Array.isArray(matchedRow.customGroups) ? matchedRow.customGroups.length : 0
-  const autoName = suggestedName
-    ? suggestedName
-    : isCus && compLabel
-      ? existingCount === 0
-        ? `${compLabel} — Quy trình riêng`
-        : `${compLabel} — Quy trình #${existingCount + 1}`
-      : ''
-
   studioForm.value = {
     id_workflow: '',
-    mode: isCus ? 'customer' : 'template',
-    name_workflow: autoName,
-    customer: matchedRow,
-    ma_khach_hang: isCus ? seedCustomer?.ma_khach_hang || matchedRow?.ma_khach_hang || '' : '',
-    ma_cong_ty: isCus ? seedCustomer?.ma_cong_ty || matchedRow?.ma_cong_ty || '' : '',
-    ten_cong_ty: isCus ? party.displayCompanyName || seedCustomer?.ten_cong_ty || '' : '',
-    ten_khach_hang: isCus ? party.displayCustomerName || seedCustomer?.ten_khach_hang || '' : '',
-    selectedPresetId: '',
-    source_template_id: seedSteps ? '' : 'WF_DEFAULT',
-    source_template_name: seedSteps ? '' : 'Workflow Chuẩn Hệ Thống',
-    setAsDefault: isCus ? existingCount === 0 : false,
-    steps: mapRawStepsToStudioRows(seedSteps || STANDARD_FLOW_STEPS, false)
+    name_workflow: cleanName,
+    steps: mapRawStepsToStudioRows(seed, false)
   }
-
   showStudioModal.value = true
-  nextTick(() => {
-    if (studioNameInputRef.value && typeof studioNameInputRef.value.focus === 'function') {
-      studioNameInputRef.value.focus()
-    }
-  })
 }
 
 const openWorkflowStudioEdit = (group, focusStepId = '') => {
@@ -2680,34 +1411,14 @@ const openWorkflowStudioEdit = (group, focusStepId = '') => {
     return
   }
   closeInlineStepPopovers()
+  showCreateNameModal.value = false
   studioMode.value = 'edit'
   studioOriginalGroup.value = group
-
-  const isCus = group.workflow_scope === 'customer'
-  const matchedRow = isCus ? group.customerRow || findMatchingCustomerRow(group) : null
-  const party = isCus
-    ? resolveDistinctFlowParty({
-        ma_khach_hang: group.ma_khach_hang || matchedRow?.ma_khach_hang || '',
-        ma_cong_ty: group.ma_cong_ty || matchedRow?.ma_cong_ty || '',
-        ten_cong_ty: group.ten_cong_ty || matchedRow?.ten_cong_ty || '',
-        ten_khach_hang: group.ten_khach_hang || matchedRow?.ten_khach_hang || ''
-      })
-    : { displayCompanyName: '', displayCustomerName: '' }
 
   const mappedSteps = mapRawStepsToStudioRows(group.statuses, true)
   studioForm.value = {
     id_workflow: group.id_workflow,
-    mode: isCus ? 'customer' : 'template',
     name_workflow: group.name_workflow || '',
-    customer: matchedRow,
-    ma_khach_hang: isCus ? group.ma_khach_hang || matchedRow?.ma_khach_hang || '' : '',
-    ma_cong_ty: isCus ? group.ma_cong_ty || matchedRow?.ma_cong_ty || '' : '',
-    ten_cong_ty: isCus ? party.displayCompanyName || group.ten_cong_ty || '' : '',
-    ten_khach_hang: isCus ? party.displayCustomerName || group.ten_khach_hang || '' : '',
-    selectedPresetId: '',
-    source_template_id: group.source_template_id || '',
-    source_template_name: group.source_template_name || '',
-    setAsDefault: isCus ? Boolean(group.is_company_default) : false,
     steps: mappedSteps
   }
 
@@ -2724,6 +1435,67 @@ const openWorkflowStudioEdit = (group, focusStepId = '') => {
   }
 }
 
+const highlightedWorkflowId = ref('')
+let highlightedWorkflowTimer = null
+
+const locateWorkflowCard = async (wfId) => {
+  const cleanId = String(wfId || 'WF_DEFAULT').trim() || 'WF_DEFAULT'
+  if (workflowSearch.value.trim()) {
+    const isMatched =
+      cleanId === 'WF_DEFAULT'
+        ? showBaselineCard.value
+        : filteredWorkflowGroups.value.some((g) => g.id_workflow === cleanId)
+    if (!isMatched) {
+      workflowSearch.value = ''
+    }
+  }
+
+  if (cleanId !== 'WF_DEFAULT' && !unifiedWorkflowGroups.value.some((g) => g.id_workflow === cleanId)) {
+    await fetchWorkflows()
+  }
+
+  if (highlightedWorkflowTimer) {
+    clearTimeout(highlightedWorkflowTimer)
+    highlightedWorkflowTimer = null
+  }
+  highlightedWorkflowId.value = ''
+
+  nextTick(() => {
+    setTimeout(() => {
+      highlightedWorkflowId.value = cleanId
+      if (typeof document !== 'undefined') {
+        const el = document.getElementById(`wf-card-${cleanId}`)
+        if (el && typeof el.scrollIntoView === 'function') {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }
+      highlightedWorkflowTimer = setTimeout(() => {
+        if (highlightedWorkflowId.value === cleanId) {
+          highlightedWorkflowId.value = ''
+        }
+      }, 3200)
+    }, 45)
+  })
+}
+
+const openWorkflowById = async (wfId) => {
+  const cleanId = String(wfId || '').trim()
+  if (!cleanId || cleanId === 'WF_DEFAULT') {
+    openWorkflowStudioBaseline()
+    return
+  }
+  let group = unifiedWorkflowGroups.value.find((g) => g.id_workflow === cleanId)
+  if (!group) {
+    await fetchWorkflows()
+    group = unifiedWorkflowGroups.value.find((g) => g.id_workflow === cleanId)
+  }
+  if (group) {
+    openWorkflowStudioEdit(group)
+  } else {
+    showToast('Không tìm thấy thông tin Workflow cần sửa', 'error')
+  }
+}
+
 const openWorkflowStudioAddStep = (group) => {
   openWorkflowStudioEdit(group)
   nextTick(() => {
@@ -2731,264 +1503,27 @@ const openWorkflowStudioAddStep = (group) => {
   })
 }
 
-const openWorkflowStudioClone = (flow) => {
-  if (!flow) return
-  const isCus = flow.workflow_scope === 'customer'
+const openWorkflowStudioClone = (group) => {
+  if (!group) return
   openWorkflowStudioCreate(
-    isCus ? 'customer' : 'template',
-    isCus ? flow.customerRow || flow : null,
-    flow.statuses,
-    `${flow.name_workflow || 'Workflow'} (Bản sao)`
+    group.statuses,
+    `${group.name_workflow || 'Workflow'} (Bản sao)`
   )
-  studioForm.value.setAsDefault = false
 }
 
 const cloneFromCurrentStudio = () => {
   const isBaseline = studioMode.value === 'baseline'
-  const nextMode = isBaseline ? 'template' : studioForm.value.mode
   const baseName = isBaseline
-    ? 'Workflow mẫu — Bản sao Chuẩn'
+    ? 'Workflow — Bản sao Chuẩn'
     : `${studioForm.value.name_workflow || 'Workflow'} (Bản sao)`
 
-  const seedCus =
-    nextMode === 'customer'
-      ? {
-          ma_khach_hang: studioForm.value.ma_khach_hang,
-          ma_cong_ty: studioForm.value.ma_cong_ty,
-          ten_cong_ty: studioForm.value.ten_cong_ty,
-          ten_khach_hang: studioForm.value.ten_khach_hang
-        }
-      : null
-
-  openWorkflowStudioCreate(nextMode, seedCus, studioForm.value.steps, baseName)
-  studioForm.value.setAsDefault = false
-  showToast('Đã chuyển sang bản sao mới — đặt tên và nhấn Lưu Workflow!', 'success')
-}
-
-const cloneCurrentStudioAsBlueprint = () => {
-  const cleanTitle = extractCleanFlowSuffix(studioForm.value.name_workflow)
-  openWorkflowStudioCreate(
-    'template',
-    null,
-    studioForm.value.steps,
-    `Workflow mẫu — ${cleanTitle || studioForm.value.name_workflow}`
-  )
-  showToast('Đã nạp thành Workflow Mẫu mới — nhấn Lưu Workflow để lưu vào kho!', 'success')
-}
-
-const switchStudioScope = (nextMode) => {
-  if (studioForm.value.mode === nextMode) return
-  studioForm.value.mode = nextMode
-  if (nextMode === 'template') {
-    studioForm.value.customer = null
-    studioForm.value.ma_khach_hang = ''
-    studioForm.value.ma_cong_ty = ''
-    studioForm.value.ten_cong_ty = ''
-    studioForm.value.ten_khach_hang = ''
-    studioForm.value.setAsDefault = false
-  }
+  openWorkflowStudioCreate(studioForm.value.steps, baseName)
 }
 
 const openKanbanFromStudio = () => {
   const wfId = studioMode.value === 'baseline' ? 'WF_DEFAULT' : studioForm.value.id_workflow || 'WF_DEFAULT'
-  const cus =
-    studioForm.value.mode === 'customer' && (studioForm.value.ten_cong_ty || studioForm.value.ten_khach_hang)
-      ? {
-          ma_khach_hang: studioForm.value.ma_khach_hang,
-          ten_khach_hang: studioForm.value.ten_khach_hang,
-          ma_cong_ty: studioForm.value.ma_cong_ty,
-          ten_cong_ty: studioForm.value.ten_cong_ty
-        }
-      : null
   closeStudioModal()
-  emitOpenKanban(wfId, cus)
-}
-
-const triggerApplyBlueprintFromStudio = () => {
-  if (studioMode.value === 'baseline') {
-    openApplyBlueprintModal(baselineBlueprint)
-    return
-  }
-  const bpGroup = {
-    id_workflow: studioForm.value.id_workflow || 'WF_CUSTOM_TEMP',
-    name_workflow: studioForm.value.name_workflow || 'Workflow Mẫu',
-    workflow_scope: studioForm.value.mode,
-    statuses: studioForm.value.steps.map((s) => ({
-      status_name: s.status_name,
-      '%status': formatPercentStatus(s['%status']),
-      status_color: s.status_color || '#3b82f6'
-    }))
-  }
-  openApplyBlueprintModal(bpGroup)
-}
-
-// =========================================================
-// STUDIO CUSTOMER PICKER & QUICK ADD NEW CUSTOMER
-// =========================================================
-const openStudioCustomerPicker = (focus = 'company') => {
-  studioCustomerPickerFocus.value = focus
-  studioCustomerPickerSearch.value = ''
-  showStudioCustomerPicker.value = true
-  if (effectiveCustomersSource.value.length === 0) {
-    fetchFallbackDirectoryIfNeeded()
-  }
-  nextTick(() => {
-    if (studioCustomerSearchInputRef.value && typeof studioCustomerSearchInputRef.value.focus === 'function') {
-      studioCustomerSearchInputRef.value.focus()
-    }
-  })
-}
-
-const isStudioCustomerActive = (c) => {
-  if (!c) return false
-  const fCT = cleanCode(studioForm.value.ten_cong_ty)
-  const fKH = cleanCode(studioForm.value.ten_khach_hang)
-  const oCT = cleanCode(c.ten_cong_ty)
-  const oKH = cleanCode(c.ten_khach_hang)
-  if (oCT && oKH) return fCT === oCT && fKH === oKH
-  if (oCT) return fCT === oCT
-  if (oKH) return fKH === oKH
-  return false
-}
-
-const applyCustomerToStudioForm = ({ ma_khach_hang = '', ma_cong_ty = '', ten_cong_ty = '', ten_khach_hang = '' }) => {
-  const prevComp = studioForm.value.ten_cong_ty || studioForm.value.ten_khach_hang || ''
-  const matchedRow = findMatchingCustomerRow({ ma_khach_hang, ma_cong_ty, ten_cong_ty, ten_khach_hang })
-  const sameName = Boolean(ten_cong_ty && ten_khach_hang && cleanCode(ten_cong_ty) === cleanCode(ten_khach_hang))
-
-  studioForm.value.customer = matchedRow
-  studioForm.value.ten_cong_ty = ten_cong_ty || ''
-  studioForm.value.ten_khach_hang = sameName ? '' : ten_khach_hang || ''
-  studioForm.value.ma_cong_ty = ma_cong_ty || matchedRow?.ma_cong_ty || genMaCT(ten_cong_ty)
-  studioForm.value.ma_khach_hang = ma_khach_hang || matchedRow?.ma_khach_hang || genMaKH(ten_khach_hang, ten_cong_ty)
-
-  const newLabel = ten_cong_ty || ten_khach_hang || ''
-  const curName = String(studioForm.value.name_workflow || '').trim()
-  if (studioMode.value === 'create' && newLabel && (!curName || (prevComp && curName.startsWith(prevComp + ' —')))) {
-    const existingCount = matchedRow && Array.isArray(matchedRow.customGroups) ? matchedRow.customGroups.length : 0
-    studioForm.value.name_workflow =
-      existingCount === 0 ? `${newLabel} — Quy trình riêng` : `${newLabel} — Quy trình #${existingCount + 1}`
-    studioForm.value.setAsDefault = existingCount === 0
-  }
-}
-
-const selectStudioCustomerOption = (c) => {
-  if (!c) return
-  if (studioCustomerPickerFocus.value === 'contact' && studioForm.value.ten_cong_ty && !c.ten_cong_ty) {
-    applyCustomerToStudioForm({
-      ma_khach_hang: c.ma_khach_hang,
-      ma_cong_ty: studioForm.value.ma_cong_ty,
-      ten_cong_ty: studioForm.value.ten_cong_ty,
-      ten_khach_hang: c.ten_khach_hang
-    })
-  } else {
-    applyCustomerToStudioForm(c)
-  }
-  showStudioCustomerPicker.value = false
-}
-
-const applyManualStudioCustomerSearch = () => {
-  const txt = String(studioCustomerPickerSearch.value || '').trim()
-  if (!txt) return
-  if (studioCustomerPickerFocus.value === 'contact') {
-    applyCustomerToStudioForm({
-      ten_cong_ty: studioForm.value.ten_cong_ty,
-      ten_khach_hang: txt,
-      ma_cong_ty: studioForm.value.ma_cong_ty,
-      ma_khach_hang: genMaKH(txt, studioForm.value.ten_cong_ty)
-    })
-  } else {
-    applyCustomerToStudioForm({
-      ten_cong_ty: txt,
-      ten_khach_hang: studioForm.value.ten_khach_hang,
-      ma_cong_ty: genMaCT(txt),
-      ma_khach_hang: genMaKH(studioForm.value.ten_khach_hang, txt)
-    })
-  }
-  showStudioCustomerPicker.value = false
-}
-
-const clearStudioCompany = () => {
-  studioForm.value.ten_cong_ty = ''
-  studioForm.value.ma_cong_ty = ''
-  studioForm.value.customer = null
-  if (!studioForm.value.ten_khach_hang) {
-    studioForm.value.ma_khach_hang = ''
-  }
-}
-
-const clearStudioContact = () => {
-  studioForm.value.ten_khach_hang = ''
-  studioForm.value.ma_khach_hang = studioForm.value.ten_cong_ty ? genMaCT(studioForm.value.ten_cong_ty) : ''
-}
-
-const openStudioAddCustomerModal = () => {
-  newStudioCustomerForm.value = {
-    ten_cong_ty: String(studioForm.value.ten_cong_ty || '').trim(),
-    ten_khach_hang: ''
-  }
-  showStudioAddCustomerModal.value = true
-}
-
-const submitNewStudioCustomer = async () => {
-  const tenCT = String(newStudioCustomerForm.value.ten_cong_ty || '').trim().toUpperCase()
-  const tenKH = String(newStudioCustomerForm.value.ten_khach_hang || '').trim().toUpperCase()
-  if (!tenCT || !tenKH) {
-    showToast('Vui lòng nhập đầy đủ Tên Công Ty & Tên Người Liên Hệ!', 'error')
-    return
-  }
-
-  isSavingNewCustomer.value = true
-  try {
-    const ma_ct = genMaCT(tenCT)
-    const ma_kh = genMaKH(tenKH, tenCT)
-    const isDup = effectiveCustomersSource.value.some(
-      (c) =>
-        cleanCode(c.Ma_khach_hang ?? c.ma_khach_hang) === cleanCode(ma_kh) &&
-        cleanCode(c.Ma_cong_ty ?? c.ma_cong_ty) === cleanCode(ma_ct)
-    )
-    if (isDup) {
-      showToast(`Khách hàng đã tồn tại (${ma_kh})`, 'error')
-      isSavingNewCustomer.value = false
-      return
-    }
-
-    const payload = {
-      ma_khach_hang: ma_kh,
-      ten_khach_hang: tenKH,
-      ma_cong_ty: ma_ct,
-      ten_cong_ty: tenCT,
-      created_time: new Date().toISOString(),
-      last_updated: new Date().toISOString()
-    }
-
-    localAddedCustomers.value.unshift({
-      Ma_khach_hang: ma_kh,
-      Ten_khach_hang: tenKH,
-      Ma_cong_ty: ma_ct,
-      Ten_cong_ty: tenCT
-    })
-
-    applyCustomerToStudioForm({
-      ma_khach_hang: ma_kh,
-      ma_cong_ty: ma_ct,
-      ten_cong_ty: tenCT,
-      ten_khach_hang: tenKH
-    })
-
-    showStudioAddCustomerModal.value = false
-    showStudioCustomerPicker.value = false
-    newStudioCustomerForm.value = { ten_cong_ty: '', ten_khach_hang: '' }
-
-    await set(dbRef(database, 'khach_hang/' + sanitizeFirebaseKey(ma_kh)), payload)
-    showToast('Đã thêm khách hàng mới & điền vào Workflow!', 'success')
-    emit('updated')
-  } catch (err) {
-    console.error('Lỗi thêm KH mới trong Workflow:', err)
-    showToast('Lỗi khi lưu khách hàng mới', 'error')
-  } finally {
-    isSavingNewCustomer.value = false
-  }
+  emitOpenKanban(wfId)
 }
 
 // =========================================================
@@ -3104,79 +1639,10 @@ const removeStudioStepRow = async (index) => {
   studioForm.value.steps.splice(index, 1)
 }
 
-const handleStudioPresetSelect = async (presetWfId) => {
-  if (!presetWfId) return
-
-  if (studioMode.value === 'edit' && studioActiveDealCount.value > 0) {
-    const ok = await askConfirm({
-      title: 'Thay thế chuỗi bước hiện tại?',
-      targetTag: studioForm.value.name_workflow || 'WORKFLOW ĐANG CHẠY',
-      targetValue: `Đang có ${studioActiveDealCount.value} Công việc sử dụng`,
-      message: 'Nạp bộ bước mới sẽ thay thế các bước hiện tại trong biểu mẫu (chỉ ghi vào hệ thống khi bạn nhấn Lưu Cập Nhật, và các công việc đang chạy sẽ được ánh xạ sang bước có % gần nhất).',
-      tone: 'info',
-      confirmText: 'Nạp bộ bước mẫu',
-      cancelText: 'Hủy'
-    })
-    if (!ok) {
-      studioForm.value.selectedPresetId = ''
-      return
-    }
-  }
-
-  const isCus = studioForm.value.mode === 'customer'
-  const compTitle = isCus ? String(studioForm.value.ten_cong_ty || studioForm.value.ten_khach_hang || '').trim() : ''
-
-  if (presetWfId === '__BLANK__') {
-    studioForm.value.source_template_id = ''
-    studioForm.value.source_template_name = ''
-    studioForm.value.steps = [
-      {
-        _uid: makeStepUid(),
-        id_status_workflow: '',
-        _origStatusName: '',
-        status_name: 'Bước khởi tạo',
-        '%status': '10%',
-        status_color: '#3b82f6'
-      }
-    ]
-  } else if (presetWfId === 'WF_DEFAULT') {
-    studioForm.value.source_template_id = 'WF_DEFAULT'
-    studioForm.value.source_template_name = 'Workflow Chuẩn Hệ Thống'
-    studioForm.value.steps = mapRawStepsToStudioRows(STANDARD_FLOW_STEPS, false)
-  } else {
-    const foundGroup = allWorkflowGroups.value.find((g) => g.id_workflow === presetWfId)
-    if (foundGroup && foundGroup.statuses.length > 0) {
-      studioForm.value.source_template_id = foundGroup.id_workflow
-      studioForm.value.source_template_name = foundGroup.name_workflow
-      studioForm.value.steps = mapRawStepsToStudioRows(foundGroup.statuses, false)
-
-      if (studioMode.value === 'create') {
-        if (isCus && compTitle && !String(studioForm.value.name_workflow || '').trim()) {
-          studioForm.value.name_workflow = `${compTitle} — ${extractCleanFlowSuffix(foundGroup.name_workflow)}`
-        } else if (!isCus && !String(studioForm.value.name_workflow || '').trim()) {
-          studioForm.value.name_workflow = `${extractCleanFlowSuffix(foundGroup.name_workflow)} (Mẫu)`
-        }
-      }
-    }
-  }
-
-  studioForm.value.selectedPresetId = ''
-  showToast('Đã nạp chuỗi bước mẫu vào cột phải!', 'success')
-}
-
 const submitWorkflowStudio = async () => {
   if (studioMode.value === 'baseline' || saving.value) return
 
   const isEdit = studioMode.value === 'edit'
-  const isCus = studioForm.value.mode === 'customer'
-  const tenCT = String(studioForm.value.ten_cong_ty || '').trim()
-  const tenKH = String(studioForm.value.ten_khach_hang || '').trim()
-
-  if (isCus && !tenCT && !tenKH) {
-    showToast('Vui lòng chọn Công ty / Khách hàng sở hữu Workflow!', 'error')
-    return
-  }
-
   const wfName = String(studioForm.value.name_workflow || '').trim()
   if (!wfName) {
     showToast('Vui lòng nhập Tên Workflow!', 'error')
@@ -3190,48 +1656,13 @@ const submitWorkflowStudio = async () => {
     return
   }
 
-  const cus = isCus
-    ? studioForm.value.customer ||
-      findMatchingCustomerRow({
-        ma_khach_hang: studioForm.value.ma_khach_hang,
-        ma_cong_ty: studioForm.value.ma_cong_ty,
-        ten_cong_ty: tenCT,
-        ten_khach_hang: tenKH
-      })
-    : null
-
-  const resolvedMaKH = isCus ? String(studioForm.value.ma_khach_hang || cus?.ma_khach_hang || genMaKH(tenKH, tenCT)) : ''
-  const resolvedMaCT = isCus ? String(studioForm.value.ma_cong_ty || cus?.ma_cong_ty || cleanCode(tenCT || tenKH)) : ''
-  const resolvedTenCT = isCus ? tenCT || cus?.ten_cong_ty || '' : ''
-  const resolvedTenKH = isCus ? tenKH || cus?.ten_khach_hang || '' : ''
-
   const nowTs = Date.now()
-  const cusCode = isCus ? cleanCode(resolvedMaCT || resolvedTenCT || resolvedMaKH || resolvedTenKH || nowTs) : ''
   const wfId =
     isEdit && studioForm.value.id_workflow
       ? studioForm.value.id_workflow
-      : isCus
-        ? `WF_CUS_${cusCode}_${nowTs.toString(36)}`
-        : `WF_TPL_${nowTs.toString(36)}_${Math.random().toString(36).substring(2, 5)}`
-
-  const otherGroupsOfCustomer =
-    isCus && cus && Array.isArray(cus.customGroups)
-      ? cus.customGroups.filter((g) => g.id_workflow !== wfId)
-      : []
-  const makeDefault = isCus && (Boolean(studioForm.value.setAsDefault) || otherGroupsOfCustomer.length === 0)
+      : `WF_${nowTs.toString(36)}_${Math.random().toString(36).substring(2, 5)}`
 
   const wfUpdates = {}
-
-  if (isCus && makeDefault && otherGroupsOfCustomer.length > 0) {
-    const otherWfIds = new Set(otherGroupsOfCustomer.map((g) => g.id_workflow))
-    items.value.forEach((it) => {
-      if (otherWfIds.has(it.id_workflow) && it.is_company_default) {
-        it.is_company_default = false
-        wfUpdates[sanitizeFirebaseKey(it.id_status_workflow)] = toCleanWorkflowRecord(it)
-      }
-    })
-  }
-
   const keptStepIds = new Set()
   const savedRecords = validSteps.map((st, idx) => {
     const stId = st.id_status_workflow || `ST_${nowTs}_${idx}_${Math.random().toString(36).substring(2, 5)}`
@@ -3244,14 +1675,14 @@ const submitWorkflowStudio = async () => {
       status_name: String(st.status_name).trim(),
       status_index: idx + 1,
       status_color: st.status_color || '#3b82f6',
-      workflow_scope: isCus ? 'customer' : 'template',
-      ma_khach_hang: resolvedMaKH,
-      ma_cong_ty: resolvedMaCT,
-      ten_khach_hang: resolvedTenKH,
-      ten_cong_ty: resolvedTenCT,
-      is_company_default: makeDefault,
-      source_template_id: isCus ? String(studioForm.value.source_template_id || '') : '',
-      source_template_name: isCus ? String(studioForm.value.source_template_name || '') : ''
+      workflow_scope: 'template',
+      ma_khach_hang: '',
+      ma_cong_ty: '',
+      ten_khach_hang: '',
+      ten_cong_ty: '',
+      is_company_default: false,
+      source_template_id: '',
+      source_template_name: ''
     }
   })
 
@@ -3276,17 +1707,6 @@ const submitWorkflowStudio = async () => {
   saving.value = true
   try {
     await update(dbRef(database, 'pipeline_workflow'), wfUpdates)
-
-    if (isCus && makeDefault && resolvedMaKH) {
-      const khKey = sanitizeFirebaseKey(resolvedMaKH)
-      const khSnap = await get(dbRef(database, `khach_hang/${khKey}`))
-      if (khSnap.exists() && typeof khSnap.val() === 'object' && !Array.isArray(khSnap.val())) {
-        await update(dbRef(database, `khach_hang/${khKey}`), {
-          default_workflow_id: wfId,
-          last_updated: new Date().toISOString()
-        })
-      }
-    }
 
     if (isEdit) {
       const pipeSnap = await get(dbRef(database, 'pipeline'))
@@ -3343,242 +1763,10 @@ const submitWorkflowStudio = async () => {
   }
 }
 
-const deleteCustomerFlowFlat = async (flow) => {
-  if (flow.customerRow) {
-    await deleteSingleCompanyFlow(flow.customerRow, flow)
-  } else {
-    await confirmDeleteWorkflowGroup(flow)
-  }
-}
-
-const deleteWorkflowFromStudio = async () => {
-  if (studioMode.value !== 'edit' || !studioForm.value.id_workflow) return
-  const liveGroup =
-    flatCustomerFlows.value.find((f) => f.id_workflow === studioForm.value.id_workflow) ||
-    allWorkflowGroups.value.find((g) => g.id_workflow === studioForm.value.id_workflow) ||
-    studioOriginalGroup.value
-  if (!liveGroup) return
-
-  if (liveGroup.workflow_scope === 'customer') {
-    await deleteCustomerFlowFlat(liveGroup)
-  } else {
-    await confirmDeleteWorkflowGroup(liveGroup)
-  }
-  if (!items.value.some((i) => i.id_workflow === liveGroup.id_workflow)) {
-    closeStudioModal()
-  }
-}
-
-// APPLY A BLUEPRINT TO ONE OR MULTIPLE COMPANIES IN BATCH
-const openApplyBlueprintModal = (blueprint) => {
-  if (!blueprint) return
-  const defaultSuffix =
-    blueprint.id_workflow === 'WF_DEFAULT'
-      ? 'Quy trình riêng'
-      : blueprint.workflow_scope === 'customer'
-        ? extractCleanFlowSuffix(blueprint.name_workflow)
-        : blueprint.name_workflow || 'Quy trình riêng'
-  applyBlueprintState.value = {
-    blueprint,
-    flowSuffix: defaultSuffix,
-    setAsDefault: false,
-    search: '',
-    selectedKeys: []
-  }
-  showApplyBlueprintModal.value = true
-}
-
-const toggleApplyCompanyKey = (rowKey) => {
-  const arr = applyBlueprintState.value.selectedKeys
-  const idx = arr.indexOf(rowKey)
-  if (idx === -1) {
-    arr.push(rowKey)
-  } else {
-    arr.splice(idx, 1)
-  }
-}
-
-const selectAllFilteredApplyCompanies = () => {
-  const currentSet = new Set(applyBlueprintState.value.selectedKeys)
-  filteredApplyCompanyRows.value.forEach((r) => currentSet.add(r.rowKey))
-  applyBlueprintState.value.selectedKeys = Array.from(currentSet)
-}
-
-const submitApplyBlueprintToCompanies = async () => {
-  const bp = applyBlueprintState.value.blueprint
-  const keys = applyBlueprintState.value.selectedKeys
-  if (!bp || !Array.isArray(keys) || keys.length === 0) {
-    showToast('Vui lòng chọn ít nhất 1 Công ty để áp Workflow!', 'error')
-    return
-  }
-  const suffix = String(applyBlueprintState.value.flowSuffix || bp.name_workflow || 'Quy trình riêng').trim()
-  const sourceSteps = Array.isArray(bp.statuses) && bp.statuses.length > 0 ? bp.statuses : STANDARD_FLOW_STEPS
-
-  const selectedCompanies = customerRows.value.filter((r) => keys.includes(r.rowKey))
-  if (selectedCompanies.length === 0) return
-
-  const wfUpdates = {}
-  const allNewRecords = []
-  const nowBase = Date.now()
-
-  selectedCompanies.forEach((co, coIdx) => {
-    const compTitle = co.ten_cong_ty || co.ten_khach_hang || co.ma_cong_ty || 'Công ty'
-    const cusCode = cleanCode(co.ma_cong_ty || co.ten_cong_ty || co.ma_khach_hang || co.ten_khach_hang || coIdx)
-    const wfId = `WF_CUS_${cusCode}_${(nowBase + coIdx).toString(36)}`
-    const wfName = `${compTitle} — ${suffix}`
-    const makeDef = Boolean(applyBlueprintState.value.setAsDefault) || co.customGroups.length === 0
-
-    if (makeDef && co.customGroups.length > 0) {
-      const existingWfIds = new Set(co.customGroups.map((g) => g.id_workflow))
-      items.value.forEach((it) => {
-        if (existingWfIds.has(it.id_workflow) && it.is_company_default) {
-          it.is_company_default = false
-          wfUpdates[sanitizeFirebaseKey(it.id_status_workflow)] = toCleanWorkflowRecord(it)
-        }
-      })
-    }
-
-    sourceSteps.forEach((st, sIdx) => {
-      const stId = `ST_${nowBase}_${coIdx}_${sIdx}_${Math.random().toString(36).substring(2, 5)}`
-      const rec = {
-        id_workflow: wfId,
-        id_status_workflow: stId,
-        name_workflow: wfName,
-        '%status': formatPercentStatus(st['%status']),
-        status_name: String(st.status_name || '').trim(),
-        status_index: sIdx + 1,
-        status_color: st.status_color || '#3b82f6',
-        workflow_scope: 'customer',
-        ma_khach_hang: String(co.ma_khach_hang || ''),
-        ma_cong_ty: String(co.ma_cong_ty || cleanCode(co.ten_cong_ty || '')),
-        ten_khach_hang: String(co.ten_khach_hang || ''),
-        ten_cong_ty: String(co.ten_cong_ty || ''),
-        is_company_default: makeDef,
-        source_template_id: String(bp.id_workflow || ''),
-        source_template_name: String(bp.name_workflow || '')
-      }
-      allNewRecords.push(rec)
-      wfUpdates[sanitizeFirebaseKey(rec.id_status_workflow)] = toCleanWorkflowRecord(rec)
-    })
-
-    collapsedGroups.value[wfId] = false
-    collapsedCompanies.value[co.rowKey] = false
-  })
-
-  items.value.push(...allNewRecords)
-  showApplyBlueprintModal.value = false
-  closeStudioModal()
-  saving.value = true
-
-  try {
-    await update(dbRef(database, 'pipeline_workflow'), wfUpdates)
-    subTab.value = 'customer'
-    showToast(`Đã áp Workflow "${bp.name_workflow}" cho ${selectedCompanies.length} công ty!`, 'success')
-    emit('updated')
-  } catch (err) {
-    console.error('Lỗi khi áp Workflow mẫu hàng loạt:', err)
-    showToast('Lỗi mạng khi áp Workflow mẫu vào công ty', 'error')
-    await fetchWorkflows()
-  } finally {
-    saving.value = false
-  }
-}
-
-// DELETE A SINGLE COMPANY FLOW TEMPLATE (KEEPING OTHER TEMPLATES OF THAT COMPANY INTACT)
-const deleteSingleCompanyFlow = async (cus, group) => {
-  if (!cus || !group) return
-  const remainingGroups = cus.customGroups.filter((g) => g.id_workflow !== group.id_workflow)
-  const nextFallbackGroup =
-    remainingGroups.find((g) => Boolean(g.is_company_default)) || remainingGroups[0] || null
-
-  const ok = await askConfirm({
-    title: 'Xóa Workflow Của Công Ty?',
-    targetTag: cus.ten_cong_ty || cus.ten_khach_hang || 'CÔNG TY',
-    targetValue: `${group.name_workflow} (${group.statuses.length} bước)`,
-    message: nextFallbackGroup
-      ? `Workflow này sẽ bị xóa khỏi danh sách của công ty (${remainingGroups.length} Workflow khác của công ty vẫn giữ nguyên). Các Công việc Pipeline đang dùng Workflow này sẽ được chuyển an toàn về Workflow Chuẩn.`
-      : 'Công ty sẽ quay về dùng Workflow Chuẩn Hệ Thống (5 bước). Các Công việc Pipeline đang dùng Workflow này sẽ được ánh xạ an toàn về Workflow Chuẩn.',
-    tone: 'danger',
-    confirmText: 'Xóa Workflow này',
-    cancelText: 'Giữ lại'
-  })
-  if (!ok) return
-
-  const backup = [...items.value]
-  items.value = items.value.filter((i) => i.id_workflow !== group.id_workflow)
-
-  const wfUpdates = {}
-  group.statuses.forEach((st) => {
-    wfUpdates[sanitizeFirebaseKey(st.id_status_workflow)] = null
-  })
-
-  if (nextFallbackGroup && !remainingGroups.some((g) => Boolean(g.is_company_default))) {
-    items.value.forEach((it) => {
-      if (it.id_workflow === nextFallbackGroup.id_workflow) {
-        it.is_company_default = true
-        wfUpdates[sanitizeFirebaseKey(it.id_status_workflow)] = toCleanWorkflowRecord(it)
-      }
-    })
-  }
-
-  saving.value = true
-  try {
-    const pipeSnap = await get(dbRef(database, 'pipeline'))
-    if (pipeSnap.exists()) {
-      const rawPipes = pipeSnap.val()
-      const pipeUpdates = {}
-      Object.entries(rawPipes || {}).forEach(([pKey, pVal]) => {
-        if (!pVal || typeof pVal !== 'object') return
-        if (pVal.id_workflow !== group.id_workflow) return
-        pipeUpdates[`${pKey}/id_workflow`] = ''
-        pipeUpdates[`${pKey}/id_status_workflow`] = ''
-        if (pVal.status_name !== 'THÀNH CÔNG' && pVal.status_name !== 'THẤT BẠI') {
-          const pctNum = parseFloat(String(pVal['%status'] || '0').replace('%', '')) || 0
-          let fallbackStep = STANDARD_FLOW_STEPS[0]
-          let minDiff = Infinity
-          STANDARD_FLOW_STEPS.forEach((st) => {
-            const stNum = parseFloat(st['%status']) || 0
-            const diff = Math.abs(stNum - pctNum)
-            if (diff < minDiff) {
-              minDiff = diff
-              fallbackStep = st
-            }
-          })
-          pipeUpdates[`${pKey}/status_name`] = fallbackStep.status_name
-          pipeUpdates[`${pKey}/%status`] = fallbackStep['%status']
-        }
-      })
-      if (Object.keys(pipeUpdates).length > 0) {
-        await update(dbRef(database, 'pipeline'), pipeUpdates)
-      }
-    }
-
-    await update(dbRef(database, 'pipeline_workflow'), wfUpdates)
-
-    if (cus.ma_khach_hang) {
-      const khKey = sanitizeFirebaseKey(cus.ma_khach_hang)
-      const khSnap = await get(dbRef(database, `khach_hang/${khKey}`))
-      if (khSnap.exists() && typeof khSnap.val() === 'object' && !Array.isArray(khSnap.val())) {
-        await update(dbRef(database, `khach_hang/${khKey}`), {
-          default_workflow_id: nextFallbackGroup ? nextFallbackGroup.id_workflow : ''
-        })
-      }
-    }
-
-    showToast('Đã xóa Workflow khỏi công ty!', 'success')
-    emit('updated')
-  } catch (err) {
-    console.error('Lỗi xóa Workflow công ty:', err)
-    items.value = backup
-    showToast('Có lỗi khi xóa Workflow', 'error')
-  } finally {
-    saving.value = false
-  }
-}
-
 const confirmDeleteWorkflowGroup = async (group) => {
+  if (!group) return
   const ok = await askConfirm({
-    title: 'Xóa Workflow Mẫu?',
+    title: 'Xóa Workflow?',
     targetTag: 'WORKFLOW',
     targetValue: `${group.name_workflow} (${group.statuses.length} bước)`,
     message: 'Các Công việc Pipeline đang dùng Workflow này sẽ không bị mất mà được chuyển an toàn về Workflow Chuẩn Hệ Thống.',
@@ -3604,9 +1792,23 @@ const confirmDeleteWorkflowGroup = async (group) => {
       const rawPipes = pipeSnap.val()
       const pipeUpdates = {}
       Object.entries(rawPipes || {}).forEach(([pKey, pVal]) => {
-        if (pVal && typeof pVal === 'object' && pVal.id_workflow === group.id_workflow) {
-          pipeUpdates[`${pKey}/id_workflow`] = ''
-          pipeUpdates[`${pKey}/id_status_workflow`] = ''
+        if (!pVal || typeof pVal !== 'object' || pVal.id_workflow !== group.id_workflow) return
+        pipeUpdates[`${pKey}/id_workflow`] = ''
+        pipeUpdates[`${pKey}/id_status_workflow`] = ''
+        if (pVal.status_name !== 'THÀNH CÔNG' && pVal.status_name !== 'THẤT BẠI') {
+          const pctNum = parseFloat(String(pVal['%status'] || '0').replace('%', '')) || 0
+          let fallbackStep = STANDARD_FLOW_STEPS[0]
+          let minDiff = Infinity
+          STANDARD_FLOW_STEPS.forEach((st) => {
+            const stNum = parseFloat(st['%status']) || 0
+            const diff = Math.abs(stNum - pctNum)
+            if (diff < minDiff) {
+              minDiff = diff
+              fallbackStep = st
+            }
+          })
+          pipeUpdates[`${pKey}/status_name`] = fallbackStep.status_name
+          pipeUpdates[`${pKey}/%status`] = fallbackStep['%status']
         }
       })
       if (Object.keys(pipeUpdates).length > 0) {
@@ -3622,6 +1824,19 @@ const confirmDeleteWorkflowGroup = async (group) => {
     showToast('Lỗi mạng khi xóa Workflow', 'error')
   } finally {
     saving.value = false
+  }
+}
+
+const deleteWorkflowFromStudio = async () => {
+  if (studioMode.value !== 'edit' || !studioForm.value.id_workflow) return
+  const liveGroup =
+    unifiedWorkflowGroups.value.find((g) => g.id_workflow === studioForm.value.id_workflow) ||
+    studioOriginalGroup.value
+  if (!liveGroup) return
+
+  await confirmDeleteWorkflowGroup(liveGroup)
+  if (!items.value.some((i) => i.id_workflow === liveGroup.id_workflow)) {
+    closeStudioModal()
   }
 }
 
@@ -3718,10 +1933,7 @@ const handleGlobalKeydown = (e) => {
     if (
       showStudioModal.value &&
       studioMode.value !== 'baseline' &&
-      !dialogState.value.open &&
-      !showStudioCustomerPicker.value &&
-      !showStudioAddCustomerModal.value &&
-      !showApplyBlueprintModal.value
+      !dialogState.value.open
     ) {
       e.preventDefault()
       submitWorkflowStudio()
@@ -3735,24 +1947,14 @@ const handleGlobalKeydown = (e) => {
       closeDialog(false)
       return
     }
+    if (showCreateNameModal.value) {
+      e.preventDefault()
+      closeCreateNameModal()
+      return
+    }
     if (openColorRowUid.value || openPctRowUid.value) {
       e.preventDefault()
       closeInlineStepPopovers()
-      return
-    }
-    if (showStudioAddCustomerModal.value) {
-      e.preventDefault()
-      showStudioAddCustomerModal.value = false
-      return
-    }
-    if (showStudioCustomerPicker.value) {
-      e.preventDefault()
-      showStudioCustomerPicker.value = false
-      return
-    }
-    if (showApplyBlueprintModal.value) {
-      e.preventDefault()
-      showApplyBlueprintModal.value = false
       return
     }
     if (showStudioModal.value) {
@@ -3767,6 +1969,13 @@ const handleGlobalKeydown = (e) => {
     closeDialog(true)
   }
 }
+
+defineExpose({
+  openWorkflowById,
+  locateWorkflowCard,
+  openCreateWorkflow: () => openWorkflowStudioCreate(),
+  isAnyModalOpen: () => Boolean(showStudioModal.value || showCreateNameModal.value || dialogState.value.open)
+})
 
 const checkMobile = () => {
   if (typeof window !== 'undefined') {
@@ -3950,6 +2159,15 @@ onUnmounted(() => {
   line-height: 1.5;
   color: var(--bg-text);
   color-scheme: var(--bg-scheme);
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.wf-mob-unified-bar,
+.wf-mob-section-bar {
+  display: none;
 }
 
 .wf-tabular {
@@ -4731,7 +2949,7 @@ onUnmounted(() => {
 .wf-modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 100020;
+  z-index: 100042;
   background: var(--bg-overlay);
   backdrop-filter: blur(8px);
   display: flex;
@@ -4740,6 +2958,10 @@ onUnmounted(() => {
   padding: 16px;
   color: var(--bg-text);
   color-scheme: var(--bg-scheme);
+}
+
+.wf-modal-overlay.is-create-name-overlay {
+  z-index: 100046;
 }
 
 .wf-modal-card {
@@ -4753,6 +2975,10 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.wf-modal-card.wf-modal-sm {
+  max-width: 460px;
 }
 
 .wf-modal-card.wf-modal-lg {
@@ -5028,7 +3254,7 @@ onUnmounted(() => {
 .wf-dialog-overlay {
   position: fixed;
   inset: 0;
-  z-index: 100040;
+  z-index: 100150;
   background: var(--bg-overlay);
   backdrop-filter: blur(8px);
   display: flex;
@@ -5484,12 +3710,30 @@ onUnmounted(() => {
   justify-content: space-between;
   gap: 10px;
   flex-wrap: wrap;
-  padding: 10px 12px;
+  padding: 10px 14px;
   border-radius: 13px;
   background: var(--bg-glass-panel);
   border: 1px solid var(--bg-glass-border);
   box-shadow: var(--bg-shadow-panel), inset 0 1px 0 var(--bg-specular);
   backdrop-filter: blur(var(--cg-blur, 16px));
+}
+
+.wf-toolbar-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wf-toolbar-ic {
+  color: var(--theme-pri-bright);
+  flex-shrink: 0;
+}
+
+.wf-toolbar-title {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--bg-text);
+  letter-spacing: 0.01em;
 }
 
 .wf-tab-count {
@@ -5551,9 +3795,9 @@ onUnmounted(() => {
 
 .wf-flat-meta {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   flex-wrap: wrap;
-  row-gap: 2px;
+  gap: 8px;
   min-width: 0;
   flex: 1;
   line-height: 1.4;
@@ -5644,6 +3888,19 @@ onUnmounted(() => {
   background: var(--bg-hover);
 }
 
+.wf-flat-txt-btn.is-edit-btn {
+  gap: 4.5px;
+  color: var(--sem-sky-bright);
+  border-color: var(--sem-sky-bd);
+  background: var(--sem-sky-bg);
+}
+
+.wf-flat-txt-btn.is-edit-btn:hover {
+  filter: brightness(1.06);
+  color: var(--sem-sky-bright);
+  border-color: var(--sem-sky-bright);
+}
+
 .wf-flat-track-scroll {
   display: flex;
   align-items: center;
@@ -5687,27 +3944,27 @@ onUnmounted(() => {
   height: 30px;
   padding: 0 10px;
   border-radius: 7px;
-  background: var(--step-clr, #3b82f6);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  color: #ffffff;
-  text-shadow: 0 1px 1.5px rgba(15, 23, 42, 0.24);
+  background: var(--bg-chip-rest);
+  border: 1px solid var(--bg-chip-rest-bd);
+  border-left: 3.5px solid var(--step-clr, #3b82f6);
+  color: var(--bg-text);
   font-size: 12px;
   white-space: nowrap;
   flex-shrink: 0;
   cursor: grab;
   user-select: none;
-  transition: border-color 0.15s ease, filter 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease;
 }
 
 .wf-flat-step-chip .wf-step-dot {
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--step-clr, #3b82f6);
 }
 
 .wf-flat-step-chip:hover:not(.is-readonly) {
-  border-color: #ffffff;
-  color: #ffffff;
-  filter: brightness(1.06);
-  box-shadow: 0 3px 8px -2px rgba(15, 23, 42, 0.3);
+  border-color: var(--bg-border-strong);
+  border-left-color: var(--step-clr, #3b82f6);
+  background: var(--bg-hover);
+  box-shadow: 0 3px 8px -2px rgba(15, 23, 42, 0.22);
 }
 
 .wf-flat-step-chip:active:not(.is-readonly) {
@@ -5719,34 +3976,37 @@ onUnmounted(() => {
 }
 
 .wf-flat-step-chip.is-flash {
-  border-color: #ffffff;
-  box-shadow: 0 0 0 2px var(--sem-emerald-bright);
+  border-color: var(--sem-emerald-bright);
+  border-left-color: var(--step-clr, #3b82f6);
+  box-shadow: 0 0 0 2px var(--sem-emerald-bg);
 }
 
 .wf-flat-step-chip.is-swap-source {
-  border-color: #ffffff;
-  box-shadow: 0 0 0 2px var(--sem-amber-bright);
+  border-color: var(--sem-amber-bright);
+  border-left-color: var(--step-clr, #3b82f6);
+  box-shadow: 0 0 0 2px var(--sem-amber-bg);
 }
 
 .wf-step-grip {
   font-size: 11px;
   line-height: 1;
-  color: rgba(255, 255, 255, 0.8);
-  opacity: 0.85;
+  color: var(--bg-text-muted);
+  opacity: 0.75;
 }
 
 .wf-flat-step-chip:hover .wf-step-grip {
   opacity: 1;
+  color: var(--bg-text);
 }
 
 .wf-step-chip-name {
   font-weight: 700;
-  color: #ffffff;
+  color: var(--bg-text);
 }
 
 .wf-step-chip-pct {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.92);
+  color: var(--bg-text-muted);
   font-weight: 700;
 }
 
@@ -5894,6 +4154,24 @@ onUnmounted(() => {
   box-shadow: var(--bg-shadow-panel), 0 0 0 1px var(--theme-pri-ring);
 }
 
+.wf-flat-card.is-nav-highlighted {
+  border-color: var(--sem-sky-bright) !important;
+  box-shadow: 0 0 0 2px var(--sem-sky-bright), 0 10px 28px -6px rgba(14, 165, 233, 0.35) !important;
+  animation: wfCardLocatePulse 0.65s ease-out;
+}
+
+@keyframes wfCardLocatePulse {
+  0% {
+    transform: scale(0.992);
+  }
+  50% {
+    transform: scale(1.008);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
 .wf-card-mini-pill {
   display: inline-flex;
   align-items: center;
@@ -5929,7 +4207,7 @@ onUnmounted(() => {
    UNIFIED 2-COLUMN WORKFLOW STUDIO MODAL (100% FULLSCREEN) & SUB-PICKERS
    ========================================================= */
 .wf-modal-overlay.is-studio-fullscreen-overlay {
-  z-index: 100022;
+  z-index: 100042;
   padding: 0;
   align-items: stretch;
   justify-content: stretch;
@@ -5941,11 +4219,11 @@ onUnmounted(() => {
 }
 
 .wf-modal-overlay.is-sub-picker-overlay {
-  z-index: 100028;
+  z-index: 100048;
 }
 
 .wf-modal-overlay.is-top-picker-overlay {
-  z-index: 100034;
+  z-index: 100052;
 }
 
 .wf-modal-card.wf-modal-md {
@@ -6840,11 +5118,11 @@ onUnmounted(() => {
 }
 
 @media (max-width: 1100px) {
-  .wf-modal-overlay {
+  .wf-modal-overlay:not(.is-create-name-overlay) {
     padding: 0;
-    align-items: flex-end;
+    align-items: stretch;
   }
-  .wf-modal-card,
+  .wf-modal-overlay:not(.is-create-name-overlay) .wf-modal-card,
   .wf-modal-card.wf-modal-md,
   .wf-modal-card.wf-modal-lg,
   .wf-modal-card.wf-modal-studio {
@@ -6852,29 +5130,36 @@ onUnmounted(() => {
     height: 100dvh;
     max-height: 100dvh;
     border-radius: 0;
+    border: none;
   }
-  .wf-modal-grab {
-    display: block;
-    width: 38px;
-    height: 4px;
-    border-radius: 999px;
-    background: var(--bg-border-strong);
-    margin: 8px auto 0;
-    flex-shrink: 0;
+  .wf-modal-overlay:not(.is-create-name-overlay) .wf-modal-grab {
+    display: none !important;
+  }
+  .wf-modal-overlay:not(.is-create-name-overlay) .wf-modal-header,
+  .wf-modal-overlay:not(.is-create-name-overlay) .wf-studio-header {
+    padding: max(calc(env(safe-area-inset-top, 0px) + 6px), 52px) 14px 12px !important;
+  }
+  .wf-modal-overlay.is-create-name-overlay,
+  .wf-dialog-overlay {
+    padding: max(calc(env(safe-area-inset-top, 0px) + 12px), 56px) 14px calc(16px + env(safe-area-inset-bottom, 0px)) !important;
   }
 }
 
 @media (max-width: 980px) {
   .wf-studio-body-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     overflow-y: auto;
+    overflow-x: hidden;
   }
   .wf-studio-col {
     height: auto;
+    min-width: 0;
+    max-width: 100%;
     overflow: visible;
   }
   .wf-studio-col-scroll {
     overflow: visible;
+    min-width: 0;
   }
 }
 
@@ -6882,22 +5167,332 @@ onUnmounted(() => {
   .bg-hide-sm {
     display: none !important;
   }
-  .wf-studio-header,
-  .wf-modal-footer.is-studio-foot {
+  .wf-designer-root {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    gap: 10px;
+    overflow-x: clip;
+  }
+
+  /* Hide desktop toolbar on mobile and show App-synced unified mobile header */
+  .wf-minimal-toolbar {
+    display: none !important;
+  }
+
+  .wf-mob-unified-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .bg-search-shell.wf-mob-search-shell {
+    flex: 1 1 0%;
+    min-width: 0 !important;
+    max-width: none;
+    height: 40px;
+    padding: 0 10px 0 33px;
+    border-radius: 12px;
+    background: var(--bg-panel);
+    border: 1.5px solid rgba(56, 189, 248, 0.42);
+    box-shadow: var(--bg-shadow-panel);
+  }
+
+  .wf-designer-root.theme-light-blue .bg-search-shell.wf-mob-search-shell {
+    background: #ffffff;
+    border-color: rgba(2, 132, 199, 0.44);
+  }
+
+  .bg-search-shell.wf-mob-search-shell:focus-within,
+  .bg-search-shell.wf-mob-search-shell.has-query {
+    border-color: #0ea5e9;
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.16);
+  }
+
+  .wf-mob-match-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 20px;
+    padding: 0 6px;
+    margin-right: 4px;
+    border-radius: 999px;
+    background: var(--sem-sky-bg);
+    border: 1px solid var(--sem-sky-bd);
+    color: var(--sem-sky-bright);
+    font-size: 10.5px;
+    font-weight: 800;
+    flex-shrink: 0;
+  }
+
+  .wf-mob-match-pill.is-zero {
+    background: var(--sem-rose-bg);
+    border-color: var(--sem-rose-bd);
+    color: var(--sem-rose-bright);
+  }
+
+  .wf-mob-sq-btn {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border-radius: 12px;
+    border: 1px solid var(--bg-border-strong);
+    background: var(--bg-panel);
+    color: var(--bg-text-sec);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    cursor: pointer;
+    box-shadow: var(--bg-shadow-panel);
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.14s ease, border-color 0.16s ease;
+  }
+
+  .wf-mob-sq-btn.is-theme-btn {
+    color: var(--sem-sky-bright);
+  }
+
+  .wf-designer-root.theme-light-blue .wf-mob-sq-btn {
+    background: #ffffff;
+    border-color: rgba(15, 23, 42, 0.14);
+  }
+
+  .wf-designer-root.theme-custom-glass .bg-search-shell.wf-mob-search-shell,
+  .wf-designer-root.theme-custom-glass .wf-mob-sq-btn {
+    background: var(--bg-glass-panel);
+    border-color: var(--bg-glass-border);
+    backdrop-filter: blur(var(--cg-blur, 16px));
+    -webkit-backdrop-filter: blur(var(--cg-blur, 16px));
+  }
+
+  .wf-mob-sq-btn:active {
+    transform: scale(0.94);
+  }
+
+  .wf-mob-section-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 4px 2px;
+    min-width: 0;
+  }
+
+  .wf-mob-sec-left {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+  }
+
+  .wf-mob-sec-title {
+    font-size: 13.5px;
+    font-weight: 800;
+    color: var(--bg-text);
+    white-space: nowrap;
+  }
+
+  .wf-mob-sec-cnt {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 20px;
+    padding: 0 7px;
+    border-radius: 999px;
+    background: var(--sem-sky-bg);
+    border: 1px solid var(--sem-sky-bd);
+    color: var(--sem-sky-bright);
+    font-size: 11px;
+    font-weight: 800;
+  }
+
+  .wf-mob-create-btn {
+    height: 30px;
+    padding: 0 11px;
+    border-radius: 9px;
+    border: 1px solid rgba(56, 189, 248, 0.38);
+    background: var(--theme-pri-grad);
+    color: #ffffff;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
+    cursor: pointer;
+    box-shadow: 0 3px 10px -2px var(--theme-pri-shadow);
+  }
+
+  /* Clean simplified mobile header inside Studio Modal (only title + close button) */
+  .wf-studio-header {
     padding: 11px 14px;
   }
+  .wf-modal-overlay .wf-studio-header .wf-modal-ic,
+  .wf-modal-overlay .wf-studio-header .wf-studio-pills,
+  .wf-modal-overlay .wf-studio-header .wf-modal-sub,
+  .wf-modal-overlay .wf-studio-header .wf-studio-head-right .wf-btn-sky-soft {
+    display: none !important;
+  }
+  .wf-modal-overlay .wf-studio-header .wf-studio-title-row {
+    gap: 0;
+  }
+  .wf-modal-overlay .wf-studio-header .wf-modal-title {
+    font-size: 16px;
+    line-height: 1.3;
+  }
+
+  .wf-modal-footer.is-studio-foot {
+    padding: 11px 14px calc(11px + env(safe-area-inset-bottom, 0px));
+  }
   .wf-studio-body-grid {
-    padding: 12px 14px;
+    padding: 12px 12px;
     gap: 12px;
   }
-  .wf-toolbar-right {
+  .wf-live-preview-box,
+  .wf-live-preview-track,
+  .wf-studio-steps-list,
+  .wf-studio-step-row {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Clean 2-tier Workflow card header + roomy horizontal swipe track on Mobile */
+  .wf-flat-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
     width: 100%;
-    justify-content: stretch;
+    max-width: 100%;
   }
-  .wf-slim-search {
-    max-width: none;
-    flex: 1 1 180px;
+  .wf-flat-card {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+    padding: 12px 13px;
+    gap: 10px;
+    border-radius: 13px;
   }
+  .wf-flat-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    min-width: 0;
+    width: 100%;
+  }
+  .wf-flat-meta {
+    width: 100%;
+    min-width: 0;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 8px;
+  }
+  .wf-flat-name {
+    font-size: 14.5px;
+    line-height: 1.35;
+    max-width: 100%;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+  .wf-card-mini-pill {
+    margin-left: 0;
+    height: 22px;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+  .wf-flat-tools {
+    width: 100%;
+    min-width: 0;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding-top: 2px;
+  }
+  .wf-flat-txt-btn {
+    height: 31px;
+    padding: 0 10px;
+    border-radius: 8px;
+    font-size: 11.5px;
+  }
+  .wf-ghost-ic-btn {
+    width: 31px;
+    height: 31px;
+    border-radius: 8px;
+    border-color: var(--bg-border-strong);
+    background: var(--bg-chip-rest);
+  }
+  .wf-ghost-ic-btn.is-danger {
+    margin-left: auto;
+  }
+  .wf-flat-track-scroll {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 8px;
+    padding: 4px 2px 8px;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x pan-y;
+  }
+  .wf-flat-track-scroll::-webkit-scrollbar {
+    height: 4px;
+  }
+  .wf-flat-draggable-list {
+    gap: 7px;
+  }
+  .wf-flat-step-unit {
+    gap: 7px;
+  }
+  .wf-flat-step-chip {
+    height: 36px;
+    max-width: 78vw;
+    padding: 0 11px;
+    border-radius: 9px;
+    border-left-width: 4px;
+    font-size: 12.5px;
+    gap: 6px;
+  }
+  .wf-step-chip-name {
+    max-width: 56vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .wf-step-chip-pct {
+    font-size: 11.5px;
+    flex-shrink: 0;
+  }
+  .wf-mobile-swap-inline {
+    min-width: 24px;
+    height: 24px;
+    padding: 0 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+  .wf-step-arrow {
+    font-size: 13px;
+    opacity: 0.72;
+  }
+  .wf-inline-add-step-btn {
+    height: 36px;
+    padding: 0 12px;
+    border-radius: 9px;
+    font-size: 12px;
+  }
+
   .wf-form-row-2,
   .wf-scope-choice-grid {
     grid-template-columns: 1fr;

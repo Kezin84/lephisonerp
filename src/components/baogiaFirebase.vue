@@ -87,10 +87,24 @@ import {
 import {
   uploadExcelFileToCloudinarySafe,
   uploadBlobToCloudinary,
+  uploadRawBlobToCloudinary,
+  fetchCompressedJsonZipFromCloudinary,
+  mergeVendorRefFilesMetaWithLiveFirebase,
   hydrateAcronisRefData,
   hydrateKasRefData,
+  hydrateSophosCalcRefData,
   type VendorRefFileMeta
 } from '../utils/vendorRefCloudinary'
+import {
+  buildPopulatedSophosCalcViewOfficeWorkbook,
+  evaluateFirewallCalculator,
+  evaluateProductCalculator,
+  extractValidatedEmbeddedCalcSku,
+  extractVolumeRangeFromSophosItem,
+  inferSophosCalculatorContext,
+  overlayCalculatedSheetAoa,
+  type SophosInferredCalcContext
+} from '../utils/sophosCalculatorEngine'
 
 const firebaseConfig = {
   apiKey: "AIzaSyB3fHD_sOqyqVygCxP2gZtvaipr-35a1s8",
@@ -5797,8 +5811,9 @@ type RefVendorType = 'sophos' | 'kaspersky' | 'acronis'
 interface RefCompareOption {
   id: string
   vendor: RefVendorType
-  role: 'goc' | 'tg' | 'mau'
+  role: 'calc' | 'goc' | 'tg' | 'mau'
   roleBadge: string
+  versionTag?: string
   fileName: string
   sheet: string
   rowNum: number
@@ -5806,6 +5821,10 @@ interface RefCompareOption {
   cellRef: string
   sku: string
   priceText: string
+  unitMsrpUsd?: number
+  resellerDiscPct?: number
+  unitBuyCostUsd?: number
+  calcCtx?: SophosInferredCalcContext
   subNote?: string
 }
 
@@ -5822,14 +5841,28 @@ const vendorRefLoadError = ref<Record<RefVendorType, string>>({
 
 const sophosRefData = ref<any>(null)
 let sophosRefLoadingPromise: Promise<any> | null = null
+let loadedSophosRefSig = ''
+const sophosCalcRefData = ref<any>(null)
+let sophosCalcRefLoadingPromise: Promise<any> | null = null
+let loadedSophosCalcSig = ''
+const sophosPopulatedViewOfficeCache = new Map<string, any>()
 const kasRefData = ref<any>(null)
 let kasRefLoadingPromise: Promise<any> | null = null
+let loadedKasRefSig = ''
 const acronisRefData = ref<any>(null)
 let acronisRefLoadingPromise: Promise<any> | null = null
+let loadedAcronisRefSig = ''
+let lastVendorRefMetaFetchAt = 0
+
+const getSophosCalcMetaSig = (m: any) =>
+  `${m?.calc_updated_at || 0}|${m?.calc_index_url || ''}|${Array.isArray(m?.calc_index_chunk_urls) ? m.calc_index_chunk_urls.join(',') : ''}`
+
+const getMainIndexMetaSig = (m: any) => `${m?.updated_at || 0}|${m?.index_url || ''}`
 
 const fetchVendorRefFilesMeta = async (force = false) => {
   if (
     !force &&
+    Date.now() - lastVendorRefMetaFetchAt < 3000 &&
     (vendorRefFilesMeta.value.sophos ||
       vendorRefFilesMeta.value.kaspersky ||
       vendorRefFilesMeta.value.acronis)
@@ -5837,8 +5870,29 @@ const fetchVendorRefFilesMeta = async (force = false) => {
     return vendorRefFilesMeta.value
   }
   try {
-    const snap = await get(dbRef(database, 'vendor_ref_files'))
-    const val = snap.val() || {}
+    const snap = await get(dbRef(database, 'vendor_ref_files')).catch(() => null)
+    const rawLocal = snap && typeof snap.val === 'function' ? snap.val() || {} : {}
+    const val = await mergeVendorRefFilesMetaWithLiveFirebase(rawLocal)
+    lastVendorRefMetaFetchAt = Date.now()
+
+    if (loadedSophosCalcSig && getSophosCalcMetaSig(val.sophos) !== loadedSophosCalcSig) {
+      sophosCalcRefData.value = null
+      loadedSophosCalcSig = ''
+      sophosPopulatedViewOfficeCache.clear()
+    }
+    if (loadedSophosRefSig && getMainIndexMetaSig(val.sophos) !== loadedSophosRefSig) {
+      sophosRefData.value = null
+      loadedSophosRefSig = ''
+    }
+    if (loadedKasRefSig && getMainIndexMetaSig(val.kaspersky) !== loadedKasRefSig) {
+      kasRefData.value = null
+      loadedKasRefSig = ''
+    }
+    if (loadedAcronisRefSig && getMainIndexMetaSig(val.acronis) !== loadedAcronisRefSig) {
+      acronisRefData.value = null
+      loadedAcronisRefSig = ''
+    }
+
     vendorRefFilesMeta.value = {
       sophos: val.sophos || null,
       kaspersky: val.kaspersky || null,
@@ -5884,9 +5938,24 @@ const getVendorImportFileMeta = (vendor: RefVendorType) => {
   return null
 }
 
-const getVendorCompareFileMeta = (vendor: RefVendorType, part: 'goc' | 'tg' = 'goc') => {
+const getVendorCompareFileMeta = (vendor: RefVendorType, part: 'calc' | 'goc' | 'tg' = 'goc') => {
   const m = vendorRefFilesMeta.value?.[vendor]
   if (!m) return null
+  if (part === 'calc') {
+    if (vendor === 'sophos') {
+      if (!m.calc_file_name) return null
+      return {
+        name: m.calc_file_name,
+        url: m.calc_file_url || '',
+        chunkUrls: Array.isArray(m.calc_file_chunk_urls) ? m.calc_file_chunk_urls : [],
+        version: m.calc_version || '',
+        effectiveFrom: m.calc_effective_from || '',
+        skuCount: m.calc_sku_count || 0,
+        updatedAt: m.calc_updated_at || m.updated_at || 0
+      }
+    }
+    return null
+  }
   if (part === 'goc') {
     if (vendor === 'sophos') {
       const sName = m.skulist_file_name || m.goc_file_name
@@ -5925,7 +5994,10 @@ const getVendorCompareFileMeta = (vendor: RefVendorType, part: 'goc' | 'tg' = 'g
 }
 
 const loadSophosRefData = async (forceReload = false) => {
-  if (!forceReload && sophosRefData.value) return sophosRefData.value
+  const curSig = getMainIndexMetaSig(vendorRefFilesMeta.value?.sophos)
+  if (!forceReload && sophosRefData.value && (!curSig || curSig === loadedSophosRefSig)) {
+    return sophosRefData.value
+  }
   if (!forceReload && sophosRefLoadingPromise) return sophosRefLoadingPromise
   sophosRefLoadingPromise = (async () => {
     try {
@@ -5933,17 +6005,22 @@ const loadSophosRefData = async (forceReload = false) => {
       const allMeta = await fetchVendorRefFilesMeta(forceReload)
       const meta = allMeta?.sophos
       if (!meta?.index_url) {
-        vendorRefLoadError.value.sophos =
-          'Chưa có file tham chiếu Sophos trên Cloudinary. Vui lòng upload tại trang Quản lý hàng hóa.'
+        if (!meta?.calc_index_url && !(Array.isArray(meta?.calc_index_chunk_urls) && meta.calc_index_chunk_urls.length)) {
+          vendorRefLoadError.value.sophos =
+            'Chưa có file tham chiếu Sophos trên Cloudinary. Vui lòng upload tại trang Quản lý hàng hóa.'
+        }
         return { gocSkus: {}, trungGianItems: [], lpSophos: [], tgSkuLocations: {} }
       }
       const res = await fetch(meta.index_url)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       sophosRefData.value = await res.json()
+      loadedSophosRefSig = getMainIndexMetaSig(meta)
       return sophosRefData.value
     } catch (e: any) {
-      vendorRefLoadError.value.sophos =
-        'Không tải được dữ liệu tham chiếu Sophos từ Cloudinary: ' + (e?.message || e)
+      if (!sophosCalcRefData.value) {
+        vendorRefLoadError.value.sophos =
+          'Không tải được dữ liệu tham chiếu Sophos từ Cloudinary: ' + (e?.message || e)
+      }
       return { gocSkus: {}, trungGianItems: [], lpSophos: [], tgSkuLocations: {} }
     } finally {
       sophosRefLoadingPromise = null
@@ -5952,8 +6029,40 @@ const loadSophosRefData = async (forceReload = false) => {
   return sophosRefLoadingPromise
 }
 
+const loadSophosCalcRefData = async (forceReload = false) => {
+  const curSig = getSophosCalcMetaSig(vendorRefFilesMeta.value?.sophos)
+  if (!forceReload && sophosCalcRefData.value && (!curSig || curSig === loadedSophosCalcSig)) {
+    return sophosCalcRefData.value
+  }
+  if (!forceReload && sophosCalcRefLoadingPromise) return sophosCalcRefLoadingPromise
+  sophosCalcRefLoadingPromise = (async () => {
+    try {
+      const allMeta = await fetchVendorRefFilesMeta(forceReload)
+      const meta = allMeta?.sophos
+      const calcSource =
+        Array.isArray(meta?.calc_index_chunk_urls) && meta.calc_index_chunk_urls.length > 0
+          ? meta.calc_index_chunk_urls
+          : meta?.calc_index_url
+      if (!calcSource) return null
+      const rawCalc = await fetchCompressedJsonZipFromCloudinary(calcSource)
+      sophosCalcRefData.value = hydrateSophosCalcRefData(rawCalc)
+      loadedSophosCalcSig = getSophosCalcMetaSig(meta)
+      return sophosCalcRefData.value
+    } catch (err) {
+      console.error('Lỗi tải dữ liệu File Calculator Sophos (calculate_sophos) từ Cloudinary:', err)
+      return null
+    } finally {
+      sophosCalcRefLoadingPromise = null
+    }
+  })()
+  return sophosCalcRefLoadingPromise
+}
+
 const loadKasRefData = async (forceReload = false) => {
-  if (!forceReload && kasRefData.value) return kasRefData.value
+  const curSig = getMainIndexMetaSig(vendorRefFilesMeta.value?.kaspersky)
+  if (!forceReload && kasRefData.value && (!curSig || curSig === loadedKasRefSig)) {
+    return kasRefData.value
+  }
   if (!forceReload && kasRefLoadingPromise) return kasRefLoadingPromise
   kasRefLoadingPromise = (async () => {
     try {
@@ -5969,6 +6078,7 @@ const loadKasRefData = async (forceReload = false) => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const raw = await res.json()
       kasRefData.value = hydrateKasRefData(raw)
+      loadedKasRefSig = getMainIndexMetaSig(meta)
       return kasRefData.value
     } catch (e: any) {
       vendorRefLoadError.value.kaspersky =
@@ -5982,7 +6092,10 @@ const loadKasRefData = async (forceReload = false) => {
 }
 
 const loadAcronisRefData = async (forceReload = false) => {
-  if (!forceReload && acronisRefData.value) return acronisRefData.value
+  const curSig = getMainIndexMetaSig(vendorRefFilesMeta.value?.acronis)
+  if (!forceReload && acronisRefData.value && (!curSig || curSig === loadedAcronisRefSig)) {
+    return acronisRefData.value
+  }
   if (!forceReload && acronisRefLoadingPromise) return acronisRefLoadingPromise
   acronisRefLoadingPromise = (async () => {
     try {
@@ -5998,6 +6111,7 @@ const loadAcronisRefData = async (forceReload = false) => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const raw = await res.json()
       acronisRefData.value = hydrateAcronisRefData(raw)
+      loadedAcronisRefSig = getMainIndexMetaSig(meta)
       return acronisRefData.value
     } catch (e: any) {
       vendorRefLoadError.value.acronis =
@@ -6066,7 +6180,11 @@ const enrichItemForRefCompare = (item: any) => {
     Danh_muc: item.Danh_muc || catalogMatch.Danh_muc || '',
     sku_code: item.sku_code || catalogMatch.sku_code || '',
     volume: item.volume || catalogMatch.volume || '',
-    Ghi_chu: item.Ghi_chu || catalogMatch.Ghi_chu || ''
+    Ghi_chu: item.Ghi_chu || catalogMatch.Ghi_chu || '',
+    Mo_ta: item.Mo_ta || catalogMatch.Mo_ta || '',
+    Description: item.Description || catalogMatch.Description || '',
+    License_duration: item.License_duration || catalogMatch.License_duration || '',
+    Trang_thai: item.Trang_thai || catalogMatch.Trang_thai || ''
   }
 }
 
@@ -6078,9 +6196,6 @@ const getCardVendorType = (rawItem: any): RefVendorType | null => {
   const th = String(item.Ten_hang || '').trim().toUpperCase()
   const mh = String(item.Ma_hang || '').trim().toUpperCase()
 
-  if (ncc.includes('SOPHOS') || dm.includes('SOPHOS') || th.startsWith('SOPHOS')) {
-    return 'sophos'
-  }
   if (
     ncc.includes('KASPERSKY') ||
     dm.includes('KASPERSKY') ||
@@ -6092,12 +6207,99 @@ const getCardVendorType = (rawItem: any): RefVendorType | null => {
   if (ncc.includes('ACRONIS') || dm.includes('ACRONIS') || th.includes('ACRONIS')) {
     return 'acronis'
   }
+  if (
+    ncc.includes('SOPHOS') ||
+    dm.includes('SOPHOS') ||
+    th.includes('SOPHOS') ||
+    mh.includes('SOPHOS') ||
+    /\b(XGS?\s*\d{2,4}W?|SFV[\s-]*(?:UNLIMITED|\d+C\d+)|XRP\d+|SD-RED\s*\d+|CS(?:101|110|210|1010)|AP6\s*\d{3}|CZTNA|MDRNDU|UTM\s*\d+)\b/i.test(
+      `${th} ${mh}`
+    )
+  ) {
+    return 'sophos'
+  }
   return null
+}
+
+const evaluateSophosCalcSummaryFromCtx = (calcObj: any, ctx: SophosInferredCalcContext) => {
+  if (!calcObj?.engineRuntime) return null
+  if (ctx.calcType === 'product') {
+    const ev = evaluateProductCalculator(calcObj, {
+      partnerLevel: ctx.partnerLevel,
+      sector: ctx.sector,
+      dealType: ctx.dealType,
+      family: ctx.family,
+      productLine: ctx.productLine,
+      product: ctx.product,
+      term: ctx.termSubscription,
+      qty: Math.max(1, Number(ctx.qty) || 1),
+      specialAttribute: ctx.specialAttribute,
+      preferredSku: ctx.sku || ''
+    })
+    const sh =
+      ctx.nativeSheet && ctx.nativeSheet !== 'Firewall' ? ctx.nativeSheet : 'Universal Calculator'
+    const rawSh = calcObj.calcSheetsRaw?.[sh] || []
+    const ov = overlayCalculatedSheetAoa(calcObj, sh, rawSh, {
+      ...ctx,
+      sku: ctx.sku || ev.sku || '',
+      nativeSheet: sh
+    })
+    const effQty = Math.max(1, Number(ev.effectiveQty || ctx.qty) || 1)
+    const unitBuyCost = ev.available ? Number((ev.buyCost / effQty).toFixed(2)) : 0
+    return {
+      available: ev.available,
+      sku: ev.sku,
+      newSku: ev.newSku,
+      unitMsrp: ev.unitMsrp,
+      msrp: ev.msrp,
+      resellerDiscPct: ev.resellerDiscPct,
+      buyCost: ev.buyCost,
+      unitBuyCost,
+      sheetName: sh,
+      sheetRowNum: ov.targetRow || 16,
+      sheetColLetter: ov.targetColLetter || 'G',
+      targetSku: ov.targetSku || ev.sku || ''
+    }
+  }
+
+  const fwEval = evaluateFirewallCalculator(calcObj, {
+    partnerLevel: ctx.partnerLevel,
+    sector: ctx.sector,
+    dealType: ctx.dealType,
+    termHwBundle: ctx.termHwBundle,
+    termSubscription: ctx.termSubscription,
+    qty: Math.max(1, Number(ctx.qty) || 1),
+    specialAttribute: ctx.specialAttribute,
+    models: ctx.models?.length ? ctx.models : [ctx.model || 'XGS 2300'],
+    preferredSku: ctx.sku || ''
+  })
+  const fwRows = fwEval.rows || []
+  const hitRow =
+    fwRows.find((r) => r.key === ctx.targetFirewallRowKey && r.cells?.[0]?.available) ||
+    fwRows.find((r) => r.cells?.[0]?.available) ||
+    fwRows.find((r) => r.key === ctx.targetFirewallRowKey) ||
+    fwRows[0]
+  const c0 = hitRow?.cells?.[0]
+  const effQty = Math.max(1, Number(ctx.qty) || 1)
+  return {
+    available: Boolean(c0?.available),
+    sku: c0?.sku || '',
+    newSku: c0?.newSku || '',
+    unitMsrp: c0?.unitMsrp || 0,
+    msrp: c0?.msrp || 0,
+    resellerDiscPct: c0?.resellerDiscPct || 0,
+    buyCost: c0?.buyCost || 0,
+    unitBuyCost: c0?.available ? Number(((c0.buyCost || 0) / effQty).toFixed(2)) : 0,
+    sheetName: 'Firewall',
+    sheetRowNum: hitRow?.sheetRowNum || 29,
+    sheetColLetter: 'H',
+    targetSku: c0?.sku || ''
+  }
 }
 
 const resolveSophosCardCompare = async (rawItem: any) => {
   const item = enrichItemForRefCompare(rawItem) || rawItem
-  await loadSophosRefData()
+  await Promise.all([loadSophosRefData(), loadSophosCalcRefData()])
   const sRef = sophosRefData.value || {
     gocSkus: {},
     trungGianItems: [],
@@ -6105,6 +6307,8 @@ const resolveSophosCardCompare = async (rawItem: any) => {
     tgSkuLocations: {}
   }
   const gocMap = sRef.gocSkus || {}
+  const calcMap = sophosCalcRefData.value?.calcSkus || {}
+  const calcDd = sophosCalcRefData.value?.engineRuntime?.dropDowns
   const tgList = sRef.trungGianItems || []
   const lpList = sRef.lpSophos || []
   const tgLocMap = sRef.tgSkuLocations || {}
@@ -6113,12 +6317,46 @@ const resolveSophosCardCompare = async (rawItem: any) => {
   const itemSkuCode = String(item.sku_code || '').trim().toUpperCase()
   const gc = String(item.Ghi_chu || '')
   const skuFromNote = ((gc.match(/SKU:\s*([A-Z0-9]+)/i) || [])[1] || '').toUpperCase()
+  const embeddedCalcSku = sophosCalcRefData.value
+    ? extractValidatedEmbeddedCalcSku(item, sophosCalcRefData.value)
+    : ''
+  const itemVolRange = extractVolumeRangeFromSophosItem(item)
 
   let sku = ''
-  if (itemSkuCode && gocMap[itemSkuCode]) sku = itemSkuCode
-  else if (gocMap[mh]) sku = mh
-  else if (skuFromNote && gocMap[skuFromNote]) sku = skuFromNote
+  if (itemSkuCode && (calcMap[itemSkuCode] || gocMap[itemSkuCode])) sku = itemSkuCode
+  else if (calcMap[mh] || gocMap[mh]) sku = mh
+  else if (skuFromNote && (calcMap[skuFromNote] || gocMap[skuFromNote])) sku = skuFromNote
+  else if (embeddedCalcSku) sku = embeddedCalcSku
   else if (itemSkuCode) sku = itemSkuCode
+
+  const matchesTgVolRange = (t: any) => {
+    if (!itemVolRange) return true
+    const tSku = String(t?.sku || '').trim().toUpperCase()
+    const tText = `${t?.description || ''} ${t?.moTa || ''}`
+    if (tText.includes(`${itemVolRange.min}-${itemVolRange.max}`)) return true
+    const mappedNew = (tSku && calcDd?.newSkuByOldSku?.[tSku]) || (tSku.length === 14 ? tSku : '')
+    if (mappedNew.length === 14 && calcDd?.volBandTables) {
+      const bCode = mappedNew.slice(8, 10)
+      if (bCode !== 'ZZ') {
+        const tbl = calcDd.volBandTables[bCode[0]] || []
+        const hitBand = tbl.find((b: any) => b[2] === bCode)
+        if (hitBand) return itemVolRange.min >= hitBand[0] && itemVolRange.min <= hitBand[1]
+      }
+    }
+    return false
+  }
+
+  const itemModelMatch = `${item.Ma_hang || ''} ${item.Ten_hang || ''} ${item.Danh_muc || ''}`.match(
+    /\b(XGS?\s*\d{2,4}w?)\b/i
+  )
+  const itemModelNorm = itemModelMatch ? itemModelMatch[1].replace(/\s+/g, '').toUpperCase() : ''
+  const matchesTgModel = (t: any) => {
+    if (!itemModelNorm) return true
+    const tText = `${t?.group || ''} ${t?.model || ''} ${t?.description || ''} ${t?.moTa || ''}`
+    const m = tText.match(/\b(XGS?\s*\d{2,4}w?)\b/i)
+    if (!m) return true
+    return m[1].replace(/\s+/g, '').toUpperCase() === itemModelNorm
+  }
 
   let tgEntry =
     tgList.find(
@@ -6136,13 +6374,18 @@ const resolveSophosCardCompare = async (rawItem: any) => {
           .trim()
           .replace(/:$/, '')
           .toLowerCase()
-        return grp === dmLower && firstLine === thLower
+        return grp === dmLower && firstLine === thLower && matchesTgVolRange(t) && matchesTgModel(t)
       }) || null
     if (!tgEntry && dmLower && thLower) {
       tgEntry =
         tgList.find((t: any) => {
           const grp = String(t.group || '').trim().toLowerCase()
-          return grp === dmLower && String(t.moTa || '').toLowerCase().includes(thLower)
+          return (
+            grp === dmLower &&
+            String(t.moTa || '').toLowerCase().includes(thLower) &&
+            matchesTgVolRange(t) &&
+            matchesTgModel(t)
+          )
         }) || null
     }
     if (!tgEntry && thLower) {
@@ -6153,7 +6396,7 @@ const resolveSophosCardCompare = async (rawItem: any) => {
             .trim()
             .replace(/:$/, '')
             .toLowerCase()
-          return firstLine === thLower
+          return firstLine === thLower && matchesTgVolRange(t) && matchesTgModel(t)
         }) || null
     }
   }
@@ -6164,6 +6407,45 @@ const resolveSophosCardCompare = async (rawItem: any) => {
   if (!sku && /^[A-Z0-9]{8,16}$/.test(mh) && /\d/.test(mh)) {
     sku = mh
   }
+
+  let calcCtx: SophosInferredCalcContext | null = null
+  let calcNativeSheet = 'Firewall'
+  let calcSheetRowNum = 29
+  let calcSheetColLetter = 'H'
+  let calcUnitMsrp = 0
+  let calcResellerDiscPct = 0
+  let calcUnitBuyCost = 0
+  let calcEvalAvailable = false
+
+  if (sophosCalcRefData.value?.engineRuntime) {
+    calcCtx = inferSophosCalculatorContext(sophosCalcRefData.value, sku, item)
+    const sum = evaluateSophosCalcSummaryFromCtx(sophosCalcRefData.value, calcCtx)
+    if (sum) {
+      calcNativeSheet = sum.sheetName || calcCtx.nativeSheet || 'Firewall'
+      calcSheetRowNum = sum.sheetRowNum || 29
+      calcSheetColLetter = sum.sheetColLetter || 'H'
+      calcEvalAvailable = Boolean(sum.available)
+      calcUnitMsrp = sum.unitMsrp || 0
+      calcResellerDiscPct = sum.resellerDiscPct || 0
+      calcUnitBuyCost = sum.unitBuyCost || 0
+      if (sum.available && sum.sku && sum.sku !== 'Not Available') {
+        if (!sku || (!calcMap[sku] && calcMap[sum.sku])) {
+          sku = String(sum.sku).trim().toUpperCase()
+        }
+      }
+    }
+  }
+
+  const calcEntry =
+    sku && calcMap[sku]
+      ? calcMap[sku]
+      : sku === 'CFRAAB12ZZCAA'
+        ? calcMap['CFRAAB12BANCAA']
+        : null
+  const calcFound = Boolean(calcEntry || calcEvalAvailable)
+  const calcMsrp = calcEntry ? Number(calcEntry.msrp) || 0 : calcUnitMsrp
+  const calcVersion =
+    sophosCalcRefData.value?.version || vendorRefFilesMeta.value?.sophos?.calc_version || ''
 
   const gocEntry =
     sku && gocMap[sku]
@@ -6212,6 +6494,18 @@ const resolveSophosCardCompare = async (rawItem: any) => {
     vendor: 'sophos' as const,
     item,
     sku,
+    band: itemVolRange ? `${itemVolRange.min}-${itemVolRange.max}` : String(item.volume || ''),
+    calcFound,
+    calcEntry,
+    calcMsrp,
+    calcUnitMsrp: calcMsrp,
+    calcResellerDiscPct,
+    calcUnitBuyCost,
+    calcNativeSheet,
+    calcSheetRowNum,
+    calcSheetColLetter,
+    calcVersion,
+    calcCtx,
     gocFound,
     gocEntry,
     gocMsrp,
@@ -6602,7 +6896,7 @@ const ensureVendorExcelUrlOnCloudinary = async (
 
 const getVendorOfficeActiveCellParam = ({
   vendor = '' as RefVendorType | '',
-  role = 'goc',
+  role = 'goc' as 'calc' | 'goc' | 'tg' | 'mau',
   sheet = '',
   rowNum = 1,
   colLetter = 'B',
@@ -6613,7 +6907,36 @@ const getVendorOfficeActiveCellParam = ({
   let cleanCol = String(colLetter || 'B').trim().toUpperCase()
   const cleanSku = String(sku || '').trim().toUpperCase()
 
-  if (vendor === 'sophos' && role !== 'tg') {
+  if (vendor === 'sophos' && role === 'calc') {
+    if (!targetSheet || targetSheet === 'MSRPs&BuyCost') {
+      if (sophosCalcRefData.value?.engineRuntime && cleanSku) {
+        const ctx = inferSophosCalculatorContext(sophosCalcRefData.value, cleanSku)
+        const prefSheet = ctx.nativeSheet || 'Firewall'
+        const sheetObj = sophosCalcRefData.value.sheets?.find((s: any) => s.name === prefSheet)
+        if (sheetObj?.aoa) {
+          const ov = overlayCalculatedSheetAoa(
+            prefSheet,
+            sheetObj.aoa,
+            sophosCalcRefData.value,
+            ctx
+          )
+          targetSheet = prefSheet
+          targetR = ov.targetRow || 29
+          cleanCol = ov.targetColLetter || 'H'
+        } else {
+          targetSheet = prefSheet
+          targetR = 29
+          cleanCol = 'H'
+        }
+      } else {
+        targetSheet = 'Firewall'
+        targetR = 29
+        cleanCol = 'H'
+      }
+    } else {
+      cleanCol = cleanCol || 'H'
+    }
+  } else if (vendor === 'sophos' && role !== 'tg') {
     if (targetSheet === 'HW_Compliance') {
       cleanCol = cleanCol || 'B'
     } else {
@@ -6648,13 +6971,137 @@ const getVendorOfficeActiveCellParam = ({
 
 const openCompareOfficePreview = async ({
   vendor = 'sophos' as RefVendorType,
-  role = 'goc' as 'goc' | 'tg' | 'mau',
+  role = 'goc' as 'calc' | 'goc' | 'tg' | 'mau',
   sheet = '',
   rowNum = 1,
   colLetter = 'B',
-  sku = ''
+  sku = '',
+  itemName = '',
+  calcCtx = null as SophosInferredCalcContext | null
 }) => {
-  const comparePart = role === 'tg' || role === 'mau' ? 'tg' : 'goc'
+  const comparePart = role === 'calc' ? 'calc' : role === 'tg' || role === 'mau' ? 'tg' : 'goc'
+  const cleanSku = String(sku || '').trim().toUpperCase()
+  const cleanCol = String(colLetter || (comparePart === 'calc' ? 'H' : 'B')).trim().toUpperCase()
+  const targetRow = Number(rowNum) || 1
+
+  if (vendor === 'sophos' && comparePart === 'calc') {
+    const calcMeta = getVendorCompareFileMeta('sophos', 'calc')
+    const displayFileName = calcMeta?.name || 'calculate_sophos.xlsx'
+    const win = window.open('about:blank', '_blank')
+    if (win && win.document) {
+      win.document.write(
+        `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Đang mở ViewOffice Calculator - ${displayFileName}</title></head><body style="margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:#0f172a;color:#e2e8f0;font-family:system-ui,sans-serif;"><div style="text-align:center;max-width:460px;padding:0 20px;"><div style="font-size:18px;font-weight:700;color:#38bdf8;margin-bottom:8px;">Đang tính toán mã SKU &amp; mở ViewOffice...</div><div style="font-size:13px;color:#94a3b8;line-height:1.5;">${displayFileName}${sheet ? ' • Sheet: ' + sheet : ''}${cleanSku ? ' • ' + cleanSku : ''}</div></div></body></html>`
+      )
+      win.document.close()
+    }
+
+    try {
+      if (!sophosCalcRefData.value?.engineRuntime) {
+        await loadSophosCalcRefData(!sophosCalcRefData.value ? false : true).catch(() => {})
+      }
+      if (!sophosCalcRefData.value?.engineRuntime) {
+        await loadSophosCalcRefData(true).catch(() => {})
+      }
+      if (!sophosCalcRefData.value?.engineRuntime) {
+        const latestCalcMeta = getVendorCompareFileMeta('sophos', 'calc')
+        const fallbackUrl = String(latestCalcMeta?.url || calcMeta?.url || '').trim()
+        if (fallbackUrl && !fallbackUrl.toLowerCase().endsWith('.json')) {
+          const activeCellParam = getVendorOfficeActiveCellParam({
+            vendor: 'sophos',
+            role: 'calc',
+            sheet: sheet || 'Firewall',
+            rowNum: targetRow,
+            colLetter: cleanCol,
+            sku: cleanSku
+          })
+          const viewUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(fallbackUrl)}&activeCell=${activeCellParam}`
+          if (win) win.location.href = viewUrl
+          else window.open(viewUrl, '_blank', 'noopener,noreferrer')
+          return
+        }
+        if (win) win.close()
+        triggerToast(
+          'Chưa có dữ liệu File Calculator của SOPHOS trên Cloudinary để đối chiếu!',
+          'warning'
+        )
+        return
+      }
+
+      const effectiveCtx =
+        calcCtx ||
+        inferSophosCalculatorContext(
+          sophosCalcRefData.value,
+          cleanSku,
+          itemName ? { Ten_hang: itemName } : undefined
+        )
+      const preferredSheet =
+        sheet && sheet !== 'MSRPs&BuyCost' ? sheet : effectiveCtx.nativeSheet || 'Firewall'
+      const cacheKey = JSON.stringify({
+        upd: vendorRefFilesMeta.value?.sophos?.calc_updated_at || sophosCalcRefData.value.updatedAt || 0,
+        ver: sophosCalcRefData.value.version || '',
+        sheet: preferredSheet,
+        sku: cleanSku,
+        ctx: effectiveCtx
+      })
+
+      let cached = sophosPopulatedViewOfficeCache.get(cacheKey)
+      if (!cached) {
+        const built = await buildPopulatedSophosCalcViewOfficeWorkbook(
+          sophosCalcRefData.value,
+          effectiveCtx,
+          { preferredSheet }
+        )
+        const safeToken = String(built.targetSku || cleanSku || preferredSheet)
+          .replace(/[^A-Za-z0-9_-]/g, '_')
+          .slice(0, 36)
+        const uploadUrl = await uploadRawBlobToCloudinary(
+          built.blob,
+          `sophos_calc_vo_${safeToken}.xlsx`
+        )
+        cached = {
+          url: uploadUrl,
+          targetSheet: built.targetSheet,
+          targetRow: built.targetRow,
+          targetColLetter: built.targetColLetter,
+          targetSku: built.targetSku
+        }
+        sophosPopulatedViewOfficeCache.set(cacheKey, cached)
+      }
+
+      const finalSku = String(cached.targetSku || cleanSku || '').trim().toUpperCase()
+      if (finalSku && finalSku !== 'NOT AVAILABLE') {
+        try {
+          await navigator.clipboard.writeText(finalSku)
+          triggerToast(
+            `Đã copy mã ${finalSku} — mở ViewOffice Calculator tại ${cached.targetSheet}!${cached.targetColLetter}${cached.targetRow}`,
+            'info'
+          )
+        } catch (_) {}
+      }
+
+      const activeCellParam = getVendorOfficeActiveCellParam({
+        vendor: 'sophos',
+        role: 'calc',
+        sheet: cached.targetSheet,
+        rowNum: cached.targetRow,
+        colLetter: cached.targetColLetter,
+        sku: finalSku
+      })
+      const viewUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(cached.url)}&activeCell=${activeCellParam}`
+      if (win) {
+        win.location.href = viewUrl
+      } else {
+        window.open(viewUrl, '_blank', 'noopener,noreferrer')
+      }
+      return
+    } catch (err) {
+      console.error('Lỗi mở ViewOffice Calculator Sophos:', err)
+      if (win) win.close()
+      triggerToast('Không thể mở ViewOffice Calculator lúc này, vui lòng thử lại!', 'error')
+      return
+    }
+  }
+
   const meta = getVendorCompareFileMeta(vendor, comparePart) || getVendorImportFileMeta(vendor)
   if (!meta || !meta.name) {
     triggerToast(
@@ -6664,14 +7111,9 @@ const openCompareOfficePreview = async ({
     return
   }
 
-  const cleanSku = String(sku || '').trim().toUpperCase()
-  const cleanCol = String(colLetter || 'B').trim().toUpperCase()
-  const targetRow = Number(rowNum) || 1
   if (cleanSku) {
-    try {
-      await navigator.clipboard.writeText(cleanSku)
-      triggerToast(`Đã copy mã ${cleanSku} — đang mở ViewOffice tại ô ${cleanCol}${targetRow}`, 'info')
-    } catch (_) {}
+    navigator.clipboard?.writeText(cleanSku).catch(() => {})
+    triggerToast(`Đã copy mã ${cleanSku} — đang mở ViewOffice tại ô ${cleanCol}${targetRow}`, 'info')
   }
 
   const rawUrl = String(meta.url || '').trim()
@@ -6717,7 +7159,7 @@ const openCompareOfficePreview = async ({
   }
 
   try {
-    const excelUrl = await ensureVendorExcelUrlOnCloudinary(vendor, role, meta)
+    const excelUrl = await ensureVendorExcelUrlOnCloudinary(vendor, role === 'calc' ? 'goc' : role, meta)
     const activeCellParam = getVendorOfficeActiveCellParam({
       vendor,
       role: comparePart,
@@ -6766,6 +7208,25 @@ const refCompareMenu = reactive<{
   band: string
   options: RefCompareOption[]
   errorMsg: string
+  targetRawItem: any
+  sophosData: any
+  calcConfigOpen: boolean
+  calcCfg: {
+    calcType: 'firewall' | 'product'
+    partnerLevel: string
+    sector: string
+    dealType: string
+    termHwBundle: string
+    termSubscription: string
+    qty: number
+    specialAttribute: string
+    model: string
+    targetFirewallRowKey: string
+    family: string
+    productLine: string
+    product: string
+    nativeSheet: string
+  }
 }>({
   open: false,
   loading: false,
@@ -6777,15 +7238,154 @@ const refCompareMenu = reactive<{
   sku: '',
   band: '',
   options: [],
-  errorMsg: ''
+  errorMsg: '',
+  targetRawItem: null,
+  sophosData: null,
+  calcConfigOpen: false,
+  calcCfg: {
+    calcType: 'firewall',
+    partnerLevel: 'Authorized',
+    sector: 'COM',
+    dealType: 'New',
+    termHwBundle: '12 mos',
+    termSubscription: '12 mos',
+    qty: 1,
+    specialAttribute: 'EU',
+    model: 'XGS 108',
+    targetFirewallRowKey: 'bundle_xstream',
+    family: 'Endpoint & Server',
+    productLine: 'Intercept X Endpoint',
+    product: 'Central Intercept X Advanced',
+    nativeSheet: 'Firewall'
+  }
 })
+
+const refComparePartnerOptions = computed<string[]>(() => {
+  const list = sophosCalcRefData.value?.engineRuntime?.dropDowns?.partnerLevels
+  return Array.isArray(list) && list.length
+    ? list
+    : ['Authorized', 'Silver', 'Gold', 'Platinum']
+})
+
+const refCompareSectorOptions = computed<string[]>(() => {
+  const list = sophosCalcRefData.value?.engineRuntime?.dropDowns?.sectors
+  return Array.isArray(list) && list.length ? list : ['COM', 'EDU', 'GOV', 'NPO', 'MKT']
+})
+
+const refCompareDealTypeOptions = computed<string[]>(() => {
+  const list = sophosCalcRefData.value?.engineRuntime?.dropDowns?.dealTypes
+  return Array.isArray(list) && list.length
+    ? list
+    : ['New', 'Renewal', 'Upgrade', 'Trade Up']
+})
+
+const refCompareTermOptions = computed<string[]>(() => {
+  const list = sophosCalcRefData.value?.engineRuntime?.dropDowns?.terms
+  return Array.isArray(list) && list.length
+    ? list
+    : ['12 mos', '24 mos', '36 mos', '48 mos', '60 mos']
+})
+
+const refCompareFirewallModels = computed<string[]>(() => {
+  const models = sophosCalcRefData.value?.engineRuntime?.firewall?.models
+  return Array.isArray(models) && models.length
+    ? models.map((m: any) => String(m.name || '')).filter(Boolean)
+    : ['XGS 88', 'XGS 108', 'XGS 118', 'XGS 128', 'XGS 138', 'XGS 2100', 'XGS 2300', 'XGS 3100']
+})
+
+const refComparePlugOptions = computed<string[]>(() => {
+  const list = sophosCalcRefData.value?.engineRuntime?.dropDowns?.firewallPlugs
+  return Array.isArray(list) && list.length
+    ? list
+    : ['No Power Cord', 'EU', 'UK', 'US', 'AUS', 'IND', 'JPN']
+})
+
+const syncRefCompareCalcCfgFromCtx = (ctx: SophosInferredCalcContext | null) => {
+  if (!ctx) return
+  refCompareMenu.calcCfg.calcType = ctx.calcType || 'firewall'
+  refCompareMenu.calcCfg.partnerLevel = ctx.partnerLevel || 'Authorized'
+  refCompareMenu.calcCfg.sector = ctx.sector || 'COM'
+  refCompareMenu.calcCfg.dealType = ctx.dealType || 'New'
+  refCompareMenu.calcCfg.termHwBundle = ctx.termHwBundle || '12 mos'
+  refCompareMenu.calcCfg.termSubscription = ctx.termSubscription || '12 mos'
+  refCompareMenu.calcCfg.qty = Math.max(1, Number(ctx.qty) || 1)
+  refCompareMenu.calcCfg.specialAttribute = ctx.specialAttribute || 'EU'
+  refCompareMenu.calcCfg.model = ctx.model || 'XGS 108'
+  refCompareMenu.calcCfg.targetFirewallRowKey = ctx.targetFirewallRowKey || 'bundle_xstream'
+  refCompareMenu.calcCfg.family = ctx.family || 'Endpoint & Server'
+  refCompareMenu.calcCfg.productLine = ctx.productLine || 'Intercept X Endpoint'
+  refCompareMenu.calcCfg.product = ctx.product || 'Central Intercept X Advanced'
+  refCompareMenu.calcCfg.nativeSheet = ctx.nativeSheet || 'Firewall'
+}
+
+const toggleRefCompareCalcConfig = () => {
+  refCompareMenu.calcConfigOpen = !refCompareMenu.calcConfigOpen
+  nextTick(() => updateRefComparePopoverPosition())
+}
+
+const refreshSophosRefCompareCalcOption = () => {
+  if (
+    refCompareMenu.vendor !== 'sophos' ||
+    !sophosCalcRefData.value?.engineRuntime ||
+    !refCompareMenu.sophosData
+  ) {
+    return
+  }
+  const cfg = refCompareMenu.calcCfg
+  const nextCtx: SophosInferredCalcContext = {
+    calcType: cfg.calcType,
+    partnerLevel: cfg.partnerLevel,
+    sector: cfg.sector,
+    dealType: cfg.dealType,
+    termHwBundle: cfg.termHwBundle,
+    termSubscription: cfg.calcType === 'firewall' ? cfg.termHwBundle : cfg.termSubscription,
+    qty: Math.max(1, Math.round(Number(cfg.qty) || 1)),
+    specialAttribute: cfg.specialAttribute,
+    model: cfg.model,
+    targetFirewallRowKey: cfg.targetFirewallRowKey,
+    family: cfg.family,
+    productLine: cfg.productLine,
+    product: cfg.product,
+    sku: '',
+    nativeSheet: cfg.nativeSheet || 'Firewall'
+  }
+
+  const sum = evaluateSophosCalcSummaryFromCtx(sophosCalcRefData.value, nextCtx)
+  if (sum) {
+    const resolvedSku =
+      sum.available && sum.sku && sum.sku !== 'Not Available'
+        ? String(sum.sku).trim().toUpperCase()
+        : ''
+    nextCtx.sku = resolvedSku
+    nextCtx.nativeSheet = sum.sheetName || nextCtx.nativeSheet
+    const updatedData = {
+      ...refCompareMenu.sophosData,
+      sku: resolvedSku || refCompareMenu.sophosData.sku,
+      calcFound: Boolean(sum.available),
+      calcMsrp: sum.unitMsrp || 0,
+      calcUnitMsrp: sum.unitMsrp || 0,
+      calcResellerDiscPct: sum.resellerDiscPct || 0,
+      calcUnitBuyCost: sum.unitBuyCost || 0,
+      calcNativeSheet: sum.sheetName || nextCtx.nativeSheet || 'Firewall',
+      calcSheetRowNum: sum.sheetRowNum || 29,
+      calcSheetColLetter: sum.sheetColLetter || 'H',
+      calcCtx: nextCtx
+    }
+    refCompareMenu.sophosData = updatedData
+    if (resolvedSku) {
+      refCompareMenu.sku = resolvedSku
+    }
+    refCompareMenu.options = buildRefCompareOptionsForVendor('sophos', updatedData)
+    nextTick(() => updateRefComparePopoverPosition())
+  }
+}
 
 const updateRefComparePopoverPosition = () => {
   if (typeof window === 'undefined' || !lastRefCompareAnchorRect) return
   const rect = lastRefCompareAnchorRect
   const popEl = refComparePopoverEl.value
-  const popW = popEl?.offsetWidth || Math.min(420, window.innerWidth - 20)
-  const popH = popEl?.offsetHeight || (refCompareMenu.loading ? 190 : 340)
+  const popW = popEl?.offsetWidth || Math.min(440, window.innerWidth - 20)
+  const popH = popEl?.offsetHeight || (refCompareMenu.loading ? 190 : 380)
   const margin = 12
 
   refCompareMenu.left = Math.min(
@@ -6809,11 +7409,47 @@ const buildRefCompareOptionsForVendor = (vendor: RefVendorType, data: any): RefC
   const opts: RefCompareOption[] = []
 
   if (vendor === 'sophos') {
+    const calcMeta = getVendorCompareFileMeta('sophos', 'calc')
     const gocMeta = getVendorCompareFileMeta('sophos', 'goc') || getVendorImportFileMeta('sophos')
     const tgMeta = getVendorCompareFileMeta('sophos', 'tg')
+    const calcFileName = calcMeta?.name || 'calculate_sophos.xlsx'
     const gocFileName =
       gocMeta?.name || 'sophos-pricelist-reseller_SKU_list-asean-usd-2026-3.0.xlsb'
     const tgFileName = tgMeta?.name || 'file_trung_gian_SOPHOS.xlsx'
+
+    if (sophosCalcRefData.value || calcMeta?.name) {
+      const cSheet = String(data.calcNativeSheet || 'Firewall')
+      const cRow = Number(data.calcSheetRowNum) || 29
+      const cCol = String(data.calcSheetColLetter || 'H').toUpperCase()
+      const unitMsrp = Number(data.calcUnitMsrp ?? data.calcMsrp) || 0
+      const discPct = Number(data.calcResellerDiscPct) || 0
+      const buyCost = Number(data.calcUnitBuyCost) || 0
+      const cleanVer = String(data.calcVersion || '').trim()
+      const verTag = cleanVer ? (cleanVer.startsWith('v') ? cleanVer : `v${cleanVer}`) : ''
+      const discRounded = Math.round(discPct * 100) / 100
+
+      opts.push({
+        id: 'sophos-calc-main',
+        vendor: 'sophos',
+        role: 'calc',
+        roleBadge: 'FILE CALCULATOR',
+        versionTag: verTag,
+        fileName: calcFileName,
+        sheet: cSheet,
+        rowNum: cRow,
+        colLetter: cCol,
+        cellRef: `${cCol}${cRow}`,
+        sku: data.sku || '',
+        priceText: formatRefUsdPrice(unitMsrp),
+        subNote: data.calcFound
+          ? `Dòng #${cRow} • Cột ${cCol} (SKU)${discRounded > 0 && buyCost > 0 ? ` • Off ${discRounded}% → Vốn ${formatRefUsdPrice(buyCost)}` : ''}`
+          : 'Chưa khớp tự động — bấm để mở Calculator & tra cứu',
+        unitMsrpUsd: unitMsrp,
+        resellerDiscPct: discRounded,
+        unitBuyCostUsd: buyCost,
+        calcCtx: data.calcCtx || null
+      })
+    }
 
     const skuRow = data.skuListRowNum || data.gocRowNum || data.gocFirewallRowNum || 8
     opts.push({
@@ -7042,8 +7678,8 @@ const openRefCompareMenu = async (e: MouseEvent, rawItem: any) => {
       bottom: rect.bottom,
       left: rect.left
     }
-    const menuW = Math.min(420, window.innerWidth - 20)
-    const estH = 190
+    const menuW = Math.min(440, window.innerWidth - 20)
+    const estH = 220
     left = Math.min(Math.max(10, rect.left), Math.max(10, window.innerWidth - menuW - 12))
     if (rect.bottom + estH + 12 <= window.innerHeight) {
       top = Math.max(12, rect.bottom + 6)
@@ -7067,6 +7703,9 @@ const openRefCompareMenu = async (e: MouseEvent, rawItem: any) => {
   refCompareMenu.band = String(enriched.volume || '')
   refCompareMenu.options = []
   refCompareMenu.errorMsg = ''
+  refCompareMenu.targetRawItem = rawItem
+  refCompareMenu.sophosData = null
+  refCompareMenu.calcConfigOpen = false
   refCompareMenu.loading = true
   refCompareMenu.open = true
 
@@ -7074,10 +7713,14 @@ const openRefCompareMenu = async (e: MouseEvent, rawItem: any) => {
   updateRefComparePopoverPosition()
 
   try {
-    await fetchVendorRefFilesMeta()
+    await fetchVendorRefFilesMeta(true)
     let data: any = null
     if (vendor === 'sophos') {
       data = await resolveSophosCardCompare(enriched)
+      refCompareMenu.sophosData = data
+      if (data?.calcCtx) {
+        syncRefCompareCalcCfgFromCtx(data.calcCtx)
+      }
     } else if (vendor === 'kaspersky') {
       data = await resolveKasperskyCardCompare(enriched)
     } else if (vendor === 'acronis') {
@@ -7101,6 +7744,7 @@ const openRefCompareMenu = async (e: MouseEvent, rawItem: any) => {
 }
 
 const selectRefCompareOption = async (opt: RefCompareOption) => {
+  const itemName = refCompareMenu.itemName
   refCompareMenu.open = false
   await openCompareOfficePreview({
     vendor: opt.vendor,
@@ -7108,8 +7752,173 @@ const selectRefCompareOption = async (opt: RefCompareOption) => {
     sheet: opt.sheet,
     rowNum: opt.rowNum,
     colLetter: opt.colLetter,
-    sku: opt.sku
+    sku: opt.sku,
+    itemName,
+    calcCtx: opt.calcCtx || null
   })
+}
+
+const openSophosStandaloneSheetFromOption = (opt: RefCompareOption) => {
+  const cleanSku = String(opt.sku || '').trim().toUpperCase()
+  const activeItemName = refCompareMenu.itemName
+  const activeCalcCtx = opt.calcCtx || refCompareMenu.sophosData?.calcCtx || null
+
+  try {
+    localStorage.setItem(
+      'sophos_excel_viewer_context',
+      JSON.stringify({
+        settings: activeCalcCtx
+          ? {
+              partnerLevel: activeCalcCtx.partnerLevel,
+              sector: activeCalcCtx.sector,
+              dealType: activeCalcCtx.dealType,
+              termHwBundle: activeCalcCtx.termHwBundle,
+              termSubscription: activeCalcCtx.termSubscription,
+              qty: activeCalcCtx.qty,
+              specialAttribute: activeCalcCtx.specialAttribute,
+              model: activeCalcCtx.model
+            }
+          : {},
+        rows: [],
+        calcContext: activeCalcCtx
+      })
+    )
+  } catch (_) {}
+
+  const params = new URLSearchParams()
+  params.set(
+    'file',
+    opt.role === 'calc'
+      ? 'calc'
+      : opt.role === 'tg'
+        ? 'tg'
+        : opt.sheet === 'SKU_Tab' || opt.sheet === 'HW_Compliance'
+          ? 'skulist'
+          : 'goc'
+  )
+  if (opt.sheet) params.set('sheet', opt.sheet)
+  if (opt.rowNum) params.set('row', String(opt.rowNum))
+  if (opt.colLetter) params.set('col', opt.colLetter)
+  if (cleanSku && cleanSku !== 'NOT AVAILABLE') params.set('sku', cleanSku)
+  if (activeItemName) params.set('name', activeItemName)
+
+  const viewerUrl = `/template_excel/sophos_excel_viewer.html?${params.toString()}`
+  refCompareMenu.open = false
+
+  // Gọi window.open đồng bộ ngay trong sự kiện chạm/click để trình duyệt Mobile (Safari iOS / Chrome) không chặn popup
+  const openedWin = window.open(viewerUrl, '_blank')
+  if (!openedWin) {
+    window.location.href = viewerUrl
+  }
+
+  if (cleanSku && cleanSku !== 'NOT AVAILABLE') {
+    navigator.clipboard?.writeText(cleanSku).catch(() => {})
+  }
+}
+
+const applyCalcMsrpToTargetListPrice = (opt: RefCompareOption) => {
+  const unitMsrp = Number(opt.unitMsrpUsd) || 0
+  if (unitMsrp <= 0) {
+    triggerToast('Chưa có đơn giá List Price hợp lệ từ Calculator để áp dụng!', 'warning')
+    return
+  }
+
+  const cleanSku =
+    opt.sku && String(opt.sku).trim().toUpperCase() !== 'NOT AVAILABLE'
+      ? String(opt.sku).trim().toUpperCase()
+      : ''
+  const target = refCompareMenu.targetRawItem
+
+  if (adjustPriceModal.value.show && adjustMetricType.value === 'list_price' && quoteEdit.value) {
+    const isUsd = String(quoteEdit.value.Don_vi_tien_te || '').trim().toUpperCase() === 'USD'
+    const tgContract = toNum(quoteEdit.value.Ti_gia, 1) > 1 ? toNum(quoteEdit.value.Ti_gia, 1) : 26000
+    const tgGoc =
+      getGocNumber(quoteEdit.value, '_Ti_gia_goc', tgContract) > 1
+        ? getGocNumber(quoteEdit.value, '_Ti_gia_goc', tgContract)
+        : tgContract
+    const tgKho =
+      getGocNumber(quoteEdit.value, '_Ti_gia_kho', tgGoc) > 1
+        ? getGocNumber(quoteEdit.value, '_Ti_gia_kho', tgGoc)
+        : tgGoc
+    const effRate = isUsd ? (adjustPriceModal.value.isNormalEdit ? tgKho : tgContract) : 26000
+    const nextVnd = Math.round(unitMsrp * effRate)
+    adjustPriceModal.value.isResetToCustomerPrice = false
+    adjustPriceModal.value.adjustType = 'number'
+    adjustPriceModal.value.numberSign = 1
+    adjustPriceModal.value.numberValue = nextVnd
+    if (cleanSku && !String(quoteEdit.value.sku_code || '').trim()) {
+      quoteEdit.value.sku_code = cleanSku
+    }
+    refCompareMenu.open = false
+    triggerToast(
+      `Đã điền List Price ${formatRefUsdPrice(unitMsrp)} (≈ ${formatVND(nextVnd)} ₫) vào hộp Sửa giá!`,
+      'success'
+    )
+    return
+  }
+
+  if (quoteEdit.value && target === quoteEdit.value) {
+    const cur = String(quoteEdit.value.Don_vi_tien_te || '').trim().toUpperCase()
+    if (cur === 'USD') {
+      if (toNum(quoteEdit.value.Ti_gia, 1) <= 1) {
+        quoteEdit.value.Ti_gia = 26000
+      }
+      quoteEditDonGiaUsdModel.value = round2(unitMsrp)
+    } else {
+      const effRate = toNum(quoteEdit.value.Ti_gia, 1) > 1 ? toNum(quoteEdit.value.Ti_gia, 1) : 26000
+      const vndVal = Math.round(unitMsrp * effRate)
+      quoteEdit.value._Don_gia_kho = vndVal
+      quoteEdit.value._Don_gia_goc = vndVal
+      quoteEdit.value.Don_gia = vndVal
+      _adjustedFields.add('Don_gia')
+    }
+    if (cleanSku) quoteEdit.value.sku_code = cleanSku
+  } else if (quoteEditRaw.value && target === quoteEditRaw.value) {
+    const cur = String(quoteEditRaw.value.Don_vi_tien_te || '').trim().toUpperCase()
+    if (cur === 'USD') {
+      quoteEditRaw.value._Don_gia_goc = round2(unitMsrp)
+    } else {
+      const effRate =
+        toNum(quoteEditRaw.value._Ti_gia_goc, 1) > 1
+          ? toNum(quoteEditRaw.value._Ti_gia_goc, 1)
+          : 26000
+      quoteEditRaw.value._Don_gia_goc = Math.round(unitMsrp * effRate)
+    }
+    if (cleanSku) (quoteEditRaw.value as any).sku_code = cleanSku
+  } else if (itemForm.value && target === itemForm.value) {
+    const cur = String(itemForm.value.Don_vi_tien_te || '').trim().toUpperCase()
+    if (cur !== 'USD') {
+      itemForm.value.Don_vi_tien_te = 'USD'
+      if (toNum(itemForm.value.Ti_gia, 1) <= 1) {
+        itemForm.value.Ti_gia = 26000
+      }
+    }
+    itemForm.value.Don_gia = round2(unitMsrp)
+    if (cleanSku) itemForm.value.sku_code = cleanSku
+    onTargetDonGiaInput(itemForm.value, manualCostMarkup)
+  } else if (cardEdit.value && target === cardEdit.value) {
+    const cur = String(cardEdit.value.Don_vi_tien_te || '').trim().toUpperCase()
+    if (cur !== 'USD') {
+      cardEdit.value.Don_vi_tien_te = 'USD'
+      if (toNum(cardEdit.value.Ti_gia, 1) <= 1) {
+        cardEdit.value.Ti_gia = 26000
+      }
+    }
+    cardEdit.value.Don_gia = round2(unitMsrp)
+    if (cleanSku) cardEdit.value.sku_code = cleanSku
+    onTargetDonGiaInput(cardEdit.value, cardCostMarkup)
+  } else if (target) {
+    const cur = String(target.Don_vi_tien_te || '').trim().toUpperCase()
+    const effRate = toNum(target.Ti_gia, 1) > 1 ? toNum(target.Ti_gia, 1) : 26000
+    target.Don_gia = cur === 'USD' ? round2(unitMsrp) : Math.round(unitMsrp * effRate)
+    if (cleanSku) target.sku_code = cleanSku
+  }
+
+  refCompareMenu.open = false
+  triggerToast(
+    `Đã áp List Price ${formatRefUsdPrice(unitMsrp)}${cleanSku ? ' (' + cleanSku + ')' : ''} từ File Calculator!`,
+    'success'
+  )
 }
 
 function unitPrice(i: any) {
@@ -35111,10 +35920,90 @@ onUnmounted(() => {
           </div>
 
           <div class="ref-compare-popover-sub">
-            <div v-if="refCompareMenu.sku || refCompareMenu.band" class="ref-compare-meta-tags">
+            <div
+              v-if="refCompareMenu.sku || refCompareMenu.band || (refCompareMenu.vendor === 'sophos' && sophosCalcRefData?.engineRuntime)"
+              class="ref-compare-meta-tags"
+            >
               <span v-if="refCompareMenu.sku" class="ref-compare-meta-code">SKU: {{ refCompareMenu.sku }}</span>
               <span v-if="refCompareMenu.band" class="ref-compare-meta-band">{{ refCompareMenu.band }}</span>
+              <button
+                v-if="refCompareMenu.vendor === 'sophos' && sophosCalcRefData?.engineRuntime && !refCompareMenu.loading"
+                type="button"
+                class="ref-compare-cfg-toggle"
+                :class="{ active: refCompareMenu.calcConfigOpen }"
+                @click.stop="toggleRefCompareCalcConfig()"
+              >
+                <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+                <span>Cấu hình Calc</span>
+              </button>
             </div>
+
+            <div
+              v-if="refCompareMenu.vendor === 'sophos' && refCompareMenu.calcConfigOpen && sophosCalcRefData?.engineRuntime"
+              class="ref-compare-calc-cfg"
+              @click.stop
+            >
+              <div class="ref-compare-cfg-field">
+                <label>Partner Level</label>
+                <select v-model="refCompareMenu.calcCfg.partnerLevel" @change="refreshSophosRefCompareCalcOption()">
+                  <option v-for="p in refComparePartnerOptions" :key="p" :value="p">{{ p }}</option>
+                </select>
+              </div>
+              <div class="ref-compare-cfg-field">
+                <label>Deal Type</label>
+                <select v-model="refCompareMenu.calcCfg.dealType" @change="refreshSophosRefCompareCalcOption()">
+                  <option v-for="d in refCompareDealTypeOptions" :key="d" :value="d">{{ d }}</option>
+                </select>
+              </div>
+              <div class="ref-compare-cfg-field">
+                <label>Sector</label>
+                <select v-model="refCompareMenu.calcCfg.sector" @change="refreshSophosRefCompareCalcOption()">
+                  <option v-for="s in refCompareSectorOptions" :key="s" :value="s">{{ s }}</option>
+                </select>
+              </div>
+              <div class="ref-compare-cfg-field">
+                <label>Term</label>
+                <select
+                  v-if="refCompareMenu.calcCfg.calcType === 'firewall'"
+                  v-model="refCompareMenu.calcCfg.termHwBundle"
+                  @change="refreshSophosRefCompareCalcOption()"
+                >
+                  <option v-for="t in refCompareTermOptions" :key="t" :value="t">{{ t }}</option>
+                </select>
+                <select
+                  v-else
+                  v-model="refCompareMenu.calcCfg.termSubscription"
+                  @change="refreshSophosRefCompareCalcOption()"
+                >
+                  <option v-for="t in refCompareTermOptions" :key="t" :value="t">{{ t }}</option>
+                </select>
+              </div>
+              <div class="ref-compare-cfg-field">
+                <label>Số lượng (Qty)</label>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  v-model.number="refCompareMenu.calcCfg.qty"
+                  @change="refreshSophosRefCompareCalcOption()"
+                />
+              </div>
+              <div v-if="refCompareMenu.calcCfg.calcType === 'firewall'" class="ref-compare-cfg-field">
+                <label>Model / Plug</label>
+                <div class="ref-compare-cfg-inline">
+                  <select v-model="refCompareMenu.calcCfg.model" @change="refreshSophosRefCompareCalcOption()">
+                    <option v-for="m in refCompareFirewallModels" :key="m" :value="m">{{ m }}</option>
+                  </select>
+                  <select v-model="refCompareMenu.calcCfg.specialAttribute" @change="refreshSophosRefCompareCalcOption()">
+                    <option v-for="pl in refComparePlugOptions" :key="pl" :value="pl">{{ pl }}</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
             <div class="ref-compare-hint">Chọn file bên dưới để mở Microsoft ViewOffice và nhảy thẳng tới đúng ô dữ liệu:</div>
           </div>
 
@@ -35140,7 +36029,16 @@ onUnmounted(() => {
               @keydown.space.prevent="selectRefCompareOption(opt)"
             >
               <span class="ref-compare-opt-icon" :class="'role-' + opt.role">
-                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <svg v-if="opt.role === 'calc'" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="4" y="2" width="16" height="20" rx="2"></rect>
+                  <line x1="8" y1="6" x2="16" y2="6"></line>
+                  <line x1="8" y1="10" x2="10" y2="10"></line>
+                  <line x1="14" y1="10" x2="16" y2="10"></line>
+                  <line x1="8" y1="14" x2="10" y2="14"></line>
+                  <line x1="14" y1="14" x2="16" y2="14"></line>
+                  <line x1="8" y1="18" x2="16" y2="18"></line>
+                </svg>
+                <svg v-else viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                   <polyline points="14 2 14 8 20 8"></polyline>
                   <line x1="8" y1="13" x2="16" y2="13"></line>
@@ -35149,7 +36047,10 @@ onUnmounted(() => {
               </span>
               <div class="ref-compare-opt-body">
                 <div class="ref-compare-opt-top">
-                  <span class="ref-compare-role-tag" :class="'role-' + opt.role">{{ opt.roleBadge }}</span>
+                  <div class="ref-compare-role-group">
+                    <span class="ref-compare-role-tag" :class="'role-' + opt.role">{{ opt.roleBadge }}</span>
+                    <span v-if="opt.versionTag" class="ref-compare-ver-tag">{{ opt.versionTag }}</span>
+                  </div>
                   <span v-if="opt.priceText" class="ref-compare-price-badge">{{ opt.priceText }}</span>
                 </div>
                 <strong class="ref-compare-file-name" :title="opt.fileName">{{ opt.fileName }}</strong>
@@ -35159,6 +36060,33 @@ onUnmounted(() => {
                   <span>Ô <b>{{ opt.cellRef }}</b></span>
                 </div>
                 <div v-if="opt.subNote" class="ref-compare-subnote">{{ opt.subNote }}</div>
+                <div v-if="opt.vendor === 'sophos'" class="ref-compare-opt-actions" @click.stop>
+                  <button
+                    type="button"
+                    class="ref-compare-mini-btn is-sheet"
+                    @click.stop="openSophosStandaloneSheetFromOption(opt)"
+                    title="Mở bảng tính Sophos trực tiếp trên trình duyệt"
+                  >
+                    <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                      <line x1="3" y1="9" x2="21" y2="9"></line>
+                      <line x1="9" y1="21" x2="9" y2="9"></line>
+                    </svg>
+                    <span>Bảng Sheet</span>
+                  </button>
+                  <button
+                    v-if="opt.role === 'calc' && opt.unitMsrpUsd && opt.unitMsrpUsd > 0 && refCompareMenu.targetRawItem"
+                    type="button"
+                    class="ref-compare-mini-btn is-apply"
+                    @click.stop="applyCalcMsrpToTargetListPrice(opt)"
+                    title="Áp dụng đơn giá List Price từ Calculator vào dòng hàng đang mở"
+                  >
+                    <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    <span>Áp List Price</span>
+                  </button>
+                </div>
               </div>
               <span class="ref-compare-opt-arrow" aria-hidden="true">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -37846,7 +38774,24 @@ onUnmounted(() => {
           <div class="adj-compare-card">
             <div class="adj-compare-scope">
               <span class="adj-scope-label">Phạm vi áp dụng</span>
-              <span class="adj-scope-name">{{ adjustScopeDisplayName }}</span>
+              <span style="display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end;">
+                <span class="adj-scope-name">{{ adjustScopeDisplayName }}</span>
+                <button
+                  v-if="adjustMetricType === 'list_price' && adjustPriceModal.mode === 'field' && quoteEdit && getCardVendorType(quoteEdit)"
+                  type="button"
+                  class="ref-compare-chip-btn"
+                  :class="'is-' + getCardVendorType(quoteEdit)"
+                  @click.stop="openRefCompareMenu($event, quoteEdit)"
+                  title="Đối chiếu List Price với file hãng / Calculator"
+                >
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="9" y1="15" x2="15" y2="15"></line>
+                  </svg>
+                  <span>Đối chiếu</span>
+                </button>
+              </span>
             </div>
 
             <div class="adj-compare-prices">
@@ -66887,7 +67832,7 @@ button.ref-compare-chip-btn.is-acronis:hover {
 
 .ref-compare-popover {
   position: fixed !important;
-  width: min(420px, calc(100vw - 20px)) !important;
+  width: min(440px, calc(100vw - 20px)) !important;
   max-height: calc(100vh - 24px) !important;
   max-height: calc(100dvh - 24px) !important;
   display: flex !important;
@@ -67367,6 +68312,296 @@ button.ref-compare-opt:hover .ref-compare-opt-arrow {
 
 .ref-compare-backdrop.is-light .ref-compare-subnote {
   color: #64748b !important;
+}
+
+/* Sophos Calculator Option & Live Config Panel (Dark Navy + Light Mode) */
+button.ref-compare-cfg-toggle {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  width: auto !important;
+  min-width: max-content !important;
+  height: 21px !important;
+  min-height: 21px !important;
+  padding: 0 7px !important;
+  margin: 0 0 0 auto !important;
+  border-radius: 5px !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+  background: rgba(14, 165, 233, 0.14) !important;
+  border: 1px solid rgba(56, 189, 248, 0.36) !important;
+  color: #38bdf8 !important;
+  box-shadow: none !important;
+  transition: all 0.15s ease !important;
+}
+
+button.ref-compare-cfg-toggle:hover,
+button.ref-compare-cfg-toggle.active {
+  background: rgba(14, 165, 233, 0.26) !important;
+  border-color: #38bdf8 !important;
+  color: #e0f2fe !important;
+}
+
+.ref-compare-calc-cfg {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 6px 8px !important;
+  padding: 8px 9px !important;
+  margin: 2px 0 !important;
+  border-radius: 9px !important;
+  background: rgba(15, 23, 42, 0.85) !important;
+  border: 1px solid rgba(56, 189, 248, 0.26) !important;
+}
+
+.ref-compare-cfg-field {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 3px !important;
+  min-width: 0 !important;
+}
+
+.ref-compare-cfg-field label {
+  font-size: 9.5px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.03em !important;
+  color: #94a3b8 !important;
+  margin: 0 !important;
+  line-height: 1.2 !important;
+}
+
+.ref-compare-cfg-inline {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.9fr) !important;
+  gap: 4px !important;
+}
+
+.ref-compare-calc-cfg select,
+.ref-compare-calc-cfg input {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 27px !important;
+  min-height: 27px !important;
+  padding: 0 6px !important;
+  margin: 0 !important;
+  border-radius: 6px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  font-variant-numeric: tabular-nums !important;
+  background: #1e293b !important;
+  border: 1px solid rgba(148, 163, 184, 0.28) !important;
+  color: #f8fafc !important;
+  box-shadow: none !important;
+  box-sizing: border-box !important;
+}
+
+.ref-compare-calc-cfg select:focus,
+.ref-compare-calc-cfg input:focus {
+  outline: none !important;
+  border-color: #38bdf8 !important;
+}
+
+.ref-compare-opt.role-calc,
+button.ref-compare-opt.role-calc {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.14) 0%, rgba(30, 41, 59, 0.88) 100%) !important;
+  border-color: rgba(56, 189, 248, 0.45) !important;
+  border-left: 3px solid #38bdf8 !important;
+}
+
+.ref-compare-opt.role-calc:hover,
+button.ref-compare-opt.role-calc:hover {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.24) 0%, rgba(30, 58, 138, 0.42) 100%) !important;
+  border-color: #38bdf8 !important;
+}
+
+.ref-compare-opt-icon.role-calc {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 3px 8px rgba(2, 132, 199, 0.28) !important;
+}
+
+.ref-compare-role-group {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  flex-wrap: wrap !important;
+}
+
+.ref-compare-role-tag.role-calc {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+  color: #ffffff !important;
+}
+
+.ref-compare-ver-tag {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-size: 9.5px !important;
+  font-weight: 700 !important;
+  font-variant-numeric: tabular-nums !important;
+  padding: 1px 5px !important;
+  border-radius: 4px !important;
+  background: rgba(56, 189, 248, 0.14) !important;
+  border: 1px solid rgba(56, 189, 248, 0.32) !important;
+  color: #7dd3fc !important;
+  white-space: nowrap !important;
+}
+
+.ref-compare-opt-actions {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+  margin-top: 4px !important;
+}
+
+button.ref-compare-mini-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  width: auto !important;
+  min-width: max-content !important;
+  height: 23px !important;
+  min-height: 23px !important;
+  padding: 0 8px !important;
+  margin: 0 !important;
+  border-radius: 6px !important;
+  font-size: 10.5px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+  box-shadow: none !important;
+  transition: all 0.14s ease !important;
+}
+
+button.ref-compare-mini-btn.is-sheet {
+  background: rgba(56, 189, 248, 0.14) !important;
+  border: 1px solid rgba(56, 189, 248, 0.38) !important;
+  color: #7dd3fc !important;
+}
+
+button.ref-compare-mini-btn.is-sheet:hover {
+  background: rgba(56, 189, 248, 0.26) !important;
+  border-color: #38bdf8 !important;
+  color: #f0f9ff !important;
+}
+
+button.ref-compare-mini-btn.is-apply {
+  background: rgba(16, 185, 129, 0.16) !important;
+  border: 1px solid rgba(16, 185, 129, 0.42) !important;
+  color: #34d399 !important;
+}
+
+button.ref-compare-mini-btn.is-apply:hover {
+  background: rgba(16, 185, 129, 0.28) !important;
+  border-color: #10b981 !important;
+  color: #ecfdf5 !important;
+}
+
+/* Light Mode overrides cho Sophos Calculator */
+.ref-compare-backdrop.is-light button.ref-compare-cfg-toggle {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+  color: #0369a1 !important;
+}
+
+.ref-compare-backdrop.is-light button.ref-compare-cfg-toggle:hover,
+.ref-compare-backdrop.is-light button.ref-compare-cfg-toggle.active {
+  background: #dbeafe !important;
+  border-color: #0284c7 !important;
+  color: #075985 !important;
+}
+
+.ref-compare-backdrop.is-light .ref-compare-calc-cfg {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+
+.ref-compare-backdrop.is-light .ref-compare-cfg-field label {
+  color: #475569 !important;
+}
+
+.ref-compare-backdrop.is-light .ref-compare-calc-cfg select,
+.ref-compare-backdrop.is-light .ref-compare-calc-cfg input {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+.ref-compare-backdrop.is-light .ref-compare-calc-cfg select:focus,
+.ref-compare-backdrop.is-light .ref-compare-calc-cfg input:focus {
+  border-color: #0284c7 !important;
+}
+
+.ref-compare-backdrop.is-light .ref-compare-opt.role-calc,
+.ref-compare-backdrop.is-light button.ref-compare-opt.role-calc {
+  background: linear-gradient(135deg, #f0f9ff 0%, #f8fafc 100%) !important;
+  border-color: #7dd3fc !important;
+  border-left: 3px solid #0284c7 !important;
+}
+
+.ref-compare-backdrop.is-light .ref-compare-opt.role-calc:hover,
+.ref-compare-backdrop.is-light button.ref-compare-opt.role-calc:hover {
+  background: #e0f2fe !important;
+  border-color: #0284c7 !important;
+}
+
+.ref-compare-backdrop.is-light .ref-compare-opt-icon.role-calc {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+  color: #ffffff !important;
+}
+
+.ref-compare-backdrop.is-light .ref-compare-role-tag.role-calc {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+  color: #ffffff !important;
+}
+
+.ref-compare-backdrop.is-light .ref-compare-ver-tag {
+  background: #e0f2fe !important;
+  border-color: #7dd3fc !important;
+  color: #0369a1 !important;
+}
+
+.ref-compare-backdrop.is-light button.ref-compare-mini-btn.is-sheet {
+  background: #ffffff !important;
+  border-color: #7dd3fc !important;
+  color: #0369a1 !important;
+}
+
+.ref-compare-backdrop.is-light button.ref-compare-mini-btn.is-sheet:hover {
+  background: #e0f2fe !important;
+  border-color: #0284c7 !important;
+  color: #075985 !important;
+}
+
+.ref-compare-backdrop.is-light button.ref-compare-mini-btn.is-apply {
+  background: #ecfdf5 !important;
+  border-color: #6ee7b7 !important;
+  color: #047857 !important;
+}
+
+.ref-compare-backdrop.is-light button.ref-compare-mini-btn.is-apply:hover {
+  background: #d1fae5 !important;
+  border-color: #10b981 !important;
+  color: #065f46 !important;
+}
+
+@media (max-width: 768px) {
+  .ref-compare-popover {
+    left: 10px !important;
+    right: 10px !important;
+    width: calc(100vw - 20px) !important;
+  }
+  button.ref-compare-mini-btn {
+    height: 30px !important;
+    min-height: 30px !important;
+    padding: 0 11px !important;
+    font-size: 11.5px !important;
+  }
 }
 
 /* ================== MULTI-TEMPLATE TICK & BATCH EXPORT UI ================== */

@@ -2,6 +2,7 @@ import * as XLSX from 'xlsx-js-style'
 import JSZip from 'jszip'
 import { getSystemConfigSync } from '../services/systemConfig'
 import {
+  buildPopulatedSophosCalcViewOfficeWorkbook,
   extractSophosCalcEngineMeta,
   extractVisibleSheetStyleMeta,
   hydrateSophosEngineRuntime
@@ -49,6 +50,183 @@ export interface VendorRefFileMeta {
   import_file_name?: string
   import_updated_at?: number
   updated_at?: number
+}
+
+const LIVE_FIREBASE_VENDOR_REF_BASE_URL =
+  'https://chusonproject-default-rtdb.asia-southeast1.firebasedatabase.app/vendor_ref_files'
+
+export function mergeSingleVendorRefMeta(
+  localMeta: VendorRefFileMeta | null | undefined,
+  remoteMeta: VendorRefFileMeta | null | undefined
+): VendorRefFileMeta | null {
+  if (!localMeta && !remoteMeta) return null
+  if (!localMeta) return { ...remoteMeta }
+  if (!remoteMeta) return { ...localMeta }
+
+  const pickNewerGroup = <K extends keyof VendorRefFileMeta>(
+    keys: K[],
+    localTs: number,
+    remoteTs: number,
+    hasLocal: boolean,
+    hasRemote: boolean
+  ): Partial<VendorRefFileMeta> => {
+    const src =
+      hasLocal && hasRemote
+        ? remoteTs > localTs
+          ? remoteMeta
+          : localMeta
+        : hasRemote
+          ? remoteMeta
+          : localMeta
+    const out: Partial<VendorRefFileMeta> = {}
+    for (const k of keys) {
+      if (src[k] !== undefined) {
+        out[k] = src[k]
+      }
+    }
+    return out
+  }
+
+  const localMainTs = Math.max(
+    Number(localMeta.tg_updated_at) || 0,
+    Number(localMeta.goc_updated_at) || 0,
+    Number(localMeta.mau_updated_at) || 0,
+    Number(localMeta.skulist_updated_at) || 0,
+    localMeta.index_url ? Number(localMeta.updated_at) || 0 : 0
+  )
+  const remoteMainTs = Math.max(
+    Number(remoteMeta.tg_updated_at) || 0,
+    Number(remoteMeta.goc_updated_at) || 0,
+    Number(remoteMeta.mau_updated_at) || 0,
+    Number(remoteMeta.skulist_updated_at) || 0,
+    remoteMeta.index_url ? Number(remoteMeta.updated_at) || 0 : 0
+  )
+
+  const localCalcHas = Boolean(
+    localMeta.calc_index_url ||
+      (Array.isArray(localMeta.calc_index_chunk_urls) && localMeta.calc_index_chunk_urls.length > 0)
+  )
+  const remoteCalcHas = Boolean(
+    remoteMeta.calc_index_url ||
+      (Array.isArray(remoteMeta.calc_index_chunk_urls) && remoteMeta.calc_index_chunk_urls.length > 0)
+  )
+
+  return {
+    ...remoteMeta,
+    ...localMeta,
+    ...pickNewerGroup(
+      ['index_url'],
+      localMainTs,
+      remoteMainTs,
+      Boolean(localMeta.index_url),
+      Boolean(remoteMeta.index_url)
+    ),
+    ...pickNewerGroup(
+      ['goc_file_url', 'goc_file_name', 'goc_updated_at'],
+      Number(localMeta.goc_updated_at) || 0,
+      Number(remoteMeta.goc_updated_at) || 0,
+      Boolean(localMeta.goc_file_name || localMeta.goc_file_url),
+      Boolean(remoteMeta.goc_file_name || remoteMeta.goc_file_url)
+    ),
+    ...pickNewerGroup(
+      ['skulist_file_url', 'skulist_file_name', 'skulist_updated_at'],
+      Number(localMeta.skulist_updated_at || localMeta.goc_updated_at) || 0,
+      Number(remoteMeta.skulist_updated_at || remoteMeta.goc_updated_at) || 0,
+      Boolean(localMeta.skulist_file_name || localMeta.skulist_file_url),
+      Boolean(remoteMeta.skulist_file_name || remoteMeta.skulist_file_url)
+    ),
+    ...pickNewerGroup(
+      ['tg_file_url', 'tg_file_name', 'tg_updated_at'],
+      Number(localMeta.tg_updated_at) || 0,
+      Number(remoteMeta.tg_updated_at) || 0,
+      Boolean(localMeta.tg_file_name || localMeta.tg_file_url),
+      Boolean(remoteMeta.tg_file_name || remoteMeta.tg_file_url)
+    ),
+    ...pickNewerGroup(
+      ['mau_file_url', 'mau_file_name', 'mau_updated_at'],
+      Number(localMeta.mau_updated_at) || 0,
+      Number(remoteMeta.mau_updated_at) || 0,
+      Boolean(localMeta.mau_file_name || localMeta.mau_file_url),
+      Boolean(remoteMeta.mau_file_name || remoteMeta.mau_file_url)
+    ),
+    ...pickNewerGroup(
+      ['import_file_url', 'import_file_name', 'import_updated_at'],
+      Number(localMeta.import_updated_at) || 0,
+      Number(remoteMeta.import_updated_at) || 0,
+      Boolean(localMeta.import_file_name || localMeta.import_file_url),
+      Boolean(remoteMeta.import_file_name || remoteMeta.import_file_url)
+    ),
+    ...pickNewerGroup(
+      [
+        'calc_index_url',
+        'calc_index_chunk_urls',
+        'calc_file_url',
+        'calc_file_chunk_urls',
+        'calc_file_name',
+        'calc_version',
+        'calc_effective_from',
+        'calc_sku_count',
+        'calc_updated_at'
+      ],
+      Number(localMeta.calc_updated_at) || 0,
+      Number(remoteMeta.calc_updated_at) || 0,
+      localCalcHas,
+      remoteCalcHas
+    ),
+    updated_at: Math.max(Number(localMeta.updated_at) || 0, Number(remoteMeta.updated_at) || 0)
+  }
+}
+
+export async function mergeVendorRefFilesMetaWithLiveFirebase(
+  localVal: Record<string, any> | null | undefined
+): Promise<{
+  sophos: VendorRefFileMeta | null
+  kaspersky: VendorRefFileMeta | null
+  acronis: VendorRefFileMeta | null
+}> {
+  const loc = localVal && typeof localVal === 'object' ? localVal : {}
+  let remote: Record<string, any> = {}
+  if (typeof fetch === 'function') {
+    const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null
+    const timer = ctrl ? setTimeout(() => ctrl.abort(), 3500) : null
+    try {
+      const res = await fetch(`${LIVE_FIREBASE_VENDOR_REF_BASE_URL}.json?_t=${Date.now()}`, {
+        cache: 'no-store',
+        ...(ctrl ? { signal: ctrl.signal } : {})
+      })
+      if (res.ok) {
+        const json = await res.json()
+        if (json && typeof json === 'object') {
+          remote = json
+        }
+      }
+    } catch (_) {
+      // Giữ nguyên dữ liệu local/mock nếu offline hoặc timeout
+    } finally {
+      if (timer) clearTimeout(timer)
+    }
+  }
+  return {
+    sophos: mergeSingleVendorRefMeta(loc.sophos, remote.sophos),
+    kaspersky: mergeSingleVendorRefMeta(loc.kaspersky, remote.kaspersky),
+    acronis: mergeSingleVendorRefMeta(loc.acronis, remote.acronis)
+  }
+}
+
+export async function mirrorVendorRefMetaToLiveFirebase(
+  vendorKey: 'sophos' | 'kaspersky' | 'acronis',
+  nextMeta: VendorRefFileMeta
+): Promise<void> {
+  if (typeof fetch !== 'function' || !nextMeta) return
+  try {
+    await fetch(`${LIVE_FIREBASE_VENDOR_REF_BASE_URL}/${vendorKey}.json`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(nextMeta)
+    })
+  } catch (_) {
+    // Best-effort sync sang Firebase Cloud khi đang chạy ở chế độ mock local
+  }
 }
 
 const MAX_CLOUDINARY_RAW_BYTES = 9.5 * 1024 * 1024
@@ -658,6 +836,37 @@ export function parseKasperskyWorkbookToRefPart(wb: XLSX.WorkBook) {
   }
 }
 
+export const SOPHOS_TRUNG_GIAN_STANDARD_BOM_SHEETS = [
+  'XGS - Desktop +10%',
+  'XGS - 1U + 10%',
+  'XGS - 2U + 10%',
+  'Virtual FW',
+  'ZTNA - NDR - Central Reporting'
+]
+
+/**
+ * Nhận diện đúng 5 sheet BOM chuẩn của file_trung_gian_SOPHOS.xlsx
+ * (bỏ qua LP Sophos và các sheet nháp/công thức như Rotto, Module 10G, XGS 2300/4300/4500)
+ */
+export function isSophosTrungGianBomSheet(sheetName: string, rows?: any[][]): boolean {
+  const s = String(sheetName || '').trim()
+  if (!s || s === 'LP Sophos') return false
+  if (/^(rotto|module\s*10g)/i.test(s) || /^XGS\s+\d{3,4}$/i.test(s)) return false
+  if (SOPHOS_TRUNG_GIAN_STANDARD_BOM_SHEETS.includes(s)) return true
+  if (Array.isArray(rows) && rows.length > 0) {
+    for (let i = 0; i < Math.min(rows.length, 6); i++) {
+      const r = rows[i]
+      if (!Array.isArray(r)) continue
+      const colB = String(r[1] ?? '').trim().toUpperCase()
+      const colF = String(r[5] ?? '').trim().toUpperCase()
+      if (colB === 'SKU' && /(GIÁ|GIA|MSRP|PRICE|USD)/i.test(colF)) {
+        return true
+      }
+    }
+  }
+  return false
+}
+
 /**
  * Bóc tách & cập nhật dữ liệu tham chiếu Sophos từ một Workbook mới (SKU_Tab, MSRPs&BuyCost, hoặc Trung Gian BOM)
  */
@@ -799,10 +1008,11 @@ export function parseSophosWorkbookToRefUpdate(
     }
   }
 
+  const hasStandardBomSheets = wb.SheetNames.some(s => isSophosTrungGianBomSheet(s, newTgSheetsRaw[s]))
   const newTgItems: any[] = []
   for (const s of wb.SheetNames) {
-    if (s === 'LP Sophos') continue
     const rows = newTgSheetsRaw[s] || []
+    if (hasStandardBomSheets ? !isSophosTrungGianBomSheet(s, rows) : s === 'LP Sophos') continue
     let currentGroup = ''
     let currentSite = ''
     for (let i = 4; i < rows.length; i++) {
@@ -1248,7 +1458,14 @@ export function parseSophosCalculatorWorkbook(
   for (const sName of candidateVisibleNames) {
     const ws = wb.Sheets[sName]
     if (!ws) continue
-    const rawRows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null }) as any[][]
+    const refRange = ws['!ref']
+      ? XLSX.utils.decode_range(ws['!ref'])
+      : { s: { r: 0, c: 0 }, e: { r: 0, c: 0 } }
+    const rawRows = XLSX.utils.sheet_to_json(ws, {
+      header: 1,
+      defval: null,
+      range: { s: { r: 0, c: 0 }, e: refRange.e }
+    }) as any[][]
     if (rawRows.length > 2500) continue
     // Cắt bỏ các cột phụ nháp ẩn ở quá xa bên phải (VD: Cột BC..BE trên sheet NDR) để bảng hiển thị gọn đúng vùng in của Excel
     const cappedColsRows = rawRows.map(r => (Array.isArray(r) && r.length > 46 ? r.slice(0, 46) : r))
@@ -1305,12 +1522,67 @@ export function parseSophosCalculatorWorkbook(
 }
 
 /**
+ * Chuẩn hóa mảng 2D calcSheetsRaw về gốc tọa độ A1 (r=0, c=0) cho cả dữ liệu JSON cũ đã upload lên Cloudinary
+ * (tránh lệch cột trên các sheet có !ref bắt đầu từ B1 hoặc C1 như Workspace Protection, Mobile, Email, Backup & Recovery, NDR, Advisory services, Discounts).
+ */
+export function normalizeSophosCalcSheetsRawToA1(rawSheets: Record<string, any[][]> | null | undefined): Record<string, any[][]> {
+  if (!rawSheets || typeof rawSheets !== 'object') return {}
+  const out: Record<string, any[][]> = {}
+  for (const [sName, srcRows] of Object.entries(rawSheets)) {
+    if (!Array.isArray(srcRows) || !srcRows.length) {
+      out[sName] = Array.isArray(srcRows) ? srcRows : []
+      continue
+    }
+    let rows = srcRows
+    if (sName === 'Quick MSRP look up' && /^sector\b/i.test(String(rows[0]?.[1] ?? '').trim())) {
+      rows = [[], ...rows]
+    }
+    let colPad = 0
+    if (sName === 'Advisory services' && /^advisory\s+services$/i.test(String(rows[8]?.[0] ?? '').trim())) {
+      colPad = 2
+    } else if (
+      (sName === 'Mobile' || sName === 'Email' || sName === 'Workspace Protection' || sName === 'Backup & Recovery') &&
+      /^sector\b/i.test(String(rows[2]?.[5] ?? '').trim())
+    ) {
+      colPad = 1
+    } else if (
+      sName === 'Network Detection & Response' &&
+      /^ndr\s+deal\s+settings/i.test(String(rows[7]?.[1] ?? '').trim())
+    ) {
+      colPad = 1
+    } else if (
+      sName === 'Discounts' &&
+      (/^asean|^americas|^emea|^apj/i.test(String(rows[1]?.[0] ?? '').trim()) ||
+        /^suggested\s+reseller/i.test(String(rows[8]?.[1] ?? '').trim()))
+    ) {
+      colPad = 1
+    } else if (
+      (sName === "What's New!" || sName === 'Partner Resources' || sName === 'Successors') &&
+      String(rows[1]?.[0] ?? '').trim() !== '' &&
+      String(rows[1]?.[1] ?? '').trim() === ''
+    ) {
+      colPad = 1
+    }
+    if (colPad > 0) {
+      const prefix = new Array(colPad).fill(null)
+      rows = rows.map(r => (Array.isArray(r) && r.length ? [...prefix, ...r] : []))
+    }
+    out[sName] = rows
+  }
+  return out
+}
+
+/**
  * Giải nén bảng tra cứu & bộ máy công thức trên RAM cho calculate_sophos sau khi tải từ Cloudinary
  * Hỗ trợ tương thích cả định dạng sophos_calc_v2 (15 cột giá + engineMeta + calcSheetsStyled) và sophos_calc_v1
  */
 export function hydrateSophosCalcRefData(rawCalc: any): any {
   if (!rawCalc || typeof rawCalc !== 'object') return null
   if (rawCalc.calcSkus && Array.isArray(rawCalc.sortedCalcMsrpRows)) {
+    if (!rawCalc.__a1Normalized && rawCalc.calcSheetsRaw) {
+      rawCalc.calcSheetsRaw = normalizeSophosCalcSheetsRawToA1(rawCalc.calcSheetsRaw)
+      rawCalc.__a1Normalized = true
+    }
     return rawCalc
   }
 
@@ -1406,11 +1678,12 @@ export function hydrateSophosCalcRefData(rawCalc: any): any {
     calcVisibleSheetNames: visibleSheets,
     calcHiddenSheetNames: Array.isArray(rawCalc.calcHiddenSheetNames) ? rawCalc.calcHiddenSheetNames : ['MSRPs&BuyCost'],
     calcSheetNames: visibleSheets,
-    calcSheetsRaw: rawCalc.calcSheetsRaw || {},
+    calcSheetsRaw: normalizeSophosCalcSheetsRawToA1(rawCalc.calcSheetsRaw),
     calcSheetsStyled: rawCalc.calcSheetsStyled || {},
     productByCode,
     engineMeta: rawCalc.engineMeta || null,
-    engineRuntime
+    engineRuntime,
+    __a1Normalized: true
   }
 }
 
@@ -1418,26 +1691,35 @@ export function hydrateSophosCalcRefData(rawCalc: any): any {
  * Tạo bản rút gọn (< 8MB) của calculate_sophos.xlsx để Microsoft ViewOffice có thể mở trực tiếp trên trình duyệt
  * (File nguyên bản 24MB vẫn được giữ nguyên vẹn 100% qua calc_file_chunk_urls khi bấm Tải về)
  */
-export function buildSlimSophosCalcViewOfficeWorkbook(wb: XLSX.WorkBook): Blob {
-  const slimWb = XLSX.utils.book_new()
-  const skipForSlim = new Set(['msrps&buycost', 'drop_downs', 'features'])
+export function buildSlimSophosCalcViewOfficeWorkbook(wb: XLSX.WorkBook, rawBytes?: ArrayBuffer | Uint8Array): Blob {
+  try {
+    const parsed = parseSophosCalculatorWorkbook(wb, 'calculate_sophos.xlsx', rawBytes)
+    const hydrated = hydrateSophosCalcRefData(parsed.compactIndex)
+    const populated = buildPopulatedSophosCalcViewOfficeWorkbook(hydrated, null, {
+      preferredSheet: 'Firewall'
+    })
+    return populated.blob
+  } catch (_) {
+    const slimWb = XLSX.utils.book_new()
+    const skipForSlim = new Set(['msrps&buycost', 'drop_downs', 'features'])
 
-  for (const sName of wb.SheetNames) {
-    if (skipForSlim.has(sName.trim().toLowerCase())) continue
-    const ws = wb.Sheets[sName]
-    if (!ws) continue
-    const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null }) as any[][]
-    if (aoa.length > 3500) continue
-    const trimmed = trimAoaSheetRows(aoa, 3500)
-    XLSX.utils.book_append_sheet(slimWb, XLSX.utils.aoa_to_sheet(trimmed), sName.slice(0, 31))
+    for (const sName of wb.SheetNames) {
+      if (skipForSlim.has(sName.trim().toLowerCase())) continue
+      const ws = wb.Sheets[sName]
+      if (!ws) continue
+      const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null }) as any[][]
+      if (aoa.length > 3500) continue
+      const trimmed = trimAoaSheetRows(aoa, 3500)
+      XLSX.utils.book_append_sheet(slimWb, XLSX.utils.aoa_to_sheet(trimmed), sName.slice(0, 31))
+    }
+
+    if (!slimWb.SheetNames.length) {
+      XLSX.utils.book_append_sheet(slimWb, XLSX.utils.aoa_to_sheet([['Sophos Reseller Calculator']]), 'Cover')
+    }
+
+    const xlsxBuf = XLSX.write(slimWb, { bookType: 'xlsx', type: 'array', compression: true })
+    return new Blob([xlsxBuf], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    })
   }
-
-  if (!slimWb.SheetNames.length) {
-    XLSX.utils.book_append_sheet(slimWb, XLSX.utils.aoa_to_sheet([['Sophos Reseller Calculator']]), 'Cover')
-  }
-
-  const xlsxBuf = XLSX.write(slimWb, { bookType: 'xlsx', type: 'array', compression: true })
-  return new Blob([xlsxBuf], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-  })
 }

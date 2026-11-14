@@ -8,77 +8,64 @@
     :style="uiTheme === 'custom' ? customGlassStyleVars : null"
   >
     <!-- =========================================================
-         MODULE 1 + 2 (UNIFIED SLIM BAR): LEFT-ALIGNED WORKSPACE TABS · CONTEXT ACTIONS & THEME
+         MODULE 1 + 2 (UNIFIED BAR): CENTERED WORKSPACE TABS · CONTEXT ACTIONS & THEME
          ========================================================= -->
-    <header class="bg-topbar is-unified-bar">
-      <div class="pl-topbar-left">
-        <div class="bg-seg-switch pl-workspace-tabs is-slim-tabs" role="tablist" aria-label="Không gian làm việc Pipeline">
-          <button
-            type="button"
-            class="bg-seg-btn"
-            :class="{ 'is-active': activeTab === 'kanban' }"
-            @click="activeTab = 'kanban'"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line></svg>
-            <span>Công Việc Pipeline</span>
-            <span class="pl-ws-count pl-tabular">{{ items.length }}</span>
-          </button>
-
-          <button
-            type="button"
-            class="bg-seg-btn"
-            :class="{ 'is-active': activeTab === 'projects' }"
-            @click="activeTab = 'projects'"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-            <span>Dự Án (Gốc)</span>
-            <span class="pl-ws-count pl-tabular">{{ projectsList.length }}</span>
-          </button>
-
-          <button
-            type="button"
-            class="bg-seg-btn"
-            :class="{ 'is-active': activeTab === 'workflow' }"
-            @click="activeTab = 'workflow'"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
-            <span>Workflow</span>
-            <span class="pl-ws-count pl-tabular">{{ uniqueWorkflows.length + 1 }}</span>
-          </button>
-        </div>
-
+    <header
+      class="bg-topbar is-unified-bar"
+      :class="{ 'is-mob-empty-topbar': !backgroundSyncing }"
+    >
+      <div class="pl-topbar-left-slot">
         <span v-if="backgroundSyncing" class="pl-sync-pill">
           <span class="pl-spinner-xs"></span>
           <span class="bg-hide-sm">Đồng bộ...</span>
         </span>
       </div>
 
-      <div v-if="activeTab !== 'kanban'" class="bg-topbar-right">
-        <div v-if="activeTab === 'projects'" class="pl-command-actions is-slim-actions">
+      <div class="pl-topbar-center">
+        <div class="bg-seg-switch pl-workspace-tabs" role="tablist" aria-label="Không gian làm việc Pipeline">
           <button
             type="button"
-            class="pl-btn pl-btn-slate pl-btn-sm"
-            :disabled="loading"
-            @click="refreshWorkspace"
-            title="Tải lại dữ liệu từ Firebase"
+            class="pl-ws-tab is-tab-projects"
+            :class="{ 'is-active': activeTab === 'projects' }"
+            @click="activeTab = 'projects'"
           >
-            <svg v-if="!loading" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 2v6h6M21.5 22v-6h-6"/><path d="M22 11.5A10 10 0 0 0 3.2 7.2M2 12.5a10 10 0 0 0 18.8 4.2"/></svg>
-            <span v-else class="pl-spinner-xs"></span>
-            <span class="bg-hide-sm">Làm mới</span>
+            <span class="pl-ws-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+            </span>
+            <span class="pl-ws-lbl">Dự Án</span>
+            <span class="pl-ws-count pl-tabular">{{ projectsList.length }}</span>
           </button>
 
           <button
             type="button"
-            class="pl-btn pl-btn-primary pl-btn-sm"
-            @click="openAddProjectModal()"
+            class="pl-ws-tab is-tab-kanban"
+            :class="{ 'is-active': activeTab === 'kanban' }"
+            @click="activeTab = 'kanban'"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.35" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path><line x1="12" y1="11" x2="12" y2="17"></line><line x1="9" y1="14" x2="15" y2="14"></line></svg>
-            <span>Tạo Dự Án</span>
+            <span class="pl-ws-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line></svg>
+            </span>
+            <span class="pl-ws-lbl is-desktop-only">Công Việc Pipeline</span>
+            <span class="pl-ws-lbl is-mobile-only">Công việc</span>
+            <span class="pl-ws-count pl-tabular">{{ items.length }}</span>
           </button>
 
-          <span class="pl-topbar-divider bg-hide-sm" aria-hidden="true"></span>
+          <button
+            type="button"
+            class="pl-ws-tab is-tab-workflow"
+            :class="{ 'is-active': activeTab === 'workflow' }"
+            @click="activeTab = 'workflow'"
+          >
+            <span class="pl-ws-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+            </span>
+            <span class="pl-ws-lbl">Workflow</span>
+            <span class="pl-ws-count pl-tabular">{{ uniqueWorkflows.length + 1 }}</span>
+          </button>
         </div>
+      </div>
 
+      <div v-if="activeTab === 'workflow'" class="bg-topbar-right">
         <div class="bg-theme-mode-switch is-slim-theme-switch" role="tablist" aria-label="Chế độ giao diện">
           <button
             type="button"
@@ -179,265 +166,391 @@
     </header>
 
     <!-- =========================================================
-         TAB 3: WORKFLOW DESIGNER WORKSPACE
+         TAB 3: WORKFLOW DESIGNER WORKSPACE (MOUNTED FOR GLOBAL STEP STUDIO MODAL)
          ========================================================= -->
-    <div v-if="activeTab === 'workflow'" class="pl-tab-body">
+    <div v-show="activeTab === 'workflow'" class="pl-tab-body">
       <PipelineWorkflowFirebase
+        ref="workflowDesignerRef"
         :ui-theme="uiTheme"
-        :customers-external="customersList"
         :pipelines-external="items"
-        :focus-customer-key="workflowFocusCustomerKey"
+        :workflows-external="workflowsData"
         @updated="fetchData"
         @open-kanban-workflow="handleOpenKanbanFromWorkflow"
+        @cycle-theme="cycleMobileTheme($event)"
       />
     </div>
 
     <!-- =========================================================
          TAB 2: MULTI-PIPELINE PROJECTS PORTFOLIO & ON-DEMAND WORKFLOW DRAWER
          ========================================================= -->
-    <div v-else-if="activeTab === 'projects'" class="pl-tab-body">
-      <!-- SLIM 1-ROW PROJECT FILTER TOOLBAR (NO KPI / NO EXTRA BANNER) -->
-      <section class="bg-filter-strip is-slim-toolbar">
-        <div class="pl-slim-toolbar-row">
-          <div class="bg-search-shell is-slim-inline">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" class="bg-search-ic"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-            <input
-              v-model="projectSearchQuery"
-              type="text"
-              class="bg-search-inp"
-              placeholder="Tìm Dự án, Mã DA, Cty, KH, Workflow..."
-            />
-            <button v-if="projectSearchQuery" type="button" class="bg-search-clr" @click="projectSearchQuery = ''" aria-label="Xóa tìm kiếm">
-              <svg xmlns="http://www.w3.org/2000/svg" width="12.5" height="12.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            </button>
-          </div>
+    <div v-if="activeTab === 'projects'" class="pl-tab-body">
+      <!-- MOBILE UNIFIED 1-ROW SEARCH + FILTER TOGGLE + THEME CYCLE (CHUẨN REPORTFIREBASE) -->
+      <div class="pl-mob-unified-bar">
+        <div
+          class="bg-search-shell is-mob-unified-search"
+          :class="{ 'has-query': Boolean(projectSearchQuery && projectSearchQuery.trim()) }"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" class="bg-search-ic"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input
+            v-model="projectSearchQuery"
+            type="text"
+            class="bg-search-inp"
+            placeholder="Tìm Dự án, Cty, KH, Workflow..."
+            @keydown.esc="onProjSearchEsc"
+          />
+          <span
+            v-if="projectSearchQuery && projectSearchQuery.trim()"
+            class="pl-search-match-pill pl-tabular"
+            :class="{ 'is-zero': enrichedProjects.length === 0 }"
+          >
+            {{ enrichedProjects.length }}
+          </span>
+          <button
+            v-if="projectSearchQuery"
+            type="button"
+            class="bg-search-clr"
+            aria-label="Xóa tìm kiếm"
+            @mousedown.prevent
+            @click="projectSearchQuery = ''"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
 
-          <div class="bg-filter-row-pickers pl-proj-bento-row is-slim-pickers">
-              <!-- 1. TÊN KH -->
-              <div class="pl-dropdown-anchor">
-                <button
-                  type="button"
-                  class="pl-picker-trigger"
-                  :class="{ 'is-filtered': !!projectFilter.customerName }"
-                  @click="toggleProjFilterMenu('customer')"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                  <span class="pl-picker-lbl">Tên KH:</span>
-                  <span class="pl-picker-val">{{ activeProjCustomerFilterLabel }}</span>
-                  <span
-                    v-if="projectFilter.customerName"
-                    class="pl-picker-clear"
-                    title="Xóa lọc Tên KH"
-                    @click.stop="selectProjCustomerFilter('')"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                  </span>
-                  <svg v-else xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" class="pl-caret-svg"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                </button>
-                <div v-if="openProjFilterMenu === 'customer'" class="pl-dropdown-backdrop" @click="openProjFilterMenu = ''"></div>
-                <div v-if="openProjFilterMenu === 'customer'" class="pl-dropdown-menu">
-                  <div class="pl-dropdown-search">
-                    <input v-model="projFilterSearch.customer" type="text" class="bg-input bg-input-sm" placeholder="Tìm Tên khách hàng / liên hệ..." />
-                  </div>
-                  <div class="pl-dropdown-list">
-                    <div class="pl-dropdown-item" :class="{ 'is-selected': !projectFilter.customerName }" @click="selectProjCustomerFilter('')">
-                      <span>Tất cả Khách hàng ({{ projCustomerFilterOptions.length }})</span>
-                    </div>
-                    <div
-                      v-for="opt in filteredProjCustomerOptions"
-                      :key="'pkh-' + opt.key"
-                      class="pl-dropdown-item"
-                      :class="{ 'is-selected': projectFilter.customerName === opt.key }"
-                      @click="selectProjCustomerFilter(opt.key)"
-                    >
-                      <div class="pl-dd-main">
-                        <span>{{ opt.label }}</span>
-                        <span class="pl-mini-tag is-slate pl-tabular">{{ opt.count }} DA</span>
-                      </div>
-                    </div>
-                    <div v-if="filteredProjCustomerOptions.length === 0" class="pl-dd-empty">Không có Tên KH tương ứng</div>
-                  </div>
-                </div>
+        <button
+          type="button"
+          class="pl-mob-filter-toggle-btn"
+          :class="{ 'is-open': mobileProjFilterOpen, 'has-active': activeProjectFiltersCount > 0 }"
+          @click="mobileProjFilterOpen = !mobileProjFilterOpen"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+          <span>Lọc</span>
+          <span v-if="activeProjectFiltersCount > 0" class="pl-mob-ft-badge pl-tabular">{{ activeProjectFiltersCount }}</span>
+          <span class="pl-mob-ft-caret">{{ mobileProjFilterOpen ? '▴' : '▾' }}</span>
+        </button>
+
+        <button
+          type="button"
+          class="pl-mob-theme-cycle-btn"
+          :title="uiTheme === 'dark' ? 'Đang dùng Dark — bấm chuyển Light' : uiTheme === 'light' ? 'Đang dùng Light — bấm chuyển Custom' : 'Đang dùng Custom — bấm chuyển Dark'"
+          @click="cycleMobileTheme($event)"
+        >
+          <svg v-if="uiTheme === 'dark'" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+          <svg v-else-if="uiTheme === 'light'" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line></svg>
+          <svg v-else xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3" ry="3"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+        </button>
+      </div>
+
+      <!-- BỘ LỌC DỰ ÁN (ĐỒNG BỘ GIAO DIỆN FRAMELESS MODAL PICKER + ĐIỀU HƯỚNG GIỐNG CÔNG VIỆC PIPELINE) -->
+      <section
+        class="bg-bento-deck is-proj-filter-deck"
+        :class="{ 'is-mob-deck-hidden': !mobileProjFilterOpen }"
+      >
+        <div
+          class="bg-filter-strip is-kanban-filter-panel is-frameless-vertical is-proj-filter-panel"
+          :class="{ 'is-mob-collapsed': !mobileProjFilterOpen }"
+        >
+          <div class="pl-filter-panel-col">
+            <div class="pl-fp-head">
+              <div class="pl-fp-title">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+                <span>Bộ lọc dự án</span>
+                <span v-if="activeProjectFiltersCount > 0" class="pl-mob-filter-cnt pl-tabular">{{ activeProjectFiltersCount }}</span>
               </div>
 
-              <!-- 2. TÊN CTY -->
-              <div class="pl-dropdown-anchor">
+              <div class="pl-fp-head-controls">
                 <button
+                  v-if="hasActiveProjectFilters"
                   type="button"
-                  class="pl-picker-trigger"
-                  :class="{ 'is-filtered': !!projectFilter.companyName }"
-                  @click="toggleProjFilterMenu('company')"
+                  class="pl-slim-reset-btn is-fp-head-reset"
+                  title="Đặt lại toàn bộ bộ lọc dự án"
+                  @click="resetProjectFilters"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="9" y1="6" x2="9.01" y2="6"></line><line x1="15" y1="6" x2="15.01" y2="6"></line><line x1="9" y1="10" x2="9.01" y2="10"></line><line x1="15" y1="10" x2="15.01" y2="10"></line><line x1="9" y1="18" x2="15" y2="18"></line></svg>
-                  <span class="pl-picker-lbl">Tên Cty:</span>
-                  <span class="pl-picker-val">{{ activeProjCompanyFilterLabel }}</span>
-                  <span
-                    v-if="projectFilter.companyName"
-                    class="pl-picker-clear"
-                    title="Xóa lọc Tên Cty"
-                    @click.stop="selectProjCompanyFilter('')"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                  </span>
-                  <svg v-else xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" class="pl-caret-svg"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+                  <span>Đặt lại</span>
                 </button>
-                <div v-if="openProjFilterMenu === 'company'" class="pl-dropdown-backdrop" @click="openProjFilterMenu = ''"></div>
-                <div v-if="openProjFilterMenu === 'company'" class="pl-dropdown-menu">
-                  <div class="pl-dropdown-search">
-                    <input v-model="projFilterSearch.company" type="text" class="bg-input bg-input-sm" placeholder="Tìm Tên công ty..." />
-                  </div>
-                  <div class="pl-dropdown-list">
-                    <div class="pl-dropdown-item" :class="{ 'is-selected': !projectFilter.companyName }" @click="selectProjCompanyFilter('')">
-                      <span>Tất cả Công ty ({{ projCompanyFilterOptions.length }})</span>
-                    </div>
-                    <div
-                      v-for="opt in filteredProjCompanyOptions"
-                      :key="'pct-' + opt.key"
-                      class="pl-dropdown-item"
-                      :class="{ 'is-selected': projectFilter.companyName === opt.key }"
-                      @click="selectProjCompanyFilter(opt.key)"
-                    >
-                      <div class="pl-dd-main">
-                        <span>{{ opt.label }}</span>
-                        <span class="pl-mini-tag is-slate pl-tabular">{{ opt.count }} DA</span>
-                      </div>
-                    </div>
-                    <div v-if="filteredProjCompanyOptions.length === 0" class="pl-dd-empty">Không có Công ty tương ứng</div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- 3. DỰ ÁN -->
-              <div class="pl-dropdown-anchor">
                 <button
                   type="button"
-                  class="pl-picker-trigger"
-                  :class="{ 'is-filtered': !!projectFilter.projectId }"
-                  @click="toggleProjFilterMenu('project')"
+                  class="pl-mob-collapse-btn"
+                  @click="mobileProjFilterOpen = !mobileProjFilterOpen"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-                  <span class="pl-picker-lbl">Dự án:</span>
-                  <span class="pl-picker-val">{{ activeProjProjectFilterLabel }}</span>
-                  <span
+                  <span>{{ mobileProjFilterOpen ? 'Thu gọn' : 'Mở lọc' }}</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" :style="{ transform: mobileProjFilterOpen ? 'rotate(180deg)' : 'rotate(0deg)' }"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- 3 FRAMELESS FILTER ROWS: DỰ ÁN -> TÊN CTY -> TÊN KH -->
+            <div class="pl-filter-vertical-list is-proj-filter-grid">
+              <!-- 1. DỰ ÁN -->
+              <div
+                class="pl-fp-row"
+                :class="{ 'is-filtered': !!projectFilter.projectId }"
+              >
+                <button
+                  type="button"
+                  class="pl-fp-row-main"
+                  @click="openProjFilterPickerModal('project')"
+                >
+                  <svg class="pl-flat-row-ic" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                  <span class="pl-picker-lbl">Dự án</span>
+                  <span class="pl-picker-val" :title="activeProjProjectFilterLabel">{{ activeProjProjectFilterLabel }}</span>
+                </button>
+
+                <div class="pl-fp-row-acts">
+                  <button
                     v-if="projectFilter.projectId"
-                    class="pl-picker-clear"
+                    type="button"
+                    class="pl-fp-clear-btn"
                     title="Xóa lọc Dự án"
                     @click.stop="selectProjProjectFilter('')"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                  </span>
-                  <svg v-else xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" class="pl-caret-svg"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                </button>
-                <div v-if="openProjFilterMenu === 'project'" class="pl-dropdown-backdrop" @click="openProjFilterMenu = ''"></div>
-                <div v-if="openProjFilterMenu === 'project'" class="pl-dropdown-menu">
-                  <div class="pl-dropdown-search">
-                    <input v-model="projFilterSearch.project" type="text" class="bg-input bg-input-sm" placeholder="Tìm Dự án, Mã DA..." />
-                  </div>
-                  <div class="pl-dropdown-list">
-                    <div class="pl-dropdown-item" :class="{ 'is-selected': !projectFilter.projectId }" @click="selectProjProjectFilter('')">
-                      <span>Tất cả Dự án ({{ projProjectFilterOptions.length }})</span>
-                    </div>
-                    <div
-                      v-for="opt in filteredProjProjectOptions"
-                      :key="'pda-' + opt.id_project"
-                      class="pl-dropdown-item"
-                      :class="{ 'is-selected': projectFilter.projectId === opt.id_project }"
-                      @click="selectProjProjectFilter(opt.id_project)"
-                    >
-                      <div class="pl-dd-main">
-                        <span>{{ opt.label }}</span>
-                        <span v-if="opt.sub" class="pl-dd-sub">{{ opt.sub }}</span>
-                      </div>
-                    </div>
-                    <div v-if="filteredProjProjectOptions.length === 0" class="pl-dd-empty">Không có Dự án tương ứng</div>
-                  </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="pl-fp-nav-btn"
+                    :class="{ 'is-ready': !!projectFilter.projectId }"
+                    :title="
+                      projectFilter.projectId
+                        ? 'Định vị & mở thẻ Dự án: ' + activeProjProjectFilterLabel
+                        : 'Chọn 1 Dự án cụ thể để định vị tới thẻ'
+                    "
+                    @click.stop="navigateToFilteredProjTabCard"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                    <span class="bg-hide-sm">Điều hướng</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="pl-fp-choose-btn"
+                    @click.stop="openProjFilterPickerModal('project')"
+                  >
+                    Chọn
+                  </button>
                 </div>
               </div>
 
-              <!-- 4. PIPELINE (KHUNG PIPELINE) -->
-              <div class="pl-dropdown-anchor">
+              <!-- 2. TÊN CTY -->
+              <div
+                class="pl-fp-row"
+                :class="{ 'is-filtered': !!projectFilter.companyName }"
+              >
                 <button
                   type="button"
-                  class="pl-picker-trigger"
-                  :class="{ 'is-filtered': !!projectFilter.workflowId }"
-                  @click="toggleProjFilterMenu('workflow')"
+                  class="pl-fp-row-main"
+                  @click="openProjFilterPickerModal('company')"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
-                  <span class="pl-picker-lbl">Pipeline:</span>
-                  <span class="pl-picker-val">{{ activeProjWorkflowFilterLabel }}</span>
-                  <span
-                    v-if="projectFilter.workflowId"
-                    class="pl-picker-clear"
-                    title="Xóa lọc Khung Pipeline"
-                    @click.stop="selectProjWorkflowFilter('')"
+                  <svg class="pl-flat-row-ic" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="9" y1="6" x2="9.01" y2="6"></line><line x1="15" y1="6" x2="15.01" y2="6"></line><line x1="9" y1="10" x2="9.01" y2="10"></line><line x1="15" y1="10" x2="15.01" y2="10"></line><line x1="9" y1="18" x2="15" y2="18"></line></svg>
+                  <span class="pl-picker-lbl">Tên Cty</span>
+                  <span class="pl-picker-val" :title="activeProjCompanyFilterLabel">{{ activeProjCompanyFilterLabel }}</span>
+                </button>
+
+                <div class="pl-fp-row-acts">
+                  <button
+                    v-if="projectFilter.companyName"
+                    type="button"
+                    class="pl-fp-clear-btn"
+                    title="Xóa lọc Tên Cty"
+                    @click.stop="selectProjCompanyFilter('')"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                  </span>
-                  <svg v-else xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" class="pl-caret-svg"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                </button>
-                <div v-if="openProjFilterMenu === 'workflow'" class="pl-dropdown-backdrop" @click="openProjFilterMenu = ''"></div>
-                <div v-if="openProjFilterMenu === 'workflow'" class="pl-dropdown-menu">
-                  <div class="pl-dropdown-search">
-                    <input v-model="projFilterSearch.workflow" type="text" class="bg-input bg-input-sm" placeholder="Tìm Khung Pipeline..." />
-                  </div>
-                  <div class="pl-dropdown-list">
-                    <div class="pl-dropdown-item" :class="{ 'is-selected': !projectFilter.workflowId }" @click="selectProjWorkflowFilter('')">
-                      <span>Tất cả Khung Pipeline ({{ projWorkflowFilterOptions.length }})</span>
-                    </div>
-                    <div
-                      v-for="opt in filteredProjWorkflowOptions"
-                      :key="'pwf-' + opt.id_workflow"
-                      class="pl-dropdown-item"
-                      :class="{ 'is-selected': projectFilter.workflowId === opt.id_workflow }"
-                      @click="selectProjWorkflowFilter(opt.id_workflow)"
-                    >
-                      <div class="pl-dd-main">
-                        <span>{{ opt.label }}</span>
-                        <span class="pl-mini-tag is-slate pl-tabular">{{ opt.count }} DA</span>
-                      </div>
-                    </div>
-                    <div v-if="filteredProjWorkflowOptions.length === 0" class="pl-dd-empty">Không có Khung Pipeline tương ứng</div>
-                  </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="pl-fp-choose-btn"
+                    @click.stop="openProjFilterPickerModal('company')"
+                  >
+                    Chọn
+                  </button>
                 </div>
               </div>
 
-              <div class="bg-seg-switch is-compact is-slim-seg" title="Lọc theo trạng thái dự án">
-                <button
-                  v-for="stOpt in [
-                    { v: 'Tất cả', l: 'Tất cả' },
-                    { v: 'Đang triển khai', l: 'Đang chạy' },
-                    { v: 'Hoàn thành', l: 'Hoàn thành' },
-                    { v: 'Tạm dừng', l: 'Tạm dừng' }
-                  ]"
-                  :key="stOpt.v"
-                  type="button"
-                  class="bg-seg-btn"
-                  :class="{ 'is-active': projectStatusFilter === stOpt.v }"
-                  @click="projectStatusFilter = stOpt.v"
-                >
-                  {{ stOpt.l }}
-                </button>
-              </div>
-
-              <button
-                v-if="hasActiveProjectFilters"
-                type="button"
-                class="pl-slim-reset-btn"
-                @click="resetProjectFilters"
+              <!-- 3. TÊN KH -->
+              <div
+                class="pl-fp-row"
+                :class="{ 'is-filtered': !!projectFilter.customerName }"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
-                <span>Đặt lại lọc</span>
-              </button>
+                <button
+                  type="button"
+                  class="pl-fp-row-main"
+                  @click="openProjFilterPickerModal('customer')"
+                >
+                  <svg class="pl-flat-row-ic" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                  <span class="pl-picker-lbl">Tên KH</span>
+                  <span class="pl-picker-val" :title="activeProjCustomerFilterLabel">{{ activeProjCustomerFilterLabel }}</span>
+                </button>
+
+                <div class="pl-fp-row-acts">
+                  <button
+                    v-if="projectFilter.customerName"
+                    type="button"
+                    class="pl-fp-clear-btn"
+                    title="Xóa lọc Tên KH"
+                    @click.stop="selectProjCustomerFilter('')"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="pl-fp-choose-btn"
+                    @click.stop="openProjFilterPickerModal('customer')"
+                  >
+                    Chọn
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
+      <!-- UNIFIED CONTROL & ACTION ROW BELOW FILTER PANEL:
+           LEFT: [DARK | LIGHT | CUSTOM]
+           RIGHT: [TẤT CẢ | ĐANG CHẠY | HOÀN THÀNH | TẠM DỪNG] + [TẠO DỰ ÁN] -->
+      <div class="pl-kanban-control-bar is-proj-control-bar">
+        <div class="pl-kcb-left pl-hide-mob">
+          <div class="bg-theme-mode-switch pl-hide-mob" role="tablist" aria-label="Chế độ giao diện">
+            <button
+              type="button"
+              class="bg-theme-seg-btn"
+              :class="{ 'is-active': uiTheme === 'dark' }"
+              @click="setUiTheme('dark')"
+              title="Giao diện Dark Navy"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+              <span>Dark</span>
+            </button>
+            <button
+              type="button"
+              class="bg-theme-seg-btn"
+              :class="{ 'is-active': uiTheme === 'light' }"
+              @click="setUiTheme('light')"
+              title="Giao diện Enterprise Light Blue"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+              <span>Light</span>
+            </button>
+            <button
+              type="button"
+              class="bg-theme-seg-btn"
+              :class="{ 'is-active': uiTheme === 'custom' }"
+              @click="onClickCustomThemeBtn($event)"
+              title="Giao diện Custom Glassify"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3" ry="3"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+              <span>Custom</span>
+            </button>
+            <button
+              v-if="uiTheme === 'custom'"
+              type="button"
+              class="bg-theme-tuner-btn"
+              :class="{ 'is-open': showCustomGlassTuner }"
+              @click.stop="toggleCustomGlassTuner($event)"
+              title="Tùy chỉnh độ trong suốt & độ sáng kính"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="pl-kcb-right is-proj-kcb-right">
+          <div class="bg-seg-switch is-compact pl-proj-status-switch" title="Lọc theo trạng thái dự án">
+            <button
+              v-for="stOpt in [
+                { v: 'Tất cả', l: 'Tất cả' },
+                { v: 'Đang triển khai', l: 'Đang chạy' },
+                { v: 'Hoàn thành', l: 'Hoàn thành' },
+                { v: 'Tạm dừng', l: 'Tạm dừng' }
+              ]"
+              :key="stOpt.v"
+              type="button"
+              class="bg-seg-btn"
+              :class="{ 'is-active': projectStatusFilter === stOpt.v }"
+              @click="projectStatusFilter = stOpt.v"
+            >
+              {{ stOpt.l }}
+            </button>
+          </div>
+
+          <button
+            type="button"
+            class="pl-btn pl-btn-primary pl-btn-sm pl-hide-mob"
+            @click="openAddProjectModal()"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.35" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path><line x1="12" y1="11" x2="12" y2="17"></line><line x1="9" y1="14" x2="15" y2="14"></line></svg>
+            <span>Tạo Dự Án</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- MOBILE SUB-VIEW SWITCH (DỰ ÁN | KHO FLOW) -->
+      <div class="pl-mob-proj-switch" role="tablist" aria-label="Chuyển đổi danh sách Dự án và Kho Flow trên Mobile">
+        <button
+          type="button"
+          class="pl-mob-ps-btn"
+          :class="{ 'is-active': mobileProjSubView === 'projects' }"
+          @click="mobileProjSubView = 'projects'"
+        >
+          <span>Dự Án</span>
+          <span class="pl-mob-ps-cnt pl-tabular">{{ enrichedProjects.length }}</span>
+        </button>
+        <button
+          type="button"
+          class="pl-mob-ps-btn"
+          :class="{ 'is-active': mobileProjSubView === 'palette' }"
+          @click="mobileProjSubView = 'palette'"
+        >
+          <span>Kho Flow</span>
+          <span class="pl-mob-ps-cnt pl-tabular">{{ paletteTotalCount }}</span>
+        </button>
+      </div>
+
       <!-- 6/4 SPLIT WORKSPACE: LEFT (60% DỰ ÁN) | RIGHT (40% KHO FLOW: WORKFLOW KHÁCH HÀNG & WORKFLOW KHO) -->
       <div class="pl-projects-split-workspace">
         <!-- =====================================================
-             LEFT COLUMN (6/10): B2B PROJECT CARDS & DROP ZONES
+             LEFT COLUMN (6/10): SEARCH BAR + B2B PROJECT CARDS & DROP ZONES
              ===================================================== -->
-        <div class="pl-proj-left-col">
+        <div
+          class="pl-proj-left-col"
+          :class="{ 'is-mob-hidden-pane': mobileProjSubView !== 'projects' }"
+        >
+          <div
+            class="bg-search-shell is-proj-col-search pl-hide-mob"
+            :class="{ 'has-query': Boolean(projectSearchQuery && projectSearchQuery.trim()) }"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" class="bg-search-ic"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input
+              ref="projSearchInputRef"
+              v-model="projectSearchQuery"
+              type="text"
+              class="bg-search-inp"
+              placeholder="Tìm Dự án, Công ty, Khách hàng, Workflow, Ghi chú..."
+              @keydown.esc="onProjSearchEsc"
+            />
+            <span
+              v-if="projectSearchQuery && projectSearchQuery.trim()"
+              class="pl-search-match-pill pl-tabular"
+              :class="{ 'is-zero': enrichedProjects.length === 0 }"
+            >
+              {{ enrichedProjects.length }} kết quả
+            </span>
+            <button
+              v-if="projectSearchQuery"
+              type="button"
+              class="bg-search-clr"
+              aria-label="Xóa tìm kiếm"
+              @mousedown.prevent
+              @click="projectSearchQuery = ''"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+          </div>
+
           <div v-if="enrichedProjects.length === 0" class="pl-empty-panel">
             <div class="pl-empty-ic">
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
@@ -471,12 +584,15 @@
           <div v-else class="pl-projects-grid">
             <div
               v-for="proj in enrichedProjects"
+              :id="'project-card-' + proj.id_project"
               :key="proj.id_project"
               class="pl-project-card"
               :class="[
                 getProjectCardToneClass(proj),
                 {
-                  'is-overdue-proj': isProjectOverdue(proj),
+                  'is-expanded': isProjectCardExpanded(proj.id_project),
+                  'is-collapsed': !isProjectCardExpanded(proj.id_project),
+                  'is-nav-highlighted': highlightedProjectCardId === proj.id_project,
                   'is-drag-ready': !!draggingWorkflow && !isWorkflowAlreadyInProject(proj, draggingWorkflow.id_workflow),
                   'is-drag-over':
                     dragOverProjectId === proj.id_project &&
@@ -494,42 +610,46 @@
               @dragleave="onProjectDragLeave($event, proj)"
               @drop.prevent="onProjectDrop($event, proj)"
             >
-              <!-- TIER 1: TOP META & BADGES ROW (REPORT DNA) -->
+              <!-- TIER 1: TOP LEFT STATUS BADGE | TOP RIGHT TOGGLE CHEVRON -->
               <div class="pl-proj-meta-top">
                 <div class="pl-proj-meta-left">
-                  <span class="pl-proj-code-chip pl-mono pl-tabular">
-                    #{{ proj.ma_du_an || proj.id_project.slice(-6) }}
-                  </span>
-                  <span
-                    v-if="proj.deadline"
-                    class="pl-proj-deadline-chip pl-tabular"
-                    :class="{ 'is-overdue': isProjectOverdue(proj) }"
-                    :title="isProjectOverdue(proj) ? 'Dự án đã quá hạn deadline' : 'Hạn dự kiến hoàn thành dự án'"
+                  <label
+                    class="pl-status-pill is-interactive-status"
+                    :class="getProjectStatusPillClass(proj)"
+                    title="Nhấn để đổi nhanh trạng thái Dự án"
+                    @click.stop
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                    <span>{{ isProjectOverdue(proj) ? 'Quá hạn: ' : 'Hạn: ' }}{{ formatProjectDeadline(proj.deadline) }}</span>
-                  </span>
+                    <span>{{ proj.trang_thai || 'Đang triển khai' }}</span>
+                    <svg class="pl-status-pill-caret" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    <select
+                      class="pl-stage-native-overlay"
+                      :value="proj.trang_thai || 'Đang triển khai'"
+                      aria-label="Chọn trạng thái Dự án"
+                      @change="updateProjectQuickStatus(proj, $event.target.value)"
+                    >
+                      <option value="Đang triển khai">Đang triển khai</option>
+                      <option value="Hoàn thành">Hoàn thành</option>
+                      <option value="Tạm dừng">Tạm dừng</option>
+                      <option value="Huỷ">Huỷ</option>
+                    </select>
+                  </label>
                 </div>
 
                 <div class="pl-proj-meta-right">
-                  <span class="pl-status-pill" :class="getProjectStatusPillClass(proj)">
-                    {{ proj.trang_thai || 'Đang triển khai' }}
-                  </span>
-                  <span
-                    v-if="proj.partnerCustomerCount > 0"
-                    class="pl-proj-partner-badge pl-tabular"
-                    :title="'Đối tác / SI tham gia: ' + proj.partnerCustomerLabels.join(', ')"
+                  <button
+                    type="button"
+                    class="pl-proj-toggle-btn"
+                    :class="{ 'is-open': isProjectCardExpanded(proj.id_project) }"
+                    :title="isProjectCardExpanded(proj.id_project) ? 'Thu gọn thẻ dự án' : `Mở rộng xem Workflow (${proj.correspondingWorkflows.length})`"
+                    :aria-expanded="isProjectCardExpanded(proj.id_project)"
+                    @click.stop="toggleProjectCardExpand(proj.id_project)"
                   >
-                    +{{ proj.partnerCustomerCount }} Đối tác / SI
-                  </span>
-                  <span
-                    class="pl-am-avatar"
-                    :title="'AM phụ trách dự án: ' + (proj.AM || 'Sơn')"
-                  >{{ (proj.AM || 'S').charAt(0).toUpperCase() }}</span>
+                    <svg class="pl-proj-toggle-chevron" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                  </button>
                 </div>
               </div>
 
-              <!-- TIER 2: BOLD TITLE + FLAT CUSTOMER IDENTITY + NOTE (NO NESTED BOXES) -->
+              <!-- TIER 2: PROJECT TITLE + CUSTOMER NAME & COMPANY NAME -->
               <div class="pl-proj-identity">
                 <div class="pl-dcard-title-row">
                   <span
@@ -539,155 +659,141 @@
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                   </span>
-                  <div class="pl-proj-title">{{ proj.ten_du_an }}</div>
+                  <div class="pl-proj-title" v-html="highlightProjectText(proj.ten_du_an)"></div>
                 </div>
 
                 <div class="pl-proj-subline">
-                  <template v-if="proj.displayCompanyName || proj.displayCustomerName">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12.5" height="12.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="pl-proj-party-ic"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="9" y1="6" x2="9.01" y2="6"></line><line x1="15" y1="6" x2="15.01" y2="6"></line><line x1="9" y1="10" x2="9.01" y2="10"></line><line x1="15" y1="10" x2="15.01" y2="10"></line><line x1="9" y1="18" x2="15" y2="18"></line></svg>
-                    <span v-if="proj.displayCompanyName" class="pl-proj-company-txt">{{ proj.displayCompanyName }}</span>
-                    <span v-if="proj.displayCompanyName && proj.displayCustomerName" class="pl-dot-sep">•</span>
-                    <span v-if="proj.displayCustomerName" class="pl-proj-cus-txt">{{ proj.displayCustomerName }}</span>
+                  <template v-if="proj.displayCustomerName || proj.displayCompanyName">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12.5" height="12.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="pl-proj-party-ic"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    <span v-if="proj.displayCustomerName" class="pl-proj-cus-txt" v-html="highlightProjectText(proj.displayCustomerName)"></span>
+                    <span v-if="proj.displayCustomerName && proj.displayCompanyName" class="pl-dot-sep">•</span>
+                    <span v-if="proj.displayCompanyName" class="pl-proj-company-txt" v-html="highlightProjectText(proj.displayCompanyName)"></span>
                   </template>
                   <span
                     v-else
                     class="pl-proj-missing-cus"
                     @click.stop="openEditProjectModal(proj)"
                   >
-                    Chưa cập nhật Công ty / Khách hàng Gốc
+                    Chưa cập nhật Tên khách hàng, Tên công ty
                   </span>
                 </div>
+              </div>
 
+              <!-- COLLAPSIBLE DETAIL BODY (DEFAULT CLOSED) -->
+              <template v-if="isProjectCardExpanded(proj.id_project)">
                 <div v-if="proj.ghi_chu" class="pl-proj-note-row" :title="proj.ghi_chu">
                   <span class="pl-proj-note-tag">NOTE</span>
-                  <span class="pl-proj-note-txt">{{ proj.ghi_chu }}</span>
+                  <span class="pl-proj-note-txt" v-html="highlightProjectText(proj.ghi_chu)"></span>
                 </div>
-              </div>
 
-              <!-- TIER 3: FLAT FINANCIAL METRICS & PROGRESS BAR (CRISP HAIRLINE — REPORT DNA) -->
-              <div class="pl-proj-metrics-flat">
-                <div class="pl-proj-metrics-row">
-                  <div class="pl-card-chips pl-tabular">
-                    <span class="pl-metric-chip">{{ proj.pipelines.length }} công việc</span>
-                    <span v-if="proj.wonCount > 0" class="pl-metric-chip is-won-chip">{{ proj.wonCount }} chốt xong</span>
-                    <span v-if="parseNum(proj.ngan_sach_du_kien) > 0" class="pl-metric-chip">
-                      NS: {{ formatNumber(proj.ngan_sach_du_kien) }} ₫
-                    </span>
-                    <span v-else-if="proj.weightedVolume > 0" class="pl-metric-chip">
-                      Quy đổi: {{ formatNumber(proj.weightedVolume) }} ₫
+                <!-- WORKFLOW DIRECTORY INSIDE PROJECT -->
+                <div class="pl-proj-wf-stack" @click.stop>
+                  <div class="pl-proj-wf-sec-head">
+                    <span class="pl-proj-wf-sec-lbl pl-tabular">
+                      WORKFLOW ĐANG GẮN ({{ proj.correspondingWorkflows.length }})
                     </span>
                   </div>
 
-                  <div class="pl-proj-vol-hero pl-tabular" :class="{ 'is-zero': !(proj.totalVolume > 0) }">
-                    {{ formatNumber(proj.totalVolume) || '0' }}<span class="pl-proj-vol-cur">₫</span>
-                  </div>
-                </div>
+                  <div
+                    v-for="wf in proj.correspondingWorkflows"
+                    :id="'proj-wf-card-' + proj.id_project + '-' + wf.id_workflow"
+                    :key="proj.id_project + '-wf-' + wf.id_workflow"
+                    class="pl-proj-wf-card"
+                    :class="{
+                      'is-preferred': wf.isPreferred,
+                      'is-dup-hover':
+                        dragOverProjectId === proj.id_project &&
+                        !!draggingWorkflow &&
+                        draggingWorkflow.id_workflow === wf.id_workflow,
+                      'is-dup-highlight': highlightedProjWfKey === proj.id_project + '::' + wf.id_workflow
+                    }"
+                    title="Nhấn để mở Workflow này trên bảng Công Việc Pipeline"
+                    @click="openProjectWorkflowOnKanban(proj, wf.id_workflow)"
+                  >
+                    <div class="pl-proj-wf-row-head">
+                      <div class="pl-proj-wf-meta-inline">
+                        <span class="pl-proj-wf-name" v-html="highlightProjectText(wf.name_workflow)"></span>
+                      </div>
 
-                <div class="pl-proj-prog-inline pl-tabular">
-                  <span class="pl-proj-exec-lbl">Tiến độ</span>
-                  <div class="pl-proj-prog-track">
-                    <div
-                      class="pl-proj-prog-fill"
-                      :class="{ 'is-done': proj.avgProgress >= 100 || proj.trang_thai === 'Hoàn thành' }"
-                      :style="{ width: (proj.trang_thai === 'Hoàn thành' ? 100 : Math.min(100, Math.max(0, proj.avgProgress))) + '%' }"
-                    ></div>
-                  </div>
-                  <strong class="pl-proj-exec-pct">
-                    {{ proj.trang_thai === 'Hoàn thành' ? 100 : proj.avgProgress }}%
-                  </strong>
-                </div>
-              </div>
-
-              <!-- TIER 4: CLEAN WORKFLOW DIRECTORY INSIDE PROJECT (NO SCOPE BADGES + DUPLICATE HIGHLIGHT) -->
-              <div class="pl-proj-wf-stack" @click.stop>
-                <div class="pl-proj-wf-sec-head">
-                  <span class="pl-proj-wf-sec-lbl pl-tabular">
-                    WORKFLOW ĐANG GẮN ({{ proj.correspondingWorkflows.length }})
-                  </span>
-                </div>
-
-                <div
-                  v-for="wf in proj.correspondingWorkflows"
-                  :id="'proj-wf-card-' + proj.id_project + '-' + wf.id_workflow"
-                  :key="proj.id_project + '-wf-' + wf.id_workflow"
-                  class="pl-proj-wf-card"
-                  :class="{
-                    'is-preferred': wf.isPreferred,
-                    'is-dup-hover':
-                      dragOverProjectId === proj.id_project &&
-                      !!draggingWorkflow &&
-                      draggingWorkflow.id_workflow === wf.id_workflow,
-                    'is-dup-highlight': highlightedProjWfKey === proj.id_project + '::' + wf.id_workflow
-                  }"
-                  title="Nhấn để mở Workflow này trên bảng Công Việc Pipeline"
-                  @click="openProjectWorkflowOnKanban(proj, wf.id_workflow)"
-                >
-                  <div class="pl-proj-wf-row-head">
-                    <div class="pl-proj-wf-meta-inline">
-                      <span class="pl-proj-wf-name">{{ wf.name_workflow }}</span>
-                      <template v-if="wf.displayCompanyName || wf.displayCustomerName">
-                        <span class="pl-em-sep">—</span>
-                        <span class="pl-proj-wf-party">
-                          <span v-if="wf.displayCompanyName">{{ wf.displayCompanyName }}</span>
-                          <span v-if="wf.displayCompanyName && wf.displayCustomerName" class="pl-dot-sep">•</span>
-                          <span v-if="wf.displayCustomerName">{{ wf.displayCustomerName }}</span>
+                      <div class="pl-wf-card-mini-tools">
+                        <span v-if="wf.pipeCount > 0" class="pl-wf-live-stat pl-tabular">
+                          {{ wf.pipeCount }} việc
                         </span>
+                        <button
+                          type="button"
+                          class="pl-wf-edit-btn"
+                          title="Mở modal sửa bước của Workflow này"
+                          @click.stop="openEditWorkflowStepsModal(wf.id_workflow)"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                          <span>Sửa</span>
+                        </button>
+                        <button
+                          v-if="wf.isExplicitlyLinked"
+                          type="button"
+                          class="pl-wf-detach-btn"
+                          title="Gỡ Workflow này khỏi Dự án"
+                          @click.stop="handleQuickDetachFlowFromCard(proj, wf)"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- SINGLE-LINE HORIZONTAL WORKFLOW STEPS (LEFT COLOR BORDER ONLY, NO COLOR FILL) -->
+                    <div class="pl-proj-wf-steps-line">
+                      <template
+                        v-for="(st, sIdx) in getProjWfDisplaySteps(wf)"
+                        :key="proj.id_project + '-' + wf.id_workflow + '-' + st.id"
+                      >
+                        <div
+                          class="pl-wf-step-flat"
+                          :class="{
+                            'is-has-active': st.activeCount > 0,
+                            'is-won-step': st.id === 'hoan_thanh' && st.activeCount > 0,
+                            'is-lost-step': st.id === 'that_bai' && st.activeCount > 0
+                          }"
+                          :style="{ '--st-clr': st.color || '#3b82f6' }"
+                          :title="st.value + ' (' + st.percent + ')' + (st.activeCount > 0 ? ` — ${st.activeCount} công việc` : '')"
+                        >
+                          <span class="pl-wf-step-flat-lbl">{{ st.shortLabel || st.label }}</span>
+                          <span v-if="st.activeCount > 0" class="pl-wf-step-cnt pl-tabular">{{ st.activeCount }}</span>
+                        </div>
+                        <span
+                          v-if="sIdx < getProjWfDisplaySteps(wf).length - 1"
+                          class="pl-wf-step-arrow"
+                          aria-hidden="true"
+                        >→</span>
                       </template>
                     </div>
-
-                    <div class="pl-wf-card-mini-tools">
-                      <span v-if="wf.pipeCount > 0" class="pl-wf-live-stat pl-tabular">
-                        {{ wf.pipeCount }} việc<template v-if="wf.totalVolume > 0"> · {{ formatNumber(wf.totalVolume) }} ₫</template>
-                      </span>
-                      <button
-                        type="button"
-                        class="pl-wf-plus-btn"
-                        title="Thêm Công việc vào Workflow này"
-                        @click.stop="openAddPipelineForProject(proj, wf.id_workflow)"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                      </button>
-                      <button
-                        v-if="wf.isExplicitlyLinked"
-                        type="button"
-                        class="pl-wf-detach-btn"
-                        title="Gỡ Workflow này khỏi Dự án"
-                        @click.stop="handleQuickDetachFlowFromCard(proj, wf)"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12.5" height="12.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                      </button>
-                    </div>
-                  </div>
-
-                  <!-- SINGLE-LINE HORIZONTAL WORKFLOW STEPS WITH LIVE ACTIVE COUNTS -->
-                  <div class="pl-proj-wf-steps-line">
-                    <template
-                      v-for="(st, sIdx) in getProjWfDisplaySteps(wf)"
-                      :key="proj.id_project + '-' + wf.id_workflow + '-' + st.id"
-                    >
-                      <div
-                        class="pl-wf-step-flat"
-                        :class="{
-                          'is-has-active': st.activeCount > 0,
-                          'is-won-step': st.id === 'hoan_thanh' && st.activeCount > 0,
-                          'is-lost-step': st.id === 'that_bai' && st.activeCount > 0
-                        }"
-                        :style="{ '--st-clr': st.color || '#3b82f6' }"
-                        :title="st.value + ' (' + st.percent + ')' + (st.activeCount > 0 ? ` — ${st.activeCount} công việc` : '')"
-                      >
-                        <span class="pl-proj-wf-step-dot"></span>
-                        <span class="pl-wf-step-flat-lbl">{{ st.shortLabel || st.label }}</span>
-                        <span v-if="st.activeCount > 0" class="pl-wf-step-cnt pl-tabular">{{ st.activeCount }}</span>
-                      </div>
-                      <span
-                        v-if="sIdx < getProjWfDisplaySteps(wf).length - 1"
-                        class="pl-wf-step-arrow"
-                        aria-hidden="true"
-                      >→</span>
-                    </template>
                   </div>
                 </div>
-              </div>
+
+                <!-- BOTTOM ACTION FOOTER (SỬA · XOÁ) -->
+                <div class="pl-proj-card-actions" @mousedown.stop @click.stop>
+                  <div class="pl-dcard-btn-row">
+                    <button
+                      type="button"
+                      class="pl-dcard-btn is-copy"
+                      title="Chỉnh sửa thông tin Dự án"
+                      @click.stop="openEditProjectModal(proj)"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                      <span>Sửa</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      class="pl-dcard-btn is-del"
+                      title="Xóa Dự án"
+                      @click.stop="confirmDeleteProject(proj)"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                      <span>Xoá</span>
+                    </button>
+                  </div>
+                </div>
+              </template>
 
               <!-- LIVE DROP SLOT INDICATOR WHILE DRAGGING A WORKFLOW FROM KHO FLOW -->
               <div
@@ -707,66 +813,17 @@
                   + Thả vào đây để gắn "{{ draggingWorkflow.name_workflow }}"
                 </span>
               </div>
-
-              <!-- TIER 5: REPORT-DNA BOTTOM ACTION FOOTER (SỬA · XOÁ · + THÊM VIỆC · TRẠNG THÁI ▾) -->
-              <div class="pl-proj-card-actions" @mousedown.stop @click.stop>
-                <div class="pl-dcard-btn-row">
-                  <button
-                    type="button"
-                    class="pl-dcard-btn is-copy"
-                    title="Chỉnh sửa thông tin Dự án"
-                    @click.stop="openEditProjectModal(proj)"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                    <span>Sửa</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    class="pl-dcard-btn is-del"
-                    title="Xóa Dự án"
-                    @click.stop="confirmDeleteProject(proj)"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                    <span>Xoá</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    class="pl-dcard-btn is-copy"
-                    title="Thêm Công việc Pipeline mới vào Dự án này"
-                    @click.stop="openAddPipelineForProject(proj, proj.default_workflow_id || (proj.correspondingWorkflows[0] && proj.correspondingWorkflows[0].id_workflow) || 'WF_DEFAULT')"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                    <span>Thêm việc</span>
-                  </button>
-
-                  <label class="pl-dcard-btn is-stage" title="Đổi nhanh trạng thái Dự án" @click.stop>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
-                    <span>Trạng thái</span>
-                    <span class="pl-stage-pct-pill">{{ proj.trang_thai || 'Đang triển khai' }}</span>
-                    <span class="pl-stage-caret" aria-hidden="true">▾</span>
-                    <select
-                      class="pl-stage-native-overlay"
-                      :value="proj.trang_thai || 'Đang triển khai'"
-                      aria-label="Chọn trạng thái Dự án"
-                      @change="updateProjectQuickStatus(proj, $event.target.value)"
-                    >
-                      <option value="Đang triển khai">Đang triển khai</option>
-                      <option value="Hoàn thành">Hoàn thành</option>
-                      <option value="Tạm dừng">Tạm dừng</option>
-                    </select>
-                  </label>
-                </div>
-              </div>
             </div>
           </div>
         </div>
 
         <!-- =====================================================
-             RIGHT COLUMN (4/10): STICKY KHO FLOW (2 SECTIONS: WORKFLOW KHÁCH HÀNG | WORKFLOW KHO)
+             RIGHT COLUMN (4/10): STICKY KHO FLOW (UNIFIED CUSTOMER-FREE WORKFLOW LIBRARY)
              ===================================================== -->
-        <aside class="pl-wf-palette-aside">
+        <aside
+          class="pl-wf-palette-aside"
+          :class="{ 'is-mob-hidden-pane': mobileProjSubView !== 'palette' }"
+        >
           <div class="pl-palette-head">
             <div class="pl-palette-head-left">
               <div class="pl-palette-title pl-tabular">
@@ -780,106 +837,14 @@
             <div class="pl-palette-head-actions">
               <button
                 type="button"
-                class="pl-btn pl-btn-xs"
-                :class="showPaletteQuickCreate ? 'pl-btn-slate' : 'pl-btn-sky-soft'"
-                @click="showPaletteQuickCreate = !showPaletteQuickCreate"
-              >
-                <svg v-if="!showPaletteQuickCreate" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                <span>{{ showPaletteQuickCreate ? 'Đóng' : '+ Tạo nhanh' }}</span>
-              </button>
-              <button
-                type="button"
                 class="pl-btn pl-btn-slate pl-btn-xs"
-                title="Mở trang quản lý & thiết kế chi tiết Workflow"
+                title="Chuyển tới trang quản lý Kho Workflow"
                 @click="activeTab = 'workflow'"
               >
-                <span>Studio ↗</span>
+                <span>Chuyển tới kho</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
               </button>
             </div>
-          </div>
-
-          <!-- 2 MỤC TRONG KHO FLOW: 1. WORKFLOW KHÁCH HÀNG | 2. WORKFLOW KHO -->
-          <div class="bg-seg-switch pl-palette-tabs" role="tablist" aria-label="Phân loại Kho Flow">
-            <button
-              type="button"
-              class="bg-seg-btn"
-              :class="{ 'is-active': paletteScopeTab === 'customer' }"
-              @click="paletteScopeTab = 'customer'"
-            >
-              <span>Workflow Khách hàng</span>
-              <span class="pl-pal-tab-cnt pl-tabular">{{ paletteCustomerList.length }}</span>
-            </button>
-
-            <button
-              type="button"
-              class="bg-seg-btn"
-              :class="{ 'is-active': paletteScopeTab === 'library' }"
-              @click="paletteScopeTab = 'library'"
-            >
-              <span>Workflow Kho</span>
-              <span class="pl-pal-tab-cnt pl-tabular">{{ paletteLibraryList.length }}</span>
-            </button>
-          </div>
-
-          <!-- INLINE QUICK-CREATE WORKFLOW FORM (ADAPTS TO ACTIVE SECTION) -->
-          <div v-if="showPaletteQuickCreate" class="pl-palette-quick-form">
-            <template v-if="paletteScopeTab === 'customer'">
-              <div class="pl-field">
-                <div class="bg-label-row">
-                  <label class="bg-label">Công ty (1 KH) <span class="bg-req">*</span></label>
-                  <div style="display: flex; gap: 6px;">
-                    <button type="button" class="pl-link-btn" @click="openCustomerSearch('project_quick_wf')">Danh bạ KH</button>
-                    <button type="button" class="pl-link-btn" @click="openAddCustomerModal('project_quick_wf')">+ KH mới</button>
-                  </div>
-                </div>
-                <input v-model="quickProjWfForm.ten_cong_ty" type="text" class="bg-input bg-input-sm" placeholder="Tên công ty..." />
-              </div>
-
-              <div class="pl-field">
-                <label class="bg-label">Tên Khách hàng / Liên hệ</label>
-                <input v-model="quickProjWfForm.ten_khach_hang" type="text" class="bg-input bg-input-sm" placeholder="Người liên hệ..." />
-              </div>
-            </template>
-
-            <div class="pl-field">
-              <label class="bg-label">
-                {{ paletteScopeTab === 'customer' ? 'Tên Workflow Khách hàng' : 'Tên Workflow Kho' }} <span class="bg-req">*</span>
-              </label>
-              <input
-                v-model="quickProjWfForm.name_workflow"
-                type="text"
-                class="bg-input bg-input-sm"
-                :placeholder="paletteScopeTab === 'customer' ? 'VD: Workflow Nhà thầu phụ SI...' : 'VD: Quy trình Đấu thầu Thiết bị Y tế...'"
-              />
-            </div>
-
-            <div class="pl-field">
-              <label class="bg-label">Khởi tạo bước từ</label>
-              <select v-model="quickProjWfForm.base_template_id" class="bg-input bg-input-sm">
-                <option value="WF_DEFAULT">Workflow Chuẩn Hệ Thống (5 bước)</option>
-                <optgroup v-if="templateWorkflowOptions.length > 0" label="Workflow Kho dùng chung">
-                  <option v-for="tpl in templateWorkflowOptions" :key="'pal-tpl-' + tpl.id_workflow" :value="tpl.id_workflow">
-                    {{ tpl.name_workflow }}
-                  </option>
-                </optgroup>
-                <optgroup v-if="customerWorkflowOptions.length > 0" label="Workflow Khách hàng">
-                  <option v-for="cwf in customerWorkflowOptions" :key="'pal-cwf-' + cwf.id_workflow" :value="cwf.id_workflow">
-                    {{ cwf.name_workflow }}{{ (cwf.ten_cong_ty || cwf.ten_khach_hang) ? ` — ${cwf.ten_cong_ty || cwf.ten_khach_hang}` : '' }}
-                  </option>
-                </optgroup>
-              </select>
-            </div>
-
-            <button
-              type="button"
-              class="pl-btn pl-btn-primary pl-btn-sm"
-              style="width: 100%;"
-              :disabled="savingQuickProjWf"
-              @click="submitQuickWorkflowForProject(null)"
-            >
-              <span v-if="savingQuickProjWf" class="pl-spinner-xs"></span>
-              <span>{{ paletteScopeTab === 'customer' ? 'Lưu vào Workflow Khách hàng' : 'Lưu vào Workflow Kho' }}</span>
-            </button>
           </div>
 
           <!-- PALETTE SEARCH BAR -->
@@ -890,7 +855,7 @@
                 v-model="paletteWfSearch"
                 type="text"
                 class="bg-search-inp"
-                :placeholder="paletteScopeTab === 'customer' ? 'Tìm Workflow, Công ty, Khách hàng...' : 'Tìm Workflow kho, tên bước...'"
+                placeholder="Tìm tên Workflow, tên bước..."
               />
               <button v-if="paletteWfSearch" type="button" class="bg-search-clr" @click="paletteWfSearch = ''" aria-label="Xóa tìm kiếm">
                 <svg xmlns="http://www.w3.org/2000/svg" width="12.5" height="12.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -898,25 +863,22 @@
             </div>
           </div>
 
-          <!-- DRAGGABLE WORKFLOW LIST (NO SCOPE BADGES ON CARDS) -->
+          <!-- DRAGGABLE WORKFLOW LIST -->
           <div class="pl-palette-list">
             <div v-if="filteredPaletteWorkflows.length === 0" class="pl-empty-inline">
               <div style="margin-bottom: 6px;">
                 {{
                   paletteWfSearch
                     ? 'Không tìm thấy Workflow nào khớp từ khóa.'
-                    : paletteScopeTab === 'customer'
-                      ? 'Chưa có Workflow riêng nào của Khách hàng.'
-                      : 'Chưa có Workflow nào trong Kho.'
+                    : 'Chưa có Workflow nào trong Kho.'
                 }}
               </div>
               <button
-                v-if="!showPaletteQuickCreate"
                 type="button"
                 class="pl-btn pl-btn-sky-soft pl-btn-xs"
-                @click="showPaletteQuickCreate = true"
+                @click="activeTab = 'workflow'"
               >
-                {{ paletteScopeTab === 'customer' ? '+ Tạo Workflow Khách hàng' : '+ Tạo Workflow Kho' }}
+                Chuyển tới kho
               </button>
             </div>
 
@@ -935,35 +897,32 @@
                 </span>
                 <div class="pl-palette-wf-titles">
                   <div class="pl-proj-wf-name">{{ wf.name_workflow }}</div>
-                  <div
-                    v-if="paletteScopeTab === 'customer' && wf.workflow_scope === 'customer' && (wf.displayCompanyName || wf.displayCustomerName)"
-                    class="pl-proj-wf-party"
-                  >
-                    <span v-if="wf.displayCompanyName">{{ wf.displayCompanyName }}</span>
-                    <span v-if="wf.displayCompanyName && wf.displayCustomerName" class="pl-dot-sep">•</span>
-                    <span v-if="wf.displayCustomerName">{{ wf.displayCustomerName }}</span>
-                  </div>
                 </div>
 
-                <!-- 1-CLICK QUICK-ATTACH SELECTOR (BOTH PC & MOBILE) -->
-                <select
-                  v-if="enrichedProjects.length > 0"
-                  class="pl-palette-quick-select"
-                  aria-label="Chọn dự án để gắn nhanh"
-                  @change="onMobileQuickAttachSelect($event, wf.id_workflow)"
-                >
-                  <option value="">+ Gắn DA</option>
-                  <option
-                    v-for="pOpt in enrichedProjects"
-                    :key="'m-att-' + wf.id_workflow + '-' + pOpt.id_project"
-                    :value="pOpt.id_project"
+                <!-- EDIT STEPS + ATTACH TO PROJECT MODAL ACTIONS -->
+                <div class="pl-palette-wf-actions" @mousedown.stop>
+                  <button
+                    type="button"
+                    class="pl-wf-edit-btn"
+                    title="Mở modal sửa bước của Workflow này"
+                    @click.stop="openEditWorkflowStepsModal(wf.id_workflow)"
                   >
-                    {{ pOpt.ten_du_an }}{{ isWorkflowAlreadyInProject(pOpt, wf.id_workflow) ? ' (Đã có)' : '' }}
-                  </option>
-                </select>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                    <span>Sửa</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="pl-palette-attach-btn"
+                    title="Chọn Dự án để thêm Workflow này vào"
+                    @click.stop="openAttachWfToProjectModal(wf)"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    <span>Thêm vào dự án</span>
+                  </button>
+                </div>
               </div>
 
-              <!-- SINGLE-LINE HORIZONTAL FLOW STEPS -->
+              <!-- SINGLE-LINE HORIZONTAL FLOW STEPS (LEFT COLOR BORDER ONLY) -->
               <div class="pl-proj-wf-steps-line">
                 <template
                   v-for="(st, sIdx) in wf.flowSteps"
@@ -974,7 +933,6 @@
                     :style="{ '--st-clr': st.color || '#3b82f6' }"
                     :title="st.value + ' (' + st.percent + ')'"
                   >
-                    <span class="pl-proj-wf-step-dot"></span>
                     <span class="pl-wf-step-flat-lbl">{{ st.shortLabel || st.label }}</span>
                   </div>
                   <span
@@ -993,29 +951,150 @@
     <!-- =========================================================
          TAB 1: KANBAN BOARD WORKSPACE (STANDARD + PROJECT SWIMLANES)
          ========================================================= -->
-    <div v-else class="pl-tab-body">
+    <div v-else-if="activeTab === 'kanban'" class="pl-tab-body">
+      <!-- MOBILE UNIFIED 1-ROW SEARCH + FILTER TOGGLE + THEME CYCLE (CHUẨN REPORTFIREBASE) -->
+      <div class="pl-mob-unified-bar">
+        <div
+          class="bg-search-shell is-mob-unified-search"
+          :class="{ 'has-query': Boolean(searchQuery && searchQuery.trim()) }"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" class="bg-search-ic"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input
+            v-model="searchQuery"
+            type="text"
+            class="bg-search-inp"
+            placeholder="Tìm KH, Cty, Nội dung, File..."
+            @keydown.esc="onKanbanSearchEsc"
+          />
+          <span
+            v-if="searchQuery && searchQuery.trim()"
+            class="pl-search-match-pill pl-tabular"
+            :class="{ 'is-zero': displayedKanbanItems.length === 0 }"
+          >
+            {{ displayedKanbanItems.length }}
+          </span>
+          <button
+            v-if="searchQuery"
+            type="button"
+            class="bg-search-clr"
+            aria-label="Xóa tìm kiếm"
+            @mousedown.prevent
+            @click="searchQuery = ''"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+
+        <button
+          type="button"
+          class="pl-mob-filter-toggle-btn"
+          :class="{ 'is-open': mobileKanbanFilterOpen, 'has-active': activeKanbanFiltersCount > 0 }"
+          @click="mobileKanbanFilterOpen = !mobileKanbanFilterOpen"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+          <span>Lọc</span>
+          <span v-if="activeKanbanFiltersCount > 0" class="pl-mob-ft-badge pl-tabular">{{ activeKanbanFiltersCount }}</span>
+          <span class="pl-mob-ft-caret">{{ mobileKanbanFilterOpen ? '▴' : '▾' }}</span>
+        </button>
+
+        <button
+          type="button"
+          class="pl-mob-theme-cycle-btn"
+          :title="uiTheme === 'dark' ? 'Đang dùng Dark — bấm chuyển Light' : uiTheme === 'light' ? 'Đang dùng Light — bấm chuyển Custom' : 'Đang dùng Custom — bấm chuyển Dark'"
+          @click="cycleMobileTheme($event)"
+        >
+          <svg v-if="uiTheme === 'dark'" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+          <svg v-else-if="uiTheme === 'light'" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line></svg>
+          <svg v-else xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3" ry="3"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+        </button>
+      </div>
+
       <!-- SPACIOUS 2-COL COMMAND DECK: LEFT FRAMELESS PIPELINE FILES + RIGHT CASCADING FILTER PANEL -->
       <section class="bg-bento-deck is-kanban-spacious-deck">
         <!-- LEFT: SPACIOUS SPLIT PIPELINE FILE VAULT (FILE TỪ REPORT | UPLOAD TRỰC TIẾP — LARGE & FRAMELESS ITEMS LIKE SALEREPORTFIREBASE) -->
-        <div class="pl-pipe-files-vault is-taller-vault">
+        <div
+          class="pl-pipe-files-vault is-taller-vault"
+          :class="{ 'is-mob-collapsed': !mobileKanbanFilesOpen }"
+        >
+          <div class="pl-mob-vault-summary" @click="mobileKanbanFilesOpen = !mobileKanbanFilesOpen">
+            <div class="pl-mob-vs-left">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+              <span class="pl-mob-vs-title">Kho File</span>
+              <span class="pl-pfv-cnt is-emerald pl-tabular">{{ activeKanbanFilesVault.totalCount }}</span>
+              <span class="pl-mob-vs-sub">
+                Report: {{ activeKanbanFilesVault.reportFiles.length }} · Trực tiếp: {{ activeKanbanFilesVault.directFiles.length }}
+              </span>
+            </div>
+            <div class="pl-mob-vs-right">
+              <button
+                v-if="activeKanbanFilesVault.totalCount > 0"
+                type="button"
+                class="pl-pfv-expand-btn is-with-lbl"
+                @click.stop="openPipelineFilesVaultModal('all')"
+              >
+                <span>Xem hết</span>
+              </button>
+              <button type="button" class="pl-mob-collapse-btn">
+                <span>{{ mobileKanbanFilesOpen ? 'Thu gọn' : 'Mở' }}</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" :style="{ transform: mobileKanbanFilesOpen ? 'rotate(180deg)' : 'rotate(0deg)' }"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </button>
+            </div>
+          </div>
           <div class="pl-pfv-grid">
             <!-- COMPARTMENT 1: FILE TỪ REPORT -->
             <div class="pl-pfv-col is-report-col">
               <div class="pl-pfv-head">
                 <div class="pl-pfv-title">
+                  <input
+                    v-if="activeKanbanFilesVault.reportFiles.length > 0"
+                    type="checkbox"
+                    class="pl-pfv-chk is-head-chk"
+                    :checked="areAllVaultFilesSelected(activeKanbanFilesVault.reportFiles)"
+                    :title="areAllVaultFilesSelected(activeKanbanFilesVault.reportFiles) ? 'Bỏ chọn tất cả File từ Report' : 'Chọn tất cả File từ Report'"
+                    @change="toggleSelectAllVaultFiles(activeKanbanFilesVault.reportFiles)"
+                  />
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.35" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
                   <span>File từ Report</span>
                   <span class="pl-pfv-cnt is-emerald pl-tabular">{{ activeKanbanFilesVault.reportFiles.length }}</span>
                 </div>
-                <button
-                  v-if="activeKanbanFilesVault.reportFiles.length > 0"
-                  type="button"
-                  class="pl-pfv-expand-btn"
-                  title="Mở rộng xem & lọc danh sách File từ Report"
-                  @click="openPipelineFilesVaultModal('report')"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
-                </button>
+                <div v-if="activeKanbanFilesVault.reportFiles.length > 0" class="pl-pfv-head-acts">
+                  <button
+                    v-if="getSelectedVaultFiles(activeKanbanFilesVault.reportFiles).length > 0"
+                    type="button"
+                    class="pl-pfv-bulk-btn is-selected"
+                    :disabled="vaultBulkDownloading"
+                    title="Tải về các file đã chọn"
+                    @click="downloadMultipleVaultFiles(getSelectedVaultFiles(activeKanbanFilesVault.reportFiles))"
+                  >
+                    <span>Tải chọn ({{ getSelectedVaultFiles(activeKanbanFilesVault.reportFiles).length }})</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="pl-pfv-bulk-btn is-all"
+                    :disabled="vaultBulkDownloading"
+                    title="Tải hết tất cả File từ Report"
+                    @click="downloadMultipleVaultFiles(activeKanbanFilesVault.reportFiles)"
+                  >
+                    <span>Tải hết</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="pl-pfv-bulk-btn is-zip"
+                    :disabled="vaultBulkDownloading"
+                    :title="getSelectedVaultFiles(activeKanbanFilesVault.reportFiles).length > 0 ? 'Tải file ZIP các tệp đã chọn' : 'Tải file ZIP tất cả File từ Report'"
+                    @click="downloadVaultFilesAsZip(getSelectedVaultFiles(activeKanbanFilesVault.reportFiles).length > 0 ? getSelectedVaultFiles(activeKanbanFilesVault.reportFiles) : activeKanbanFilesVault.reportFiles, 'file-tu-report')"
+                  >
+                    <span>ZIP{{ getSelectedVaultFiles(activeKanbanFilesVault.reportFiles).length > 0 ? ` (${getSelectedVaultFiles(activeKanbanFilesVault.reportFiles).length})` : '' }}</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="pl-pfv-expand-btn"
+                    title="Mở rộng xem & lọc danh sách File từ Report"
+                    @click="openPipelineFilesVaultModal('report')"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+                  </button>
+                </div>
               </div>
 
               <div v-if="activeKanbanFilesVault.reportFiles.length === 0" class="pl-pfv-empty">
@@ -1026,7 +1105,16 @@
                   v-for="f in activeKanbanFilesVault.reportFiles"
                   :key="f.key"
                   class="pl-pfv-row"
+                  :class="{ 'is-checked': isVaultFileSelected(f.key) }"
                 >
+                  <input
+                    type="checkbox"
+                    class="pl-pfv-chk"
+                    :checked="isVaultFileSelected(f.key)"
+                    title="Chọn tệp để tải hàng loạt"
+                    @click.stop
+                    @change="toggleVaultFileSelection(f.key)"
+                  />
                   <button
                     type="button"
                     class="pl-pfv-file-main"
@@ -1074,20 +1162,60 @@
             <div class="pl-pfv-col is-direct-col">
               <div class="pl-pfv-head">
                 <div class="pl-pfv-title">
+                  <input
+                    v-if="activeKanbanFilesVault.directFiles.length > 0"
+                    type="checkbox"
+                    class="pl-pfv-chk is-head-chk"
+                    :checked="areAllVaultFilesSelected(activeKanbanFilesVault.directFiles)"
+                    :title="areAllVaultFilesSelected(activeKanbanFilesVault.directFiles) ? 'Bỏ chọn tất cả Upload trực tiếp' : 'Chọn tất cả Upload trực tiếp'"
+                    @change="toggleSelectAllVaultFiles(activeKanbanFilesVault.directFiles)"
+                  />
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.35" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
                   <span>Upload trực tiếp</span>
                   <span class="pl-pfv-cnt is-sky pl-tabular">{{ activeKanbanFilesVault.directFiles.length }}</span>
                 </div>
-                <button
-                  v-if="activeKanbanFilesVault.totalCount > 0"
-                  type="button"
-                  class="pl-pfv-expand-btn is-with-lbl"
-                  title="Mở kho xem tất cả tệp trong Pipeline"
-                  @click="openPipelineFilesVaultModal('all')"
-                >
-                  <span>Xem hết</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
-                </button>
+                <div class="pl-pfv-head-acts">
+                  <button
+                    v-if="getSelectedVaultFiles(activeKanbanFilesVault.directFiles).length > 0"
+                    type="button"
+                    class="pl-pfv-bulk-btn is-selected"
+                    :disabled="vaultBulkDownloading"
+                    title="Tải về các file đã chọn"
+                    @click="downloadMultipleVaultFiles(getSelectedVaultFiles(activeKanbanFilesVault.directFiles))"
+                  >
+                    <span>Tải chọn ({{ getSelectedVaultFiles(activeKanbanFilesVault.directFiles).length }})</span>
+                  </button>
+                  <button
+                    v-if="activeKanbanFilesVault.directFiles.length > 0"
+                    type="button"
+                    class="pl-pfv-bulk-btn is-all"
+                    :disabled="vaultBulkDownloading"
+                    title="Tải hết tất cả tệp Upload trực tiếp"
+                    @click="downloadMultipleVaultFiles(activeKanbanFilesVault.directFiles)"
+                  >
+                    <span>Tải hết</span>
+                  </button>
+                  <button
+                    v-if="activeKanbanFilesVault.directFiles.length > 0"
+                    type="button"
+                    class="pl-pfv-bulk-btn is-zip"
+                    :disabled="vaultBulkDownloading"
+                    :title="getSelectedVaultFiles(activeKanbanFilesVault.directFiles).length > 0 ? 'Tải file ZIP các tệp đã chọn' : 'Tải file ZIP tất cả tệp Upload trực tiếp'"
+                    @click="downloadVaultFilesAsZip(getSelectedVaultFiles(activeKanbanFilesVault.directFiles).length > 0 ? getSelectedVaultFiles(activeKanbanFilesVault.directFiles) : activeKanbanFilesVault.directFiles, 'upload-truc-tiep')"
+                  >
+                    <span>ZIP{{ getSelectedVaultFiles(activeKanbanFilesVault.directFiles).length > 0 ? ` (${getSelectedVaultFiles(activeKanbanFilesVault.directFiles).length})` : '' }}</span>
+                  </button>
+                  <button
+                    v-if="activeKanbanFilesVault.totalCount > 0"
+                    type="button"
+                    class="pl-pfv-expand-btn is-with-lbl"
+                    title="Mở kho xem tất cả tệp trong Pipeline"
+                    @click="openPipelineFilesVaultModal('all')"
+                  >
+                    <span>Xem hết</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+                  </button>
+                </div>
               </div>
 
               <div v-if="activeKanbanFilesVault.directFiles.length === 0" class="pl-pfv-empty">
@@ -1098,7 +1226,16 @@
                   v-for="f in activeKanbanFilesVault.directFiles"
                   :key="f.key"
                   class="pl-pfv-row"
+                  :class="{ 'is-checked': isVaultFileSelected(f.key) }"
                 >
+                  <input
+                    type="checkbox"
+                    class="pl-pfv-chk"
+                    :checked="isVaultFileSelected(f.key)"
+                    title="Chọn tệp để tải hàng loạt"
+                    @click.stop
+                    @change="toggleVaultFileSelection(f.key)"
+                  />
                   <button
                     type="button"
                     class="pl-pfv-file-main"
@@ -1144,13 +1281,17 @@
         </div>
 
         <!-- RIGHT: FRAMELESS VERTICAL CASCADING FILTER LIST (PA1: FLAT 4 ROWS + HEADER TIMELINE) -->
-        <div class="bg-filter-strip is-kanban-filter-panel is-frameless-vertical">
+        <div
+          class="bg-filter-strip is-kanban-filter-panel is-frameless-vertical"
+          :class="{ 'is-mob-collapsed': !mobileKanbanFilterOpen, 'is-mob-deck-hidden': !mobileKanbanFilterOpen }"
+        >
           <div class="pl-filter-panel-col">
             <!-- FILTER HEAD + INLINE TIMELINE MODE + RESET -->
             <div class="pl-fp-head">
               <div class="pl-fp-title">
                 <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
                 <span>Bộ lọc công việc</span>
+                <span v-if="activeKanbanFiltersCount > 0" class="pl-mob-filter-cnt pl-tabular">{{ activeKanbanFiltersCount }}</span>
               </div>
 
               <div class="pl-fp-head-controls">
@@ -1183,6 +1324,14 @@
                   <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
                   <span>Đặt lại</span>
                 </button>
+                <button
+                  type="button"
+                  class="pl-mob-collapse-btn"
+                  @click="mobileKanbanFilterOpen = !mobileKanbanFilterOpen"
+                >
+                  <span>{{ mobileKanbanFilterOpen ? 'Thu gọn' : 'Mở lọc' }}</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" :style="{ transform: mobileKanbanFilterOpen ? 'rotate(180deg)' : 'rotate(0deg)' }"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </button>
               </div>
             </div>
 
@@ -1213,248 +1362,174 @@
               </div>
             </div>
 
-            <!-- 4 FRAMELESS VERTICAL ROWS: DỰ ÁN -> PIPELINE -> TÊN CTY -> TÊN KH -->
+            <!-- 4 FRAMELESS VERTICAL ROWS: DỰ ÁN -> PIPELINE -> TÊN CTY -> TÊN KH (MODAL PICKERS + CARD NAVIGATION) -->
             <div class="pl-filter-vertical-list">
               <!-- 1. DỰ ÁN -->
-              <div class="pl-dropdown-anchor" :class="{ 'is-open': openKanbanFilterMenu === 'project' }">
+              <div
+                class="pl-fp-row"
+                :class="{ 'is-filtered': !!filterConfig.projectId && filterConfig.projectId !== '__STANDALONE__' }"
+              >
                 <button
                   type="button"
-                  class="pl-picker-trigger is-flat-row"
-                  :class="{ 'is-filtered': !!filterConfig.projectId }"
-                  @click="toggleKanbanFilterMenu('project')"
+                  class="pl-fp-row-main"
+                  @click="openKanbanFilterPickerModal('project')"
                 >
                   <svg class="pl-flat-row-ic" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
                   <span class="pl-picker-lbl">Dự án</span>
                   <span class="pl-picker-val" :title="activeKanbanProjectFilterLabel">{{ activeKanbanProjectFilterLabel }}</span>
-                  <span
-                    v-if="filterConfig.projectId"
-                    class="pl-picker-clear"
-                    title="Xóa lọc Dự án"
-                    @click.stop="selectKanbanProjectFilter('')"
+                </button>
+
+                <div class="pl-fp-row-acts">
+                  <button
+                    v-if="filterConfig.projectId && filterConfig.projectId !== '__STANDALONE__'"
+                    type="button"
+                    class="pl-fp-clear-btn"
+                    title="Đặt về Không có Dự án"
+                    @click.stop="selectKanbanProjectFilter('__STANDALONE__')"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                  </span>
-                  <svg v-else xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" class="pl-caret-svg"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                </button>
-                <div v-if="openKanbanFilterMenu === 'project'" class="pl-dropdown-backdrop" @click="openKanbanFilterMenu = ''"></div>
-                <div v-if="openKanbanFilterMenu === 'project'" class="pl-dropdown-menu">
-                  <div class="pl-dropdown-search">
-                    <input
-                      v-model="kanbanFilterSearch.project"
-                      type="text"
-                      class="bg-input bg-input-sm"
-                      placeholder="Tìm Dự án, Mã DA..."
-                    />
-                  </div>
-                  <div class="pl-dropdown-list">
-                    <div
-                      class="pl-dropdown-item"
-                      :class="{ 'is-selected': !filterConfig.projectId }"
-                      @click="selectKanbanProjectFilter('')"
-                    >
-                      <span>Tất cả Dự án &amp; Công việc lẻ</span>
-                    </div>
-                    <div
-                      v-if="kanbanStandaloneCount > 0 || filterConfig.projectId === '__STANDALONE__'"
-                      class="pl-dropdown-item"
-                      :class="{ 'is-selected': filterConfig.projectId === '__STANDALONE__' }"
-                      @click="selectKanbanProjectFilter('__STANDALONE__')"
-                    >
-                      <div class="pl-dd-main">
-                        <span>Chỉ Công việc lẻ (Chưa gắn Dự án)</span>
-                        <span class="pl-mini-tag is-slate pl-tabular">{{ kanbanStandaloneCount }} việc</span>
-                      </div>
-                    </div>
-                    <div
-                      v-for="opt in filteredKanbanProjectOptions"
-                      :key="'kbda-' + opt.id_project"
-                      class="pl-dropdown-item"
-                      :class="{ 'is-selected': filterConfig.projectId === opt.id_project }"
-                      @click="selectKanbanProjectFilter(opt.id_project)"
-                    >
-                      <div class="pl-dd-main">
-                        <span>{{ opt.label }}</span>
-                        <span v-if="opt.sub" class="pl-dd-sub">{{ opt.sub }}</span>
-                      </div>
-                    </div>
-                    <div v-if="filteredKanbanProjectOptions.length === 0 && kanbanStandaloneCount === 0" class="pl-dd-empty">Không có Dự án tương ứng</div>
-                  </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="pl-fp-nav-btn"
+                    :class="{ 'is-ready': !!filterConfig.projectId && filterConfig.projectId !== '__STANDALONE__' }"
+                    :title="
+                      filterConfig.projectId && filterConfig.projectId !== '__STANDALONE__'
+                        ? 'Điều hướng tới thẻ Dự án: ' + activeKanbanProjectFilterLabel
+                        : 'Chuyển tới danh sách thẻ Dự án'
+                    "
+                    @click.stop="navigateToFilteredProjectCard"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                    <span class="bg-hide-sm">Điều hướng</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="pl-fp-choose-btn"
+                    @click.stop="openKanbanFilterPickerModal('project')"
+                  >
+                    Chọn
+                  </button>
                 </div>
               </div>
 
-              <!-- 2. PIPELINE (KHUNG PIPELINE) -->
-              <div class="pl-dropdown-anchor" :class="{ 'is-open': openKanbanFilterMenu === 'workflow' }">
+              <!-- 2. PIPELINE (WORKFLOW) -->
+              <div
+                class="pl-fp-row"
+                :class="{ 'is-filtered': !!filterConfig.workflowId || selectedWorkflowId !== 'WF_DEFAULT' }"
+              >
                 <button
                   type="button"
-                  class="pl-picker-trigger is-flat-row"
-                  :class="{ 'is-filtered': !!filterConfig.workflowId || selectedWorkflowId !== 'WF_DEFAULT' }"
-                  @click="toggleKanbanFilterMenu('workflow')"
+                  class="pl-fp-row-main"
+                  @click="openKanbanFilterPickerModal('workflow')"
                 >
                   <svg class="pl-flat-row-ic" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
                   <span class="pl-picker-lbl">Pipeline</span>
                   <span class="pl-picker-val" :title="activeKanbanWorkflowFilterLabel">{{ activeKanbanWorkflowFilterLabel }}</span>
-                  <span
-                    v-if="filterConfig.workflowId"
-                    class="pl-picker-clear"
-                    title="Xóa khóa lọc Khung Pipeline"
+                </button>
+
+                <div class="pl-fp-row-acts">
+                  <button
+                    v-if="selectedWorkflowId !== 'WF_DEFAULT'"
+                    type="button"
+                    class="pl-fp-clear-btn"
+                    title="Chuyển về Khung Chuẩn Hệ Thống"
                     @click.stop="clearKanbanWorkflowFilter"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                  </span>
-                  <svg v-else xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" class="pl-caret-svg"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                </button>
-                <div v-if="openKanbanFilterMenu === 'workflow'" class="pl-dropdown-backdrop" @click="openKanbanFilterMenu = ''"></div>
-                <div v-if="openKanbanFilterMenu === 'workflow'" class="pl-dropdown-menu">
-                  <div class="pl-dropdown-search">
-                    <input
-                      v-model="kanbanFilterSearch.workflow"
-                      type="text"
-                      class="bg-input bg-input-sm"
-                      placeholder="Tìm Khung Pipeline..."
-                    />
-                  </div>
-                  <div class="pl-dropdown-list">
-                    <div
-                      v-if="filterConfig.workflowId"
-                      class="pl-dropdown-item"
-                      @click="clearKanbanWorkflowFilter"
-                    >
-                      <span>Tất cả Khung tương ứng ({{ kanbanWorkflowFilterOptions.length }})</span>
-                    </div>
-                    <div
-                      v-for="opt in filteredKanbanWorkflowOptions"
-                      :key="'kbwf-' + opt.id_workflow"
-                      class="pl-dropdown-item"
-                      :class="{ 'is-selected': selectedWorkflowId === opt.id_workflow }"
-                      @click="selectKanbanWorkflowFilter(opt.id_workflow)"
-                    >
-                      <div class="pl-dd-main">
-                        <div style="min-width: 0; display: flex; flex-direction: column;">
-                          <span>{{ opt.label }}</span>
-                          <span v-if="opt.sub" class="pl-dd-sub">{{ opt.sub }}</span>
-                        </div>
-                        <span class="pl-mini-tag is-slate pl-tabular">{{ opt.count }} việc</span>
-                      </div>
-                    </div>
-                    <div v-if="filteredKanbanWorkflowOptions.length === 0" class="pl-dd-empty">Không có Khung Pipeline tương ứng</div>
-                  </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="pl-fp-nav-btn is-ready"
+                    :title="'Điều hướng tới thẻ Workflow: ' + activeKanbanWorkflowFilterLabel"
+                    @click.stop="navigateToFilteredWorkflowCard"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                    <span class="bg-hide-sm">Điều hướng</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="pl-fp-choose-btn"
+                    @click.stop="openKanbanFilterPickerModal('workflow')"
+                  >
+                    Chọn
+                  </button>
                 </div>
               </div>
 
               <!-- 3. TÊN CTY -->
-              <div class="pl-dropdown-anchor" :class="{ 'is-open': openKanbanFilterMenu === 'company' }">
+              <div
+                class="pl-fp-row"
+                :class="{ 'is-filtered': !!filterConfig.companyName }"
+              >
                 <button
                   type="button"
-                  class="pl-picker-trigger is-flat-row"
-                  :class="{ 'is-filtered': !!filterConfig.companyName }"
-                  @click="toggleKanbanFilterMenu('company')"
+                  class="pl-fp-row-main"
+                  @click="openKanbanFilterPickerModal('company')"
                 >
                   <svg class="pl-flat-row-ic" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="9" y1="6" x2="9.01" y2="6"></line><line x1="15" y1="6" x2="15.01" y2="6"></line><line x1="9" y1="10" x2="9.01" y2="10"></line><line x1="15" y1="10" x2="15.01" y2="10"></line><line x1="9" y1="18" x2="15" y2="18"></line></svg>
                   <span class="pl-picker-lbl">Tên Cty</span>
                   <span class="pl-picker-val" :title="activeKanbanCompanyFilterLabel">{{ activeKanbanCompanyFilterLabel }}</span>
-                  <span
+                </button>
+
+                <div class="pl-fp-row-acts">
+                  <button
                     v-if="filterConfig.companyName"
-                    class="pl-picker-clear"
+                    type="button"
+                    class="pl-fp-clear-btn"
                     title="Xóa lọc Tên Cty"
                     @click.stop="selectKanbanCompanyFilter('')"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                  </span>
-                  <svg v-else xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" class="pl-caret-svg"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                </button>
-                <div v-if="openKanbanFilterMenu === 'company'" class="pl-dropdown-backdrop" @click="openKanbanFilterMenu = ''"></div>
-                <div v-if="openKanbanFilterMenu === 'company'" class="pl-dropdown-menu">
-                  <div class="pl-dropdown-search">
-                    <input
-                      v-model="kanbanFilterSearch.company"
-                      type="text"
-                      class="bg-input bg-input-sm"
-                      placeholder="Tìm Tên công ty..."
-                    />
-                  </div>
-                  <div class="pl-dropdown-list">
-                    <div
-                      class="pl-dropdown-item"
-                      :class="{ 'is-selected': !filterConfig.companyName }"
-                      @click="selectKanbanCompanyFilter('')"
-                    >
-                      <span>Tất cả Công ty ({{ kanbanCompanyFilterOptions.length }})</span>
-                    </div>
-                    <div
-                      v-for="opt in filteredKanbanCompanyOptions"
-                      :key="'kbct-' + opt.key"
-                      class="pl-dropdown-item"
-                      :class="{ 'is-selected': filterConfig.companyName === opt.key }"
-                      @click="selectKanbanCompanyFilter(opt.key)"
-                    >
-                      <div class="pl-dd-main">
-                        <span>{{ opt.label }}</span>
-                        <div style="display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;">
-                          <span v-if="opt.hasCustomFlow" class="pl-mini-tag is-emerald pl-tabular">
-                            {{ opt.customFlowCount > 1 ? opt.customFlowCount + ' Khung' : 'Khung riêng' }}
-                          </span>
-                          <span v-if="opt.count > 0" class="pl-mini-tag is-slate pl-tabular">{{ opt.count }} việc</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div v-if="filteredKanbanCompanyOptions.length === 0" class="pl-dd-empty">Không có Công ty tương ứng</div>
-                  </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="pl-fp-choose-btn"
+                    @click.stop="openKanbanFilterPickerModal('company')"
+                  >
+                    Chọn
+                  </button>
                 </div>
               </div>
 
               <!-- 4. TÊN KH -->
-              <div class="pl-dropdown-anchor" :class="{ 'is-open': openKanbanFilterMenu === 'customer' }">
+              <div
+                class="pl-fp-row"
+                :class="{ 'is-filtered': !!filterConfig.customerName }"
+              >
                 <button
                   type="button"
-                  class="pl-picker-trigger is-flat-row"
-                  :class="{ 'is-filtered': !!filterConfig.customerName }"
-                  @click="toggleKanbanFilterMenu('customer')"
+                  class="pl-fp-row-main"
+                  @click="openKanbanFilterPickerModal('customer')"
                 >
                   <svg class="pl-flat-row-ic" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                   <span class="pl-picker-lbl">Tên KH</span>
                   <span class="pl-picker-val" :title="activeKanbanCustomerFilterLabel">{{ activeKanbanCustomerFilterLabel }}</span>
-                  <span
+                </button>
+
+                <div class="pl-fp-row-acts">
+                  <button
                     v-if="filterConfig.customerName"
-                    class="pl-picker-clear"
+                    type="button"
+                    class="pl-fp-clear-btn"
                     title="Xóa lọc Tên KH"
                     @click.stop="selectKanbanCustomerFilter('')"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                  </span>
-                  <svg v-else xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" class="pl-caret-svg"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                </button>
-                <div v-if="openKanbanFilterMenu === 'customer'" class="pl-dropdown-backdrop" @click="openKanbanFilterMenu = ''"></div>
-                <div v-if="openKanbanFilterMenu === 'customer'" class="pl-dropdown-menu">
-                  <div class="pl-dropdown-search">
-                    <input
-                      v-model="kanbanFilterSearch.customer"
-                      type="text"
-                      class="bg-input bg-input-sm"
-                      placeholder="Tìm Tên khách hàng / liên hệ..."
-                    />
-                  </div>
-                  <div class="pl-dropdown-list">
-                    <div
-                      class="pl-dropdown-item"
-                      :class="{ 'is-selected': !filterConfig.customerName }"
-                      @click="selectKanbanCustomerFilter('')"
-                    >
-                      <span>Tất cả Khách hàng ({{ kanbanCustomerFilterOptions.length }})</span>
-                    </div>
-                    <div
-                      v-for="opt in filteredKanbanCustomerOptions"
-                      :key="'kbkh-' + opt.key"
-                      class="pl-dropdown-item"
-                      :class="{ 'is-selected': filterConfig.customerName === opt.key }"
-                      @click="selectKanbanCustomerFilter(opt.key)"
-                    >
-                      <div class="pl-dd-main">
-                        <span>{{ opt.label }}</span>
-                        <span v-if="opt.count > 0" class="pl-mini-tag is-slate pl-tabular">{{ opt.count }} việc</span>
-                      </div>
-                    </div>
-                    <div v-if="filteredKanbanCustomerOptions.length === 0" class="pl-dd-empty">Không có Tên KH tương ứng</div>
-                  </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    class="pl-fp-choose-btn"
+                    @click.stop="openKanbanFilterPickerModal('customer')"
+                  >
+                    Chọn
+                  </button>
                 </div>
               </div>
             </div>
@@ -1489,7 +1564,7 @@
             </button>
           </div>
 
-          <div class="bg-theme-mode-switch" role="tablist" aria-label="Chế độ giao diện">
+          <div class="bg-theme-mode-switch pl-hide-mob" role="tablist" aria-label="Chế độ giao diện">
             <button
               type="button"
               class="bg-theme-seg-btn"
@@ -1533,7 +1608,7 @@
           </div>
         </div>
 
-        <div class="pl-kcb-center">
+        <div class="pl-kcb-center pl-hide-mob">
           <div
             class="bg-search-shell is-control-bar-search"
             :class="{ 'has-query': Boolean(searchQuery && searchQuery.trim()) }"
@@ -1591,7 +1666,7 @@
 
           <button
             type="button"
-            class="pl-btn pl-btn-primary pl-btn-sm"
+            class="pl-btn pl-btn-primary pl-btn-sm pl-hide-mob"
             @click="openAddModal()"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
@@ -1683,6 +1758,7 @@
               class="kanban-column is-unassigned"
               :class="{ 'is-collapsed': collapsedCols.unassigned }"
               data-col-name="Chưa phân loại"
+              data-mob-col-id="unassigned"
             >
               <div class="kanban-col-head" @click="collapsedCols.unassigned = !collapsedCols.unassigned">
                 <div class="kanban-col-title">
@@ -1732,7 +1808,7 @@
                       :class="{ 'is-active': openKanbanCardMenuId === element.Id_pipeline }"
                       title="Thao tác nhanh"
                       aria-label="Thao tác nhanh"
-                      @click.stop="toggleKanbanCardMenu(element.Id_pipeline)"
+                      @click.stop="toggleKanbanCardMenu(element.Id_pipeline, element, 'unassigned')"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
                     </button>
@@ -2003,6 +2079,7 @@
             v-for="col in COLUMNS"
             :key="col.id"
             class="kanban-column"
+            :data-mob-col-id="col.id"
             :class="{
               'is-collapsed': collapsedCols[col.id],
               'is-col-success': col.id === 'hoan_thanh',
@@ -2062,7 +2139,7 @@
                       :class="{ 'is-active': openKanbanCardMenuId === element.Id_pipeline }"
                       title="Thao tác nhanh"
                       aria-label="Thao tác nhanh"
-                      @click.stop="toggleKanbanCardMenu(element.Id_pipeline)"
+                      @click.stop="toggleKanbanCardMenu(element.Id_pipeline, element, 'unassigned')"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
                     </button>
@@ -2433,6 +2510,18 @@
                   :style="{ '--card-accent': getColTitleColor(col.id) }"
                   @click="openEditModal(card)"
                 >
+                  <div class="pl-kcard-menu-anchor pl-mob-only-card-menu" @mousedown.stop @click.stop>
+                    <button
+                      type="button"
+                      class="pl-kcard-more-btn"
+                      title="Chuyển bước & thao tác"
+                      aria-label="Chuyển bước & thao tác"
+                      @click.stop="toggleKanbanCardMenu(card.Id_pipeline, card, col.id)"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+                    </button>
+                  </div>
+
                   <div class="pl-kcard-body is-no-menu">
                     <div
                       v-if="card.finish_time"
@@ -2671,6 +2760,15 @@
           <!-- STUDIO TOP BAR WITH CONDENSED PROJECT METRICS -->
           <div class="pl-modal-header is-fullscreen-head is-studio-head">
             <div class="pl-modal-title-group" style="min-width: 0; flex: 1;">
+              <button
+                type="button"
+                class="pl-proj-head-back-btn"
+                aria-label="Quay lại"
+                title="Quay lại"
+                @click="handleProjectModalMobileBack"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+              </button>
               <div class="pl-modal-icon is-sky">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
               </div>
@@ -2748,7 +2846,10 @@
                  ========================================================= -->
             <aside
               class="modal-group pl-studio-col is-col-left"
-              :class="{ 'is-mob-collapsed': !isProjLeftRailOpen }"
+              :class="{
+                'is-mob-collapsed': !isProjLeftRailOpen,
+                'is-mob-active-tab': mobileProjectModalTab === 'frames'
+              }"
             >
               <div
                 class="modal-banner-header is-sky is-mob-collapsible"
@@ -2763,11 +2864,11 @@
                   <button
                     type="button"
                     class="bg-banner-btn"
-                    title="Gắn Khung có sẵn hoặc tạo nhanh Khung cho KH đối tác"
+                    title="Chọn thêm Workflow từ Kho vào Dự án này"
                     @click.stop="openManageProjectWfModal('attach')"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                    <span>Gắn / Tạo</span>
+                    <span>Thêm Workflow</span>
                   </button>
                   <button
                     type="button"
@@ -2810,15 +2911,35 @@
                       <span class="pl-proj-nav-title">{{ wf.name_workflow }}</span>
                       <span v-if="wf.isPreferred" class="pl-proj-nav-pref">Mặc định</span>
                     </div>
-                    <span class="pl-proj-nav-cnt pl-tabular">{{ wf.pipeCount }}</span>
+
+                    <div class="pl-wf-card-mini-tools" @click.stop>
+                      <span class="pl-proj-nav-cnt pl-tabular" title="Số công việc trong khung này">{{ wf.pipeCount }}</span>
+                      <button
+                        type="button"
+                        class="pl-wf-edit-btn"
+                        title="Mở modal sửa bước của Workflow này"
+                        @click.stop="openEditWorkflowStepsModal(wf.id_workflow)"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                        <span>Sửa</span>
+                      </button>
+                      <button
+                        v-if="wf.isExplicitlyLinked"
+                        type="button"
+                        class="pl-wf-detach-btn"
+                        title="Gỡ Workflow khỏi Dự án"
+                        @click.stop="handleQuickDetachFlowFromCard(activeProjectDetail, wf)"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                      </button>
+                    </div>
                   </div>
 
-                  <div class="pl-proj-nav-sub pl-tabular">
-                    <span>{{ wf.displayCompanyName || wf.displayCustomerName || wf.scopeLabel }}</span>
-                    <span v-if="wf.totalVolume > 0"> · {{ formatNumber(wf.totalVolume) }} ₫</span>
-                  </div>
-
-                  <div class="pl-proj-nav-foot">
+                  <div class="pl-proj-nav-meta-line pl-tabular">
+                    <div class="pl-proj-nav-sub">
+                      <span>{{ wf.stepCount }} bước tiến độ</span>
+                      <span v-if="wf.totalVolume > 0"> · {{ formatNumber(wf.totalVolume) }} ₫</span>
+                    </div>
                     <div class="pl-proj-nav-dots" :title="wf.stepCount + ' bước tiến độ'">
                       <span
                         v-for="st in wf.flowSteps"
@@ -2827,44 +2948,36 @@
                         :style="{ backgroundColor: st.color }"
                       ></span>
                     </div>
+                  </div>
 
-                    <div class="pl-proj-nav-acts" @click.stop>
-                      <button
-                        type="button"
-                        class="pl-proj-nav-act-btn"
-                        title="Thêm công việc mới vào khung này"
-                        @click="openAddPipelineForProject(activeProjectDetail, wf.id_workflow)"
-                      >
-                        + CV
-                      </button>
-                      <button
-                        type="button"
-                        class="pl-proj-nav-act-btn"
-                        title="Mở Workflow này trên Công Việc Pipeline"
-                        @click="openProjectWorkflowOnKanban(activeProjectDetail, wf.id_workflow)"
-                      >
-                        Mở CV ↗
-                      </button>
-                      <button
-                        v-if="wf.isExplicitlyLinked"
-                        type="button"
-                        class="pl-proj-nav-act-btn is-danger"
-                        title="Gỡ Khung Pipeline khỏi Dự án"
-                        @click="handleQuickDetachFlowFromCard(activeProjectDetail, wf)"
-                      >
-                        ✕
-                      </button>
-                    </div>
+                  <div class="pl-proj-nav-foot is-2btn-foot" @click.stop>
+                    <button
+                      type="button"
+                      class="pl-proj-nav-act-btn is-add-task"
+                      title="Thêm công việc mới vào Workflow này"
+                      @click="openAddPipelineForProject(activeProjectDetail, wf.id_workflow)"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                      <span>Thêm công việc</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="pl-proj-nav-act-btn is-open-pipe"
+                      title="Mở Workflow này trên bảng Công Việc Pipeline"
+                      @click="openProjectWorkflowOnKanban(activeProjectDetail, wf.id_workflow)"
+                    >
+                      <span>Mở pipeline</span>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
+                    </button>
                   </div>
                 </div>
 
                 <button
-                  v-if="activeProjectDetail.hasValidCustomer"
                   type="button"
                   class="pl-proj-designer-jump"
-                  @click="jumpToCustomerWorkflowDesignerFromProject(activeProjectDetail)"
+                  @click="jumpToWorkflowDesignerFromProject()"
                 >
-                  <span>Thiết kế / tùy chỉnh Khung KH Gốc</span>
+                  <span>Chuyển tới kho</span>
                   <span aria-hidden="true">↗</span>
                 </button>
               </div>
@@ -2873,7 +2986,10 @@
             <!-- =========================================================
                  COLUMN 2 (~49%): DANH SÁCH CÔNG VIỆC TRONG PIPELINE
                  ========================================================= -->
-            <section class="modal-group pl-studio-col is-col-center">
+            <section
+              class="modal-group pl-studio-col is-col-center"
+              :class="{ 'is-mob-active-tab': mobileProjectModalTab === 'tasks' }"
+            >
               <div class="modal-banner-header is-emerald">
                 <div class="pl-studio-banner-left" style="min-width: 0;">
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
@@ -3107,7 +3223,10 @@
             <!-- =========================================================
                  COLUMN 3 (~28%): REPORT CON LIÊN KẾT & CHỨNG TỪ DỰ ÁN
                  ========================================================= -->
-            <aside class="modal-group pl-studio-col is-col-right">
+            <aside
+              class="modal-group pl-studio-col is-col-right"
+              :class="{ 'is-mob-active-tab': mobileProjectModalTab === 'hub' }"
+            >
               <div class="modal-banner-header is-teal">
                 <div class="pl-studio-banner-left">
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
@@ -3132,7 +3251,7 @@
                   <button
                     type="button"
                     class="pl-proj-hub-scope-reset"
-                    @click="focusedProjectPipe ? (focusedProjectPipeId = '') : selectProjectDetailWorkflow('ALL')"
+                    @click="focusedProjectPipe ? (focusedProjectPipeId = '') : selectProjectDetailWorkflow('ALL', { keepMobileTab: true })"
                   >
                     Xem tất cả
                   </button>
@@ -3262,6 +3381,45 @@
             </aside>
           </div>
 
+          <!-- MOBILE SUB-DOCK: PROJECT DETAIL MODAL -->
+          <nav class="pl-modal-subdock" aria-label="Điều hướng chi tiết dự án">
+            <button
+              type="button"
+              class="pl-msd-btn"
+              :class="{ 'is-active': mobileProjectModalTab === 'frames' }"
+              @click="mobileProjectModalTab = 'frames'; isProjLeftRailOpen = true"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+              <span class="pl-msd-lbl">Khung Pipeline</span>
+              <span class="pl-msd-badge pl-tabular">{{ activeProjectDetail.correspondingWorkflows.length }}</span>
+            </button>
+            <button
+              type="button"
+              class="pl-msd-btn"
+              :class="{ 'is-active': mobileProjectModalTab === 'tasks' }"
+              @click="mobileProjectModalTab = 'tasks'"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+              <span class="pl-msd-lbl">Công việc Pipeline</span>
+              <span class="pl-msd-badge pl-tabular">{{ displayedProjectDetailPipelines.length }}</span>
+            </button>
+            <button
+              type="button"
+              class="pl-msd-btn"
+              :class="{ 'is-active': mobileProjectModalTab === 'hub' }"
+              @click="mobileProjectModalTab = 'hub'"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+              <span class="pl-msd-lbl">Report &amp; Chứng từ</span>
+              <span
+                v-if="scopedProjectHub.reports.length + scopedProjectHub.files.length > 0"
+                class="pl-msd-badge pl-tabular"
+              >
+                {{ scopedProjectHub.reports.length + scopedProjectHub.files.length }}
+              </span>
+            </button>
+          </nav>
+
           <!-- STUDIO STICKY FOOTER -->
           <div class="pl-modal-footer is-fullscreen-foot is-studio-foot">
             <div class="pl-studio-foot-left">
@@ -3310,7 +3468,7 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
               </div>
               <div>
-                <h3 class="pl-modal-title">Gắn / Tạo Khung Pipeline Vào Dự Án</h3>
+                <h3 class="pl-modal-title">Thêm Workflow Vào Dự Án</h3>
                 <p class="pl-modal-sub">Dự án: <strong>{{ activeProjectDetail.ten_du_an }}</strong></p>
               </div>
             </div>
@@ -3321,81 +3479,59 @@
 
           <div class="pl-modal-body">
             <div class="pl-manage-wf-top">
-              <div class="bg-seg-switch is-compact">
-                <button
-                  type="button"
-                  class="bg-seg-btn"
-                  :class="{ 'is-active': manageWfDrawerMode === 'attach' }"
-                  @click="manageWfDrawerMode = 'attach'"
-                >
-                  Chọn Khung có sẵn (KH khác / Mẫu)
-                </button>
-                <button
-                  type="button"
-                  class="bg-seg-btn"
-                  :class="{ 'is-active': manageWfDrawerMode === 'create' }"
-                  @click="manageWfDrawerMode = 'create'"
-                >
-                  + Tạo nhanh Khung cho KH khác
+              <div class="bg-search-shell" style="flex: 1; min-width: 180px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" class="bg-search-ic"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input
+                  v-model="manageWfSearch"
+                  type="text"
+                  class="bg-search-inp"
+                  placeholder="Tìm tên Workflow..."
+                />
+                <button v-if="manageWfSearch" type="button" class="bg-search-clr" @click="manageWfSearch = ''" aria-label="Xóa tìm kiếm">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12.5" height="12.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                 </button>
               </div>
 
               <button
-                v-if="activeProjectDetail.hasValidCustomer"
                 type="button"
                 class="pl-btn pl-btn-slate pl-btn-xs"
-                @click="jumpToCustomerWorkflowDesignerFromProject(activeProjectDetail)"
+                @click="jumpToWorkflowDesignerFromProject()"
               >
-                Mở Workflow KH Gốc ↗
+                <span>Chuyển tới kho</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
               </button>
             </div>
 
-            <!-- MODE 1: ATTACH / DETACH EXISTING PIPELINE FRAMES -->
-            <template v-if="manageWfDrawerMode === 'attach'">
-              <div class="pl-picker-search-bar">
-                <input
-                  v-model="manageWfSearch"
-                  type="text"
-                  class="bg-input"
-                  style="flex: 1; min-width: 180px;"
-                  placeholder="Tìm tên Khung Pipeline, tên Công ty / KH đối tác hoặc Khung mẫu..."
-                />
-                <select v-model="manageWfScopeFilter" class="bg-input" style="max-width: 220px;">
-                  <option value="ALL">Tất cả Khung ({{ uniqueWorkflows.length }})</option>
-                  <option value="customer">Khung riêng theo KH / Công ty</option>
-                  <option value="template">Kho Khung Mẫu (Blueprint)</option>
-                </select>
+            <div class="pl-picker-list">
+              <div v-if="attachableWorkflowsForProject.length === 0" class="pl-empty-inline">
+                Không tìm thấy Workflow phù hợp trong Kho.
               </div>
-
-              <div class="pl-picker-list">
-                <div v-if="attachableWorkflowsForProject.length === 0" class="pl-empty-inline">
-                  Không tìm thấy Khung Pipeline phù hợp. Bạn có thể chuyển sang tab <strong>"+ Tạo nhanh Khung cho KH khác"</strong> ngay phía trên.
-                </div>
-                <div
-                  v-for="candWf in attachableWorkflowsForProject"
-                  :key="'candwf-' + candWf.id_workflow"
-                  class="pl-picker-row"
-                  :class="{ 'is-selected': candWf.isLinkedToProject || candWf.isAutoRootFlow }"
-                >
-                  <div style="min-width: 0; flex: 1;">
-                    <div class="pl-picker-row-title">{{ candWf.name_workflow }}</div>
-                    <div class="pl-picker-row-sub pl-tabular">
-                      <span>
-                        {{
-                          candWf.workflow_scope === 'customer'
-                            ? 'KH: ' + (candWf.ten_cong_ty || candWf.ten_khach_hang || 'Công ty riêng')
-                            : 'Khung mẫu Blueprint'
-                        }}
-                      </span>
-                      · {{ candWf.stepCount }} bước
-                    </div>
+              <div
+                v-for="candWf in attachableWorkflowsForProject"
+                :key="'candwf-' + candWf.id_workflow"
+                class="pl-picker-row"
+                :class="{ 'is-selected': candWf.isLinkedToProject }"
+              >
+                <div style="min-width: 0; flex: 1;">
+                  <div class="pl-picker-row-title">{{ candWf.name_workflow }}</div>
+                  <div class="pl-picker-row-sub pl-tabular">
+                    {{ candWf.stepCount }} bước tiến độ
                   </div>
+                </div>
 
-                  <span v-if="candWf.isAutoRootFlow" class="pl-mini-tag is-emerald">
-                    Khung KH Gốc
-                  </span>
+                <div style="display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;">
                   <button
-                    v-else-if="candWf.isLinkedToProject"
+                    type="button"
+                    class="pl-wf-edit-btn"
+                    title="Mở modal sửa bước của Workflow này"
+                    @click.stop="openEditWorkflowStepsModal(candWf.id_workflow)"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                    <span>Sửa</span>
+                  </button>
+
+                  <button
+                    v-if="candWf.isLinkedToProject"
                     type="button"
                     class="pl-btn pl-btn-danger-ghost pl-btn-xs"
                     @click="detachWorkflowFromProject(activeProjectDetail, candWf.id_workflow)"
@@ -3408,118 +3544,15 @@
                     class="pl-picker-select-btn"
                     @click="attachWorkflowToProject(activeProjectDetail, candWf.id_workflow)"
                   >
-                    + Gắn vào DA
+                    + Thêm vào dự án
                   </button>
                 </div>
               </div>
-            </template>
-
-            <!-- MODE 2: QUICK-CREATE CUSTOMER PIPELINE FRAME & ATTACH TO PROJECT -->
-            <template v-else>
-              <div class="pl-form-grid-2">
-                <div class="pl-field">
-                  <div class="bg-label-row">
-                    <label class="bg-label">Công Ty Của Khung Này <span class="bg-req">*</span></label>
-                    <button type="button" class="pl-link-btn" @click="openAddCustomerModal('project_quick_wf')">+ Thêm KH mới</button>
-                  </div>
-                  <div
-                    class="pl-input-with-picker"
-                    :class="{ 'has-clear-btn': Boolean(quickProjWfForm.ten_cong_ty) }"
-                    @click="openCustomerSearch('project_quick_wf', 'company')"
-                  >
-                    <input
-                      :value="quickProjWfForm.ten_cong_ty"
-                      type="text"
-                      readonly
-                      class="bg-input has-inline-picker is-clickable-picker"
-                      placeholder="Nhấn chọn công ty / đối tác..."
-                    />
-                    <button
-                      v-if="quickProjWfForm.ten_cong_ty"
-                      type="button"
-                      class="pl-inline-clear-btn"
-                      title="Xóa công ty"
-                      @click.stop="clearQuickProjWfCompanyField"
-                    >×</button>
-                    <button
-                      type="button"
-                      class="pl-inline-picker-btn"
-                      @click.stop="openCustomerSearch('project_quick_wf', 'company')"
-                    >Chọn</button>
-                  </div>
-                </div>
-
-                <div class="pl-field">
-                  <label class="bg-label">Người Liên Hệ / Đại Diện</label>
-                  <div
-                    class="pl-input-with-picker"
-                    :class="{ 'has-clear-btn': Boolean(quickProjWfForm.ten_khach_hang) }"
-                    @click="openCustomerSearch('project_quick_wf', 'contact')"
-                  >
-                    <input
-                      :value="quickProjWfForm.ten_khach_hang"
-                      type="text"
-                      readonly
-                      class="bg-input has-inline-picker is-clickable-picker"
-                      placeholder="Nhấn chọn người liên hệ..."
-                    />
-                    <button
-                      v-if="quickProjWfForm.ten_khach_hang"
-                      type="button"
-                      class="pl-inline-clear-btn"
-                      title="Xóa người liên hệ"
-                      @click.stop="clearQuickProjWfContactField"
-                    >×</button>
-                    <button
-                      type="button"
-                      class="pl-inline-picker-btn"
-                      @click.stop="openCustomerSearch('project_quick_wf', 'contact')"
-                    >Chọn</button>
-                  </div>
-                </div>
-
-                <div class="pl-field">
-                  <label class="bg-label">Khởi tạo cột bước từ Khung Mẫu</label>
-                  <select v-model="quickProjWfForm.base_template_id" class="bg-input">
-                    <option value="WF_DEFAULT">Khung Chuẩn Hệ Thống (5 bước: 0% → 90%)</option>
-                    <optgroup v-if="templateWorkflowOptions.length > 0" label="Khung mẫu dùng chung">
-                      <option v-for="tpl in templateWorkflowOptions" :key="'qpwf-tpl-' + tpl.id_workflow" :value="tpl.id_workflow">
-                        {{ tpl.name_workflow }}
-                      </option>
-                    </optgroup>
-                    <optgroup v-if="customerWorkflowOptions.length > 0" label="Khung thiết kế của Công ty / KH">
-                      <option v-for="cwf in customerWorkflowOptions" :key="'qpwf-cwf-' + cwf.id_workflow" :value="cwf.id_workflow">
-                        {{ cwf.name_workflow }}{{ (cwf.ten_cong_ty || cwf.ten_khach_hang) ? ` — ${cwf.ten_cong_ty || cwf.ten_khach_hang}` : '' }}
-                      </option>
-                    </optgroup>
-                  </select>
-                </div>
-
-                <div class="pl-field">
-                  <label class="bg-label">Tên Khung Pipeline Sẽ Tạo <span class="bg-req">*</span></label>
-                  <input
-                    v-model="quickProjWfForm.name_workflow"
-                    type="text"
-                    class="bg-input"
-                    placeholder="VD: Đối tác SI B — Gói thầu SOC..."
-                  />
-                </div>
-              </div>
-            </template>
+            </div>
           </div>
 
           <div class="pl-modal-footer">
             <button type="button" class="pl-btn pl-btn-slate" @click="showManageProjectWfDrawer = false">Đóng</button>
-            <button
-              v-if="manageWfDrawerMode === 'create'"
-              type="button"
-              class="pl-btn pl-btn-primary"
-              :disabled="savingQuickProjWf"
-              @click="submitQuickWorkflowForProject(activeProjectDetail)"
-            >
-              <span v-if="savingQuickProjWf" class="pl-spinner-xs"></span>
-              <span>Tạo Khung &amp; Gắn Vào Dự Án</span>
-            </button>
           </div>
         </div>
       </div>
@@ -3607,12 +3640,763 @@
     </Teleport>
 
     <!-- =========================================================
-         MODAL B: ADD / EDIT PROJECT (2-COLUMN STUDIO WORKSPACE)
+         MODAL A3: CHỌN DỰ ÁN ĐỂ THÊM WORKFLOW (TÊN DỰ ÁN — TÊN KHÁCH HÀNG — TÊN CÔNG TY)
+         ========================================================= -->
+    <Teleport to="body">
+      <div
+        v-if="showAttachWfToProjectModal && attachingWorkflowTarget"
+        class="bg-modal-overlay pl-modal-overlay is-picker-overlay"
+        :class="{
+          'theme-light-blue': uiTheme === 'light',
+          'theme-custom-glass': uiTheme === 'custom'
+        }"
+        :style="uiTheme === 'custom' ? customGlassStyleVars : null"
+        @click.self="closeAttachWfToProjectModal"
+      >
+        <div class="pl-modal-card pl-modal-lg pl-attach-proj-modal">
+          <div class="pl-modal-grab" aria-hidden="true"></div>
+
+          <div class="pl-modal-header">
+            <div class="pl-modal-title-group">
+              <div class="pl-modal-icon is-sky">
+                <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path><line x1="12" y1="11" x2="12" y2="17"></line><line x1="9" y1="14" x2="15" y2="14"></line></svg>
+              </div>
+              <div style="min-width: 0;">
+                <h3 class="pl-modal-title">Thêm Vào Dự Án</h3>
+                <p class="pl-modal-sub">
+                  Workflow đang chọn: <strong>{{ attachingWorkflowTarget.name_workflow }}</strong>
+                </p>
+              </div>
+            </div>
+            <button type="button" class="pl-modal-close" @click="closeAttachWfToProjectModal" aria-label="Đóng">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+          </div>
+
+          <div class="pl-modal-body">
+            <div class="pl-picker-search-bar">
+              <div class="bg-search-shell" style="flex: 1; min-width: 200px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" class="bg-search-ic"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input
+                  ref="attachWfSearchInputRef"
+                  v-model="attachWfProjectSearch"
+                  type="text"
+                  class="bg-search-inp"
+                  placeholder="Tìm theo Tên dự án, Tên khách hàng, Tên công ty..."
+                />
+                <button
+                  v-if="attachWfProjectSearch"
+                  type="button"
+                  class="bg-search-clr"
+                  aria-label="Xóa tìm kiếm"
+                  @click="attachWfProjectSearch = ''"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12.5" height="12.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+              </div>
+            </div>
+
+            <div v-if="filteredProjectsForWfAttach.length === 0" class="pl-empty-inline">
+              <div style="margin-bottom: 8px;">
+                {{
+                  allEnrichedProjects.length === 0
+                    ? 'Chưa có Dự án nào để thêm Workflow.'
+                    : 'Không tìm thấy Dự án nào khớp từ khóa tìm kiếm.'
+                }}
+              </div>
+              <button
+                v-if="allEnrichedProjects.length === 0"
+                type="button"
+                class="pl-btn pl-btn-primary pl-btn-xs"
+                @click="closeAttachWfToProjectModal(); openCreateProjectModal()"
+              >
+                + Tạo Dự án mới
+              </button>
+            </div>
+
+            <div v-else class="pl-attach-proj-table-wrap">
+              <div class="pl-attach-proj-thead">
+                <span>Tên dự án</span>
+                <span>Tên khách hàng</span>
+                <span>Tên công ty</span>
+                <span class="is-right">Thao tác</span>
+              </div>
+
+              <div class="pl-attach-proj-tbody">
+                <div
+                  v-for="proj in filteredProjectsForWfAttach"
+                  :key="'att-proj-' + proj.id_project"
+                  class="pl-attach-proj-row"
+                  :class="{ 'is-already-linked': isWorkflowAlreadyInProject(proj, attachingWorkflowTarget.id_workflow) }"
+                  @click="confirmAttachWfToSelectedProject(proj)"
+                >
+                  <div class="pl-attach-proj-cell is-proj-col">
+                    <span class="pl-attach-mobile-lbl">Tên dự án:</span>
+                    <div class="pl-attach-proj-name-wrap">
+                      <span class="pl-attach-proj-name">{{ proj.ten_du_an }}</span>
+                      <span class="pl-status-pill is-xs-pill" :class="getProjectStatusPillClass(proj)">
+                        {{ proj.trang_thai || 'Đang triển khai' }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div class="pl-attach-proj-cell">
+                    <span class="pl-attach-mobile-lbl">Khách hàng:</span>
+                    <span class="pl-attach-proj-val">
+                      {{ proj.displayCustomerName || proj.ten_khach_hang || '—' }}
+                    </span>
+                  </div>
+
+                  <div class="pl-attach-proj-cell">
+                    <span class="pl-attach-mobile-lbl">Công ty:</span>
+                    <span class="pl-attach-proj-val is-company">
+                      {{ proj.displayCompanyName || proj.ten_cong_ty || '—' }}
+                    </span>
+                  </div>
+
+                  <div class="pl-attach-proj-cell is-act-col" @click.stop>
+                    <span
+                      v-if="isWorkflowAlreadyInProject(proj, attachingWorkflowTarget.id_workflow)"
+                      class="pl-attach-proj-added-badge"
+                    >
+                      Đã có trong DA
+                    </span>
+                    <button
+                      v-else
+                      type="button"
+                      class="pl-picker-select-btn"
+                      @click="confirmAttachWfToSelectedProject(proj)"
+                    >
+                      Chọn
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pl-modal-footer" style="justify-content: space-between;">
+            <span class="pl-studio-kbd-hint pl-tabular">
+              Hiển thị {{ filteredProjectsForWfAttach.length }} / {{ allEnrichedProjects.length }} dự án
+            </span>
+            <button type="button" class="pl-btn pl-btn-slate" @click="closeAttachWfToProjectModal">Đóng</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- =========================================================
+         MODAL A4: CHỌN BỘ LỌC CÔNG VIỆC PIPELINE (DỰ ÁN / PIPELINE / TÊN CTY / TÊN KH)
+         ========================================================= -->
+    <Teleport to="body">
+      <div
+        v-if="openKanbanFilterMenu"
+        class="bg-modal-overlay pl-modal-overlay is-picker-overlay"
+        :class="{
+          'theme-light-blue': uiTheme === 'light',
+          'theme-custom-glass': uiTheme === 'custom'
+        }"
+        :style="uiTheme === 'custom' ? customGlassStyleVars : null"
+        @click.self="closeKanbanFilterPickerModal"
+      >
+        <div class="pl-modal-card pl-modal-lg pl-kb-filter-picker-modal">
+          <div class="pl-modal-grab" aria-hidden="true"></div>
+
+          <div class="pl-modal-header">
+            <div class="pl-modal-title-group">
+              <div class="pl-modal-icon is-sky">
+                <svg v-if="openKanbanFilterMenu === 'project'" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                <svg v-else-if="openKanbanFilterMenu === 'workflow'" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                <svg v-else-if="openKanbanFilterMenu === 'company'" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="9" y1="6" x2="9.01" y2="6"></line><line x1="15" y1="6" x2="15.01" y2="6"></line><line x1="9" y1="10" x2="9.01" y2="10"></line><line x1="15" y1="10" x2="15.01" y2="10"></line><line x1="9" y1="18" x2="15" y2="18"></line></svg>
+                <svg v-else xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              </div>
+              <div style="min-width: 0;">
+                <h3 class="pl-modal-title">
+                  {{
+                    openKanbanFilterMenu === 'project'
+                      ? 'Chọn Dự Án Cần Lọc'
+                      : openKanbanFilterMenu === 'workflow'
+                        ? 'Chọn Pipeline (Workflow)'
+                        : openKanbanFilterMenu === 'company'
+                          ? 'Chọn Tên Công Ty'
+                          : 'Chọn Tên Khách Hàng'
+                  }}
+                </h3>
+                <p class="pl-modal-sub">
+                  {{
+                    openKanbanFilterMenu === 'project'
+                      ? 'Chọn Không có (công việc độc lập) hoặc lọc theo 1 Dự án cụ thể'
+                      : openKanbanFilterMenu === 'workflow'
+                        ? 'Chọn Khung bước tiến độ hiển thị cho bảng Công Việc Pipeline'
+                        : openKanbanFilterMenu === 'company'
+                          ? 'Lọc danh sách công việc theo Tên công ty'
+                          : 'Lọc danh sách công việc theo Tên người liên hệ / Khách hàng'
+                  }}
+                </p>
+              </div>
+            </div>
+            <button type="button" class="pl-modal-close" @click="closeKanbanFilterPickerModal" aria-label="Đóng">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+          </div>
+
+          <div class="pl-modal-body">
+            <!-- SEARCH BAR -->
+            <div class="pl-picker-search-bar">
+              <div class="bg-search-shell" style="flex: 1; min-width: 200px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" class="bg-search-ic"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input
+                  ref="kanbanFilterModalInputRef"
+                  v-model="kanbanFilterSearch[openKanbanFilterMenu]"
+                  type="text"
+                  class="bg-search-inp"
+                  :placeholder="
+                    openKanbanFilterMenu === 'project'
+                      ? 'Tìm theo Tên dự án, Tên khách hàng, Tên công ty...'
+                      : openKanbanFilterMenu === 'workflow'
+                        ? 'Tìm tên Pipeline / Workflow...'
+                        : openKanbanFilterMenu === 'company'
+                          ? 'Tìm Tên công ty...'
+                          : 'Tìm Tên khách hàng / người liên hệ...'
+                  "
+                />
+                <button
+                  v-if="kanbanFilterSearch[openKanbanFilterMenu]"
+                  type="button"
+                  class="bg-search-clr"
+                  aria-label="Xóa tìm kiếm"
+                  @click="kanbanFilterSearch[openKanbanFilterMenu] = ''"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12.5" height="12.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- 1. MODE: PROJECT -->
+            <div v-if="openKanbanFilterMenu === 'project'" class="pl-picker-list">
+              <div
+                class="pl-picker-row"
+                :class="{ 'is-selected': !filterConfig.projectId || filterConfig.projectId === '__STANDALONE__' }"
+                style="cursor: pointer;"
+                @click="selectKanbanProjectFilter('__STANDALONE__')"
+              >
+                <div style="min-width: 0; flex: 1;">
+                  <div class="pl-picker-row-title">Không có</div>
+                  <div class="pl-picker-row-sub pl-tabular">Công việc độc lập — chưa gắn vào Dự án ({{ kanbanStandaloneCount }} công việc)</div>
+                </div>
+                <button
+                  type="button"
+                  class="pl-picker-select-btn"
+                  :class="{ 'is-selected': !filterConfig.projectId || filterConfig.projectId === '__STANDALONE__' }"
+                  @click.stop="selectKanbanProjectFilter('__STANDALONE__')"
+                >
+                  {{ !filterConfig.projectId || filterConfig.projectId === '__STANDALONE__' ? 'Đang chọn' : 'Chọn' }}
+                </button>
+              </div>
+
+              <div
+                v-for="opt in filteredKanbanProjectOptions"
+                :key="'kb-mod-proj-' + opt.id_project"
+                class="pl-picker-row"
+                :class="{ 'is-selected': filterConfig.projectId === opt.id_project }"
+                style="cursor: pointer;"
+                @click="selectKanbanProjectFilter(opt.id_project)"
+              >
+                <div style="min-width: 0; flex: 1;">
+                  <div class="pl-picker-row-title">{{ opt.label }}</div>
+                  <div v-if="opt.sub" class="pl-picker-row-sub pl-tabular">{{ opt.sub }}</div>
+                </div>
+                <div style="display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                  <button
+                    type="button"
+                    class="pl-fp-nav-btn is-ready"
+                    title="Điều hướng tới thẻ Dự án này"
+                    @click.stop="closeKanbanFilterPickerModal(); navigateToProjectCardById(opt.id_project)"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                    <span>Điều hướng</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="pl-picker-select-btn"
+                    :class="{ 'is-selected': filterConfig.projectId === opt.id_project }"
+                    @click.stop="selectKanbanProjectFilter(opt.id_project)"
+                  >
+                    {{ filterConfig.projectId === opt.id_project ? 'Đang chọn' : 'Chọn' }}
+                  </button>
+                </div>
+              </div>
+
+              <div v-if="filteredKanbanProjectOptions.length === 0 && kanbanStandaloneCount === 0" class="pl-empty-inline">
+                Không tìm thấy Dự án phù hợp với từ khóa.
+              </div>
+            </div>
+
+            <!-- 2. MODE: WORKFLOW / PIPELINE -->
+            <div v-else-if="openKanbanFilterMenu === 'workflow'" class="pl-picker-list">
+              <div
+                v-for="opt in filteredKanbanWorkflowOptions"
+                :key="'kb-mod-wf-' + opt.id_workflow"
+                class="pl-picker-row"
+                :class="{ 'is-selected': selectedWorkflowId === opt.id_workflow }"
+                style="cursor: pointer;"
+                @click="selectKanbanWorkflowFilter(opt.id_workflow)"
+              >
+                <div style="min-width: 0; flex: 1;">
+                  <div class="pl-picker-row-title">{{ opt.label }}</div>
+                  <div class="pl-picker-row-sub pl-tabular">
+                    <span>{{ opt.sub }}</span>
+                    <span> · {{ opt.count }} công việc</span>
+                  </div>
+                </div>
+                <div style="display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                  <button
+                    type="button"
+                    class="pl-fp-nav-btn is-ready"
+                    title="Điều hướng tới thẻ Workflow này"
+                    @click.stop="closeKanbanFilterPickerModal(); navigateToWorkflowCardById(opt.id_workflow)"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                    <span>Điều hướng</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="pl-picker-select-btn"
+                    :class="{ 'is-selected': selectedWorkflowId === opt.id_workflow }"
+                    @click.stop="selectKanbanWorkflowFilter(opt.id_workflow)"
+                  >
+                    {{ selectedWorkflowId === opt.id_workflow ? 'Đang chọn' : 'Chọn' }}
+                  </button>
+                </div>
+              </div>
+
+              <div v-if="filteredKanbanWorkflowOptions.length === 0" class="pl-empty-inline">
+                Không tìm thấy Khung Pipeline / Workflow phù hợp.
+              </div>
+            </div>
+
+            <!-- 3. MODE: COMPANY -->
+            <div v-else-if="openKanbanFilterMenu === 'company'" class="pl-picker-list">
+              <div
+                class="pl-picker-row"
+                :class="{ 'is-selected': !filterConfig.companyName }"
+                style="cursor: pointer;"
+                @click="selectKanbanCompanyFilter('')"
+              >
+                <div style="min-width: 0; flex: 1;">
+                  <div class="pl-picker-row-title">Tất cả Công ty ({{ kanbanCompanyFilterOptions.length }})</div>
+                </div>
+                <button
+                  type="button"
+                  class="pl-picker-select-btn"
+                  :class="{ 'is-selected': !filterConfig.companyName }"
+                  @click.stop="selectKanbanCompanyFilter('')"
+                >
+                  {{ !filterConfig.companyName ? 'Đang chọn' : 'Chọn' }}
+                </button>
+              </div>
+
+              <div
+                v-for="opt in filteredKanbanCompanyOptions"
+                :key="'kb-mod-ct-' + opt.key"
+                class="pl-picker-row"
+                :class="{ 'is-selected': filterConfig.companyName === opt.key }"
+                style="cursor: pointer;"
+                @click="selectKanbanCompanyFilter(opt.key)"
+              >
+                <div style="min-width: 0; flex: 1;">
+                  <div class="pl-picker-row-title">{{ opt.label }}</div>
+                  <div v-if="opt.count > 0" class="pl-picker-row-sub pl-tabular">{{ opt.count }} công việc</div>
+                </div>
+                <button
+                  type="button"
+                  class="pl-picker-select-btn"
+                  :class="{ 'is-selected': filterConfig.companyName === opt.key }"
+                  @click.stop="selectKanbanCompanyFilter(opt.key)"
+                >
+                  {{ filterConfig.companyName === opt.key ? 'Đang chọn' : 'Chọn' }}
+                </button>
+              </div>
+
+              <div v-if="filteredKanbanCompanyOptions.length === 0" class="pl-empty-inline">
+                Không tìm thấy Công ty phù hợp.
+              </div>
+            </div>
+
+            <!-- 4. MODE: CUSTOMER -->
+            <div v-else class="pl-picker-list">
+              <div
+                class="pl-picker-row"
+                :class="{ 'is-selected': !filterConfig.customerName }"
+                style="cursor: pointer;"
+                @click="selectKanbanCustomerFilter('')"
+              >
+                <div style="min-width: 0; flex: 1;">
+                  <div class="pl-picker-row-title">Tất cả Khách hàng ({{ kanbanCustomerFilterOptions.length }})</div>
+                </div>
+                <button
+                  type="button"
+                  class="pl-picker-select-btn"
+                  :class="{ 'is-selected': !filterConfig.customerName }"
+                  @click.stop="selectKanbanCustomerFilter('')"
+                >
+                  {{ !filterConfig.customerName ? 'Đang chọn' : 'Chọn' }}
+                </button>
+              </div>
+
+              <div
+                v-for="opt in filteredKanbanCustomerOptions"
+                :key="'kb-mod-kh-' + opt.key"
+                class="pl-picker-row"
+                :class="{ 'is-selected': filterConfig.customerName === opt.key }"
+                style="cursor: pointer;"
+                @click="selectKanbanCustomerFilter(opt.key)"
+              >
+                <div style="min-width: 0; flex: 1;">
+                  <div class="pl-picker-row-title">{{ opt.label }}</div>
+                  <div v-if="opt.count > 0" class="pl-picker-row-sub pl-tabular">{{ opt.count }} công việc</div>
+                </div>
+                <button
+                  type="button"
+                  class="pl-picker-select-btn"
+                  :class="{ 'is-selected': filterConfig.customerName === opt.key }"
+                  @click.stop="selectKanbanCustomerFilter(opt.key)"
+                >
+                  {{ filterConfig.customerName === opt.key ? 'Đang chọn' : 'Chọn' }}
+                </button>
+              </div>
+
+              <div v-if="filteredKanbanCustomerOptions.length === 0" class="pl-empty-inline">
+                Không tìm thấy Khách hàng phù hợp.
+              </div>
+            </div>
+          </div>
+
+          <div class="pl-modal-footer">
+            <button type="button" class="pl-btn pl-btn-slate" @click="closeKanbanFilterPickerModal">Đóng</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- =========================================================
+         MODAL A5: CHỌN BỘ LỌC DỰ ÁN (DỰ ÁN / PIPELINE / TÊN CTY / TÊN KH)
+         ========================================================= -->
+    <Teleport to="body">
+      <div
+        v-if="openProjFilterMenu"
+        class="bg-modal-overlay pl-modal-overlay is-picker-overlay"
+        :class="{
+          'theme-light-blue': uiTheme === 'light',
+          'theme-custom-glass': uiTheme === 'custom'
+        }"
+        :style="uiTheme === 'custom' ? customGlassStyleVars : null"
+        @click.self="closeProjFilterPickerModal"
+      >
+        <div class="pl-modal-card pl-modal-lg pl-kb-filter-picker-modal">
+          <div class="pl-modal-grab" aria-hidden="true"></div>
+
+          <div class="pl-modal-header">
+            <div class="pl-modal-title-group">
+              <div class="pl-modal-icon is-sky">
+                <svg v-if="openProjFilterMenu === 'project'" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                <svg v-else-if="openProjFilterMenu === 'workflow'" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                <svg v-else-if="openProjFilterMenu === 'company'" xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="9" y1="6" x2="9.01" y2="6"></line><line x1="15" y1="6" x2="15.01" y2="6"></line><line x1="9" y1="10" x2="9.01" y2="10"></line><line x1="15" y1="10" x2="15.01" y2="10"></line><line x1="9" y1="18" x2="15" y2="18"></line></svg>
+                <svg v-else xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              </div>
+              <div style="min-width: 0;">
+                <h3 class="pl-modal-title">
+                  {{
+                    openProjFilterMenu === 'project'
+                      ? 'Chọn Dự Án Cần Lọc'
+                      : openProjFilterMenu === 'workflow'
+                        ? 'Chọn Pipeline (Workflow)'
+                        : openProjFilterMenu === 'company'
+                          ? 'Chọn Tên Công Ty'
+                          : 'Chọn Tên Khách Hàng'
+                  }}
+                </h3>
+                <p class="pl-modal-sub">
+                  {{
+                    openProjFilterMenu === 'project'
+                      ? 'Lọc danh sách thẻ Dự án theo Dự án cụ thể hoặc điều hướng thẳng tới thẻ'
+                      : openProjFilterMenu === 'workflow'
+                        ? 'Lọc các Dự án đang gắn Khung Pipeline / Workflow tương ứng'
+                        : openProjFilterMenu === 'company'
+                          ? 'Lọc danh sách Dự án theo Tên công ty'
+                          : 'Lọc danh sách Dự án theo Tên người liên hệ / Khách hàng'
+                  }}
+                </p>
+              </div>
+            </div>
+            <button type="button" class="pl-modal-close" @click="closeProjFilterPickerModal" aria-label="Đóng">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+          </div>
+
+          <div class="pl-modal-body">
+            <!-- SEARCH BAR -->
+            <div class="pl-picker-search-bar">
+              <div class="bg-search-shell" style="flex: 1; min-width: 200px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" class="bg-search-ic"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input
+                  ref="projFilterModalInputRef"
+                  v-model="projFilterSearch[openProjFilterMenu]"
+                  type="text"
+                  class="bg-search-inp"
+                  :placeholder="
+                    openProjFilterMenu === 'project'
+                      ? 'Tìm theo Tên dự án, Tên khách hàng, Tên công ty...'
+                      : openProjFilterMenu === 'workflow'
+                        ? 'Tìm tên Pipeline / Workflow...'
+                        : openProjFilterMenu === 'company'
+                          ? 'Tìm Tên công ty...'
+                          : 'Tìm Tên khách hàng / người liên hệ...'
+                  "
+                />
+                <button
+                  v-if="projFilterSearch[openProjFilterMenu]"
+                  type="button"
+                  class="bg-search-clr"
+                  aria-label="Xóa tìm kiếm"
+                  @click="projFilterSearch[openProjFilterMenu] = ''"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12.5" height="12.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- 1. MODE: PROJECT -->
+            <div v-if="openProjFilterMenu === 'project'" class="pl-picker-list">
+              <div
+                class="pl-picker-row"
+                :class="{ 'is-selected': !projectFilter.projectId }"
+                style="cursor: pointer;"
+                @click="selectProjProjectFilter('')"
+              >
+                <div style="min-width: 0; flex: 1;">
+                  <div class="pl-picker-row-title">Tất cả Dự án ({{ projProjectFilterOptions.length }})</div>
+                  <div class="pl-picker-row-sub">Hiển thị toàn bộ thẻ Dự án hiện có</div>
+                </div>
+                <button
+                  type="button"
+                  class="pl-picker-select-btn"
+                  :class="{ 'is-selected': !projectFilter.projectId }"
+                  @click.stop="selectProjProjectFilter('')"
+                >
+                  {{ !projectFilter.projectId ? 'Đang chọn' : 'Chọn' }}
+                </button>
+              </div>
+
+              <div
+                v-for="opt in filteredProjProjectOptions"
+                :key="'pr-mod-proj-' + opt.id_project"
+                class="pl-picker-row"
+                :class="{ 'is-selected': projectFilter.projectId === opt.id_project }"
+                style="cursor: pointer;"
+                @click="selectProjProjectFilter(opt.id_project)"
+              >
+                <div style="min-width: 0; flex: 1;">
+                  <div class="pl-picker-row-title">{{ opt.label }}</div>
+                  <div v-if="opt.sub" class="pl-picker-row-sub pl-tabular">{{ opt.sub }}</div>
+                </div>
+                <div style="display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                  <button
+                    type="button"
+                    class="pl-fp-nav-btn is-ready"
+                    title="Định vị & mở thẻ Dự án này"
+                    @click.stop="closeProjFilterPickerModal(); navigateToProjectCardById(opt.id_project)"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                    <span>Điều hướng</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="pl-picker-select-btn"
+                    :class="{ 'is-selected': projectFilter.projectId === opt.id_project }"
+                    @click.stop="selectProjProjectFilter(opt.id_project)"
+                  >
+                    {{ projectFilter.projectId === opt.id_project ? 'Đang chọn' : 'Chọn' }}
+                  </button>
+                </div>
+              </div>
+
+              <div v-if="filteredProjProjectOptions.length === 0" class="pl-empty-inline">
+                Không tìm thấy Dự án phù hợp với từ khóa.
+              </div>
+            </div>
+
+            <!-- 2. MODE: WORKFLOW / PIPELINE -->
+            <div v-else-if="openProjFilterMenu === 'workflow'" class="pl-picker-list">
+              <div
+                class="pl-picker-row"
+                :class="{ 'is-selected': !projectFilter.workflowId }"
+                style="cursor: pointer;"
+                @click="selectProjWorkflowFilter('')"
+              >
+                <div style="min-width: 0; flex: 1;">
+                  <div class="pl-picker-row-title">Tất cả Khung Pipeline ({{ projWorkflowFilterOptions.length }})</div>
+                  <div class="pl-picker-row-sub">Hiển thị Dự án thuộc mọi Workflow</div>
+                </div>
+                <button
+                  type="button"
+                  class="pl-picker-select-btn"
+                  :class="{ 'is-selected': !projectFilter.workflowId }"
+                  @click.stop="selectProjWorkflowFilter('')"
+                >
+                  {{ !projectFilter.workflowId ? 'Đang chọn' : 'Chọn' }}
+                </button>
+              </div>
+
+              <div
+                v-for="opt in filteredProjWorkflowOptions"
+                :key="'pr-mod-wf-' + opt.id_workflow"
+                class="pl-picker-row"
+                :class="{ 'is-selected': projectFilter.workflowId === opt.id_workflow }"
+                style="cursor: pointer;"
+                @click="selectProjWorkflowFilter(opt.id_workflow)"
+              >
+                <div style="min-width: 0; flex: 1;">
+                  <div class="pl-picker-row-title">{{ opt.label }}</div>
+                  <div class="pl-picker-row-sub pl-tabular">{{ opt.count }} dự án đang gắn</div>
+                </div>
+                <div style="display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                  <button
+                    type="button"
+                    class="pl-fp-nav-btn is-ready"
+                    title="Điều hướng tới thẻ Workflow này"
+                    @click.stop="closeProjFilterPickerModal(); navigateToWorkflowCardById(opt.id_workflow)"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                    <span>Điều hướng</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="pl-picker-select-btn"
+                    :class="{ 'is-selected': projectFilter.workflowId === opt.id_workflow }"
+                    @click.stop="selectProjWorkflowFilter(opt.id_workflow)"
+                  >
+                    {{ projectFilter.workflowId === opt.id_workflow ? 'Đang chọn' : 'Chọn' }}
+                  </button>
+                </div>
+              </div>
+
+              <div v-if="filteredProjWorkflowOptions.length === 0" class="pl-empty-inline">
+                Không tìm thấy Khung Pipeline / Workflow phù hợp.
+              </div>
+            </div>
+
+            <!-- 3. MODE: COMPANY -->
+            <div v-else-if="openProjFilterMenu === 'company'" class="pl-picker-list">
+              <div
+                class="pl-picker-row"
+                :class="{ 'is-selected': !projectFilter.companyName }"
+                style="cursor: pointer;"
+                @click="selectProjCompanyFilter('')"
+              >
+                <div style="min-width: 0; flex: 1;">
+                  <div class="pl-picker-row-title">Tất cả Công ty ({{ projCompanyFilterOptions.length }})</div>
+                </div>
+                <button
+                  type="button"
+                  class="pl-picker-select-btn"
+                  :class="{ 'is-selected': !projectFilter.companyName }"
+                  @click.stop="selectProjCompanyFilter('')"
+                >
+                  {{ !projectFilter.companyName ? 'Đang chọn' : 'Chọn' }}
+                </button>
+              </div>
+
+              <div
+                v-for="opt in filteredProjCompanyOptions"
+                :key="'pr-mod-ct-' + opt.key"
+                class="pl-picker-row"
+                :class="{ 'is-selected': projectFilter.companyName === opt.key }"
+                style="cursor: pointer;"
+                @click="selectProjCompanyFilter(opt.key)"
+              >
+                <div style="min-width: 0; flex: 1;">
+                  <div class="pl-picker-row-title">{{ opt.label }}</div>
+                  <div v-if="opt.count > 0" class="pl-picker-row-sub pl-tabular">{{ opt.count }} dự án</div>
+                </div>
+                <button
+                  type="button"
+                  class="pl-picker-select-btn"
+                  :class="{ 'is-selected': projectFilter.companyName === opt.key }"
+                  @click.stop="selectProjCompanyFilter(opt.key)"
+                >
+                  {{ projectFilter.companyName === opt.key ? 'Đang chọn' : 'Chọn' }}
+                </button>
+              </div>
+
+              <div v-if="filteredProjCompanyOptions.length === 0" class="pl-empty-inline">
+                Không tìm thấy Công ty phù hợp.
+              </div>
+            </div>
+
+            <!-- 4. MODE: CUSTOMER -->
+            <div v-else class="pl-picker-list">
+              <div
+                class="pl-picker-row"
+                :class="{ 'is-selected': !projectFilter.customerName }"
+                style="cursor: pointer;"
+                @click="selectProjCustomerFilter('')"
+              >
+                <div style="min-width: 0; flex: 1;">
+                  <div class="pl-picker-row-title">Tất cả Khách hàng ({{ projCustomerFilterOptions.length }})</div>
+                </div>
+                <button
+                  type="button"
+                  class="pl-picker-select-btn"
+                  :class="{ 'is-selected': !projectFilter.customerName }"
+                  @click.stop="selectProjCustomerFilter('')"
+                >
+                  {{ !projectFilter.customerName ? 'Đang chọn' : 'Chọn' }}
+                </button>
+              </div>
+
+              <div
+                v-for="opt in filteredProjCustomerOptions"
+                :key="'pr-mod-kh-' + opt.key"
+                class="pl-picker-row"
+                :class="{ 'is-selected': projectFilter.customerName === opt.key }"
+                style="cursor: pointer;"
+                @click="selectProjCustomerFilter(opt.key)"
+              >
+                <div style="min-width: 0; flex: 1;">
+                  <div class="pl-picker-row-title">{{ opt.label }}</div>
+                  <div v-if="opt.count > 0" class="pl-picker-row-sub pl-tabular">{{ opt.count }} dự án</div>
+                </div>
+                <button
+                  type="button"
+                  class="pl-picker-select-btn"
+                  :class="{ 'is-selected': projectFilter.customerName === opt.key }"
+                  @click.stop="selectProjCustomerFilter(opt.key)"
+                >
+                  {{ projectFilter.customerName === opt.key ? 'Đang chọn' : 'Chọn' }}
+                </button>
+              </div>
+
+              <div v-if="filteredProjCustomerOptions.length === 0" class="pl-empty-inline">
+                Không tìm thấy Khách hàng phù hợp.
+              </div>
+            </div>
+          </div>
+
+          <div class="pl-modal-footer">
+            <button type="button" class="pl-btn pl-btn-slate" @click="closeProjFilterPickerModal">Đóng</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- =========================================================
+         MODAL B: ADD / EDIT PROJECT (100% FULLSCREEN 2-COLUMN WORKSPACE)
          ========================================================= -->
     <Teleport to="body">
       <div
         v-if="showProjectFormModal"
-        class="bg-modal-overlay pl-modal-overlay is-elevated-overlay"
+        class="bg-modal-overlay pl-modal-overlay is-fullscreen-overlay is-elevated-overlay"
         :class="{
           'theme-light-blue': uiTheme === 'light',
           'theme-custom-glass': uiTheme === 'custom'
@@ -3620,18 +4404,18 @@
         :style="uiTheme === 'custom' ? customGlassStyleVars : null"
         @click.self="showProjectFormModal = false"
       >
-        <div class="pl-modal-card pl-modal-proj-studio">
+        <div class="pl-modal-card pl-modal-fullscreen is-studio-modal pl-modal-proj-studio">
           <div class="pl-modal-grab" aria-hidden="true"></div>
 
           <!-- STUDIO HEADER -->
-          <div class="pl-modal-header is-studio-head">
+          <div class="pl-modal-header is-fullscreen-head is-studio-head">
             <div class="pl-modal-title-group">
               <div class="pl-modal-icon is-sky">
                 <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path><line x1="12" y1="11" x2="12" y2="17"></line><line x1="9" y1="14" x2="15" y2="14"></line></svg>
               </div>
               <div>
                 <h3 class="pl-modal-title">{{ isEditingProject ? 'Cập Nhật Dự Án (Gốc)' : 'Khởi Tạo Dự Án Mới (Gốc)' }}</h3>
-                <p class="pl-modal-sub">Mỗi Dự án có 1 KH Chủ đầu tư gốc &amp; điều phối nhiều Khung Pipeline đối tác</p>
+                <p class="pl-modal-sub">Thông tin khách hàng chủ đầu tư &amp; chọn các Workflow áp dụng cho dự án</p>
               </div>
             </div>
 
@@ -3640,12 +4424,6 @@
                 <span class="pl-status-pill" :class="getProjectStatusTone(projectForm.trang_thai)">
                   {{ projectForm.trang_thai || 'Đang triển khai' }}
                 </span>
-                <span
-                  v-if="parseNum(projectForm.ngan_sach_du_kien) > 0"
-                  class="pl-studio-ctx-pill is-emerald pl-tabular"
-                >
-                  NS: {{ formatNumber(projectForm.ngan_sach_du_kien) }} ₫
-                </span>
               </div>
               <button type="button" class="pl-modal-close" @click="showProjectFormModal = false" aria-label="Đóng">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -3653,14 +4431,14 @@
             </div>
           </div>
 
-          <!-- 2-COLUMN STUDIO BODY -->
-          <div class="pl-modal-body pl-proj-form-2col">
-            <!-- LEFT COLUMN (~55%): TÊN DỰ ÁN, CHỦ ĐẦU TƯ GỐC, NGÂN SÁCH & TIMELINE -->
+          <!-- 2-COLUMN 100% FULLSCREEN STUDIO BODY -->
+          <div class="pl-modal-body pl-fullscreen-form-body pl-proj-form-2col">
+            <!-- LEFT COLUMN: TÊN DỰ ÁN, TÊN KHÁCH HÀNG & TÊN CÔNG TY, TRẠNG THÁI, AM, GHI CHÚ -->
             <section class="modal-group pl-proj-form-col">
               <div class="modal-banner-header is-emerald">
                 <div class="pl-studio-banner-left">
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-                  <span class="modal-banner-title">THÔNG TIN DỰ ÁN &amp; CHỦ ĐẦU TƯ GỐC</span>
+                  <span class="modal-banner-title">THÔNG TIN DỰ ÁN &amp; KHÁCH HÀNG</span>
                 </div>
                 <button type="button" class="bg-banner-btn" @click="openAddCustomerModal('project')">
                   <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
@@ -3680,39 +4458,10 @@
                   />
                 </div>
 
-                <!-- 2. KHÁCH HÀNG / CHỦ ĐẦU TƯ GỐC (INLINE PICKERS CHUẨN HÓA) -->
+                <!-- 2. TÊN KHÁCH HÀNG & TÊN CÔNG TY -->
                 <div class="pl-form-grid-2">
                   <div class="pl-field">
-                    <label class="bg-label">Công Ty Chủ Đầu Tư (KH Gốc) <span class="bg-req">*</span></label>
-                    <div
-                      class="pl-input-with-picker"
-                      :class="{ 'has-clear-btn': Boolean(projectForm.ten_cong_ty) }"
-                      @click="openCustomerSearch('project', 'company')"
-                    >
-                      <input
-                        :value="projectForm.ten_cong_ty"
-                        type="text"
-                        readonly
-                        class="bg-input has-inline-picker is-clickable-picker"
-                        placeholder="Nhấn chọn công ty..."
-                      />
-                      <button
-                        v-if="projectForm.ten_cong_ty"
-                        type="button"
-                        class="pl-inline-clear-btn"
-                        title="Xóa công ty"
-                        @click.stop="clearProjectCompanyField"
-                      >×</button>
-                      <button
-                        type="button"
-                        class="pl-inline-picker-btn"
-                        @click.stop="openCustomerSearch('project', 'company')"
-                      >Chọn</button>
-                    </div>
-                  </div>
-
-                  <div class="pl-field">
-                    <label class="bg-label">Người Liên Hệ / Đại Diện <span class="bg-req">*</span></label>
+                    <label class="bg-label">Tên Khách Hàng <span class="bg-req">*</span></label>
                     <div
                       class="pl-input-with-picker"
                       :class="{ 'has-clear-btn': Boolean(projectForm.ten_khach_hang) }"
@@ -3723,19 +4472,48 @@
                         type="text"
                         readonly
                         class="bg-input has-inline-picker is-clickable-picker"
-                        placeholder="Nhấn chọn người liên hệ..."
+                        placeholder="Nhấn chọn tên khách hàng..."
                       />
                       <button
                         v-if="projectForm.ten_khach_hang"
                         type="button"
                         class="pl-inline-clear-btn"
-                        title="Xóa người liên hệ"
+                        title="Xóa tên khách hàng"
                         @click.stop="clearProjectContactField"
                       >×</button>
                       <button
                         type="button"
                         class="pl-inline-picker-btn"
                         @click.stop="openCustomerSearch('project', 'contact')"
+                      >Chọn</button>
+                    </div>
+                  </div>
+
+                  <div class="pl-field">
+                    <label class="bg-label">Tên Công Ty <span class="bg-req">*</span></label>
+                    <div
+                      class="pl-input-with-picker"
+                      :class="{ 'has-clear-btn': Boolean(projectForm.ten_cong_ty) }"
+                      @click="openCustomerSearch('project', 'company')"
+                    >
+                      <input
+                        :value="projectForm.ten_cong_ty"
+                        type="text"
+                        readonly
+                        class="bg-input has-inline-picker is-clickable-picker"
+                        placeholder="Nhấn chọn tên công ty..."
+                      />
+                      <button
+                        v-if="projectForm.ten_cong_ty"
+                        type="button"
+                        class="pl-inline-clear-btn"
+                        title="Xóa tên công ty"
+                        @click.stop="clearProjectCompanyField"
+                      >×</button>
+                      <button
+                        type="button"
+                        class="pl-inline-picker-btn"
+                        @click.stop="openCustomerSearch('project', 'company')"
                       >Chọn</button>
                     </div>
                   </div>
@@ -3780,151 +4558,56 @@
                   </div>
                 </div>
 
-                <!-- 4. TỔNG NGÂN SÁCH DỰ KIẾN (HERO FINTECH INPUT) -->
+                <!-- 4. AM PHỤ TRÁCH -->
                 <div class="pl-field">
-                  <label class="bg-label">Tổng Ngân Sách Dự Kiến Trước Thuế (₫)</label>
-                  <div class="pl-volume-input-wrap">
-                    <NumberInput
-                      v-model="projectForm.ngan_sach_du_kien"
-                      :decimals="0"
-                      class="bg-input pl-tabular is-volume-hero"
-                      placeholder="0"
-                    />
-                    <span class="pl-volume-unit" aria-hidden="true">₫</span>
-                  </div>
+                  <label class="bg-label">AM Phụ Trách</label>
+                  <input v-model="projectForm.AM" type="text" class="bg-input" placeholder="Sơn" />
                 </div>
 
-                <!-- 5. MÃ DỰ ÁN & AM -->
-                <div class="pl-form-grid-2">
-                  <div class="pl-field">
-                    <label class="bg-label">Mã Dự Án (Tự sinh nếu trống)</label>
-                    <input v-model="projectForm.ma_du_an" type="text" class="bg-input pl-mono" placeholder="DA-2026-001" />
-                  </div>
-
-                  <div class="pl-field">
-                    <label class="bg-label">AM Phụ Trách</label>
-                    <input v-model="projectForm.AM" type="text" class="bg-input" placeholder="Sơn" />
-                  </div>
-                </div>
-
-                <!-- 6. HẠN DỰ KIẾN / TIMELINE DỰ ÁN -->
-                <div class="pl-field">
-                  <label class="bg-label">Hạn Dự Kiến (Timeline Dự Án)</label>
-                  <div class="pl-timeline-presets">
-                    <button
-                      type="button"
-                      class="pl-tl-chip"
-                      :class="{ 'is-active': activeProjectDeadlinePreset === 'this_quarter' }"
-                      @click="applyProjectDeadlinePreset('this_quarter')"
-                    >Quý này</button>
-                    <button
-                      type="button"
-                      class="pl-tl-chip"
-                      :class="{ 'is-active': activeProjectDeadlinePreset === 'plus_6m' }"
-                      @click="applyProjectDeadlinePreset('plus_6m')"
-                    >+6 tháng</button>
-                    <button
-                      type="button"
-                      class="pl-tl-chip"
-                      :class="{ 'is-active': activeProjectDeadlinePreset === 'this_year' }"
-                      @click="applyProjectDeadlinePreset('this_year')"
-                    >Cuối năm nay</button>
-                    <button
-                      type="button"
-                      class="pl-tl-chip"
-                      :class="{ 'is-active': activeProjectDeadlinePreset === 'next_year' }"
-                      @click="applyProjectDeadlinePreset('next_year')"
-                    >Năm sau</button>
-                  </div>
-                  <div class="pl-tl-single-input-wrap">
-                    <input
-                      v-model="projectForm.deadline"
-                      type="text"
-                      class="bg-input pl-tabular"
-                      :class="{ 'has-right-clear': Boolean(projectForm.deadline) }"
-                      placeholder="VD: Q3/2026 hoặc 12/2026"
-                    />
-                    <button
-                      v-if="projectForm.deadline"
-                      type="button"
-                      class="pl-tl-clear-btn"
-                      title="Xóa hạn dự kiến"
-                      @click="projectForm.deadline = ''"
-                    >×</button>
-                  </div>
-                </div>
-
-                <!-- 7. GHI CHÚ DỰ ÁN -->
+                <!-- 5. GHI CHÚ DỰ ÁN -->
                 <div class="pl-field">
                   <label class="bg-label">Ghi Chú Phạm Vi Dự Án</label>
                   <textarea
                     v-model="projectForm.ghi_chu"
-                    rows="2"
+                    rows="3"
                     class="bg-textarea"
-                    placeholder="Mô tả phạm vi dự án, các gói thầu/pipeline dự kiến..."
+                    placeholder="Mô tả phạm vi dự án, các gói thầu/workflow dự kiến..."
                   ></textarea>
                 </div>
               </div>
             </section>
 
-            <!-- RIGHT COLUMN (~45%): CÁC KHUNG PIPELINE TRONG DỰ ÁN -->
+            <!-- RIGHT COLUMN: CHỌN WORKFLOW (DIRECT SEARCH & MULTI-SELECT) -->
             <aside class="modal-group pl-proj-form-col">
               <div class="modal-banner-header is-sky">
                 <div class="pl-studio-banner-left">
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
                   <span class="modal-banner-title pl-tabular">
-                    KHUNG PIPELINE TRONG DỰ ÁN ({{ projectModalCorrespondingWorkflows.length }})
+                    CHỌN WORKFLOW ({{ projectModalSelectedWorkflows.length }})
                   </span>
                 </div>
                 <div style="display: flex; gap: 6px; flex-wrap: wrap;">
                   <button
-                    v-if="hasProjectModalCustomer"
                     type="button"
                     class="bg-banner-btn"
-                    @click="showProjectFormWfPicker = true"
+                    @click="jumpToWorkflowDesignerFromModal"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                    <span>Gắn thêm Khung</span>
-                  </button>
-                  <button
-                    type="button"
-                    class="bg-banner-btn"
-                    @click="jumpToCustomerWorkflowDesignerFromModal"
-                  >
-                    <span>Mở Workflow ↗</span>
+                    <span>Chuyển tới kho</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
                   </button>
                 </div>
               </div>
 
               <div class="modal-group-body pl-proj-form-col-body pl-proj-form-right-body">
-                <!-- EMPTY STATE WHEN ROOT CUSTOMER NOT YET CHOSEN -->
-                <div v-if="!hasProjectModalCustomer" class="pl-proj-form-wf-empty">
-                  <div class="pl-proj-form-wf-empty-ic">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-                  </div>
-                  <div class="pl-empty-title">Chưa chọn Khách hàng / Chủ đầu tư gốc</div>
-                  <div class="pl-empty-sub">
-                    Chọn <strong>Công ty Chủ đầu tư</strong> ở cột bên trái trước — hệ thống sẽ tự động nạp Khung Pipeline chuẩn của khách hàng đó và cho phép gắn thêm Khung của các đối tác / SI.
-                  </div>
-                  <button
-                    type="button"
-                    class="pl-btn pl-btn-sky-soft pl-btn-sm"
-                    style="margin-top: 6px;"
-                    @click="openCustomerSearch('project', 'company')"
-                  >
-                    Chọn Công ty Chủ đầu tư
-                  </button>
-                </div>
-
-                <!-- CORRESPONDING FRAMES LIST (1-TAP TO SET PROJECT DEFAULT) -->
-                <template v-else>
+                <!-- 1. SELECTED WORKFLOWS IN THIS PROJECT (1-TAP TO SET DEFAULT, SỬA BƯỚC, RED X TO REMOVE) -->
+                <div v-if="projectModalSelectedWorkflows.length > 0" class="pl-proj-form-selected-sec">
                   <div class="pl-proj-wf-guide-note">
-                    Nhấn vào 1 Khung bên dưới để đặt làm <strong>Khung mặc định</strong> khi thêm công việc mới:
+                    Đã chọn <strong>{{ projectModalSelectedWorkflows.length }}</strong> Workflow — bấm vào thẻ để đặt làm <strong>Workflow mặc định</strong>:
                   </div>
 
-                  <div class="pl-proj-wf-stack">
+                  <div class="pl-proj-wf-stack is-modal-selected-stack">
                     <div
-                      v-for="wf in projectModalCorrespondingWorkflows"
+                      v-for="wf in projectModalSelectedWorkflows"
                       :key="'pmwf-card-' + wf.id_workflow"
                       class="pl-proj-wf-card"
                       :class="{ 'is-preferred': wf.isPreferred }"
@@ -3935,25 +4618,26 @@
                         <div class="pl-proj-wf-meta-inline">
                           <span class="pl-proj-wf-radio" :class="{ 'is-on': wf.isPreferred }" aria-hidden="true"></span>
                           <span class="pl-proj-wf-name">{{ wf.name_workflow }}</span>
-                          <template v-if="wf.displayCompanyName || wf.displayCustomerName">
-                            <span class="pl-em-sep">—</span>
-                            <span class="pl-proj-wf-party">
-                              <span v-if="wf.displayCompanyName">{{ wf.displayCompanyName }}</span>
-                              <span v-if="wf.displayCompanyName && wf.displayCustomerName" class="pl-dot-sep">•</span>
-                              <span v-if="wf.displayCustomerName">{{ wf.displayCustomerName }}</span>
-                            </span>
-                          </template>
                         </div>
                         <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
-                          <span v-if="wf.isPreferred" class="pl-wf-pref-hint">Mặc định DA</span>
+                          <span v-if="wf.isPreferred" class="pl-wf-pref-hint">Mặc định</span>
+                          <button
+                            type="button"
+                            class="pl-wf-edit-btn"
+                            title="Mở modal sửa bước của Workflow này"
+                            @click.stop="openEditWorkflowStepsModal(wf.id_workflow)"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                            <span>Sửa</span>
+                          </button>
                           <button
                             v-if="wf.isExplicitlyLinked"
                             type="button"
-                            class="pl-btn pl-btn-danger-ghost pl-btn-xs"
-                            title="Gỡ Khung này khỏi Dự án"
-                            @click.stop="toggleProjectFormLinkedWorkflow(wf.id_workflow)"
+                            class="pl-wf-detach-btn"
+                            title="Bỏ chọn Workflow này khỏi Dự án"
+                            @click.stop="toggleProjectFormWorkflow(wf.id_workflow)"
                           >
-                            Gỡ
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                           </button>
                         </div>
                       </div>
@@ -3963,8 +4647,11 @@
                           v-for="(st, sIdx) in wf.flowSteps"
                           :key="'pmwf-st-' + wf.id_workflow + '-' + st.id"
                         >
-                          <div class="pl-wf-step-flat" :title="st.value + ' (' + st.percent + ')'">
-                            <span class="pl-proj-wf-step-dot" :style="{ backgroundColor: st.color }"></span>
+                          <div
+                            class="pl-wf-step-flat"
+                            :style="{ '--st-clr': st.color || '#3b82f6' }"
+                            :title="st.value + ' (' + st.percent + ')'"
+                          >
                             <span class="pl-wf-step-flat-lbl">{{ st.shortLabel || st.label }}</span>
                           </div>
                           <span
@@ -3975,23 +4662,105 @@
                         </template>
                       </div>
                     </div>
-
-                    <button
-                      type="button"
-                      class="pl-proj-wf-add-card-btn"
-                      @click="showProjectFormWfPicker = true"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                      <span>Gắn thêm Khung Pipeline của KH đối tác / Khung mẫu</span>
-                    </button>
                   </div>
-                </template>
+                </div>
+
+                <!-- 2. DIRECT WORKFLOW PICKER (SEARCH + CLICK TO SELECT) -->
+                <div class="pl-proj-form-wf-browser">
+                  <div class="pl-proj-wf-browser-toolbar">
+                    <div class="bg-search-shell" style="flex: 1; min-width: 180px;">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" class="bg-search-ic"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                      <input
+                        v-model="projectFormWfSearch"
+                        type="text"
+                        class="bg-search-inp"
+                        placeholder="Tìm tên Workflow, tên bước..."
+                      />
+                      <button
+                        v-if="projectFormWfSearch"
+                        type="button"
+                        class="bg-search-clr"
+                        aria-label="Xóa tìm kiếm"
+                        @click="projectFormWfSearch = ''"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12.5" height="12.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="pl-proj-wf-browser-list">
+                    <div v-if="projectFormAllSelectableWorkflows.length === 0" class="pl-empty-inline">
+                      Không tìm thấy Workflow phù hợp với từ khóa hiện tại.
+                    </div>
+
+                    <div
+                      v-for="wf in projectFormAllSelectableWorkflows"
+                      :key="'pf-allwf-' + wf.id_workflow"
+                      class="pl-proj-wf-card is-selectable-wf-option"
+                      :class="{ 'is-selected-wf': wf.isSelectedInForm }"
+                      @click="toggleProjectFormWorkflow(wf.id_workflow)"
+                    >
+                      <div class="pl-proj-wf-row-head">
+                        <div class="pl-proj-wf-meta-inline">
+                          <span class="pl-wf-check-box" :class="{ 'is-checked': wf.isSelectedInForm }" aria-hidden="true">
+                            <svg v-if="wf.isSelectedInForm" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                          </span>
+                          <span class="pl-proj-wf-name">{{ wf.name_workflow }}</span>
+                          <span class="pl-em-sep">—</span>
+                          <span class="pl-proj-wf-party pl-tabular">
+                            {{ wf.id_workflow === 'WF_DEFAULT' ? 'Mặc định hệ thống' : wf.flowSteps.length + ' bước' }}
+                          </span>
+                        </div>
+
+                        <div style="display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                          <button
+                            type="button"
+                            class="pl-wf-edit-btn"
+                            title="Mở modal sửa bước của Workflow này"
+                            @click.stop="openEditWorkflowStepsModal(wf.id_workflow)"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                            <span>Sửa</span>
+                          </button>
+                          <button
+                            type="button"
+                            class="pl-picker-select-btn"
+                            :class="{ 'is-selected': wf.isSelectedInForm }"
+                            @click.stop="toggleProjectFormWorkflow(wf.id_workflow)"
+                          >
+                            {{ wf.isSelectedInForm ? 'Đã chọn' : '+ Chọn' }}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div class="pl-proj-wf-steps-line">
+                        <template
+                          v-for="(st, sIdx) in wf.flowSteps"
+                          :key="'pfall-st-' + wf.id_workflow + '-' + st.id"
+                        >
+                          <div
+                            class="pl-wf-step-flat"
+                            :style="{ '--st-clr': st.color || '#3b82f6' }"
+                            :title="st.value + ' (' + st.percent + ')'"
+                          >
+                            <span class="pl-wf-step-flat-lbl">{{ st.shortLabel || st.label }}</span>
+                          </div>
+                          <span
+                            v-if="sIdx < wf.flowSteps.length - 1"
+                            class="pl-wf-step-arrow"
+                            aria-hidden="true"
+                          >→</span>
+                        </template>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </aside>
           </div>
 
           <!-- STUDIO FOOTER -->
-          <div class="pl-modal-footer is-studio-foot">
+          <div class="pl-modal-footer is-fullscreen-foot is-studio-foot">
             <div class="pl-studio-foot-left">
               <button
                 v-if="isEditingProject"
@@ -4012,81 +4781,6 @@
                 <span>{{ isEditingProject ? 'Lưu Cập Nhật' : 'Tạo Dự Án' }}</span>
               </button>
             </div>
-          </div>
-        </div>
-      </div>
-    </Teleport>
-
-    <!-- =========================================================
-         MODAL B1: POPUP PICKER — CHỌN KHUNG PIPELINE GẮN VÀO FORM DỰ ÁN
-         ========================================================= -->
-    <Teleport to="body">
-      <div
-        v-if="showProjectFormWfPicker && showProjectFormModal"
-        class="bg-modal-overlay pl-modal-overlay is-submodal-overlay"
-        :class="{
-          'theme-light-blue': uiTheme === 'light',
-          'theme-custom-glass': uiTheme === 'custom'
-        }"
-        :style="uiTheme === 'custom' ? customGlassStyleVars : null"
-        @click.self="showProjectFormWfPicker = false"
-      >
-        <div class="pl-modal-card pl-modal-md">
-          <div class="pl-modal-grab" aria-hidden="true"></div>
-          <div class="pl-modal-header">
-            <div>
-              <h3 class="pl-modal-title">Gắn Thêm Khung Pipeline Vào Dự Án</h3>
-              <p class="pl-modal-sub">Chọn Khung Pipeline của KH đối tác / nhà thầu hoặc Khung mẫu</p>
-            </div>
-            <button type="button" class="pl-modal-close" @click="showProjectFormWfPicker = false" aria-label="Đóng">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-            </button>
-          </div>
-
-          <div class="pl-modal-body">
-            <div class="pl-picker-search-bar">
-              <input
-                v-model="projectFormWfSearch"
-                type="text"
-                class="bg-input"
-                style="flex: 1;"
-                placeholder="Tìm tên Khung Pipeline, tên Công ty / KH đối tác..."
-              />
-            </div>
-
-            <div class="pl-picker-list">
-              <div v-if="projectFormAttachableWorkflows.length === 0" class="pl-empty-inline">
-                Không tìm thấy Workflow phù hợp. Bạn có thể tạo thêm ở tab Workflow hoặc trong Chi tiết Dự án.
-              </div>
-              <div
-                v-for="wf in projectFormAttachableWorkflows"
-                :key="'pf-att-' + wf.id_workflow"
-                class="pl-picker-row"
-                :class="{ 'is-selected': wf.isLinkedInForm }"
-                @click="toggleProjectFormLinkedWorkflow(wf.id_workflow)"
-              >
-                <div style="min-width: 0; flex: 1;">
-                  <div class="pl-picker-row-title">{{ wf.name_workflow }}</div>
-                  <div class="pl-picker-row-sub">
-                    <span v-if="wf.workflow_scope === 'customer'">KH Khung: {{ wf.ten_cong_ty || wf.ten_khach_hang || 'Riêng KH' }}</span>
-                    <span v-else>Kho Khung Mẫu (Blueprint)</span>
-                    · <span class="pl-tabular">{{ wf.steps?.length || 0 }} bước</span>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  class="pl-picker-select-btn"
-                  :class="{ 'is-selected': wf.isLinkedInForm }"
-                  @click.stop="toggleProjectFormLinkedWorkflow(wf.id_workflow)"
-                >
-                  {{ wf.isLinkedInForm ? 'Đã gắn · Bấm gỡ' : '+ Gắn vào DA' }}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div class="pl-modal-footer">
-            <button type="button" class="pl-btn pl-btn-primary" @click="showProjectFormWfPicker = false">Xong</button>
           </div>
         </div>
       </div>
@@ -4162,7 +4856,10 @@
                  ========================================================= -->
             <aside
               class="modal-group pl-studio-col is-col-left"
-              :class="{ 'is-mob-collapsed': !isStudioLeftRailOpen }"
+              :class="{
+                'is-mob-collapsed': !isStudioLeftRailOpen,
+                'is-mob-active-tab': mobileTaskModalTab === 'setup'
+              }"
             >
               <div
                 class="modal-banner-header is-sky is-mob-collapsible"
@@ -4218,32 +4915,19 @@
                   </div>
 
                   <div class="pl-field">
-                    <label class="bg-label">Khung Pipeline Áp Dụng</label>
+                    <label class="bg-label">Workflow Áp Dụng</label>
                     <select v-model="formData.id_workflow" class="bg-input" @change="onModalWorkflowChange">
-                      <option value="">Khung Chuẩn Hệ Thống (5 bước)</option>
+                      <option value="WF_DEFAULT">Workflow Chuẩn Hệ Thống (5 bước)</option>
                       <optgroup
                         v-if="modalProjectLinkedWorkflows.length > 0"
-                        :label="'Khung Trong Dự Án: ' + (modalSelectedProject?.ten_du_an || '')"
+                        :label="'Workflow Trong Dự Án: ' + (modalSelectedProject?.ten_du_an || '')"
                       >
                         <option v-for="wf in modalProjectLinkedWorkflows" :key="'mwf-proj-' + wf.id_workflow" :value="wf.id_workflow">
-                          {{ wf.name_workflow }} ({{ wf.scopeLabel }})
-                        </option>
-                      </optgroup>
-                      <optgroup
-                        v-if="modalMatchedCompanyWorkflows.length > 0"
-                        :label="'Khung Riêng Của ' + (formData.ten_cong_ty || formData.ten_khach_hang || 'KH này')"
-                      >
-                        <option v-for="wf in modalMatchedCompanyWorkflows" :key="'mwf-own-' + wf.id_workflow" :value="wf.id_workflow">
-                          {{ wf.name_workflow }}{{ wf.is_company_default ? ' (Mặc định)' : '' }}
-                        </option>
-                      </optgroup>
-                      <optgroup v-if="templateWorkflowOptions.length > 0" label="Kho Khung Mẫu Chung">
-                        <option v-for="wf in templateWorkflowOptions" :key="'mwft-' + wf.id_workflow" :value="wf.id_workflow">
                           {{ wf.name_workflow }}
                         </option>
                       </optgroup>
-                      <optgroup v-if="modalOtherCustomerWorkflows.length > 0" label="Khung Riêng KH Khác">
-                        <option v-for="wf in modalOtherCustomerWorkflows" :key="'mwfc-' + wf.id_workflow" :value="wf.id_workflow">
+                      <optgroup v-if="modalOtherWorkflows.length > 0" label="Danh Sách Workflow Khác">
+                        <option v-for="wf in modalOtherWorkflows" :key="'mwft-' + wf.id_workflow" :value="wf.id_workflow">
                           {{ wf.name_workflow }}
                         </option>
                       </optgroup>
@@ -4264,9 +4948,9 @@
                         type="button"
                         class="pl-mcf-chip"
                         :class="{ 'is-active': !formData.id_workflow || formData.id_workflow === 'WF_DEFAULT' }"
-                        @click="selectModalWorkflowQuick('')"
+                        @click="selectModalWorkflowQuick('WF_DEFAULT')"
                       >
-                        Khung Chuẩn
+                        Workflow Chuẩn
                       </button>
                     </div>
                   </div>
@@ -4655,7 +5339,10 @@
             <!-- =========================================================
                  COLUMN 2 (~47%): KHÁCH HÀNG, GIÁ TRỊ & NỘI DUNG PO / HỢP ĐỒNG
                  ========================================================= -->
-            <section class="modal-group pl-studio-col is-col-center">
+            <section
+              class="modal-group pl-studio-col is-col-center"
+              :class="{ 'is-mob-active-tab': mobileTaskModalTab === 'work' }"
+            >
               <div class="modal-banner-header is-emerald">
                 <div class="pl-studio-banner-left">
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
@@ -4874,7 +5561,10 @@
             <!-- =========================================================
                  COLUMN 3 (~28%): REPORT CON LIÊN KẾT & KHO TỆP CHỨNG TỪ
                  ========================================================= -->
-            <aside class="modal-group pl-studio-col is-col-right">
+            <aside
+              class="modal-group pl-studio-col is-col-right"
+              :class="{ 'is-mob-active-tab': mobileTaskModalTab === 'hub' }"
+            >
               <div class="modal-banner-header is-teal">
                 <div class="pl-studio-banner-left">
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
@@ -5071,6 +5761,43 @@
             </aside>
           </div>
 
+          <!-- MOBILE SUB-DOCK: PIPELINE TASK MODAL -->
+          <nav class="pl-modal-subdock" aria-label="Điều hướng công việc pipeline">
+            <button
+              type="button"
+              class="pl-msd-btn"
+              :class="{ 'is-active': mobileTaskModalTab === 'setup' }"
+              @click="mobileTaskModalTab = 'setup'; isStudioLeftRailOpen = true"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+              <span class="pl-msd-lbl">Khung Pipeline</span>
+            </button>
+            <button
+              type="button"
+              class="pl-msd-btn"
+              :class="{ 'is-active': mobileTaskModalTab === 'work' }"
+              @click="mobileTaskModalTab = 'work'"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+              <span class="pl-msd-lbl">Công việc Pipeline</span>
+            </button>
+            <button
+              type="button"
+              class="pl-msd-btn"
+              :class="{ 'is-active': mobileTaskModalTab === 'hub' }"
+              @click="mobileTaskModalTab = 'hub'"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+              <span class="pl-msd-lbl">Report &amp; Chứng từ</span>
+              <span
+                v-if="selectedReports.length > 0 || modalTotalLinkedAttachmentsCount > 0"
+                class="pl-msd-badge pl-tabular"
+              >
+                {{ modalTotalLinkedAttachmentsCount > 0 ? modalTotalLinkedAttachmentsCount : selectedReports.length }}
+              </span>
+            </button>
+          </nav>
+
           <!-- STUDIO STICKY FOOTER -->
           <div class="pl-modal-footer is-fullscreen-foot is-studio-foot">
             <div class="pl-studio-foot-left">
@@ -5192,21 +5919,15 @@
                   </div>
                   <div class="pl-picker-row-sub">
                     <template v-if="customerPickerFocus === 'contact'">
-                      {{ c.Ten_cong_ty || 'Chưa rõ công ty' }} • <span class="pl-mono">{{ c.Ma_khach_hang }}</span>
+                      {{ c.Ten_cong_ty || 'Chưa cập nhật tên công ty' }}
                     </template>
                     <template v-else>
-                      {{ c.Ten_khach_hang || 'Chưa có người liên hệ' }} • <span class="pl-mono">{{ c.Ma_khach_hang }}</span>
+                      {{ c.Ten_khach_hang || 'Chưa cập nhật tên khách hàng' }}
                     </template>
                   </div>
                 </div>
                 <div style="display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;">
                   <span v-if="c._isSameCompany" class="pl-mini-tag is-sky">Cùng công ty</span>
-                  <span
-                    v-if="resolveCustomerWorkflow({ ma_khach_hang: c.Ma_khach_hang, ten_cong_ty: c.Ten_cong_ty, ten_khach_hang: c.Ten_khach_hang }).isCustom"
-                    class="pl-mini-tag is-emerald"
-                  >
-                    Có Khung riêng
-                  </span>
                   <button
                     type="button"
                     class="pl-picker-select-btn"
@@ -6543,6 +7264,10 @@
               <div class="pl-vault-head-meta">
                 <h3 class="pl-modal-title">Kho Tệp Đính Kèm Trong Pipeline</h3>
                 <div class="pl-vault-head-sub pl-tabular">
+                  <template v-if="filterConfig.projectId">
+                    <span>Dự án: <strong>{{ activeKanbanProjectFilterLabel }}</strong></span>
+                    <span>•</span>
+                  </template>
                   <span>Khung: <strong>{{ activeKanbanWorkflowFilterLabel }}</strong></span>
                   <span>•</span>
                   <span>{{ displayedKanbanItems.length }} công việc đang hiển thị</span>
@@ -6624,6 +7349,56 @@
               </div>
             </div>
 
+            <!-- BULK SELECTION & DOWNLOAD TOOLBAR -->
+            <div v-if="filteredVaultAllFiles.length > 0" class="pl-vault-bulk-bar">
+              <label class="pl-vault-bulk-selall">
+                <input
+                  type="checkbox"
+                  class="pl-pfv-chk"
+                  :checked="areAllVaultFilesSelected(filteredVaultAllFiles)"
+                  @change="toggleSelectAllVaultFiles(filteredVaultAllFiles)"
+                />
+                <span>
+                  {{ areAllVaultFilesSelected(filteredVaultAllFiles) ? 'Bỏ chọn tất cả' : 'Chọn tất cả' }}
+                  ({{ filteredVaultAllFiles.length }})
+                </span>
+              </label>
+
+              <div class="pl-vault-bulk-btns">
+                <button
+                  type="button"
+                  class="pl-pfv-bulk-btn is-selected is-modal-btn"
+                  :disabled="vaultBulkDownloading || getSelectedVaultFiles(filteredVaultAllFiles).length === 0"
+                  @click="downloadMultipleVaultFiles(getSelectedVaultFiles(filteredVaultAllFiles), 'Vui lòng chọn ít nhất 1 tệp để tải')"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12.5" height="12.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                  <span>Tải đã chọn ({{ getSelectedVaultFiles(filteredVaultAllFiles).length }})</span>
+                </button>
+                <button
+                  type="button"
+                  class="pl-pfv-bulk-btn is-all is-modal-btn"
+                  :disabled="vaultBulkDownloading"
+                  @click="downloadMultipleVaultFiles(filteredVaultAllFiles)"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12.5" height="12.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                  <span>Tải hết tất cả ({{ filteredVaultAllFiles.length }})</span>
+                </button>
+                <button
+                  type="button"
+                  class="pl-pfv-bulk-btn is-zip is-modal-btn"
+                  :disabled="vaultBulkDownloading"
+                  @click="downloadVaultFilesAsZip(getSelectedVaultFiles(filteredVaultAllFiles).length > 0 ? getSelectedVaultFiles(filteredVaultAllFiles) : filteredVaultAllFiles, 'pipeline-files')"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12.5" height="12.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                  <span>
+                    {{ getSelectedVaultFiles(filteredVaultAllFiles).length > 0
+                      ? `Tải file ZIP (${getSelectedVaultFiles(filteredVaultAllFiles).length} chọn)`
+                      : `Tải file ZIP (${filteredVaultAllFiles.length})` }}
+                  </span>
+                </button>
+              </div>
+            </div>
+
             <!-- 2-SOURCE COLUMNS -->
             <div
               class="pl-vault-modal-grid"
@@ -6644,8 +7419,16 @@
                 </div>
 
                 <div v-else class="pl-vault-col-list">
-                  <div v-for="f in filteredVaultReportFiles" :key="'vmr-' + f.key" class="pl-vault-fcard">
+                  <div v-for="f in filteredVaultReportFiles" :key="'vmr-' + f.key" class="pl-vault-fcard" :class="{ 'is-checked': isVaultFileSelected(f.key) }">
                     <div class="pl-vault-fcard-top">
+                      <input
+                        type="checkbox"
+                        class="pl-pfv-chk"
+                        :checked="isVaultFileSelected(f.key)"
+                        title="Chọn tệp"
+                        @click.stop
+                        @change="toggleVaultFileSelection(f.key)"
+                      />
                       <span class="pl-rep-file-ic" v-html="getReportAttIconSvg(f)"></span>
                       <span class="pl-rep-file-badge" :class="f.badgeCls">{{ f.badgeLabel }}</span>
                       <button
@@ -6726,8 +7509,16 @@
                 </div>
 
                 <div v-else class="pl-vault-col-list">
-                  <div v-for="f in filteredVaultDirectFiles" :key="'vmd-' + f.key" class="pl-vault-fcard">
+                  <div v-for="f in filteredVaultDirectFiles" :key="'vmd-' + f.key" class="pl-vault-fcard" :class="{ 'is-checked': isVaultFileSelected(f.key) }">
                     <div class="pl-vault-fcard-top">
+                      <input
+                        type="checkbox"
+                        class="pl-pfv-chk"
+                        :checked="isVaultFileSelected(f.key)"
+                        title="Chọn tệp"
+                        @click.stop
+                        @change="toggleVaultFileSelection(f.key)"
+                      />
                       <span class="pl-rep-file-ic" v-html="getReportAttIconSvg(f)"></span>
                       <span class="pl-rep-file-badge" :class="f.badgeCls">{{ f.badgeLabel }}</span>
                       <button
@@ -6855,14 +7646,184 @@
       </div>
     </Teleport>
 
+    <!-- 10. MOBILE BOTTOM SHEET: CHUYỂN BƯỚC & THAO TÁC NHANH THẺ CÔNG VIỆC -->
+    <div
+      v-if="mobileCardActionSheet"
+      class="bg-modal-overlay pl-modal-overlay pl-stage-sheet-overlay"
+      :class="{
+        'theme-light-blue': uiTheme === 'light',
+        'theme-custom-glass': uiTheme === 'custom'
+      }"
+      :style="uiTheme === 'custom' ? customGlassStyleVars : null"
+      @click.self="closeMobileCardActionSheet"
+    >
+      <div class="pl-modal-card pl-stage-sheet-card">
+        <div class="pl-modal-grab" aria-hidden="true"></div>
+        <div class="pl-modal-header pl-stage-sheet-head">
+          <div class="pl-modal-title-group" style="min-width: 0; flex: 1;">
+            <div class="pl-modal-icon is-emerald">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+            </div>
+            <div style="min-width: 0; flex: 1;">
+              <h3 class="pl-modal-title pl-stage-sheet-title">
+                {{ mobileCardActionSheet.card.content_of_contract_po || 'Chưa nhập tên công việc' }}
+              </h3>
+              <p class="pl-modal-sub pl-stage-sheet-sub">
+                {{ mobileCardActionSheet.card.ten_cong_ty || mobileCardActionSheet.card.ten_khach_hang || mobileCardActionSheet.card.Id_pipeline }}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            class="pl-modal-close"
+            aria-label="Đóng"
+            @click="closeMobileCardActionSheet"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+
+        <div class="pl-modal-body pl-stage-sheet-body">
+          <div class="pl-stage-sheet-sec-lbl">CHUYỂN NHANH BƯỚC TIẾN ĐỘ</div>
+          <div class="pl-stage-sheet-grid">
+            <button
+              v-for="mc in COLUMNS"
+              :key="'msheet-' + mc.id"
+              type="button"
+              class="pl-stage-sheet-opt"
+              :class="{ 'is-current': mobileCardActionSheet.currentColId === mc.id }"
+              :style="{ '--step-clr': getColTitleColor(mc.id) }"
+              @click="handleMobileSheetMoveStage(mc.id)"
+            >
+              <span class="pl-stage-sheet-dot"></span>
+              <div class="pl-stage-sheet-opt-text">
+                <span class="pl-stage-sheet-opt-name">{{ mc.label }}</span>
+                <span class="pl-stage-sheet-opt-pct pl-tabular">{{ mc.percent }}</span>
+              </div>
+              <svg
+                v-if="mobileCardActionSheet.currentColId === mc.id"
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="pl-stage-sheet-check"
+              ><polyline points="20 6 9 17 4 12"></polyline></svg>
+            </button>
+          </div>
+
+          <div class="pl-stage-sheet-actions">
+            <button type="button" class="pl-btn pl-btn-sky-soft" @click="handleMobileSheetOpenDetail">
+              <span>Mở chi tiết</span>
+            </button>
+            <button type="button" class="pl-btn pl-btn-slate" @click="handleMobileSheetDuplicate">
+              <span>Nhân bản</span>
+            </button>
+            <button
+              v-if="mobileCardActionSheet.card.id_project"
+              type="button"
+              class="pl-btn pl-btn-slate"
+              @click="handleMobileSheetOpenProject"
+            >
+              <span>Dự án gốc</span>
+            </button>
+            <button type="button" class="pl-btn pl-btn-danger-ghost" @click="handleMobileSheetDelete">
+              <span>Xóa</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MOBILE FLOATING GLASS BOTTOM DOCK (5 NÚT ĐỒNG BỘ 100% VỚI .sr-mobile-dock & APP.VUE) -->
+    <nav
+      class="pl-mobile-dock"
+      :class="{ 'is-modal-hidden': isAnyPipelineModalOpen }"
+      aria-label="Điều hướng nhanh Pipeline Mobile"
+    >
+      <button
+        type="button"
+        class="pl-dock-btn is-tab-projects"
+        :class="{ active: activeTab === 'projects' }"
+        @click="activeTab = 'projects'"
+      >
+        <div class="pl-dock-icon-wrap">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+          <span v-if="activeProjectFiltersCount > 0" class="pl-dock-badge is-amber">{{ activeProjectFiltersCount }}</span>
+          <span v-else-if="projectsList.length > 0" class="pl-dock-badge">{{ projectsList.length > 99 ? '99+' : projectsList.length }}</span>
+        </div>
+        <span>Dự Án</span>
+      </button>
+
+      <button
+        type="button"
+        class="pl-dock-btn is-tab-kanban"
+        :class="{ active: activeTab === 'kanban' }"
+        @click="activeTab = 'kanban'"
+      >
+        <div class="pl-dock-icon-wrap">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line></svg>
+          <span v-if="activeKanbanFiltersCount > 0" class="pl-dock-badge is-amber">{{ activeKanbanFiltersCount }}</span>
+          <span v-else-if="items.length > 0" class="pl-dock-badge is-emerald">{{ items.length > 99 ? '99+' : items.length }}</span>
+        </div>
+        <span>Công việc</span>
+      </button>
+
+      <button
+        type="button"
+        class="pl-dock-btn is-primary is-center-cta"
+        @click="handleMobileDockCreate()"
+      >
+        <div class="pl-dock-icon-wrap">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        </div>
+        <span>{{ activeTab === 'projects' ? 'Tạo Dự án' : activeTab === 'workflow' ? 'Tạo Flow' : 'Thêm việc' }}</span>
+      </button>
+
+      <button
+        type="button"
+        class="pl-dock-btn is-tab-workflow"
+        :class="{ active: activeTab === 'workflow' }"
+        @click="activeTab = 'workflow'"
+      >
+        <div class="pl-dock-icon-wrap">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+          <span class="pl-dock-badge is-orange">{{ uniqueWorkflows.length + 1 }}</span>
+        </div>
+        <span>Workflow</span>
+      </button>
+
+      <button
+        type="button"
+        class="pl-dock-btn is-tab-files"
+        @click="openMobileFilesVault()"
+      >
+        <div class="pl-dock-icon-wrap">
+          <svg width="17.5" height="17.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+          <span v-if="activeKanbanFilesVault.totalCount > 0" class="pl-dock-badge">{{ activeKanbanFilesVault.totalCount > 99 ? '99+' : activeKanbanFilesVault.totalCount }}</span>
+        </div>
+        <span>Kho File</span>
+      </button>
+    </nav>
+
     <!-- 10. TOP-CENTER SMART TOAST & DRAG TOOLTIP -->
     <Teleport to="body">
       <div
         class="smart-toast-wrap"
-        :class="{ 'theme-light-blue': uiTheme === 'light' }"
+        :class="{ 'theme-light-blue': uiTheme === 'light', 'theme-custom-glass': uiTheme === 'custom' }"
       >
         <Transition name="pl-toast-fade">
-          <div v-if="smartToast.show" class="pl-smart-toast" :class="'is-' + smartToast.type" role="status">
+          <div
+            v-if="smartToast.show"
+            class="pl-smart-toast"
+            :class="'is-' + smartToast.type"
+            role="status"
+            @click="smartToast.show = false"
+          >
             <span class="pl-toast-ic">
               <svg v-if="smartToast.type === 'error'" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
               <svg v-else-if="smartToast.type === 'warning'" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
@@ -6894,6 +7855,8 @@ import draggable from 'vuedraggable'
 import NumberInput from './NumberInput.vue'
 import ExcelJS from 'exceljs'
 import * as XLSX from 'xlsx'
+import JSZip from 'jszip'
+import { saveAs } from 'file-saver'
 import * as pdfjsLib from 'pdfjs-dist/build/pdf.js'
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.js?url'
 import { initializeApp, getApps, getApp } from 'firebase/app'
@@ -7296,7 +8259,7 @@ const normalizeWorkflowRecord = (raw, key) => {
       status_name: String(raw[4] ?? ''),
       status_index: raw[5] ?? '',
       status_color: raw[6] || '#3b82f6',
-      workflow_scope: idWf.startsWith('WF_CUS_') ? 'customer' : 'template',
+      workflow_scope: 'template',
       ma_khach_hang: '',
       ma_cong_ty: '',
       ten_khach_hang: '',
@@ -7307,15 +8270,6 @@ const normalizeWorkflowRecord = (raw, key) => {
     }
   } else if (typeof raw === 'object') {
     const idWf = String(raw.id_workflow ?? '')
-    const scope =
-      raw.workflow_scope === 'template'
-        ? 'template'
-        : raw.workflow_scope === 'customer'
-          ? 'customer'
-          : idWf.startsWith('WF_CUS_') || raw.ma_khach_hang || raw.ma_cong_ty || raw.ten_cong_ty
-            ? 'customer'
-            : 'template'
-    const isCus = scope === 'customer'
     item = {
       id_workflow: idWf,
       id_status_workflow: String(raw.id_status_workflow ?? key ?? ''),
@@ -7324,12 +8278,12 @@ const normalizeWorkflowRecord = (raw, key) => {
       status_name: String(raw.status_name ?? ''),
       status_index: raw.status_index ?? '',
       status_color: raw.status_color || '#3b82f6',
-      workflow_scope: scope,
-      ma_khach_hang: isCus ? String(raw.ma_khach_hang ?? '') : '',
-      ma_cong_ty: isCus ? String(raw.ma_cong_ty ?? '') : '',
-      ten_khach_hang: isCus ? String(raw.ten_khach_hang ?? '') : '',
-      ten_cong_ty: isCus ? String(raw.ten_cong_ty ?? '') : '',
-      is_company_default: isCus ? Boolean(raw.is_company_default) : false,
+      workflow_scope: 'template',
+      ma_khach_hang: '',
+      ma_cong_ty: '',
+      ten_khach_hang: '',
+      ten_cong_ty: '',
+      is_company_default: false,
       source_template_id: String(raw.source_template_id ?? ''),
       source_template_name: String(raw.source_template_name ?? '')
     }
@@ -7352,7 +8306,7 @@ const normalizeLinkedWorkflowIds = (rawVal) => {
   const out = []
   arr.forEach((v) => {
     const clean = String(v || '').trim()
-    if (clean && clean !== 'WF_DEFAULT' && !seen.has(clean)) {
+    if (clean && !seen.has(clean)) {
       seen.add(clean)
       out.push(clean)
     }
@@ -7374,6 +8328,7 @@ const normalizeProjectRecord = (raw, key) => {
     ten_cong_ty: String(raw.ten_cong_ty || ''),
     default_workflow_id: String(raw.default_workflow_id || ''),
     linked_workflow_ids: normalizeLinkedWorkflowIds(raw.linked_workflow_ids),
+    excluded_workflow_ids: normalizeLinkedWorkflowIds(raw.excluded_workflow_ids),
     AM: String(raw.AM || 'Sơn'),
     ngan_sach_du_kien: raw.ngan_sach_du_kien ?? '',
     deadline: String(raw.deadline || ''),
@@ -7408,9 +8363,8 @@ const isCardSameAsProjectRootCustomer = (pipe, proj) => {
 // =========================================================
 // CORE REACTIVE STATE
 // =========================================================
-const activeTab = ref('kanban') // 'kanban' | 'projects' | 'workflow'
+const activeTab = ref('projects') // 'projects' | 'kanban' | 'workflow'
 const kanbanViewMode = ref('standard') // 'standard' | 'swimlane'
-const workflowFocusCustomerKey = ref('')
 
 const items = ref([])
 const workflowsData = ref([])
@@ -7447,12 +8401,12 @@ const filterConfig = ref({
   yearTo: '',
   customerName: '',
   companyName: '',
-  projectId: '',
+  projectId: '__STANDALONE__',
   workflowId: ''
 })
 
 // =========================================================
-// WORKFLOW DEFINITIONS & CUSTOMER FLOW RESOLUTION
+// WORKFLOW DEFINITIONS (UNIFIED CUSTOMER-FREE LIBRARY)
 // =========================================================
 const defaultColumns = [
   { id: 'nhap', label: 'TẠM', shortLabel: 'TẠM', value: 'TẠM', percent: '0%', color: '#3b82f6' },
@@ -7468,36 +8422,21 @@ const uniqueWorkflows = computed(() => {
   const map = new Map()
   workflowsData.value.forEach((wf) => {
     if (wf.id_workflow && !map.has(wf.id_workflow)) {
-      const scope =
-        wf.workflow_scope === 'template'
-          ? 'template'
-          : wf.workflow_scope === 'customer'
-            ? 'customer'
-            : wf.id_workflow.startsWith('WF_CUS_') || wf.ma_cong_ty || wf.ten_cong_ty || wf.ma_khach_hang
-              ? 'customer'
-              : 'template'
-      const isCus = scope === 'customer'
       map.set(wf.id_workflow, {
         id_workflow: wf.id_workflow,
-        name_workflow: wf.name_workflow,
-        workflow_scope: scope,
-        ma_khach_hang: isCus ? wf.ma_khach_hang || '' : '',
-        ma_cong_ty: isCus ? wf.ma_cong_ty || '' : '',
-        ten_khach_hang: isCus ? wf.ten_khach_hang || '' : '',
-        ten_cong_ty: isCus ? wf.ten_cong_ty || '' : '',
-        is_company_default: isCus ? Boolean(wf.is_company_default) : false,
+        name_workflow: wf.name_workflow || wf.id_workflow,
+        workflow_scope: 'template',
+        ma_khach_hang: '',
+        ma_cong_ty: '',
+        ten_khach_hang: '',
+        ten_cong_ty: '',
+        is_company_default: false,
         source_template_id: wf.source_template_id || '',
         source_template_name: wf.source_template_name || ''
       })
     } else if (wf.id_workflow && map.has(wf.id_workflow)) {
       const ex = map.get(wf.id_workflow)
-      if (ex.workflow_scope === 'customer') {
-        if (!ex.ma_khach_hang && wf.ma_khach_hang) ex.ma_khach_hang = wf.ma_khach_hang
-        if (!ex.ma_cong_ty && wf.ma_cong_ty) ex.ma_cong_ty = wf.ma_cong_ty
-        if (!ex.ten_cong_ty && wf.ten_cong_ty) ex.ten_cong_ty = wf.ten_cong_ty
-        if (!ex.ten_khach_hang && wf.ten_khach_hang) ex.ten_khach_hang = wf.ten_khach_hang
-        if (wf.is_company_default) ex.is_company_default = true
-      }
+      if (!ex.name_workflow && wf.name_workflow) ex.name_workflow = wf.name_workflow
       if (!ex.source_template_id && wf.source_template_id) ex.source_template_id = wf.source_template_id
       if (!ex.source_template_name && wf.source_template_name) ex.source_template_name = wf.source_template_name
     }
@@ -7505,12 +8444,10 @@ const uniqueWorkflows = computed(() => {
   return Array.from(map.values())
 })
 
-const customerWorkflowOptions = computed(() =>
-  uniqueWorkflows.value.filter((w) => w.workflow_scope === 'customer')
-)
-
-const templateWorkflowOptions = computed(() =>
-  uniqueWorkflows.value.filter((w) => w.workflow_scope !== 'customer')
+const customWorkflowOptions = computed(() =>
+  uniqueWorkflows.value
+    .filter((w) => w.id_workflow && w.id_workflow !== 'WF_DEFAULT')
+    .sort((a, b) => (a.name_workflow || '').localeCompare(b.name_workflow || '', 'vi'))
 )
 
 const getColumnsForWorkflow = (wfId) => {
@@ -7542,14 +8479,14 @@ const COLUMNS = computed(() => getColumnsForWorkflow(selectedWorkflowId.value))
 const MODAL_COLUMNS = computed(() => getColumnsForWorkflow(formData.value.id_workflow || 'WF_DEFAULT'))
 
 const getWorkflowShortLabel = (wfId) => {
-  if (!wfId || wfId === 'WF_DEFAULT') return 'Khung Chuẩn'
+  if (!wfId || wfId === 'WF_DEFAULT') return 'Workflow Chuẩn'
   const found = uniqueWorkflows.value.find((w) => w.id_workflow === wfId)
-  return found ? found.name_workflow : 'Khung Riêng'
+  return found ? found.name_workflow : wfId
 }
 
 const activeWorkflowMeta = computed(() => {
   if (!selectedWorkflowId.value || selectedWorkflowId.value === 'WF_DEFAULT') {
-    return { id: 'WF_DEFAULT', label: 'Khung Chuẩn Hệ Thống (5 bước)' }
+    return { id: 'WF_DEFAULT', label: 'Workflow Chuẩn Hệ Thống (5 bước)' }
   }
   const found = uniqueWorkflows.value.find((w) => w.id_workflow === selectedWorkflowId.value)
   return {
@@ -7558,67 +8495,37 @@ const activeWorkflowMeta = computed(() => {
   }
 })
 
-const resolveCompanyWorkflows = ({
-  ma_khach_hang = '',
-  ma_cong_ty = '',
-  ten_cong_ty = '',
-  ten_khach_hang = ''
-} = {}) => {
-  const cleanMaKH = genMaCT(ma_khach_hang)
-  const cleanCT = genMaCT(ten_cong_ty || ma_cong_ty)
-  const cleanKH = genMaCT(ten_khach_hang)
+const defaultCoreStageIdSet = new Set(['nhap', 'col_30', 'col_50', 'col_70', 'col_90'])
 
-  const matched = []
-  customerWorkflowOptions.value.forEach((wf) => {
-    const wfCT = genMaCT(wf.ten_cong_ty || wf.ma_cong_ty)
-    const wfMaKH = genMaCT(wf.ma_khach_hang)
-    const wfKH = genMaCT(wf.ten_khach_hang)
+const getEffectiveItemWorkflowId = (item) => {
+  const explicitWf = String(item?.id_workflow || '').trim()
+  if (explicitWf) return explicitWf
 
-    let isMatch = false
-    if (cleanCT && wfCT && cleanCT === wfCT) {
-      isMatch = true
-    } else if (!cleanCT && cleanMaKH && wfMaKH && cleanMaKH === wfMaKH) {
-      isMatch = true
-    } else if (!cleanCT && cleanKH && !wfCT && wfKH && cleanKH === wfKH) {
-      isMatch = true
-    } else if (cleanMaKH && wfMaKH && cleanMaKH === wfMaKH) {
-      isMatch = true
-    }
-
-    if (isMatch) {
-      matched.push(wf)
-    }
-  })
-
-  matched.sort((a, b) => {
-    if (Boolean(a.is_company_default) !== Boolean(b.is_company_default)) {
-      return a.is_company_default ? -1 : 1
-    }
-    return (a.name_workflow || '').localeCompare(b.name_workflow || '', 'vi')
-  })
-
-  const primary =
-    matched.find((w) => Boolean(w.is_company_default)) ||
-    matched[0] ||
-    { id_workflow: 'WF_DEFAULT', name_workflow: 'Flow Chuẩn Hệ Thống', isCustom: false }
-
-  return {
-    list: matched,
-    hasCustom: matched.length > 0,
-    count: matched.length,
-    primary: matched.length > 0 ? { ...primary, isCustom: true } : primary
+  const rawSt = String(item?.id_status_workflow || '').trim()
+  if (rawSt && !defaultCoreStageIdSet.has(rawSt) && rawSt !== 'hoan_thanh' && rawSt !== 'that_bai') {
+    const matchedWfRow = workflowsData.value.find(
+      (wf) =>
+        wf.id_workflow &&
+        wf.id_workflow !== 'WF_DEFAULT' &&
+        (String(wf.id_status_workflow) === rawSt || `wf_${wf.id_status_workflow}` === rawSt)
+    )
+    if (matchedWfRow) return matchedWfRow.id_workflow
   }
-}
 
-const resolveCustomerWorkflow = (params = {}) => {
-  const res = resolveCompanyWorkflows(params)
-  return {
-    id_workflow: res.primary.id_workflow,
-    name_workflow: res.primary.name_workflow,
-    isCustom: res.hasCustom,
-    count: res.count,
-    list: res.list
+  if (rawSt && defaultCoreStageIdSet.has(rawSt)) {
+    return 'WF_DEFAULT'
   }
+
+  if (item?.id_project) {
+    const proj = projectsList.value.find((p) => p.id_project === item.id_project)
+    if (proj) {
+      if (proj.default_workflow_id) return proj.default_workflow_id
+      const linked = normalizeLinkedWorkflowIds(proj.linked_workflow_ids)
+      if (linked.length > 0) return linked[0]
+    }
+  }
+
+  return 'WF_DEFAULT'
 }
 
 // =========================================================
@@ -7629,6 +8536,17 @@ const normFilterKey = (val) =>
     .toLowerCase()
     .replace(/\s+/g, ' ')
 
+const isLikelyRawCustomerCode = (val, rawMaKH, rawMaCT) => {
+  const cleanVal = String(val || '').trim()
+  if (!cleanVal || /\s/.test(cleanVal)) return false
+  const mkh = String(rawMaKH || '').trim()
+  const mct = String(rawMaCT || '').trim()
+  return (
+    (Boolean(mkh) && cleanVal.toUpperCase() === mkh.toUpperCase()) ||
+    (Boolean(mct) && cleanVal.toUpperCase() === mct.toUpperCase())
+  )
+}
+
 const resolveCompleteCustomerPair = ({
   ma_khach_hang = '',
   ma_cong_ty = '',
@@ -7637,7 +8555,10 @@ const resolveCompleteCustomerPair = ({
 } = {}) => {
   let company = String(ten_cong_ty || '').trim()
   let customer = String(ten_khach_hang || '').trim()
-  if (company && customer) {
+  const compIsCode = isLikelyRawCustomerCode(company, ma_khach_hang, ma_cong_ty)
+  const cusIsCode = isLikelyRawCustomerCode(customer, ma_khach_hang, ma_cong_ty)
+
+  if (company && customer && !compIsCode && !cusIsCode) {
     return { ten_cong_ty: company, ten_khach_hang: customer }
   }
 
@@ -7656,8 +8577,12 @@ const resolveCompleteCustomerPair = ({
   })
 
   if (matchedCus) {
-    if (!company && matchedCus.Ten_cong_ty) company = String(matchedCus.Ten_cong_ty).trim()
-    if (!customer && matchedCus.Ten_khach_hang) customer = String(matchedCus.Ten_khach_hang).trim()
+    if ((!company || compIsCode) && matchedCus.Ten_cong_ty) {
+      company = String(matchedCus.Ten_cong_ty).trim()
+    }
+    if ((!customer || cusIsCode) && matchedCus.Ten_khach_hang) {
+      customer = String(matchedCus.Ten_khach_hang).trim()
+    }
   }
 
   return { ten_cong_ty: company, ten_khach_hang: customer }
@@ -7722,8 +8647,101 @@ const getItemPartyInfo = (item) => {
   }
 }
 
+const kanbanFilterModalInputRef = ref(null)
+const highlightedProjectCardId = ref('')
+let highlightedProjectCardTimer = null
+
 const toggleKanbanFilterMenu = (menuKey) => {
   openKanbanFilterMenu.value = openKanbanFilterMenu.value === menuKey ? '' : menuKey
+}
+
+const openKanbanFilterPickerModal = (menuKey) => {
+  if (!menuKey) return
+  kanbanFilterSearch.value[menuKey] = ''
+  openKanbanFilterMenu.value = menuKey
+  nextTick(() => {
+    if (kanbanFilterModalInputRef.value && typeof kanbanFilterModalInputRef.value.focus === 'function') {
+      kanbanFilterModalInputRef.value.focus()
+    }
+  })
+}
+
+const closeKanbanFilterPickerModal = () => {
+  if (openKanbanFilterMenu.value && kanbanFilterSearch.value[openKanbanFilterMenu.value] !== undefined) {
+    kanbanFilterSearch.value[openKanbanFilterMenu.value] = ''
+  }
+  openKanbanFilterMenu.value = ''
+}
+
+const navigateToProjectCardById = (projId) => {
+  const cleanId = String(projId || '').trim()
+  if (!cleanId || cleanId === '__STANDALONE__') {
+    activeTab.value = 'projects'
+    showToast('Đã chuyển tới danh sách thẻ Dự án — hãy chọn 1 Dự án cụ thể để định vị thẳng tới thẻ', 'info', 2600)
+    return
+  }
+
+  const targetProj = allEnrichedProjects.value.find((p) => p.id_project === cleanId)
+  activeTab.value = 'projects'
+
+  if (!enrichedProjects.value.some((p) => p.id_project === cleanId)) {
+    projectSearchQuery.value = ''
+    projectStatusFilter.value = 'Tất cả'
+    projectFilter.value = {
+      customerName: '',
+      companyName: '',
+      projectId: '',
+      workflowId: ''
+    }
+  }
+
+  ensureProjectCardExpanded(cleanId)
+
+  if (highlightedProjectCardTimer) {
+    clearTimeout(highlightedProjectCardTimer)
+    highlightedProjectCardTimer = null
+  }
+  highlightedProjectCardId.value = ''
+
+  nextTick(() => {
+    setTimeout(() => {
+      highlightedProjectCardId.value = cleanId
+      if (typeof document !== 'undefined') {
+        const el = document.getElementById(`project-card-${cleanId}`)
+        if (el && typeof el.scrollIntoView === 'function') {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }
+      if (targetProj) {
+        showToast(`Đã điều hướng tới thẻ Dự án "${targetProj.ten_du_an}"`, 'info', 2200)
+      }
+      highlightedProjectCardTimer = setTimeout(() => {
+        if (highlightedProjectCardId.value === cleanId) {
+          highlightedProjectCardId.value = ''
+        }
+      }, 3200)
+    }, 45)
+  })
+}
+
+const navigateToFilteredProjectCard = () => {
+  navigateToProjectCardById(filterConfig.value.projectId)
+}
+
+const navigateToWorkflowCardById = (wfId) => {
+  const targetWf = String(wfId || 'WF_DEFAULT').trim() || 'WF_DEFAULT'
+  activeTab.value = 'workflow'
+  nextTick(() => {
+    if (workflowDesignerRef.value && typeof workflowDesignerRef.value.locateWorkflowCard === 'function') {
+      workflowDesignerRef.value.locateWorkflowCard(targetWf)
+    }
+    showToast(`Đã điều hướng tới thẻ Workflow "${getWorkflowShortLabel(targetWf)}"`, 'info', 2200)
+  })
+}
+
+const navigateToFilteredWorkflowCard = () => {
+  const curWf = filterConfig.value.workflowId || selectedWorkflowId.value || 'WF_DEFAULT'
+  navigateToWorkflowCardById(curWf)
 }
 
 const kanbanEntityRelations = computed(() => {
@@ -7739,7 +8757,7 @@ const kanbanEntityRelations = computed(() => {
       customerMap: info.customerMap,
       companyMap,
       projectId: it.id_project || '__STANDALONE__',
-      workflowIds: new Set([it.id_workflow || 'WF_DEFAULT'])
+      workflowIds: new Set([getEffectiveItemWorkflowId(it)])
     })
   })
 
@@ -7763,12 +8781,6 @@ const kanbanEntityRelations = computed(() => {
     const wfIds = new Set()
     ;(p.correspondingWorkflows || []).forEach((w) => {
       if (w.id_workflow) wfIds.add(w.id_workflow)
-      if (w.scopeType === 'company_custom' || w.scopeType === 'partner_custom') {
-        const wComp = String(w.ten_cong_ty || '').trim()
-        const wCus = String(w.ten_khach_hang || '').trim()
-        if (normFilterKey(wComp)) companyMap.set(normFilterKey(wComp), wComp)
-        if (normFilterKey(wCus)) customerMap.set(normFilterKey(wCus), wCus)
-      }
     })
     if (wfIds.size === 0) wfIds.add('WF_DEFAULT')
 
@@ -7793,39 +8805,12 @@ const kanbanEntityRelations = computed(() => {
     if (cusK) customerMap.set(cusK, cus)
     if (compK) companyMap.set(compK, comp)
 
-    const wfRes = resolveCompanyWorkflows({
-      ma_khach_hang: c.Ma_khach_hang,
-      ma_cong_ty: c.Ma_cong_ty,
-      ten_cong_ty: comp,
-      ten_khach_hang: cus
-    })
-    const wfIds = new Set(wfRes.list.map((w) => w.id_workflow))
-    if (!wfRes.hasCustom) wfIds.add('WF_DEFAULT')
-
     rels.push({
       isWorkItem: false,
       customerMap,
       companyMap,
       projectId: '',
-      workflowIds: wfIds
-    })
-  })
-
-  // 4. Customer-Scoped Workflows
-  customerWorkflowOptions.value.forEach((wf) => {
-    const wfPair = resolveCompleteCustomerPair(wf)
-    const comp = String(wf.ten_cong_ty || wfPair.ten_cong_ty || '').trim()
-    const cus = String(wf.ten_khach_hang || wfPair.ten_khach_hang || '').trim()
-    const customerMap = new Map()
-    const companyMap = new Map()
-    if (normFilterKey(cus)) customerMap.set(normFilterKey(cus), cus)
-    if (normFilterKey(comp)) companyMap.set(normFilterKey(comp), comp)
-    rels.push({
-      isWorkItem: false,
-      customerMap,
-      companyMap,
-      projectId: '',
-      workflowIds: new Set([wf.id_workflow])
+      workflowIds: new Set(['WF_DEFAULT'])
     })
   })
 
@@ -7840,10 +8825,11 @@ const doesKanbanRelMatch = (rel, omitField = '') => {
   if (omitField !== 'company' && f.companyName) {
     if (!rel.companyMap.has(f.companyName)) return false
   }
-  if (omitField !== 'project' && f.projectId) {
-    if (f.projectId === '__STANDALONE__') {
-      if (rel.projectId !== '__STANDALONE__') return false
-    } else if (rel.projectId !== f.projectId) {
+  if (omitField !== 'project') {
+    const activeProj = f.projectId || '__STANDALONE__'
+    if (activeProj === '__STANDALONE__') {
+      if (rel.projectId !== '__STANDALONE__' && !(!rel.isWorkItem && !rel.projectId)) return false
+    } else if (rel.projectId !== activeProj) {
       return false
     }
   }
@@ -7881,13 +8867,10 @@ const kanbanCompanyFilterOptions = computed(() => {
     if (!doesKanbanRelMatch(rel, 'company')) return
     rel.companyMap.forEach((label, key) => {
       if (!map.has(key)) {
-        const resolved = resolveCompanyWorkflows({ ten_cong_ty: label })
         map.set(key, {
           key,
           label,
-          count: 0,
-          hasCustomFlow: resolved.hasCustom,
-          customFlowCount: resolved.count
+          count: 0
         })
       }
       if (rel.isWorkItem) {
@@ -7929,7 +8912,10 @@ const kanbanProjectFilterOptions = computed(() => {
     .filter((p) => matchedProjIds.has(p.id_project))
     .map((p) => {
       const cnt = countMap.get(p.id_project) || 0
-      const ownerSub = p.displayCompanyName || p.displayCustomerName || p.ma_du_an || ''
+      const cusLbl = p.displayCustomerName || p.ten_khach_hang || ''
+      const compLbl = p.displayCompanyName || p.ten_cong_ty || ''
+      const partyParts = [cusLbl, compLbl].filter(Boolean)
+      const ownerSub = partyParts.join(' • ')
       return {
         id_project: p.id_project,
         label: p.ten_du_an,
@@ -7950,7 +8936,8 @@ const filteredKanbanProjectOptions = computed(() => {
 
 const kanbanWorkflowFilterOptions = computed(() => {
   const f = filterConfig.value
-  const hasEntityFilter = Boolean(f.customerName || f.companyName || f.projectId)
+  const hasSpecificProj = Boolean(f.projectId && f.projectId !== '__STANDALONE__')
+  const hasEntityFilter = Boolean(f.customerName || f.companyName || hasSpecificProj)
   const matchedWfIds = new Set()
   const countMap = new Map()
 
@@ -7964,43 +8951,39 @@ const kanbanWorkflowFilterOptions = computed(() => {
     })
   })
 
+  matchedWfIds.add('WF_DEFAULT')
   if (!hasEntityFilter) {
-    matchedWfIds.add('WF_DEFAULT')
     uniqueWorkflows.value.forEach((w) => {
       if (w.id_workflow) matchedWfIds.add(w.id_workflow)
     })
-  } else if (matchedWfIds.size === 0) {
-    matchedWfIds.add('WF_DEFAULT')
   }
 
   const out = []
   if (matchedWfIds.has('WF_DEFAULT')) {
     out.push({
       id_workflow: 'WF_DEFAULT',
-      label: 'Khung Chuẩn Hệ Thống (5 bước)',
-      sub: 'Khung chuẩn dùng chung',
+      label: 'Workflow Chuẩn Hệ Thống (5 bước)',
+      sub: 'Mặc định hệ thống',
       count: countMap.get('WF_DEFAULT') || 0,
-      orderGroup: 1
+      orderGroup: 0
     })
   }
 
-  uniqueWorkflows.value.forEach((wf) => {
-    if (!wf.id_workflow || wf.id_workflow === 'WF_DEFAULT' || !matchedWfIds.has(wf.id_workflow)) return
-    const isCus = wf.workflow_scope === 'customer'
-    const ownerPair = isCus ? formatDistinctCustomerPair(wf.ten_cong_ty, wf.ten_khach_hang) : { displayCompanyName: '', displayCustomerName: '' }
-    const ownerText = [ownerPair.displayCompanyName, ownerPair.displayCustomerName].filter(Boolean).join(' • ')
+  customWorkflowOptions.value.forEach((wf) => {
+    if (!matchedWfIds.has(wf.id_workflow)) return
+    const stepCount = workflowsData.value.filter((r) => r.id_workflow === wf.id_workflow).length
     out.push({
       id_workflow: wf.id_workflow,
       label: wf.name_workflow || wf.id_workflow,
-      sub: isCus ? ownerText || 'Workflow Khách hàng' : 'Workflow Kho mẫu',
+      sub: `${stepCount} bước tiến độ`,
       count: countMap.get(wf.id_workflow) || 0,
-      orderGroup: isCus ? 0 : 2
+      orderGroup: 1
     })
   })
 
   return out.sort((a, b) => {
-    if (a.orderGroup !== b.orderGroup) return a.orderGroup - b.orderGroup
     if (b.count !== a.count) return b.count - a.count
+    if (a.orderGroup !== b.orderGroup) return a.orderGroup - b.orderGroup
     return a.label.localeCompare(b.label, 'vi')
   })
 })
@@ -8031,8 +9014,7 @@ const activeKanbanCompanyFilterLabel = computed(() => {
 
 const activeKanbanProjectFilterLabel = computed(() => {
   const pid = filterConfig.value.projectId
-  if (!pid) return 'Tất cả Dự án'
-  if (pid === '__STANDALONE__') return 'Công việc lẻ'
+  if (!pid || pid === '__STANDALONE__') return 'Không có'
   const found = projectsList.value.find((p) => p.id_project === pid)
   return found ? found.ten_du_an : 'Đang lọc Dự án'
 })
@@ -8046,19 +9028,23 @@ const activeKanbanWorkflowFilterLabel = computed(() => {
 
 const reconcileKanbanCascadingFilters = (changedField) => {
   const f = filterConfig.value
-  if (changedField !== 'project' && f.projectId) {
-    if (f.projectId === '__STANDALONE__') {
-      if (kanbanStandaloneCount.value === 0) f.projectId = ''
-    } else if (!kanbanProjectFilterOptions.value.some((o) => o.id_project === f.projectId)) {
-      f.projectId = ''
+  if (!f.projectId) {
+    f.projectId = '__STANDALONE__'
+  } else if (
+    changedField !== 'project' &&
+    changedField !== 'workflow' &&
+    f.projectId !== '__STANDALONE__'
+  ) {
+    if (!kanbanProjectFilterOptions.value.some((o) => o.id_project === f.projectId)) {
+      f.projectId = '__STANDALONE__'
     }
   }
-  if (changedField !== 'company' && f.companyName) {
+  if (changedField !== 'company' && changedField !== 'workflow' && f.companyName) {
     if (!kanbanCompanyFilterOptions.value.some((o) => o.key === f.companyName)) {
       f.companyName = ''
     }
   }
-  if (changedField !== 'customer' && f.customerName) {
+  if (changedField !== 'customer' && changedField !== 'workflow' && f.customerName) {
     if (!kanbanCustomerFilterOptions.value.some((o) => o.key === f.customerName)) {
       f.customerName = ''
     }
@@ -8089,18 +9075,8 @@ const reconcileKanbanCascadingFilters = (changedField) => {
   }
 
   if (f.companyName || f.customerName) {
-    const compLabel = f.companyName ? activeKanbanCompanyFilterLabel.value : ''
-    const cusLabel = f.customerName ? activeKanbanCustomerFilterLabel.value : ''
-    const resolved = resolveCompanyWorkflows({
-      ten_cong_ty: compLabel,
-      ten_khach_hang: cusLabel
-    })
     const curInOpts = wfOpts.find((o) => o.id_workflow === selectedWorkflowId.value)
-    if (resolved.hasCustom) {
-      if (!curInOpts || !resolved.list.some((w) => w.id_workflow === selectedWorkflowId.value)) {
-        selectedWorkflowId.value = resolved.primary.id_workflow
-      }
-    } else if (!curInOpts || (curInOpts.count === 0 && wfOpts.some((o) => o.count > 0))) {
+    if (!curInOpts || (curInOpts.count === 0 && wfOpts.some((o) => o.count > 0))) {
       const bestWithItems = wfOpts.find((o) => o.count > 0)
       selectedWorkflowId.value = bestWithItems?.id_workflow || wfOpts[0]?.id_workflow || 'WF_DEFAULT'
     }
@@ -8122,119 +9098,74 @@ const selectKanbanCompanyFilter = (keyVal) => {
 }
 
 const selectKanbanProjectFilter = (projId) => {
-  filterConfig.value.projectId = projId || ''
+  const nextPid = projId && projId !== '__STANDALONE__' ? projId : '__STANDALONE__'
+  filterConfig.value.projectId = nextPid
+  filterConfig.value.workflowId = ''
   openKanbanFilterMenu.value = ''
   kanbanFilterSearch.value.project = ''
   reconcileKanbanCascadingFilters('project')
+  if (nextPid !== '__STANDALONE__') {
+    filterConfig.value.workflowId = selectedWorkflowId.value
+  }
 }
 
 const selectKanbanWorkflowFilter = (wfId) => {
   const nextWf = wfId || 'WF_DEFAULT'
-  filterConfig.value.workflowId = wfId || ''
+  const hasSpecificProj = Boolean(filterConfig.value.projectId && filterConfig.value.projectId !== '__STANDALONE__')
+  filterConfig.value.workflowId = nextWf === 'WF_DEFAULT' && !hasSpecificProj ? '' : nextWf
   selectedWorkflowId.value = nextWf
   openKanbanFilterMenu.value = ''
   kanbanFilterSearch.value.workflow = ''
-  if (wfId) {
-    reconcileKanbanCascadingFilters('workflow')
-  }
+  reconcileKanbanCascadingFilters('workflow')
 }
 
 const clearKanbanWorkflowFilter = () => {
-  filterConfig.value.workflowId = ''
+  const hasSpecificProj = Boolean(filterConfig.value.projectId && filterConfig.value.projectId !== '__STANDALONE__')
+  filterConfig.value.workflowId = hasSpecificProj ? 'WF_DEFAULT' : ''
+  selectedWorkflowId.value = 'WF_DEFAULT'
   openKanbanFilterMenu.value = ''
   kanbanFilterSearch.value.workflow = ''
-  if (!filterConfig.value.companyName && !filterConfig.value.customerName && !filterConfig.value.projectId) {
-    selectedWorkflowId.value = 'WF_DEFAULT'
-  } else {
-    reconcileKanbanCascadingFilters('workflow')
-  }
 }
 
-const selectedCustomerContext = computed(() => {
-  const f = filterConfig.value
-  if (!f.companyName && !f.customerName) return null
+const workflowDesignerRef = ref(null)
 
-  const compLabel = f.companyName ? activeKanbanCompanyFilterLabel.value : ''
-  const cusLabel = f.customerName ? activeKanbanCustomerFilterLabel.value : ''
-  const resolved = resolveCompanyWorkflows({
-    ten_cong_ty: compLabel,
-    ten_khach_hang: cusLabel
-  })
-
-  const wfCounter = new Map()
-  items.value.forEach((it) => {
-    const info = getItemPartyInfo(it)
-    if (f.companyName && info.companyKey !== f.companyName) return
-    if (f.customerName && !info.customerMap.has(f.customerName)) return
-    if (f.projectId) {
-      if (f.projectId === '__STANDALONE__' && it.id_project) return
-      if (f.projectId !== '__STANDALONE__' && it.id_project !== f.projectId) return
-    }
-    const wId = it.id_workflow || 'WF_DEFAULT'
-    wfCounter.set(wId, (wfCounter.get(wId) || 0) + 1)
-  })
-
-  const availableTabs = []
-  const addedSet = new Set()
-
-  resolved.list.forEach((wf) => {
-    addedSet.add(wf.id_workflow)
-    availableTabs.push({
-      id_workflow: wf.id_workflow,
-      name_workflow: wf.name_workflow,
-      count: wfCounter.get(wf.id_workflow) || 0
-    })
-  })
-
-  addedSet.add('WF_DEFAULT')
-  availableTabs.push({
-    id_workflow: 'WF_DEFAULT',
-    name_workflow: 'Flow Chuẩn Hệ Thống',
-    count: wfCounter.get('WF_DEFAULT') || 0
-  })
-
-  wfCounter.forEach((count, wId) => {
-    if (!addedSet.has(wId)) {
-      addedSet.add(wId)
-      availableTabs.push({
-        id_workflow: wId,
-        name_workflow: getWorkflowShortLabel(wId),
-        count
-      })
-    }
-  })
-
-  const displayTitle = [compLabel, cusLabel].filter(Boolean).join(' — ')
-  return {
-    label: displayTitle,
-    companyTitle: compLabel || cusLabel || 'Công ty',
-    searchKeyword: compLabel || cusLabel || '',
-    isCustom: resolved.hasCustom,
-    companyFlows: resolved.list,
-    workflowId: resolved.primary.id_workflow,
-    workflowName: resolved.primary.name_workflow,
-    availableTabs
+const openEditWorkflowStepsModal = (wfId) => {
+  if (workflowDesignerRef.value && typeof workflowDesignerRef.value.openWorkflowById === 'function') {
+    workflowDesignerRef.value.openWorkflowById(wfId || 'WF_DEFAULT')
   }
-})
-
-const jumpToCustomerWorkflowDesigner = (keyword) => {
-  workflowFocusCustomerKey.value = keyword || ''
-  activeTab.value = 'workflow'
 }
 
 const handleOpenKanbanFromWorkflow = (payload) => {
   if (!payload) return
   const targetWf = payload.id_workflow || 'WF_DEFAULT'
-  selectedWorkflowId.value = targetWf
-  filterConfig.value.workflowId = targetWf
-  filterConfig.value.projectId = ''
-  if (payload.customer && (payload.customer.ten_cong_ty || payload.customer.ten_khach_hang)) {
-    filterConfig.value.companyName = normFilterKey(payload.customer.ten_cong_ty)
-    filterConfig.value.customerName = normFilterKey(payload.customer.ten_khach_hang)
-  } else {
-    filterConfig.value.companyName = ''
-    filterConfig.value.customerName = ''
+  showProjectDetailModal.value = false
+  showProjectFormModal.value = false
+  showManageProjectWfDrawer.value = false
+  showAttachWfToProjectModal.value = false
+
+  const hasStandaloneTasks = items.value.some(
+    (it) => !it.id_project && getEffectiveItemWorkflowId(it) === targetWf
+  )
+  let nextProjId = '__STANDALONE__'
+  if (!hasStandaloneTasks) {
+    const projWithTasks = allEnrichedProjects.value.find((p) =>
+      (p.pipelines || []).some((it) => getEffectiveItemWorkflowId(it) === targetWf)
+    )
+    const projLinked = allEnrichedProjects.value.find((p) =>
+      (p.correspondingWorkflows || []).some((w) => w.id_workflow === targetWf)
+    )
+    if (projWithTasks) {
+      nextProjId = projWithTasks.id_project
+    } else if (projLinked && targetWf !== 'WF_DEFAULT') {
+      nextProjId = projLinked.id_project
+    }
   }
+
+  selectedWorkflowId.value = targetWf
+  filterConfig.value.workflowId = targetWf === 'WF_DEFAULT' && nextProjId === '__STANDALONE__' ? '' : targetWf
+  filterConfig.value.projectId = nextProjId
+  filterConfig.value.companyName = ''
+  filterConfig.value.customerName = ''
   activeTab.value = 'kanban'
 }
 
@@ -8307,20 +9238,22 @@ const foldKanbanSearchText = (val) =>
     .replace(/Đ/g, 'D')
     .toLowerCase()
 
-const activeSearchTokens = computed(() => {
-  const raw = String(searchQuery.value || '').trim()
+const tokenizeSearchQuery = (rawQuery) => {
+  const raw = String(rawQuery || '').trim()
   if (!raw) return []
   const folded = foldKanbanSearchText(raw)
   const parts = folded.split(/\s+/).filter(Boolean)
   const unique = Array.from(new Set(parts))
   return unique.sort((a, b) => b.length - a.length)
-})
+}
 
-const highlightKanbanText = (rawText, fallbackText = '') => {
+const activeSearchTokens = computed(() => tokenizeSearchQuery(searchQuery.value))
+const activeProjectSearchTokens = computed(() => tokenizeSearchQuery(projectSearchQuery.value))
+
+const highlightTextWithTokens = (rawText, tokens, fallbackText = '') => {
   const str = String(rawText ?? '')
   if (!str) return escapeKanbanHtml(fallbackText)
-  const tokens = activeSearchTokens.value
-  if (!tokens.length) return escapeKanbanHtml(str)
+  if (!tokens || !tokens.length) return escapeKanbanHtml(str)
 
   let foldedStr = ''
   const origStarts = []
@@ -8392,6 +9325,12 @@ const highlightKanbanText = (rawText, fallbackText = '') => {
   }
   return html
 }
+
+const highlightKanbanText = (rawText, fallbackText = '') =>
+  highlightTextWithTokens(rawText, activeSearchTokens.value, fallbackText)
+
+const highlightProjectText = (rawText, fallbackText = '') =>
+  highlightTextWithTokens(rawText, activeProjectSearchTokens.value, fallbackText)
 
 const textMatchesAnySearchToken = (rawText) => {
   const tokens = activeSearchTokens.value
@@ -8474,12 +9413,11 @@ const matchesSearch = (item) => {
     }
   }
 
-  if (filterConfig.value.projectId) {
-    if (filterConfig.value.projectId === '__STANDALONE__') {
-      if (item.id_project) return false
-    } else if (item.id_project !== filterConfig.value.projectId) {
-      return false
-    }
+  const activeProjFilter = filterConfig.value.projectId || '__STANDALONE__'
+  if (activeProjFilter === '__STANDALONE__') {
+    if (item.id_project) return false
+  } else if (item.id_project !== activeProjFilter) {
+    return false
   }
 
   if (filterConfig.value.filterMode !== 'all') {
@@ -8528,8 +9466,9 @@ const hasActiveFilters = computed(
     Boolean(searchQuery.value) ||
     Boolean(filterConfig.value.customerName) ||
     Boolean(filterConfig.value.companyName) ||
-    Boolean(filterConfig.value.projectId) ||
+    Boolean(filterConfig.value.projectId && filterConfig.value.projectId !== '__STANDALONE__') ||
     Boolean(filterConfig.value.workflowId) ||
+    selectedWorkflowId.value !== 'WF_DEFAULT' ||
     filterConfig.value.filterMode !== 'all'
 )
 
@@ -8549,7 +9488,7 @@ const resetFilters = () => {
     yearTo: '',
     customerName: '',
     companyName: '',
-    projectId: '',
+    projectId: '__STANDALONE__',
     workflowId: ''
   }
   selectedWorkflowId.value = 'WF_DEFAULT'
@@ -8580,10 +9519,7 @@ const distributeItems = () => {
   })
 
   items.value.forEach((item) => {
-    const wfMatch =
-      selectedWorkflowId.value === 'WF_DEFAULT'
-        ? !item.id_workflow || item.id_workflow === 'WF_DEFAULT'
-        : item.id_workflow === selectedWorkflowId.value
+    const wfMatch = getEffectiveItemWorkflowId(item) === selectedWorkflowId.value
 
     if (!wfMatch) return
 
@@ -8626,13 +9562,9 @@ const toggleColumnCollapse = (colId) => {
 }
 
 const kanbanKpis = computed(() => {
-  const activeWfItems = items.value.filter((item) => {
-    const wfMatch =
-      selectedWorkflowId.value === 'WF_DEFAULT'
-        ? !item.id_workflow || item.id_workflow === 'WF_DEFAULT'
-        : item.id_workflow === selectedWorkflowId.value
-    return wfMatch && matchesSearch(item)
-  })
+  const activeWfItems = items.value.filter(
+    (item) => getEffectiveItemWorkflowId(item) === selectedWorkflowId.value && matchesSearch(item)
+  )
 
   let totalVolume = 0
   let weightedVolume = 0
@@ -8666,35 +9598,33 @@ const kanbanKpis = computed(() => {
 })
 
 const swimlaneRows = computed(() => {
-  const activeCards = items.value.filter((item) => {
-    const wfMatch =
-      selectedWorkflowId.value === 'WF_DEFAULT'
-        ? !item.id_workflow || item.id_workflow === 'WF_DEFAULT'
-        : item.id_workflow === selectedWorkflowId.value
-    return wfMatch && matchesSearch(item)
-  })
+  const activeCards = items.value.filter(
+    (item) => getEffectiveItemWorkflowId(item) === selectedWorkflowId.value && matchesSearch(item)
+  )
 
+  const activeProjFilter = filterConfig.value.projectId || '__STANDALONE__'
   const lanes = []
-  projectsList.value.forEach((proj) => {
-    if (filterConfig.value.projectId && filterConfig.value.projectId !== proj.id_project) return
-    const cardsInActiveFlow = activeCards.filter((c) => c.id_project === proj.id_project)
-    const allProjectCards = items.value.filter((c) => c.id_project === proj.id_project)
-    if (cardsInActiveFlow.length === 0 && !filterConfig.value.projectId) return
+  if (activeProjFilter !== '__STANDALONE__') {
+    projectsList.value.forEach((proj) => {
+      if (proj.id_project !== activeProjFilter) return
+      const cardsInActiveFlow = activeCards.filter((c) => c.id_project === proj.id_project)
+      const allProjectCards = items.value.filter((c) => c.id_project === proj.id_project)
 
-    const totalVolume = cardsInActiveFlow.reduce(
-      (s, c) => (c.status_name === 'THẤT BẠI' ? s : s + parseNum(c.volume)),
-      0
-    )
-    lanes.push({
-      laneId: proj.id_project,
-      project: proj,
-      title: proj.ten_du_an,
-      subtitle: proj.ten_cong_ty || proj.ten_khach_hang || '',
-      cardsInActiveFlow,
-      otherFlowCount: Math.max(0, allProjectCards.length - cardsInActiveFlow.length),
-      totalVolume
+      const totalVolume = cardsInActiveFlow.reduce(
+        (s, c) => (c.status_name === 'THẤT BẠI' ? s : s + parseNum(c.volume)),
+        0
+      )
+      lanes.push({
+        laneId: proj.id_project,
+        project: proj,
+        title: proj.ten_du_an,
+        subtitle: proj.ten_cong_ty || proj.ten_khach_hang || '',
+        cardsInActiveFlow,
+        otherFlowCount: Math.max(0, allProjectCards.length - cardsInActiveFlow.length),
+        totalVolume
+      })
     })
-  })
+  }
 
   const standaloneCards = activeCards.filter((c) => !c.id_project)
   if (standaloneCards.length > 0 || lanes.length === 0) {
@@ -8794,6 +9724,8 @@ const moveCardToColumn = async (item, colId) => {
 // MULTI-PIPELINE PROJECTS WORKSPACE & ORCHESTRATION (4-TIER)
 // =========================================================
 const projectSearchQuery = ref('')
+const projSearchInputRef = ref(null)
+const projFilterModalInputRef = ref(null)
 const projectStatusFilter = ref('Tất cả')
 const openProjFilterMenu = ref('')
 const projFilterSearch = ref({
@@ -8811,10 +9743,69 @@ const projectFilter = ref({
 const toggleProjFilterMenu = (menuKey) => {
   openProjFilterMenu.value = openProjFilterMenu.value === menuKey ? '' : menuKey
 }
+const onProjSearchEsc = () => {
+  if (projectSearchQuery.value) {
+    projectSearchQuery.value = ''
+  } else if (projSearchInputRef.value && typeof projSearchInputRef.value.blur === 'function') {
+    projSearchInputRef.value.blur()
+  }
+}
+const openProjFilterPickerModal = (menuKey) => {
+  if (!menuKey) return
+  projFilterSearch.value[menuKey] = ''
+  openProjFilterMenu.value = menuKey
+  nextTick(() => {
+    if (projFilterModalInputRef.value && typeof projFilterModalInputRef.value.focus === 'function') {
+      projFilterModalInputRef.value.focus()
+    }
+  })
+}
+const closeProjFilterPickerModal = () => {
+  if (openProjFilterMenu.value && projFilterSearch.value[openProjFilterMenu.value] !== undefined) {
+    projFilterSearch.value[openProjFilterMenu.value] = ''
+  }
+  openProjFilterMenu.value = ''
+}
+const navigateToFilteredProjTabCard = () => {
+  if (!projectFilter.value.projectId) {
+    showToast('Hãy chọn 1 Dự án cụ thể ở nút Chọn để định vị & mở thẻ Dự án đó', 'info', 2400)
+    return
+  }
+  navigateToProjectCardById(projectFilter.value.projectId)
+}
+const navigateToFilteredProjTabWorkflow = () => {
+  if (!projectFilter.value.workflowId) {
+    activeTab.value = 'workflow'
+    showToast('Đã chuyển tới trang Workflow — chọn 1 Pipeline cụ thể để định vị thẳng tới thẻ', 'info', 2400)
+    return
+  }
+  navigateToWorkflowCardById(projectFilter.value.workflowId)
+}
+const expandedProjectCardIds = ref(new Set())
+const isProjectCardExpanded = (projId) => {
+  if (!projId) return false
+  return expandedProjectCardIds.value.has(String(projId))
+}
+const toggleProjectCardExpand = (projId) => {
+  if (!projId) return
+  const key = String(projId)
+  const next = new Set(expandedProjectCardIds.value)
+  if (next.has(key)) next.delete(key)
+  else next.add(key)
+  expandedProjectCardIds.value = next
+}
+const ensureProjectCardExpanded = (projId) => {
+  if (!projId) return
+  const key = String(projId)
+  if (expandedProjectCardIds.value.has(key)) return
+  const next = new Set(expandedProjectCardIds.value)
+  next.add(key)
+  expandedProjectCardIds.value = next
+}
+
 const showProjectFormModal = ref(false)
 const isEditingProject = ref(false)
 const savingProject = ref(false)
-const showProjectFormWfPicker = ref(false)
 const projectFormWfSearch = ref('')
 
 const defaultProjectForm = {
@@ -8827,13 +9818,18 @@ const defaultProjectForm = {
   ten_cong_ty: '',
   default_workflow_id: '',
   linked_workflow_ids: [],
+  excluded_workflow_ids: [],
   AM: 'Sơn',
   ngan_sach_du_kien: '',
   deadline: '',
   trang_thai: 'Đang triển khai',
   ghi_chu: ''
 }
-const projectForm = ref({ ...defaultProjectForm, linked_workflow_ids: [] })
+const projectForm = ref({
+  ...defaultProjectForm,
+  linked_workflow_ids: [],
+  excluded_workflow_ids: []
+})
 
 watch(
   () => [projectForm.value.ten_khach_hang, projectForm.value.ten_cong_ty],
@@ -8850,6 +9846,7 @@ const activeProjectId = ref('')
 const projectDetailSubTab = ref('pipelines')
 const projectDetailWfFilter = ref('ALL')
 const isProjLeftRailOpen = ref(true)
+const mobileProjectModalTab = ref('tasks') // 'frames' | 'tasks' | 'hub'
 const projectDetailPipeSearch = ref('')
 const focusedProjectPipeId = ref('')
 const openProjPipeStageMenuId = ref('')
@@ -8861,26 +9858,11 @@ const attachSameCustomerOnly = ref(false)
 const showManageProjectWfDrawer = ref(false)
 const manageWfDrawerMode = ref('attach') // 'attach' | 'create'
 const manageWfSearch = ref('')
-const manageWfScopeFilter = ref('ALL') // 'ALL' | 'customer' | 'template'
 const savingQuickProjWf = ref(false)
 const quickProjWfForm = ref({
-  ten_cong_ty: '',
-  ten_khach_hang: '',
-  ma_cong_ty: '',
-  ma_khach_hang: '',
   base_template_id: 'WF_DEFAULT',
   name_workflow: ''
 })
-
-watch(
-  () => [quickProjWfForm.value.ten_khach_hang, quickProjWfForm.value.ten_cong_ty],
-  ([tenKH, congTy]) => {
-    if (tenKH || congTy) {
-      quickProjWfForm.value.ma_cong_ty = genMaCT(congTy)
-      quickProjWfForm.value.ma_khach_hang = genMaKH(tenKH, congTy)
-    }
-  }
-)
 
 const toggleProjLeftRail = () => {
   if (isMobile.value || (typeof window !== 'undefined' && window.innerWidth <= 1100)) {
@@ -8929,18 +9911,6 @@ const clearProjectContactField = () => {
     : ''
 }
 
-const clearQuickProjWfCompanyField = () => {
-  quickProjWfForm.value.ten_cong_ty = ''
-  quickProjWfForm.value.ma_cong_ty = ''
-}
-
-const clearQuickProjWfContactField = () => {
-  quickProjWfForm.value.ten_khach_hang = ''
-  quickProjWfForm.value.ma_khach_hang = quickProjWfForm.value.ten_cong_ty
-    ? genMaKH('', quickProjWfForm.value.ten_cong_ty)
-    : ''
-}
-
 const buildProjectDeadlinePresetValue = (preset) => {
   const now = new Date()
   const y = now.getFullYear()
@@ -8979,124 +9949,77 @@ const applyProjectDeadlinePreset = (preset) => {
 }
 
 const buildCorrespondingWorkflowsForEntity = (entity = {}, childPipes = [], options = {}) => {
-  const rootPair = resolveCompleteCustomerPair({
-    ma_khach_hang: entity.ma_khach_hang || '',
-    ma_cong_ty: entity.ma_cong_ty || '',
-    ten_cong_ty: entity.ten_cong_ty || '',
-    ten_khach_hang: entity.ten_khach_hang || ''
-  })
-
-  const companyWfRes = resolveCompanyWorkflows({
-    ma_khach_hang: entity.ma_khach_hang || '',
-    ma_cong_ty: entity.ma_cong_ty || '',
-    ten_cong_ty: rootPair.ten_cong_ty || entity.ten_cong_ty || '',
-    ten_khach_hang: rootPair.ten_khach_hang || entity.ten_khach_hang || ''
-  })
-
   const pipesByWf = new Map()
   childPipes.forEach((p) => {
-    const wfId = p.id_workflow || 'WF_DEFAULT'
+    const wfId = getEffectiveItemWorkflowId(p)
     if (!pipesByWf.has(wfId)) pipesByWf.set(wfId, [])
     pipesByWf.get(wfId).push(p)
   })
 
   const explicitIds = normalizeLinkedWorkflowIds(entity.linked_workflow_ids)
+  const excludedSet = new Set(normalizeLinkedWorkflowIds(entity.excluded_workflow_ids))
+  const effectiveExplicitIds = [...explicitIds]
+  const legacyDefId = String(entity.default_workflow_id || '').trim()
+  if (
+    legacyDefId &&
+    legacyDefId !== 'WF_DEFAULT' &&
+    !excludedSet.has(legacyDefId) &&
+    !effectiveExplicitIds.includes(legacyDefId)
+  ) {
+    effectiveExplicitIds.unshift(legacyDefId)
+  }
+
   const rawEntries = []
   const seenIds = new Set()
 
-  // 1. Root Customer's own Pipeline Frames
-  companyWfRes.list.forEach((wf) => {
-    seenIds.add(wf.id_workflow)
-    const wfPair = resolveCompleteCustomerPair({
-      ma_khach_hang: wf.ma_khach_hang || entity.ma_khach_hang || '',
-      ma_cong_ty: wf.ma_cong_ty || entity.ma_cong_ty || '',
-      ten_cong_ty: wf.ten_cong_ty || rootPair.ten_cong_ty || '',
-      ten_khach_hang: wf.ten_khach_hang || rootPair.ten_khach_hang || ''
-    })
-    rawEntries.push({
-      id_workflow: wf.id_workflow,
-      name_workflow: wf.name_workflow,
-      scopeType: 'company_custom',
-      scopeLabel: wf.is_company_default ? 'KH Gốc (Mặc định)' : 'Khung KH Gốc',
-      tone: 'emerald',
-      isRootCustomerFlow: true,
-      isExplicitlyLinked: false,
-      ten_cong_ty: wfPair.ten_cong_ty,
-      ten_khach_hang: wfPair.ten_khach_hang,
-      ownerCustomer: wfPair.ten_cong_ty || wfPair.ten_khach_hang || ''
-    })
-  })
-
-  // 2. Explicitly linked Pipeline Frames (Partner Customers / Blueprints — Templates NEVER bind customer info)
-  explicitIds.forEach((wfId) => {
-    if (!seenIds.has(wfId) && wfId !== 'WF_DEFAULT') {
+  // 1. Explicitly linked Workflows on Project
+  effectiveExplicitIds.forEach((wfId) => {
+    if (!seenIds.has(wfId) && wfId !== 'WF_DEFAULT' && !excludedSet.has(wfId)) {
       seenIds.add(wfId)
       const meta = uniqueWorkflows.value.find((w) => w.id_workflow === wfId)
-      const isCusScope = meta?.workflow_scope === 'customer'
-      const firstPipe = (pipesByWf.get(wfId) || [])[0]
-      const wfPair = isCusScope
-        ? resolveCompleteCustomerPair({
-            ma_khach_hang: meta?.ma_khach_hang || firstPipe?.ma_khach_hang || '',
-            ma_cong_ty: meta?.ma_cong_ty || firstPipe?.ma_cong_ty || '',
-            ten_cong_ty: meta?.ten_cong_ty || firstPipe?.ten_cong_ty || '',
-            ten_khach_hang: meta?.ten_khach_hang || firstPipe?.ten_khach_hang || ''
-          })
-        : { ten_cong_ty: '', ten_khach_hang: '' }
-      const ownerLabel = isCusScope ? wfPair.ten_cong_ty || wfPair.ten_khach_hang || '' : ''
       rawEntries.push({
         id_workflow: wfId,
         name_workflow: meta?.name_workflow || wfId,
-        scopeType: isCusScope ? 'partner_custom' : 'blueprint',
-        scopeLabel: isCusScope ? `KH Khung: ${ownerLabel || 'KH đối tác'}` : 'Khung mẫu dùng chung',
-        tone: isCusScope ? 'amber' : 'sky',
-        isRootCustomerFlow: false,
+        scopeType: 'blueprint',
+        scopeLabel: 'Workflow',
+        tone: 'sky',
         isExplicitlyLinked: true,
-        ten_cong_ty: isCusScope ? wfPair.ten_cong_ty : '',
-        ten_khach_hang: isCusScope ? wfPair.ten_khach_hang : '',
-        ownerCustomer: ownerLabel
+        ten_cong_ty: '',
+        ten_khach_hang: '',
+        ownerCustomer: ''
       })
     }
   })
 
-  // 3. Pipeline Frames derived from child Work Items in this Project
-  pipesByWf.forEach((list, wfId) => {
+  // 2. Workflows derived from child Work Items in this Project
+  pipesByWf.forEach((_, wfId) => {
     if (!seenIds.has(wfId) && wfId !== 'WF_DEFAULT') {
       seenIds.add(wfId)
       const meta = uniqueWorkflows.value.find((w) => w.id_workflow === wfId)
-      const isCusScope = meta?.workflow_scope === 'customer'
-      const firstPipe = list[0]
-      const wfPair = isCusScope
-        ? resolveCompleteCustomerPair({
-            ma_khach_hang: meta?.ma_khach_hang || firstPipe?.ma_khach_hang || '',
-            ma_cong_ty: meta?.ma_cong_ty || firstPipe?.ma_cong_ty || '',
-            ten_cong_ty: meta?.ten_cong_ty || firstPipe?.ten_cong_ty || '',
-            ten_khach_hang: meta?.ten_khach_hang || firstPipe?.ten_khach_hang || ''
-          })
-        : { ten_cong_ty: '', ten_khach_hang: '' }
-      const ownerLabel = isCusScope ? wfPair.ten_cong_ty || wfPair.ten_khach_hang || '' : ''
       rawEntries.push({
         id_workflow: wfId,
         name_workflow: meta?.name_workflow || wfId,
-        scopeType: isCusScope ? 'partner_custom' : 'blueprint',
-        scopeLabel: isCusScope ? (ownerLabel ? `KH Khung: ${ownerLabel}` : 'Khung KH khác') : 'Khung mẫu dùng chung',
-        tone: isCusScope ? 'amber' : 'sky',
-        isRootCustomerFlow: false,
+        scopeType: 'blueprint',
+        scopeLabel: 'Đang có công việc',
+        tone: 'sky',
         isExplicitlyLinked: false,
-        ten_cong_ty: isCusScope ? wfPair.ten_cong_ty : '',
-        ten_khach_hang: isCusScope ? wfPair.ten_khach_hang : '',
-        ownerCustomer: ownerLabel
+        ten_cong_ty: '',
+        ten_khach_hang: '',
+        ownerCustomer: ''
       })
     }
   })
 
-  // 4. System Standard Workflow (Customer-free system template)
-  const isDefaultExplicitlyLinked = explicitIds.includes('WF_DEFAULT')
+  // 3. System Standard Workflow
+  const isDefaultExplicitlyLinked = effectiveExplicitIds.includes('WF_DEFAULT')
+  const isDefaultExcluded = excludedSet.has('WF_DEFAULT')
   const shouldIncludeStandard =
-    Boolean(options.alwaysIncludeStandard) ||
-    rawEntries.length === 0 ||
     isDefaultExplicitlyLinked ||
     pipesByWf.has('WF_DEFAULT') ||
-    entity.default_workflow_id === 'WF_DEFAULT'
+    legacyDefId === 'WF_DEFAULT' ||
+    (!isDefaultExcluded &&
+      (Boolean(options.alwaysIncludeStandard) ||
+        (!options.skipAutoStandardFallback && rawEntries.length === 0)))
 
   if (shouldIncludeStandard) {
     seenIds.add('WF_DEFAULT')
@@ -9106,8 +10029,7 @@ const buildCorrespondingWorkflowsForEntity = (entity = {}, childPipes = [], opti
       scopeType: 'standard',
       scopeLabel: 'Workflow chuẩn',
       tone: 'sky',
-      isRootCustomerFlow: false,
-      isExplicitlyLinked: isDefaultExplicitlyLinked,
+      isExplicitlyLinked: isDefaultExplicitlyLinked || !pipesByWf.has('WF_DEFAULT'),
       ten_cong_ty: '',
       ten_khach_hang: '',
       ownerCustomer: ''
@@ -9115,9 +10037,9 @@ const buildCorrespondingWorkflowsForEntity = (entity = {}, childPipes = [], opti
   }
 
   const preferredWfId =
-    entity.default_workflow_id && seenIds.has(entity.default_workflow_id)
-      ? entity.default_workflow_id
-      : companyWfRes.primary.id_workflow
+    legacyDefId && seenIds.has(legacyDefId)
+      ? legacyDefId
+      : rawEntries[0]?.id_workflow || ''
 
   return rawEntries.map((entry) => {
     const allCols = getColumnsForWorkflow(entry.id_workflow)
@@ -9134,7 +10056,6 @@ const buildCorrespondingWorkflowsForEntity = (entity = {}, childPipes = [], opti
     })
 
     const coreSteps = stepsWithCounts.filter((s) => s.id !== 'hoan_thanh' && s.id !== 'that_bai')
-    const distinctPair = formatDistinctCustomerPair(entry.ten_cong_ty, entry.ten_khach_hang)
 
     let wfVolume = 0
     let wonCount = 0
@@ -9146,7 +10067,8 @@ const buildCorrespondingWorkflowsForEntity = (entity = {}, childPipes = [], opti
 
     return {
       ...entry,
-      ...distinctPair,
+      displayCompanyName: '',
+      displayCustomerName: '',
       isPreferred: entry.id_workflow === preferredWfId,
       stepCount: coreSteps.length,
       allColumns: allCols,
@@ -9165,57 +10087,69 @@ const hasProjectModalCustomer = computed(() =>
   Boolean(String(projectForm.value.ten_cong_ty || '').trim() || String(projectForm.value.ten_khach_hang || '').trim())
 )
 
-const projectModalCorrespondingWorkflows = computed(() => {
-  if (!hasProjectModalCustomer.value) return []
-  const existingChildPipes = isEditingProject.value && projectForm.value.id_project
-    ? items.value.filter((i) => i.id_project === projectForm.value.id_project)
-    : []
-  return buildCorrespondingWorkflowsForEntity(projectForm.value, existingChildPipes, { alwaysIncludeStandard: true })
+const projectModalSelectedWorkflows = computed(() => {
+  const existingChildPipes =
+    isEditingProject.value && projectForm.value.id_project
+      ? items.value.filter((i) => i.id_project === projectForm.value.id_project)
+      : []
+  const explicitIds = normalizeLinkedWorkflowIds(projectForm.value.linked_workflow_ids)
+  return buildCorrespondingWorkflowsForEntity(projectForm.value, existingChildPipes, {
+    skipAutoStandardFallback:
+      !isEditingProject.value &&
+      explicitIds.length === 0 &&
+      !projectForm.value.default_workflow_id
+  })
 })
 
-const projectFormAttachableWorkflows = computed(() => {
-  const rootRes = resolveCompanyWorkflows({
-    ma_khach_hang: projectForm.value.ma_khach_hang || '',
-    ma_cong_ty: projectForm.value.ma_cong_ty || '',
-    ten_cong_ty: projectForm.value.ten_cong_ty || '',
-    ten_khach_hang: projectForm.value.ten_khach_hang || ''
-  })
-  const rootFlowSet = new Set(rootRes.list.map((w) => w.id_workflow))
-  const linkedSet = new Set(normalizeLinkedWorkflowIds(projectForm.value.linked_workflow_ids))
-  const kw = projectFormWfSearch.value.trim().toLowerCase()
+const projectFormAllSelectableWorkflows = computed(() => {
+  const selectedSet = new Set(projectModalSelectedWorkflows.value.map((w) => w.id_workflow))
+  const kwRaw = projectFormWfSearch.value.trim().toLowerCase()
+  const kwNorm = normFilterKey(projectFormWfSearch.value)
 
-  return uniqueWorkflows.value
+  return paletteWorkflowList.value
     .filter((wf) => {
-      if (!wf.id_workflow || wf.id_workflow === 'WF_DEFAULT') return false
-      if (rootFlowSet.has(wf.id_workflow)) return false
-      if (!kw) return true
-      return (
-        (wf.name_workflow && wf.name_workflow.toLowerCase().includes(kw)) ||
-        (wf.ten_cong_ty && wf.ten_cong_ty.toLowerCase().includes(kw)) ||
-        (wf.ten_khach_hang && wf.ten_khach_hang.toLowerCase().includes(kw))
+      if (!kwRaw && !kwNorm) return true
+      const hay = [
+        wf.name_workflow || '',
+        ...(wf.flowSteps || []).map((st) => st.value || st.label || '')
+      ]
+      return hay.some(
+        (txt) =>
+          (kwRaw && txt.toLowerCase().includes(kwRaw)) ||
+          (kwNorm && normFilterKey(txt).includes(kwNorm))
       )
     })
-    .map((wf) => {
-      const stepRows = workflowsData.value.filter((r) => r.id_workflow === wf.id_workflow)
-      return {
-        ...wf,
-        steps: stepRows,
-        stepCount: stepRows.length,
-        isLinkedInForm: linkedSet.has(wf.id_workflow)
-      }
-    })
+    .map((wf) => ({
+      ...wf,
+      isSelectedInForm: selectedSet.has(wf.id_workflow)
+    }))
 })
 
-const toggleProjectFormLinkedWorkflow = (wfId) => {
-  if (!wfId || wfId === 'WF_DEFAULT') return
-  const cur = normalizeLinkedWorkflowIds(projectForm.value.linked_workflow_ids)
-  if (cur.includes(wfId)) {
-    projectForm.value.linked_workflow_ids = cur.filter((id) => id !== wfId)
+const toggleProjectFormWorkflow = (wfId) => {
+  if (!wfId) return
+  const selectedSet = new Set(projectModalSelectedWorkflows.value.map((w) => w.id_workflow))
+  const curLinked = normalizeLinkedWorkflowIds(projectForm.value.linked_workflow_ids)
+  const curExcluded = normalizeLinkedWorkflowIds(projectForm.value.excluded_workflow_ids)
+
+  if (selectedSet.has(wfId)) {
+    projectForm.value.linked_workflow_ids = curLinked.filter((id) => id !== wfId)
+    if (wfId === 'WF_DEFAULT' && !curExcluded.includes('WF_DEFAULT')) {
+      projectForm.value.excluded_workflow_ids = [...curExcluded, 'WF_DEFAULT']
+    }
     if (projectForm.value.default_workflow_id === wfId) {
-      projectForm.value.default_workflow_id = ''
+      const remaining = projectModalSelectedWorkflows.value
+        .filter((w) => w.id_workflow !== wfId)
+        .map((w) => w.id_workflow)
+      projectForm.value.default_workflow_id = remaining[0] || ''
     }
   } else {
-    projectForm.value.linked_workflow_ids = [...cur, wfId]
+    projectForm.value.excluded_workflow_ids = curExcluded.filter((id) => id !== wfId)
+    if (!curLinked.includes(wfId)) {
+      projectForm.value.linked_workflow_ids = [...curLinked, wfId]
+    }
+    if (!projectForm.value.default_workflow_id) {
+      projectForm.value.default_workflow_id = wfId
+    }
   }
 }
 
@@ -9230,7 +10164,7 @@ const buildEnrichedProject = (proj) => {
   let activeForAvg = 0
 
   childPipes.forEach((p) => {
-    wfSet.add(p.id_workflow || 'WF_DEFAULT')
+    wfSet.add(getEffectiveItemWorkflowId(p))
     const vol = parseNum(p.volume)
     if (p.status_name === 'THẤT BẠI') return
     totalVolume += vol
@@ -9251,21 +10185,10 @@ const buildEnrichedProject = (proj) => {
   correspondingWorkflows.forEach((w) => {
     if (w.id_workflow !== 'WF_DEFAULT') wfSet.add(w.id_workflow)
   })
-  const customWorkflowCount = correspondingWorkflows.filter(
-    (w) => w.scopeType === 'company_custom' || w.scopeType === 'partner_custom'
-  ).length
+  const customWorkflowCount = correspondingWorkflows.filter((w) => w.id_workflow !== 'WF_DEFAULT').length
   const customerKey = genMaCT(rootPair.ten_cong_ty || proj.ma_cong_ty || rootPair.ten_khach_hang || proj.ma_khach_hang) || '__NO_CUS__'
 
-  // Distinct partner / SI customers participating in this Project via linked frames or work cards
   const partnerMap = new Map()
-  correspondingWorkflows.forEach((w) => {
-    if (w.ownerCustomer) {
-      const k = genMaCT(w.ownerCustomer)
-      if (k && k !== customerKey && !partnerMap.has(k)) {
-        partnerMap.set(k, w.ownerCustomer)
-      }
-    }
-  })
   childPipes.forEach((p) => {
     if (!isCardSameAsProjectRootCustomer(p, proj)) {
       const lbl = p.ten_cong_ty || p.ten_khach_hang || ''
@@ -9284,6 +10207,7 @@ const buildEnrichedProject = (proj) => {
     ...proj,
     ...rootDisplayPair,
     linked_workflow_ids: normalizeLinkedWorkflowIds(proj.linked_workflow_ids),
+    excluded_workflow_ids: normalizeLinkedWorkflowIds(proj.excluded_workflow_ids),
     hasValidCustomer,
     customerKey,
     correspondingWorkflows,
@@ -9330,12 +10254,6 @@ const getProjectPartyAndFlowMeta = (p) => {
   ;(p.correspondingWorkflows || []).forEach((w) => {
     if (w.id_workflow) {
       workflowMap.set(w.id_workflow, w.name_workflow || w.id_workflow)
-    }
-    if (w.scopeType === 'company_custom' || w.scopeType === 'partner_custom') {
-      const wComp = String(w.ten_cong_ty || '').trim()
-      const wCus = String(w.ten_khach_hang || '').trim()
-      if (normFilterKey(wComp)) companyMap.set(normFilterKey(wComp), wComp)
-      if (normFilterKey(wCus)) customerMap.set(normFilterKey(wCus), wCus)
     }
   })
 
@@ -9411,10 +10329,15 @@ const projProjectFilterOptions = computed(() =>
     .filter((entry) => doesProjectEntryMatch(entry, 'project'))
     .map((entry) => {
       const p = entry.project
+      const cnt = (p.pipelines || []).length
+      const cusLbl = p.displayCustomerName || p.ten_khach_hang || ''
+      const compLbl = p.displayCompanyName || p.ten_cong_ty || ''
+      const partyParts = [cusLbl, compLbl].filter(Boolean)
+      const ownerSub = partyParts.join(' • ')
       return {
         id_project: p.id_project,
         label: p.ten_du_an,
-        sub: p.displayCompanyName || p.displayCustomerName || p.ma_du_an || ''
+        sub: cnt > 0 ? `${ownerSub ? ownerSub + ' · ' : ''}${cnt} việc` : ownerSub
       }
     })
     .sort((a, b) => a.label.localeCompare(b.label, 'vi'))
@@ -9535,26 +10458,29 @@ const enrichedProjects = computed(() => {
     .filter((entry) => doesProjectEntryMatch(entry))
     .map((entry) => entry.project)
 
-  const kw = projectSearchQuery.value.trim().toLowerCase()
-  if (kw) {
-    list = list.filter(
-      (p) =>
-        p.ten_du_an.toLowerCase().includes(kw) ||
-        (p.ma_du_an && p.ma_du_an.toLowerCase().includes(kw)) ||
-        (p.displayCompanyName && p.displayCompanyName.toLowerCase().includes(kw)) ||
-        (p.displayCustomerName && p.displayCustomerName.toLowerCase().includes(kw)) ||
-        (p.ten_cong_ty && p.ten_cong_ty.toLowerCase().includes(kw)) ||
-        (p.ten_khach_hang && p.ten_khach_hang.toLowerCase().includes(kw)) ||
-        (p.AM && p.AM.toLowerCase().includes(kw)) ||
-        p.partnerCustomerLabels.some((lbl) => lbl.toLowerCase().includes(kw)) ||
-        p.correspondingWorkflows.some(
-          (w) =>
-            w.name_workflow.toLowerCase().includes(kw) ||
-            (w.displayCompanyName && w.displayCompanyName.toLowerCase().includes(kw)) ||
-            (w.displayCustomerName && w.displayCustomerName.toLowerCase().includes(kw)) ||
-            (w.ownerCustomer && w.ownerCustomer.toLowerCase().includes(kw))
-        )
-    )
+  const tokens = activeProjectSearchTokens.value
+  if (tokens.length > 0) {
+    list = list.filter((p) => {
+      const wfNames = (p.correspondingWorkflows || []).map((w) => w.name_workflow).join(' ')
+      const partnerNames = (p.partnerCustomerLabels || []).join(' ')
+      const combinedFolded = foldKanbanSearchText(
+        [
+          p.ten_du_an,
+          p.ma_du_an,
+          p.displayCompanyName,
+          p.displayCustomerName,
+          p.ten_cong_ty,
+          p.ten_khach_hang,
+          p.AM,
+          p.ghi_chu,
+          partnerNames,
+          wfNames
+        ]
+          .filter(Boolean)
+          .join(' ')
+      )
+      return tokens.every((tok) => combinedFolded.includes(tok))
+    })
   }
   return list
 })
@@ -9624,7 +10550,7 @@ const filteredProjectKpis = computed(() => {
 const getProjectCardToneClass = (proj) => {
   const st = proj?.trang_thai || 'Đang triển khai'
   if (st === 'Hoàn thành') return 'is-done-proj'
-  if (st === 'Tạm dừng') return 'is-paused-proj'
+  if (st === 'Tạm dừng' || st === 'Huỷ') return 'is-paused-proj'
   return 'is-active-proj'
 }
 
@@ -9664,6 +10590,7 @@ const getProjectStatusPillClass = (proj) => {
   const st = proj?.trang_thai || 'Đang triển khai'
   if (st === 'Hoàn thành') return 'is-emerald'
   if (st === 'Tạm dừng') return 'is-amber'
+  if (st === 'Huỷ') return 'is-rose'
   return 'is-sky'
 }
 
@@ -9744,7 +10671,7 @@ const filteredProjectDetailPipelines = computed(() => {
   const detail = activeProjectDetail.value
   if (!detail) return []
   if (projectDetailWfFilter.value === 'ALL') return detail.pipelines
-  return detail.pipelines.filter((p) => (p.id_workflow || 'WF_DEFAULT') === projectDetailWfFilter.value)
+  return detail.pipelines.filter((p) => getEffectiveItemWorkflowId(p) === projectDetailWfFilter.value)
 })
 
 const displayedProjectDetailPipelines = computed(() => {
@@ -9775,7 +10702,7 @@ const activeProjectWfFilterLabel = computed(() => {
   return found?.name_workflow || getWorkflowShortLabel(projectDetailWfFilter.value)
 })
 
-const selectProjectDetailWorkflow = (wfId) => {
+const selectProjectDetailWorkflow = (wfId, options = {}) => {
   projectDetailWfFilter.value = wfId || 'ALL'
   openProjPipeStageMenuId.value = ''
   if (focusedProjectPipeId.value) {
@@ -9789,14 +10716,38 @@ const selectProjectDetailWorkflow = (wfId) => {
           )
     if (!stillVisible) focusedProjectPipeId.value = ''
   }
-  if (isMobile.value || (typeof window !== 'undefined' && window.innerWidth <= 1100)) {
+  const isMobViewport = isMobile.value || (typeof window !== 'undefined' && window.innerWidth <= 768)
+  if (!options.keepMobileTab && (isMobViewport || (typeof window !== 'undefined' && window.innerWidth <= 1100))) {
     isProjLeftRailOpen.value = false
+  }
+  if (!options.keepMobileTab && isMobViewport) {
+    mobileProjectModalTab.value = 'tasks'
   }
 }
 
 const toggleFocusProjectPipe = (pipeId) => {
   openProjPipeStageMenuId.value = ''
+  const isMobViewport = isMobile.value || (typeof window !== 'undefined' && window.innerWidth <= 768)
+  if (isMobViewport) {
+    focusedProjectPipeId.value = pipeId
+    mobileProjectModalTab.value = 'hub'
+    return
+  }
   focusedProjectPipeId.value = focusedProjectPipeId.value === pipeId ? '' : pipeId
+}
+
+const handleProjectModalMobileBack = () => {
+  openProjPipeStageMenuId.value = ''
+  if (mobileProjectModalTab.value === 'hub') {
+    mobileProjectModalTab.value = 'tasks'
+    return
+  }
+  if (mobileProjectModalTab.value === 'tasks') {
+    mobileProjectModalTab.value = 'frames'
+    isProjLeftRailOpen.value = true
+    return
+  }
+  closeProjectDetailModal()
 }
 
 const buildHubFromPipes = (pipeList = []) => {
@@ -9858,35 +10809,33 @@ const scopedProjectHub = computed(() => {
 const attachableWorkflowsForProject = computed(() => {
   const detail = activeProjectDetail.value
   if (!detail) return []
-  const rootFlowSet = new Set(
-    detail.correspondingWorkflows.filter((w) => w.isRootCustomerFlow).map((w) => w.id_workflow)
+  const explicitSet = new Set(
+    (detail.correspondingWorkflows || [])
+      .filter((w) => w.isExplicitlyLinked)
+      .map((w) => w.id_workflow)
   )
-  const linkedSet = new Set(normalizeLinkedWorkflowIds(detail.linked_workflow_ids))
   const kw = manageWfSearch.value.trim().toLowerCase()
-  const scopeFilter = manageWfScopeFilter.value
 
-  return uniqueWorkflows.value
-    .filter((wf) => {
-      if (!wf.id_workflow || wf.id_workflow === 'WF_DEFAULT') return false
-      if (scopeFilter === 'customer' && wf.workflow_scope !== 'customer') return false
-      if (scopeFilter === 'template' && wf.workflow_scope === 'customer') return false
-      if (!kw) return true
-      return (
-        (wf.name_workflow && wf.name_workflow.toLowerCase().includes(kw)) ||
-        (wf.ten_cong_ty && wf.ten_cong_ty.toLowerCase().includes(kw)) ||
-        (wf.ten_khach_hang && wf.ten_khach_hang.toLowerCase().includes(kw)) ||
-        wf.id_workflow.toLowerCase().includes(kw)
-      )
-    })
-    .map((wf) => {
-      const stepCount = workflowsData.value.filter((r) => r.id_workflow === wf.id_workflow).length
-      return {
-        ...wf,
-        stepCount,
-        isAutoRootFlow: rootFlowSet.has(wf.id_workflow),
-        isLinkedToProject: linkedSet.has(wf.id_workflow)
-      }
-    })
+  const baseCandidates = [
+    {
+      id_workflow: 'WF_DEFAULT',
+      name_workflow: 'Workflow Chuẩn Hệ Thống',
+      stepCount: 5,
+      isLinkedToProject: explicitSet.has('WF_DEFAULT')
+    },
+    ...customWorkflowOptions.value.map((wf) => ({
+      ...wf,
+      stepCount: workflowsData.value.filter((r) => r.id_workflow === wf.id_workflow).length,
+      isLinkedToProject: explicitSet.has(wf.id_workflow)
+    }))
+  ]
+
+  if (!kw) return baseCandidates
+  return baseCandidates.filter(
+    (wf) =>
+      (wf.name_workflow && wf.name_workflow.toLowerCase().includes(kw)) ||
+      wf.id_workflow.toLowerCase().includes(kw)
+  )
 })
 
 const attachWorkflowToProject = async (proj, wfId) => {
@@ -9894,23 +10843,33 @@ const attachWorkflowToProject = async (proj, wfId) => {
   const targetIdx = projectsList.value.findIndex((p) => p.id_project === proj.id_project)
   if (targetIdx === -1) return
 
-  const cur = normalizeLinkedWorkflowIds(projectsList.value[targetIdx].linked_workflow_ids)
-  if (cur.includes(wfId)) return
+  const curProj = projectsList.value[targetIdx]
+  const curLinked = normalizeLinkedWorkflowIds(curProj.linked_workflow_ids)
+  const curExcluded = normalizeLinkedWorkflowIds(curProj.excluded_workflow_ids)
+  const nextExcluded = curExcluded.filter((id) => id !== wfId)
+  const nextIds = curLinked.includes(wfId) ? curLinked : [...curLinked, wfId]
 
-  const nextIds = [...cur, wfId]
+  if (nextIds.length === curLinked.length && nextExcluded.length === curExcluded.length) {
+    ensureProjectCardExpanded(proj.id_project)
+    return
+  }
+
   const nowStr = getCurrentFormattedTime()
   projectsList.value[targetIdx] = {
-    ...projectsList.value[targetIdx],
+    ...curProj,
     linked_workflow_ids: nextIds,
+    excluded_workflow_ids: nextExcluded,
     last_updated: nowStr
   }
+  ensureProjectCardExpanded(proj.id_project)
 
   try {
     await update(dbRef(database, `pipeline_projects/${sanitizeFirebaseKey(proj.id_project)}`), {
       linked_workflow_ids: nextIds,
+      excluded_workflow_ids: nextExcluded,
       last_updated: nowStr
     })
-    showToast('Đã gắn Workflow vào Dự án!', 'success')
+    showToast('Đã thêm Workflow vào Dự án!', 'success')
   } catch (err) {
     console.error('Lỗi gắn workflow vào dự án:', err)
     showToast('Lỗi mạng khi gắn Workflow', 'error')
@@ -9923,17 +10882,21 @@ const detachWorkflowFromProject = async (proj, wfId) => {
   const targetIdx = projectsList.value.findIndex((p) => p.id_project === proj.id_project)
   if (targetIdx === -1) return
 
-  const cur = normalizeLinkedWorkflowIds(projectsList.value[targetIdx].linked_workflow_ids)
-  const nextIds = cur.filter((id) => id !== wfId)
+  const curProj = projectsList.value[targetIdx]
+  const curLinked = normalizeLinkedWorkflowIds(curProj.linked_workflow_ids)
+  const curExcluded = normalizeLinkedWorkflowIds(curProj.excluded_workflow_ids)
+  const nextIds = curLinked.filter((id) => id !== wfId)
+  const nextExcluded =
+    wfId === 'WF_DEFAULT' && !curExcluded.includes('WF_DEFAULT')
+      ? [...curExcluded, 'WF_DEFAULT']
+      : curExcluded
   const nowStr = getCurrentFormattedTime()
-  const nextDefault =
-    projectsList.value[targetIdx].default_workflow_id === wfId
-      ? ''
-      : projectsList.value[targetIdx].default_workflow_id
+  const nextDefault = curProj.default_workflow_id === wfId ? '' : curProj.default_workflow_id
 
   projectsList.value[targetIdx] = {
-    ...projectsList.value[targetIdx],
+    ...curProj,
     linked_workflow_ids: nextIds,
+    excluded_workflow_ids: nextExcluded,
     default_workflow_id: nextDefault,
     last_updated: nowStr
   }
@@ -9945,6 +10908,7 @@ const detachWorkflowFromProject = async (proj, wfId) => {
   try {
     await update(dbRef(database, `pipeline_projects/${sanitizeFirebaseKey(proj.id_project)}`), {
       linked_workflow_ids: nextIds,
+      excluded_workflow_ids: nextExcluded,
       default_workflow_id: nextDefault,
       last_updated: nowStr
     })
@@ -9957,50 +10921,72 @@ const detachWorkflowFromProject = async (proj, wfId) => {
 }
 
 // =========================================================
-// RIGHT COLUMN (4/10) KHO FLOW (2 MỤC: WORKFLOW KHÁCH HÀNG & WORKFLOW KHO) + DUPLICATE HIGHLIGHT
+// RIGHT COLUMN (4/10) KHO FLOW (UNIFIED WORKFLOW LIBRARY) + ATTACH TO PROJECT MODAL
 // =========================================================
-const paletteScopeTab = ref('customer')
 const paletteWfSearch = ref('')
-const showPaletteQuickCreate = ref(false)
 const draggingWorkflow = ref(null)
 const dragOverProjectId = ref('')
 const highlightedProjWfKey = ref('')
 let highlightedProjWfTimer = null
 
+const showAttachWfToProjectModal = ref(false)
+const attachingWorkflowTarget = ref(null)
+const attachWfProjectSearch = ref('')
+const attachWfSearchInputRef = ref(null)
+
+const filteredProjectsForWfAttach = computed(() => {
+  const kw = attachWfProjectSearch.value.trim().toLowerCase()
+  if (!kw) return allEnrichedProjects.value
+  return allEnrichedProjects.value.filter((p) => {
+    const pName = String(p.ten_du_an || '').toLowerCase()
+    const cusName = String(p.displayCustomerName || p.ten_khach_hang || '').toLowerCase()
+    const compName = String(p.displayCompanyName || p.ten_cong_ty || '').toLowerCase()
+    const pCode = String(p.id_project || '').toLowerCase()
+    return pName.includes(kw) || cusName.includes(kw) || compName.includes(kw) || pCode.includes(kw)
+  })
+})
+
+const openAttachWfToProjectModal = (wf) => {
+  if (!wf) return
+  attachingWorkflowTarget.value = wf
+  attachWfProjectSearch.value = ''
+  showAttachWfToProjectModal.value = true
+  nextTick(() => {
+    if (attachWfSearchInputRef.value && typeof attachWfSearchInputRef.value.focus === 'function') {
+      attachWfSearchInputRef.value.focus()
+    }
+  })
+}
+
+const closeAttachWfToProjectModal = () => {
+  showAttachWfToProjectModal.value = false
+  attachingWorkflowTarget.value = null
+  attachWfProjectSearch.value = ''
+}
+
+const confirmAttachWfToSelectedProject = async (proj) => {
+  if (!proj || !attachingWorkflowTarget.value) return
+  const wfId = attachingWorkflowTarget.value.id_workflow
+  closeAttachWfToProjectModal()
+  if (isWorkflowAlreadyInProject(proj, wfId)) {
+    triggerHighlightDuplicateProjWorkflow(proj, wfId)
+    return
+  }
+  await attachWorkflowToProject(proj, wfId)
+}
+
 const buildPaletteWfEntry = (wf) => {
-  const wfPair =
-    wf.workflow_scope === 'customer'
-      ? resolveCompleteCustomerPair({
-          ma_khach_hang: wf.ma_khach_hang || '',
-          ma_cong_ty: wf.ma_cong_ty || '',
-          ten_cong_ty: wf.ten_cong_ty || '',
-          ten_khach_hang: wf.ten_khach_hang || ''
-        })
-      : { ten_cong_ty: '', ten_khach_hang: '' }
-  const distinctPair = formatDistinctCustomerPair(wfPair.ten_cong_ty, wfPair.ten_khach_hang)
   const allCols = getColumnsForWorkflow(wf.id_workflow)
   const coreSteps = allCols.filter((c) => c.id !== 'hoan_thanh' && c.id !== 'that_bai')
   return {
     ...wf,
-    ...distinctPair,
+    displayCompanyName: '',
+    displayCustomerName: '',
     flowSteps: coreSteps.length > 0 ? coreSteps : allCols
   }
 }
 
-const paletteCustomerList = computed(() => {
-  return uniqueWorkflows.value
-    .filter((wf) => wf.id_workflow && wf.id_workflow !== 'WF_DEFAULT' && wf.workflow_scope === 'customer')
-    .map(buildPaletteWfEntry)
-    .sort((a, b) => {
-      const compA = a.displayCompanyName || a.displayCustomerName || ''
-      const compB = b.displayCompanyName || b.displayCustomerName || ''
-      const cmp = compA.localeCompare(compB, 'vi')
-      if (cmp !== 0) return cmp
-      return (a.name_workflow || '').localeCompare(b.name_workflow || '', 'vi')
-    })
-})
-
-const paletteLibraryList = computed(() => {
+const paletteWorkflowList = computed(() => {
   const defaultCols = getColumnsForWorkflow('WF_DEFAULT')
   const defaultCoreSteps = defaultCols.filter((c) => c.id !== 'hoan_thanh' && c.id !== 'that_bai')
   const systemStandardEntry = {
@@ -10012,27 +10998,17 @@ const paletteLibraryList = computed(() => {
     flowSteps: defaultCoreSteps.length > 0 ? defaultCoreSteps : defaultCols
   }
 
-  const customLibraryList = uniqueWorkflows.value
-    .filter((wf) => wf.id_workflow && wf.id_workflow !== 'WF_DEFAULT' && wf.workflow_scope !== 'customer')
-    .map(buildPaletteWfEntry)
-    .sort((a, b) => (a.name_workflow || '').localeCompare(b.name_workflow || '', 'vi'))
-
-  return [systemStandardEntry, ...customLibraryList]
+  return [systemStandardEntry, ...customWorkflowOptions.value.map(buildPaletteWfEntry)]
 })
 
-const paletteTotalCount = computed(() => paletteCustomerList.value.length + paletteLibraryList.value.length)
+const paletteTotalCount = computed(() => paletteWorkflowList.value.length)
 
 const filteredPaletteWorkflows = computed(() => {
-  const activeSource = paletteScopeTab.value === 'customer' ? paletteCustomerList.value : paletteLibraryList.value
   const kw = paletteWfSearch.value.trim().toLowerCase()
-  if (!kw) return activeSource
-  return activeSource.filter(
+  if (!kw) return paletteWorkflowList.value
+  return paletteWorkflowList.value.filter(
     (w) =>
       (w.name_workflow && w.name_workflow.toLowerCase().includes(kw)) ||
-      (w.displayCompanyName && w.displayCompanyName.toLowerCase().includes(kw)) ||
-      (w.displayCustomerName && w.displayCustomerName.toLowerCase().includes(kw)) ||
-      (w.ten_cong_ty && w.ten_cong_ty.toLowerCase().includes(kw)) ||
-      (w.ten_khach_hang && w.ten_khach_hang.toLowerCase().includes(kw)) ||
       (w.flowSteps || []).some((st) => (st.value || st.label || '').toLowerCase().includes(kw))
   )
 })
@@ -10044,6 +11020,7 @@ const isWorkflowAlreadyInProject = (proj, wfId) => {
 
 const triggerHighlightDuplicateProjWorkflow = (proj, wfId) => {
   if (!proj || !wfId) return
+  ensureProjectCardExpanded(proj.id_project)
   const matchedWf =
     (proj.correspondingWorkflows || []).find((w) => w.id_workflow === wfId) ||
     uniqueWorkflows.value.find((w) => w.id_workflow === wfId)
@@ -10132,19 +11109,6 @@ const onProjectDrop = async (event, proj) => {
   await attachWorkflowToProject(proj, wfId)
 }
 
-const onMobileQuickAttachSelect = async (event, wfId) => {
-  const projId = event.target.value
-  event.target.value = ''
-  if (!projId || !wfId) return
-  const proj = allEnrichedProjects.value.find((p) => p.id_project === projId)
-  if (!proj) return
-  if (isWorkflowAlreadyInProject(proj, wfId)) {
-    triggerHighlightDuplicateProjWorkflow(proj, wfId)
-    return
-  }
-  await attachWorkflowToProject(proj, wfId)
-}
-
 const handleQuickDetachFlowFromCard = async (proj, wf) => {
   if (!proj || !wf) return
   if (wf.pipeCount > 0) {
@@ -10160,132 +11124,6 @@ const handleQuickDetachFlowFromCard = async (proj, wf) => {
     if (!ok) return
   }
   await detachWorkflowFromProject(proj, wf.id_workflow)
-}
-
-const submitQuickWorkflowForProject = async (proj = null) => {
-  const isLibraryCreate = !proj && paletteScopeTab.value === 'library'
-  const tenCongTy = isLibraryCreate ? '' : String(quickProjWfForm.value.ten_cong_ty || '').trim()
-  const tenKhachHang = isLibraryCreate ? '' : String(quickProjWfForm.value.ten_khach_hang || '').trim()
-
-  if (!isLibraryCreate && !tenCongTy && !tenKhachHang) {
-    showToast('Mỗi Workflow Khách hàng phải gắn 1 Công ty / Khách hàng! Vui lòng chọn hoặc nhập KH.', 'error')
-    return
-  }
-
-  const rawName = String(quickProjWfForm.value.name_workflow || '').trim()
-  if (isLibraryCreate && !rawName) {
-    showToast('Vui lòng nhập Tên Workflow Kho!', 'error')
-    return
-  }
-
-  const wfName =
-    rawName ||
-    (proj ? `${tenCongTy || tenKhachHang} — ${proj.ten_du_an}` : `Workflow — ${tenCongTy || tenKhachHang}`)
-
-  const maCT = isLibraryCreate ? '' : genMaCT(tenCongTy)
-  const maKH = isLibraryCreate ? '' : (quickProjWfForm.value.ma_khach_hang || genMaKH(tenKhachHang, tenCongTy))
-  const cleanCode = (maCT || maKH || 'CUS').replace(/[^A-Z0-9_]/gi, '').slice(0, 14) || 'CUS'
-  const newWfId = isLibraryCreate ? `WF_TPL_${Date.now()}` : `WF_CUS_${cleanCode}_${Date.now()}`
-
-  const baseTplId = quickProjWfForm.value.base_template_id || 'WF_DEFAULT'
-  let seedSteps = []
-  let sourceTplName = 'Workflow Chuẩn Hệ Thống'
-
-  if (baseTplId !== 'WF_DEFAULT') {
-    const tplRows = workflowsData.value
-      .filter((r) => r.id_workflow === baseTplId)
-      .sort((a, b) => (parseInt(a.status_index, 10) || 0) - (parseInt(b.status_index, 10) || 0))
-    if (tplRows.length > 0) {
-      sourceTplName = tplRows[0].name_workflow || baseTplId
-      seedSteps = tplRows.map((r, idx) => ({
-        percent: r['%status'] || '0%',
-        status_name: r.status_name,
-        status_index: idx + 1,
-        status_color: r.status_color || '#3b82f6'
-      }))
-    }
-  }
-
-  if (seedSteps.length === 0) {
-    seedSteps = defaultColumns
-      .filter((c) => c.id !== 'hoan_thanh' && c.id !== 'that_bai')
-      .map((c, idx) => ({
-        percent: c.percent,
-        status_name: c.value,
-        status_index: idx + 1,
-        status_color: c.color
-      }))
-  }
-
-  const existingCompanyFlows = isLibraryCreate
-    ? { hasCustom: true }
-    : resolveCompanyWorkflows({
-        ma_khach_hang: maKH,
-        ma_cong_ty: maCT,
-        ten_cong_ty: tenCongTy,
-        ten_khach_hang: tenKhachHang
-      })
-  const makeDefaultForCompany = !isLibraryCreate && !existingCompanyFlows.hasCustom
-
-  savingQuickProjWf.value = true
-  try {
-    const wfUpdates = {}
-    const createdRecords = []
-    seedSteps.forEach((st, idx) => {
-      const idStatus = `${newWfId}_ST_${idx + 1}`
-      const rec = {
-        id_workflow: newWfId,
-        id_status_workflow: idStatus,
-        name_workflow: wfName,
-        '%status': st.percent,
-        status_name: st.status_name,
-        status_index: idx + 1,
-        status_color: st.status_color,
-        workflow_scope: isLibraryCreate ? 'template' : 'customer',
-        ma_khach_hang: maKH,
-        ma_cong_ty: maCT,
-        ten_khach_hang: tenKhachHang,
-        ten_cong_ty: tenCongTy,
-        is_company_default: makeDefaultForCompany,
-        source_template_id: baseTplId,
-        source_template_name: sourceTplName
-      }
-      wfUpdates[sanitizeFirebaseKey(idStatus)] = rec
-      createdRecords.push(rec)
-    })
-
-    workflowsData.value.push(...createdRecords)
-    await update(dbRef(database, 'pipeline_workflow'), wfUpdates)
-    if (proj) {
-      await attachWorkflowToProject(proj, newWfId)
-    }
-
-    quickProjWfForm.value = {
-      ten_cong_ty: '',
-      ten_khach_hang: '',
-      ma_cong_ty: '',
-      ma_khach_hang: '',
-      base_template_id: 'WF_DEFAULT',
-      name_workflow: ''
-    }
-    manageWfDrawerMode.value = 'attach'
-    if (proj) {
-      showManageProjectWfDrawer.value = false
-    }
-    showPaletteQuickCreate.value = false
-    showToast(
-      proj
-        ? `Đã tạo Workflow "${wfName}" & gắn vào Dự án!`
-        : `Đã tạo Workflow "${wfName}" — Kéo thả vào Dự án bên trái để gắn!`,
-      'success'
-    )
-  } catch (err) {
-    console.error('Lỗi tạo nhanh workflow:', err)
-    showToast('Lỗi khi tạo Workflow mới', 'error')
-    fetchData()
-  } finally {
-    savingQuickProjWf.value = false
-  }
 }
 
 const attachablePipelines = computed(() => {
@@ -10323,7 +11161,6 @@ const getProjectStatusTone = (status) => {
 
 const openAddProjectModal = (prefillCustomer = null) => {
   isEditingProject.value = false
-  showProjectFormWfPicker.value = false
   projectFormWfSearch.value = ''
   let initCustomer = prefillCustomer
   if (!initCustomer) {
@@ -10367,25 +11204,27 @@ const openAddProjectModal = (prefillCustomer = null) => {
     ma_cong_ty: initCustomer?.ma_cong_ty || '',
     ten_cong_ty: initCustomer?.ten_cong_ty || '',
     default_workflow_id: '',
-    linked_workflow_ids: []
+    linked_workflow_ids: [],
+    excluded_workflow_ids: []
   }
   showProjectFormModal.value = true
 }
 
 const openEditProjectModal = (proj) => {
   isEditingProject.value = true
-  showProjectFormWfPicker.value = false
   projectFormWfSearch.value = ''
+  const resolvedCus = resolveCompleteCustomerPair(proj)
   projectForm.value = {
     id_project: proj.id_project,
     ma_du_an: proj.ma_du_an || '',
     ten_du_an: proj.ten_du_an || '',
     ma_khach_hang: proj.ma_khach_hang || '',
-    ten_khach_hang: proj.ten_khach_hang || '',
+    ten_khach_hang: resolvedCus.ten_khach_hang || proj.ten_khach_hang || '',
     ma_cong_ty: proj.ma_cong_ty || '',
-    ten_cong_ty: proj.ten_cong_ty || '',
+    ten_cong_ty: resolvedCus.ten_cong_ty || proj.ten_cong_ty || '',
     default_workflow_id: proj.default_workflow_id || '',
     linked_workflow_ids: normalizeLinkedWorkflowIds(proj.linked_workflow_ids),
+    excluded_workflow_ids: normalizeLinkedWorkflowIds(proj.excluded_workflow_ids),
     AM: proj.AM || 'Sơn',
     ngan_sach_du_kien: proj.ngan_sach_du_kien ?? '',
     deadline: proj.deadline || '',
@@ -10437,6 +11276,7 @@ const saveProjectForm = async () => {
     ten_cong_ty: tenCongTy,
     default_workflow_id: String(projectForm.value.default_workflow_id || ''),
     linked_workflow_ids: normalizeLinkedWorkflowIds(projectForm.value.linked_workflow_ids),
+    excluded_workflow_ids: normalizeLinkedWorkflowIds(projectForm.value.excluded_workflow_ids),
     AM: String(projectForm.value.AM || 'Sơn').trim(),
     ngan_sach_du_kien: projectForm.value.ngan_sach_du_kien ?? '',
     deadline: String(projectForm.value.deadline || '').trim(),
@@ -10460,12 +11300,13 @@ const saveProjectForm = async () => {
         formData.value.ma_cong_ty = record.ma_cong_ty
         formData.value.ma_khach_hang = record.ma_khach_hang
       }
-      if (!formData.value.id_workflow) {
+      if (!formData.value.id_workflow || formData.value.id_workflow === 'WF_DEFAULT') {
         if (record.default_workflow_id) {
-          formData.value.id_workflow = record.default_workflow_id === 'WF_DEFAULT' ? '' : record.default_workflow_id
+          formData.value.id_workflow = record.default_workflow_id
           onModalWorkflowChange()
-        } else {
-          applyCustomerFlowToModalForm()
+        } else if (record.linked_workflow_ids?.length > 0) {
+          formData.value.id_workflow = record.linked_workflow_ids[0]
+          onModalWorkflowChange()
         }
       }
     }
@@ -10569,7 +11410,9 @@ const openProjectDetailModal = (proj) => {
   projectDetailPipeSearch.value = ''
   focusedProjectPipeId.value = ''
   openProjPipeStageMenuId.value = ''
-  isProjLeftRailOpen.value = !(typeof window !== 'undefined' && window.innerWidth <= 1100)
+  const isMobViewport = isMobile.value || (typeof window !== 'undefined' && window.innerWidth <= 768)
+  isProjLeftRailOpen.value = isMobViewport || !(typeof window !== 'undefined' && window.innerWidth <= 1100)
+  mobileProjectModalTab.value = isMobViewport ? 'frames' : 'tasks'
   showAttachPipelineDrawer.value = false
   showManageProjectWfDrawer.value = false
   showProjectDetailModal.value = true
@@ -10606,39 +11449,20 @@ const openAddPipelineForProject = (proj, specificWorkflowId = '') => {
   formData.value.ten_du_an = proj.ten_du_an
   formData.value.AM = proj.AM || 'Sơn'
 
-  const targetWfId = specificWorkflowId || proj.default_workflow_id || ''
-  const wfMeta =
-    targetWfId && targetWfId !== 'WF_DEFAULT'
-      ? uniqueWorkflows.value.find((w) => w.id_workflow === targetWfId)
-      : null
+  const targetWfId =
+    specificWorkflowId ||
+    proj.default_workflow_id ||
+    proj.correspondingWorkflows?.[0]?.id_workflow ||
+    'WF_DEFAULT'
 
-  // If adding onto a specific Customer's Pipeline Frame (e.g. Partner B's frame),
-  // pre-fill that Frame's 1 Customer onto the new Work Item! Otherwise use Project Root Customer.
-  if (wfMeta && wfMeta.workflow_scope === 'customer' && (wfMeta.ten_cong_ty || wfMeta.ten_khach_hang || wfMeta.ma_khach_hang)) {
-    const resolvedWfCus = resolveCompleteCustomerPair({
-      ma_khach_hang: wfMeta.ma_khach_hang || '',
-      ma_cong_ty: wfMeta.ma_cong_ty || '',
-      ten_cong_ty: wfMeta.ten_cong_ty || '',
-      ten_khach_hang: wfMeta.ten_khach_hang || (isCardSameAsProjectRootCustomer(wfMeta, proj) ? proj.ten_khach_hang || '' : '')
-    })
-    formData.value.ten_cong_ty = resolvedWfCus.ten_cong_ty || ''
-    formData.value.ten_khach_hang = resolvedWfCus.ten_khach_hang || ''
-    formData.value.ma_cong_ty = wfMeta.ma_cong_ty || genMaCT(formData.value.ten_cong_ty)
-    formData.value.ma_khach_hang = wfMeta.ma_khach_hang || genMaKH(formData.value.ten_khach_hang, formData.value.ten_cong_ty)
-  } else {
-    const resolvedProjCus = resolveCompleteCustomerPair(proj)
-    formData.value.ten_cong_ty = resolvedProjCus.ten_cong_ty || proj.ten_cong_ty || ''
-    formData.value.ten_khach_hang = resolvedProjCus.ten_khach_hang || proj.ten_khach_hang || ''
-    formData.value.ma_cong_ty = proj.ma_cong_ty || genMaCT(formData.value.ten_cong_ty)
-    formData.value.ma_khach_hang = proj.ma_khach_hang || genMaKH(formData.value.ten_khach_hang, formData.value.ten_cong_ty)
-  }
+  const resolvedProjCus = resolveCompleteCustomerPair(proj)
+  formData.value.ten_cong_ty = resolvedProjCus.ten_cong_ty || proj.ten_cong_ty || ''
+  formData.value.ten_khach_hang = resolvedProjCus.ten_khach_hang || proj.ten_khach_hang || ''
+  formData.value.ma_cong_ty = proj.ma_cong_ty || genMaCT(formData.value.ten_cong_ty)
+  formData.value.ma_khach_hang = proj.ma_khach_hang || genMaKH(formData.value.ten_khach_hang, formData.value.ten_cong_ty)
 
-  if (targetWfId) {
-    formData.value.id_workflow = targetWfId === 'WF_DEFAULT' ? '' : targetWfId
-    onModalWorkflowChange()
-  } else {
-    applyCustomerFlowToModalForm()
-  }
+  formData.value.id_workflow = targetWfId
+  onModalWorkflowChange()
 }
 
 const openProjectWorkflowOnKanban = (proj, wfId = '') => {
@@ -10658,26 +11482,49 @@ const openProjectWorkflowOnKanban = (proj, wfId = '') => {
   showToast(`Đang mở Kanban Dự án "${proj.ten_du_an}" — ${getWorkflowShortLabel(targetWf)}`, 'info', 2200)
 }
 
-const jumpToCustomerWorkflowDesignerFromProject = (proj) => {
+const jumpToWorkflowDesignerFromProject = () => {
   showProjectDetailModal.value = false
-  jumpToCustomerWorkflowDesigner(proj.ten_cong_ty || proj.ten_khach_hang || '')
+  showManageProjectWfDrawer.value = false
+  activeTab.value = 'workflow'
 }
 
-const jumpToCustomerWorkflowDesignerFromModal = () => {
-  const kw = projectForm.value.ten_cong_ty || projectForm.value.ten_khach_hang || ''
+const jumpToWorkflowDesignerFromModal = () => {
   showProjectFormModal.value = false
-  jumpToCustomerWorkflowDesigner(kw)
+  activeTab.value = 'workflow'
 }
 
 const attachExistingPipelineToProject = async (pipe, proj) => {
   pipe.id_project = proj.id_project
   pipe.ten_du_an = proj.ten_du_an
+  const targetWf =
+    projectDetailWfFilter.value && projectDetailWfFilter.value !== 'ALL'
+      ? projectDetailWfFilter.value
+      : pipe.id_workflow || proj.default_workflow_id || proj.correspondingWorkflows?.[0]?.id_workflow || 'WF_DEFAULT'
+
+  const patchPayload = {
+    id_project: proj.id_project,
+    ten_du_an: proj.ten_du_an,
+    id_workflow: targetWf
+  }
+
+  if (pipe.id_workflow !== targetWf) {
+    pipe.id_workflow = targetWf
+    const cols = getColumnsForWorkflow(targetWf)
+    if (!resolveColumnForItem(pipe, cols) && cols.length > 0) {
+      const first = cols[0]
+      pipe.status_name = first.value
+      pipe['%status'] = first.percent
+      pipe.id_status_workflow = first.rawStatusId || first.id
+      patchPayload.status_name = pipe.status_name
+      patchPayload['%status'] = pipe['%status']
+      patchPayload.id_status_workflow = pipe.id_status_workflow
+    }
+  }
+  distributeItems()
+
   try {
     const k = sanitizeFirebaseKey(pipe.Id_pipeline)
-    await update(dbRef(database, 'pipeline/' + k), {
-      id_project: proj.id_project,
-      ten_du_an: proj.ten_du_an
-    })
+    await update(dbRef(database, 'pipeline/' + k), patchPayload)
     showToast('Đã gắn Công việc vào Dự án!', 'success')
   } catch (err) {
     console.error('Lỗi gắn pipeline vào dự án:', err)
@@ -10744,12 +11591,11 @@ const focusCardOnKanban = (pipe) => {
   searchQuery.value = ''
   filterConfig.value.customerName = ''
   filterConfig.value.companyName = ''
-  filterConfig.value.workflowId = ''
   filterConfig.value.filterMode = 'all'
-  if (filterConfig.value.projectId && filterConfig.value.projectId !== pipe.id_project) {
-    filterConfig.value.projectId = ''
-  }
-  selectedWorkflowId.value = pipe.id_workflow || 'WF_DEFAULT'
+  const targetWf = getEffectiveItemWorkflowId(pipe)
+  filterConfig.value.projectId = pipe.id_project ? pipe.id_project : '__STANDALONE__'
+  filterConfig.value.workflowId = targetWf
+  selectedWorkflowId.value = targetWf
   activeTab.value = 'kanban'
   kanbanViewMode.value = 'standard'
   distributeItems()
@@ -10798,6 +11644,7 @@ const isEditing = ref(false)
 const pipelineModalSource = ref('kanban')
 const isKanbanModalContext = computed(() => pipelineModalSource.value === 'kanban')
 const isStudioLeftRailOpen = ref(true)
+const mobileTaskModalTab = ref('work') // 'setup' | 'work' | 'hub'
 const openTlSelectKey = ref(null)
 const tempStartDate = ref('')
 const tempEndDate = ref('')
@@ -10831,7 +11678,7 @@ const defaultFormData = {
   ten_file: '',
   link_file: '',
   id_pipeline_lien_ket: '',
-  id_workflow: '',
+  id_workflow: 'WF_DEFAULT',
   id_quanlyfile: '',
   id_status_workflow: '',
   id_project: '',
@@ -10859,80 +11706,15 @@ const modalProjectLinkedWorkflows = computed(() => {
   return (proj.correspondingWorkflows || []).filter((w) => w.id_workflow !== 'WF_DEFAULT')
 })
 
-const modalMatchedCompanyWorkflows = computed(() => {
-  if (!formData.value.ten_cong_ty && !formData.value.ten_khach_hang && !formData.value.ma_khach_hang) {
-    return []
-  }
+const modalOtherWorkflows = computed(() => {
   const projSet = new Set(modalProjectLinkedWorkflows.value.map((w) => w.id_workflow))
-  return resolveCompanyWorkflows({
-    ma_khach_hang: formData.value.ma_khach_hang,
-    ma_cong_ty: formData.value.ma_cong_ty,
-    ten_cong_ty: formData.value.ten_cong_ty,
-    ten_khach_hang: formData.value.ten_khach_hang
-  }).list.filter((w) => !projSet.has(w.id_workflow))
+  return customWorkflowOptions.value.filter((w) => !projSet.has(w.id_workflow))
 })
 
-const modalOtherCustomerWorkflows = computed(() => {
-  const usedSet = new Set([
-    ...modalProjectLinkedWorkflows.value.map((w) => w.id_workflow),
-    ...modalMatchedCompanyWorkflows.value.map((w) => w.id_workflow)
-  ])
-  return customerWorkflowOptions.value.filter((w) => !usedSet.has(w.id_workflow))
-})
-
-const modalSuggestedWorkflowChips = computed(() => {
-  const seen = new Set()
-  const out = []
-  const rawOwn =
-    formData.value.ten_cong_ty || formData.value.ten_khach_hang || formData.value.ma_khach_hang
-      ? resolveCompanyWorkflows({
-          ma_khach_hang: formData.value.ma_khach_hang,
-          ma_cong_ty: formData.value.ma_cong_ty,
-          ten_cong_ty: formData.value.ten_cong_ty,
-          ten_khach_hang: formData.value.ten_khach_hang
-        }).list
-      : []
-
-  ;[...rawOwn, ...modalProjectLinkedWorkflows.value].forEach((wf) => {
-    if (wf && wf.id_workflow && wf.id_workflow !== 'WF_DEFAULT' && !seen.has(wf.id_workflow)) {
-      seen.add(wf.id_workflow)
-      out.push(wf)
-    }
-  })
-  return out
-})
+const modalSuggestedWorkflowChips = computed(() => modalProjectLinkedWorkflows.value)
 
 const selectModalWorkflowQuick = (wfId) => {
-  formData.value.id_workflow = wfId || ''
-  onModalWorkflowChange()
-}
-
-const modalCustomerFlowHint = computed(() => {
-  if (!formData.value.ten_cong_ty && !formData.value.ten_khach_hang) return ''
-  const resolved = resolveCompanyWorkflows({
-    ma_khach_hang: formData.value.ma_khach_hang,
-    ma_cong_ty: formData.value.ma_cong_ty,
-    ten_cong_ty: formData.value.ten_cong_ty,
-    ten_khach_hang: formData.value.ten_khach_hang
-  })
-  if (resolved.count > 1) {
-    return `KH này có ${resolved.count} Khung Pipeline riêng`
-  }
-  if (resolved.count === 1) {
-    return `KH có Khung riêng: ${resolved.primary.name_workflow}`
-  }
-  return 'Đang dùng Khung Chuẩn Hệ Thống'
-})
-
-const applyCustomerFlowToModalForm = () => {
-  if (isEditing.value || pipelineModalSource.value === 'kanban') return
-  const resolved = resolveCompanyWorkflows({
-    ma_khach_hang: formData.value.ma_khach_hang,
-    ma_cong_ty: formData.value.ma_cong_ty,
-    ten_cong_ty: formData.value.ten_cong_ty,
-    ten_khach_hang: formData.value.ten_khach_hang
-  })
-  formData.value.id_workflow = resolved.primary.id_workflow === 'WF_DEFAULT' ? '' : resolved.primary.id_workflow
+  formData.value.id_workflow = wfId || 'WF_DEFAULT'
   onModalWorkflowChange()
 }
 
@@ -11025,12 +11807,14 @@ const onSelectProjectInPipelineModal = () => {
     formData.value.ma_khach_hang = proj.ma_khach_hang || genMaKH(formData.value.ten_khach_hang, formData.value.ten_cong_ty)
   }
 
-  if (!isEditing.value && !formData.value.id_workflow) {
-    if (isCardSameAsProjectRootCustomer(formData.value, proj) && proj.default_workflow_id) {
-      formData.value.id_workflow = proj.default_workflow_id === 'WF_DEFAULT' ? '' : proj.default_workflow_id
+  if (!isEditing.value && (!formData.value.id_workflow || formData.value.id_workflow === 'WF_DEFAULT') && pipelineModalSource.value !== 'kanban') {
+    const linked = normalizeLinkedWorkflowIds(proj.linked_workflow_ids)
+    if (proj.default_workflow_id) {
+      formData.value.id_workflow = proj.default_workflow_id
       onModalWorkflowChange()
-    } else {
-      applyCustomerFlowToModalForm()
+    } else if (linked.length > 0) {
+      formData.value.id_workflow = linked[0]
+      onModalWorkflowChange()
     }
   }
 }
@@ -11282,9 +12066,10 @@ const openAddModal = () => {
   isEditing.value = false
   pipelineModalSource.value = 'kanban'
   isStudioLeftRailOpen.value = true
+  mobileTaskModalTab.value = 'work'
   openTlSelectKey.value = null
   formData.value = { ...defaultFormData }
-  formData.value.id_workflow = selectedWorkflowId.value === 'WF_DEFAULT' ? '' : selectedWorkflowId.value
+  formData.value.id_workflow = selectedWorkflowId.value || 'WF_DEFAULT'
 
   if (filterConfig.value.companyName || filterConfig.value.customerName) {
     const compText = filterConfig.value.companyName ? activeKanbanCompanyFilterLabel.value : ''
@@ -11297,14 +12082,6 @@ const openAddModal = () => {
     formData.value.ten_khach_hang = pair.ten_khach_hang || ''
     formData.value.ma_cong_ty = genMaCT(formData.value.ten_cong_ty)
     formData.value.ma_khach_hang = genMaKH(formData.value.ten_khach_hang, formData.value.ten_cong_ty)
-  } else if (selectedWorkflowId.value && selectedWorkflowId.value !== 'WF_DEFAULT') {
-    const activeWfMeta = uniqueWorkflows.value.find((w) => w.id_workflow === selectedWorkflowId.value)
-    if (activeWfMeta && activeWfMeta.workflow_scope === 'customer' && (activeWfMeta.ten_cong_ty || activeWfMeta.ten_khach_hang)) {
-      formData.value.ten_cong_ty = activeWfMeta.ten_cong_ty || ''
-      formData.value.ten_khach_hang = activeWfMeta.ten_khach_hang || ''
-      formData.value.ma_cong_ty = activeWfMeta.ma_cong_ty || genMaCT(formData.value.ten_cong_ty)
-      formData.value.ma_khach_hang = activeWfMeta.ma_khach_hang || genMaKH(formData.value.ten_khach_hang, formData.value.ten_cong_ty)
-    }
   }
 
   if (filterConfig.value.projectId && filterConfig.value.projectId !== '__STANDALONE__') {
@@ -11347,8 +12124,13 @@ const openEditModal = (item) => {
   isEditing.value = true
   pipelineModalSource.value = activeTab.value === 'projects' || showProjectDetailModal.value ? 'project' : 'kanban'
   isStudioLeftRailOpen.value = !(typeof window !== 'undefined' && window.innerWidth <= 1100)
+  mobileTaskModalTab.value = 'work'
   openTlSelectKey.value = null
-  formData.value = { ...defaultFormData, ...item }
+  formData.value = {
+    ...defaultFormData,
+    ...item,
+    id_workflow: getEffectiveItemWorkflowId(item)
+  }
   originalFormData.value = JSON.stringify(formData.value)
   parseFinishTime(item.finish_time)
   showModal.value = true
@@ -11364,8 +12146,13 @@ const duplicateItem = (item) => {
   isEditing.value = false
   pipelineModalSource.value = activeTab.value === 'projects' || showProjectDetailModal.value ? 'project' : 'kanban'
   isStudioLeftRailOpen.value = true
+  mobileTaskModalTab.value = 'work'
   openTlSelectKey.value = null
-  const copy = { ...defaultFormData, ...item }
+  const copy = {
+    ...defaultFormData,
+    ...item,
+    id_workflow: getEffectiveItemWorkflowId(item)
+  }
   copy.Id_pipeline = ''
   copy.isSuccess = ''
   copy.created_time = getCurrentFormattedTime()
@@ -11379,10 +12166,14 @@ const showPipelineFilesVaultModal = ref(false)
 
 const onStudioModalKeydown = (e) => {
   if (baogiaDialog.value.open) return
+  if (workflowDesignerRef.value?.isAnyModalOpen?.()) return
   const anyStudioOpen =
     showModal.value ||
     showProjectFormModal.value ||
     showProjectDetailModal.value ||
+    showAttachWfToProjectModal.value ||
+    Boolean(openKanbanFilterMenu.value) ||
+    Boolean(openProjFilterMenu.value) ||
     showPipelineFilesVaultModal.value ||
     showAddCustomerModal.value ||
     showCustomerModal.value ||
@@ -11485,9 +12276,19 @@ const onStudioModalKeydown = (e) => {
       openTlSelectKey.value = null
       return
     }
-    if (showProjectFormWfPicker.value) {
+    if (openKanbanFilterMenu.value) {
       e.preventDefault()
-      showProjectFormWfPicker.value = false
+      closeKanbanFilterPickerModal()
+      return
+    }
+    if (openProjFilterMenu.value) {
+      e.preventDefault()
+      closeProjFilterPickerModal()
+      return
+    }
+    if (showAttachWfToProjectModal.value) {
+      e.preventDefault()
+      closeAttachWfToProjectModal()
       return
     }
     if (showManageProjectWfDrawer.value) {
@@ -11529,7 +12330,10 @@ const onStudioModalKeydown = (e) => {
 
 const saveItem = async () => {
   const isUpdate = isEditing.value
-  const optimisticData = { ...formData.value }
+  const optimisticData = {
+    ...formData.value,
+    id_workflow: getEffectiveItemWorkflowId(formData.value)
+  }
   if (optimisticData.id_project) {
     const pr = projectsList.value.find((p) => p.id_project === optimisticData.id_project)
     if (pr) optimisticData.ten_du_an = pr.ten_du_an
@@ -11641,7 +12445,7 @@ const requestAction = async (item, actionType) => {
 // =========================================================
 const showCustomerModal = ref(false)
 const customerSearchStr = ref('')
-const customerSearchMode = ref('pipeline') // 'pipeline' | 'project' | 'project_quick_wf'
+const customerSearchMode = ref('pipeline') // 'pipeline' | 'project'
 const customerPickerFocus = ref('company') // 'company' | 'contact'
 const showAddCustomerModal = ref(false)
 const isSavingCustomer = ref(false)
@@ -11724,9 +12528,9 @@ const normalizeCustomerRow = (key, row) => {
     }
   }
   const maKH = String(row.ma_khach_hang ?? row.Ma_khach_hang ?? key ?? '')
-  const tenKH = String(row.ten_khach_hang ?? row.Ten_khach_hang ?? '')
+  const tenKH = String(row.ten_khach_hang ?? row.Ten_khach_hang ?? row.name ?? '')
   const maCT = String(row.ma_cong_ty ?? row.Ma_cong_ty ?? '')
-  const tenCT = String(row.ten_cong_ty ?? row.Ten_cong_ty ?? '')
+  const tenCT = String(row.ten_cong_ty ?? row.Ten_cong_ty ?? row.company ?? '')
   const tagArr = Array.isArray(row.tagKH)
     ? row.tagKH.map((t) => String(t || '').trim()).filter(Boolean)
     : []
@@ -11850,7 +12654,6 @@ const fetchCustomersData = async () => {
 
 const activePickerCompanyHint = computed(() => {
   if (customerSearchMode.value === 'project') return String(projectForm.value.ten_cong_ty || '').trim()
-  if (customerSearchMode.value === 'project_quick_wf') return String(quickProjWfForm.value.ten_cong_ty || '').trim()
   return String(formData.value.ten_cong_ty || '').trim()
 })
 
@@ -11891,12 +12694,7 @@ const filteredCustomers = computed(() => {
 
 const isCustomerPickerRowActive = (c) => {
   if (!c) return false
-  const target =
-    customerSearchMode.value === 'project'
-      ? projectForm.value
-      : customerSearchMode.value === 'project_quick_wf'
-        ? quickProjWfForm.value
-        : formData.value
+  const target = customerSearchMode.value === 'project' ? projectForm.value : formData.value
   const curComp = String(target.ten_cong_ty || '').trim().toLowerCase()
   const curCus = String(target.ten_khach_hang || '').trim().toLowerCase()
   const rowComp = String(c.Ten_cong_ty || '').trim().toLowerCase()
@@ -11923,14 +12721,10 @@ const applyManualCustomerSearchInput = () => {
       formData.value.ten_khach_hang = val
     } else {
       formData.value.ten_cong_ty = val
-      applyCustomerFlowToModalForm()
     }
   } else if (customerSearchMode.value === 'project') {
     if (customerPickerFocus.value === 'contact') projectForm.value.ten_khach_hang = val
     else projectForm.value.ten_cong_ty = val
-  } else if (customerSearchMode.value === 'project_quick_wf') {
-    if (customerPickerFocus.value === 'contact') quickProjWfForm.value.ten_khach_hang = val
-    else quickProjWfForm.value.ten_cong_ty = val
   }
   showCustomerModal.value = false
 }
@@ -11948,19 +12742,7 @@ const clearPipelineContactField = () => {
 }
 
 const selectCustomer = (c) => {
-  if (customerSearchMode.value === 'project_quick_wf') {
-    quickProjWfForm.value.ten_khach_hang = c.Ten_khach_hang
-    quickProjWfForm.value.ten_cong_ty = c.Ten_cong_ty
-    quickProjWfForm.value.ma_khach_hang = c.Ma_khach_hang
-    quickProjWfForm.value.ma_cong_ty = c.Ma_cong_ty
-    if (!quickProjWfForm.value.name_workflow) {
-      const projLabel =
-        showProjectDetailModal.value && activeProjectDetail.value?.ten_du_an
-          ? activeProjectDetail.value.ten_du_an
-          : 'Flow Riêng'
-      quickProjWfForm.value.name_workflow = `${c.Ten_cong_ty || c.Ten_khach_hang} — ${projLabel}`
-    }
-  } else if (customerSearchMode.value === 'project') {
+  if (customerSearchMode.value === 'project') {
     projectForm.value.ten_khach_hang = c.Ten_khach_hang
     projectForm.value.ten_cong_ty = c.Ten_cong_ty
     projectForm.value.ma_khach_hang = c.Ma_khach_hang
@@ -11970,7 +12752,6 @@ const selectCustomer = (c) => {
     formData.value.ten_cong_ty = c.Ten_cong_ty
     formData.value.ma_khach_hang = c.Ma_khach_hang
     formData.value.ma_cong_ty = c.Ma_cong_ty
-    applyCustomerFlowToModalForm()
   }
   showCustomerModal.value = false
 }
@@ -12126,19 +12907,7 @@ const applyCustomerRecordToActiveTarget = (cusRecord) => {
   const maCT = String(cusRecord?.ma_cong_ty ?? cusRecord?.Ma_cong_ty ?? '').trim()
   const tenCT = String(cusRecord?.ten_cong_ty ?? cusRecord?.Ten_cong_ty ?? '').trim()
 
-  if (customerSearchMode.value === 'project_quick_wf') {
-    quickProjWfForm.value.ten_cong_ty = tenCT
-    quickProjWfForm.value.ten_khach_hang = tenKH
-    quickProjWfForm.value.ma_cong_ty = maCT
-    quickProjWfForm.value.ma_khach_hang = maKH
-    if (!quickProjWfForm.value.name_workflow) {
-      const projLabel =
-        showProjectDetailModal.value && activeProjectDetail.value?.ten_du_an
-          ? activeProjectDetail.value.ten_du_an
-          : 'Dự án'
-      quickProjWfForm.value.name_workflow = `${tenCT || tenKH} — ${projLabel}`
-    }
-  } else if (customerSearchMode.value === 'project') {
+  if (customerSearchMode.value === 'project') {
     projectForm.value.ten_cong_ty = tenCT
     projectForm.value.ten_khach_hang = tenKH
     projectForm.value.ma_cong_ty = maCT
@@ -12148,19 +12917,13 @@ const applyCustomerRecordToActiveTarget = (cusRecord) => {
     formData.value.ten_khach_hang = tenKH
     formData.value.ma_cong_ty = maCT
     formData.value.ma_khach_hang = maKH
-    applyCustomerFlowToModalForm()
   }
   showCustomerModal.value = false
 }
 
 const openAddCustomerModal = (mode = 'pipeline') => {
   customerSearchMode.value = mode
-  const targetForm =
-    mode === 'project'
-      ? projectForm.value
-      : mode === 'project_quick_wf'
-        ? quickProjWfForm.value
-        : formData.value
+  const targetForm = mode === 'project' ? projectForm.value : formData.value
 
   const curMaKH = String(targetForm?.ma_khach_hang || '').trim()
   const curComp = String(targetForm?.ten_cong_ty || '').trim()
@@ -13648,13 +14411,9 @@ const vaultFileSearchQuery = ref('')
 const vaultFileCategoryFilter = ref('all')
 
 const displayedKanbanItems = computed(() =>
-  items.value.filter((item) => {
-    const wfMatch =
-      selectedWorkflowId.value === 'WF_DEFAULT'
-        ? !item.id_workflow || item.id_workflow === 'WF_DEFAULT'
-        : item.id_workflow === selectedWorkflowId.value
-    return wfMatch && matchesSearch(item)
-  })
+  items.value.filter(
+    (item) => getEffectiveItemWorkflowId(item) === selectedWorkflowId.value && matchesSearch(item)
+  )
 )
 
 const activeKanbanFilesVault = computed(() => {
@@ -13663,6 +14422,17 @@ const activeKanbanFilesVault = computed(() => {
 
   const reportByIdMap = new Map()
   const reverseReportMap = new Map()
+  const explicitReportOwners = new Map()
+
+  items.value.forEach((p) => {
+    if (!p || !p.Id_pipeline) return
+    const pid = String(p.Id_pipeline).trim()
+    if (!pid) return
+    getPipeReportIds(p).forEach((rid) => {
+      if (!explicitReportOwners.has(rid)) explicitReportOwners.set(rid, new Set())
+      explicitReportOwners.get(rid).add(pid)
+    })
+  })
 
   reports.value.forEach((rep) => {
     if (!rep || !rep.id) return
@@ -13691,12 +14461,11 @@ const activeKanbanFilesVault = computed(() => {
     const ownerSummary = partyLabel ? `${pipeTitle} (${partyLabel})` : pipeTitle
 
     const reportCoveredQlfIds = new Set()
-    const linkedRepIds = [
-      ...new Set([
-        ...getPipeReportIds(pipe),
-        ...(reverseReportMap.get(pipeId) || [])
-      ])
-    ]
+    const explicitRepIds = getPipeReportIds(pipe)
+    const validReverseRepIds = (reverseReportMap.get(pipeId) || []).filter(
+      (rid) => !explicitReportOwners.has(rid) || explicitReportOwners.get(rid).has(pipeId)
+    )
+    const linkedRepIds = [...new Set([...explicitRepIds, ...validReverseRepIds])]
 
     // 1. Source A: Files from Linked Reports
     linkedRepIds.forEach((repId) => {
@@ -13789,6 +14558,14 @@ const activeKanbanFilesVault = computed(() => {
       directQlfIds.forEach((qlfId) => {
         const linked = quanLyFiles.value.find((f) => String(f.id) === qlfId)
         if (!linked) return
+        const qlfPipes = String(linked.id_pipeline || linked.ID_PIPELINE || '')
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+        if (qlfPipes.length > 0 && !qlfPipes.includes(pipeId)) return
+        const qlfRepId = String(linked.id_report || linked.ID_REPORT || '').trim()
+        if (qlfRepId && !linkedRepIds.includes(qlfRepId)) return
+
         const linkedFiles = Array.isArray(linked.linkFileBaoGia)
           ? linked.linkFileBaoGia
           : typeof linked.linkFileBaoGia === 'string' && linked.linkFileBaoGia.trim()
@@ -13858,6 +14635,231 @@ const filteredVaultDirectFiles = computed(() => {
   return activeKanbanFilesVault.value.directFiles.filter(matchesVaultModalFilter)
 })
 
+const filteredVaultAllFiles = computed(() => [
+  ...filteredVaultReportFiles.value,
+  ...filteredVaultDirectFiles.value
+])
+
+const selectedVaultFileKeys = ref([])
+const vaultBulkDownloading = ref(false)
+
+const isVaultFileSelected = (key) => selectedVaultFileKeys.value.includes(key)
+
+const toggleVaultFileSelection = (key) => {
+  if (!key) return
+  if (selectedVaultFileKeys.value.includes(key)) {
+    selectedVaultFileKeys.value = selectedVaultFileKeys.value.filter((k) => k !== key)
+  } else {
+    selectedVaultFileKeys.value = [...selectedVaultFileKeys.value, key]
+  }
+}
+
+const getSelectedVaultFiles = (files = []) => {
+  const keySet = new Set(selectedVaultFileKeys.value)
+  return (files || []).filter((f) => f && f.url && keySet.has(f.key))
+}
+
+const areAllVaultFilesSelected = (files = []) => {
+  const valid = (files || []).filter((f) => f && f.key)
+  if (valid.length === 0) return false
+  const keySet = new Set(selectedVaultFileKeys.value)
+  return valid.every((f) => keySet.has(f.key))
+}
+
+const toggleSelectAllVaultFiles = (files = []) => {
+  const validKeys = (files || []).map((f) => f && f.key).filter(Boolean)
+  if (validKeys.length === 0) return
+  if (areAllVaultFilesSelected(files)) {
+    const removeSet = new Set(validKeys)
+    selectedVaultFileKeys.value = selectedVaultFileKeys.value.filter((k) => !removeSet.has(k))
+  } else {
+    const merged = new Set([...selectedVaultFileKeys.value, ...validKeys])
+    selectedVaultFileKeys.value = Array.from(merged)
+  }
+}
+
+const resolveVaultDownloadFileName = (url, defaultName) => {
+  let name = String(defaultName || 'file').replace(/[\\/:*?"<>|]/g, '_').trim() || 'file'
+  const lastPart = String(url || '').split('?')[0].split('/').pop() || ''
+  const extIdx = lastPart.lastIndexOf('.')
+  if (extIdx > -1) {
+    const ext = lastPart.substring(extIdx)
+    if (ext && !name.toLowerCase().endsWith(ext.toLowerCase())) name += ext
+  }
+  return name
+}
+
+const triggerVaultBlobDownload = (blob, filename) => {
+  const objUrl = window.URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.style.display = 'none'
+  a.href = objUrl
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  setTimeout(() => {
+    if (a.parentNode) document.body.removeChild(a)
+    window.URL.revokeObjectURL(objUrl)
+  }, 1200)
+}
+
+const downloadMultipleVaultFiles = async (files = [], emptyMsg = 'Không có tệp để tải xuống') => {
+  const list = (files || []).filter((f) => f && f.url)
+  if (list.length === 0) {
+    showToast(emptyMsg, 'warning')
+    return
+  }
+  if (vaultBulkDownloading.value) return
+  vaultBulkDownloading.value = true
+  let okCount = 0
+  let fallbackCount = 0
+  try {
+    showToast(`Đang tải ${list.length} tệp...`, 'info', 2500)
+    for (let i = 0; i < list.length; i++) {
+      const f = list[i]
+      const dlName = resolveVaultDownloadFileName(f.url, f.name)
+      try {
+        const res = await fetch(getDownloadUrl(f.url))
+        if (!res.ok) throw new Error('Fetch failed')
+        const blob = await res.blob()
+        triggerVaultBlobDownload(blob, dlName)
+        okCount++
+      } catch {
+        window.open(getDownloadUrl(f.url), '_blank')
+        fallbackCount++
+      }
+      if (i < list.length - 1) {
+        await new Promise((r) => setTimeout(r, 240))
+      }
+    }
+    if (fallbackCount > 0) {
+      showToast(`Đã tải ${okCount} tệp (${fallbackCount} tệp mở tab tải trực tiếp)`, 'success', 3200)
+    } else {
+      showToast(`Đã tải xuống ${okCount} tệp thành công`, 'success', 2800)
+    }
+  } finally {
+    vaultBulkDownloading.value = false
+  }
+}
+
+const getUniqueZipFileName = (rawName, usedNames) => {
+  const clean = rawName || 'file'
+  if (!usedNames.has(clean.toLowerCase())) {
+    usedNames.add(clean.toLowerCase())
+    return clean
+  }
+  const dotIdx = clean.lastIndexOf('.')
+  const base = dotIdx > 0 ? clean.slice(0, dotIdx) : clean
+  const ext = dotIdx > 0 ? clean.slice(dotIdx) : ''
+  let n = 2
+  while (usedNames.has(`${base} (${n})${ext}`.toLowerCase())) n++
+  const unique = `${base} (${n})${ext}`
+  usedNames.add(unique.toLowerCase())
+  return unique
+}
+
+const downloadVaultFilesAsZip = async (files = [], zipPrefix = 'pipeline-files') => {
+  const list = (files || []).filter((f) => f && f.url)
+  if (list.length === 0) {
+    showToast('Không có tệp nào để nén ZIP', 'warning')
+    return
+  }
+  if (vaultBulkDownloading.value) return
+  vaultBulkDownloading.value = true
+  try {
+    showToast(`Đang nén ${list.length} tệp vào file ZIP...`, 'info', 3500)
+    const zip = new JSZip()
+    const usedNames = new Set()
+    let addedCount = 0
+    let failedCount = 0
+
+    for (const f of list) {
+      const targetName = resolveVaultDownloadFileName(f.url, f.name)
+      try {
+        const res = await fetch(f.url)
+        if (!res.ok) throw new Error('Fetch failed')
+        const blob = await res.blob()
+        const uniqueName = getUniqueZipFileName(targetName, usedNames)
+        zip.file(uniqueName, blob)
+        addedCount++
+      } catch {
+        failedCount++
+      }
+    }
+
+    if (addedCount === 0) {
+      showToast('Không thể tải dữ liệu tệp để nén ZIP (lỗi kết nối hoặc CORS)', 'error', 3600)
+      return
+    }
+
+    const zipBlob = await zip.generateAsync({ type: 'blob' })
+    const dateStamp = new Date().toISOString().slice(0, 10)
+    saveAs(zipBlob, `${zipPrefix}-${dateStamp}.zip`)
+    if (failedCount > 0) {
+      showToast(`Đã tải ZIP (${addedCount} tệp, ${failedCount} tệp không đọc được)`, 'warning', 3600)
+    } else {
+      showToast(`Đã tải file ZIP gồm ${addedCount} tệp`, 'success', 3000)
+    }
+  } finally {
+    vaultBulkDownloading.value = false
+  }
+}
+
+const mobileProjFilterOpen = ref(true)
+const mobileProjSubView = ref('projects')
+const mobileKanbanFilterOpen = ref(false)
+const mobileKanbanFilesOpen = ref(false)
+
+const activeProjectFiltersCount = computed(() => {
+  let cnt = 0
+  if (projectFilter.value.projectId) cnt++
+  if (projectFilter.value.companyName) cnt++
+  if (projectFilter.value.customerName) cnt++
+  return cnt
+})
+
+const activeKanbanFiltersCount = computed(() => {
+  let cnt = 0
+  if (filterConfig.value.projectId && filterConfig.value.projectId !== '__STANDALONE__') cnt++
+  if (filterConfig.value.workflowId) cnt++
+  if (filterConfig.value.companyName) cnt++
+  if (filterConfig.value.customerName) cnt++
+  if (filterConfig.value.filterMode && filterConfig.value.filterMode !== 'all') cnt++
+  return cnt
+})
+
+const cycleMobileTheme = (evt) => {
+  const order = ['dark', 'light', 'custom']
+  const curIdx = order.indexOf(uiTheme.value)
+  const nextTheme = order[(curIdx + 1) % order.length]
+  if (nextTheme === 'custom' && evt) {
+    updateTunerAnchorFromEvent(evt)
+  }
+  setUiTheme(nextTheme)
+  const labelMap = {
+    dark: 'Dark Navy',
+    light: 'Light Blue',
+    custom: 'Custom Glass'
+  }
+  showToast(`Giao diện: ${labelMap[nextTheme] || nextTheme}`, 'info', 1600)
+}
+
+const handleMobileDockCreate = () => {
+  if (activeTab.value === 'projects') {
+    openAddProjectModal()
+  } else if (activeTab.value === 'workflow') {
+    if (workflowDesignerRef.value && typeof workflowDesignerRef.value.openCreateWorkflow === 'function') {
+      workflowDesignerRef.value.openCreateWorkflow()
+    }
+  } else {
+    openAddModal()
+  }
+}
+
+const openMobileFilesVault = () => {
+  openPipelineFilesVaultModal('all')
+}
+
 const openPipelineFilesVaultModal = (initialFilter = 'all') => {
   vaultFileSearchQuery.value = ''
   vaultFileCategoryFilter.value = initialFilter || 'all'
@@ -13868,6 +14870,7 @@ const locateFileOwnerCardOnBoard = (pipeId) => {
   const cleanId = String(pipeId || '').trim()
   if (!cleanId) return
   showPipelineFilesVaultModal.value = false
+  if (activeTab.value !== 'kanban') activeTab.value = 'kanban'
 
   const pipe = items.value.find((it) => it.Id_pipeline === cleanId)
   if (pipe) {
@@ -14344,6 +15347,30 @@ const showExportModal = ref(false)
 const removedExportIds = ref([])
 const exportFilters = ref({ id_workflow: '', id_project: '', dateFrom: '', dateTo: '' })
 
+const isAnyPipelineModalOpen = computed(() =>
+  Boolean(
+    showProjectFormModal.value ||
+      showProjectDetailModal.value ||
+      showAttachPipelineDrawer.value ||
+      showManageProjectWfDrawer.value ||
+      showAttachWfToProjectModal.value ||
+      showModal.value ||
+      showPipelineFilesVaultModal.value ||
+      showCustomerModal.value ||
+      showAddCustomerModal.value ||
+      showTypePickerModal.value ||
+      showReportContentModal.value ||
+      showScanConfirmModal.value ||
+      showExportModal.value ||
+      openProjFilterMenu.value ||
+      openKanbanFilterMenu.value ||
+      previewQuanLyFileImage.value ||
+      mobileCardActionSheet.value ||
+      baogiaDialog.value?.open ||
+      workflowDesignerRef.value?.isAnyModalOpen?.()
+  )
+)
+
 watch(showExportModal, (v) => {
   if (v) removedExportIds.value = []
 })
@@ -14357,11 +15384,7 @@ const parseDMY = (dmyStr) => {
 const exportPreviewList = computed(() => {
   let list = items.value.filter(matchesSearch)
   if (exportFilters.value.id_workflow) {
-    if (exportFilters.value.id_workflow === 'WF_DEFAULT') {
-      list = list.filter((i) => !i.id_workflow || i.id_workflow === 'WF_DEFAULT')
-    } else {
-      list = list.filter((i) => i.id_workflow === exportFilters.value.id_workflow)
-    }
+    list = list.filter((i) => getEffectiveItemWorkflowId(i) === exportFilters.value.id_workflow)
   }
   if (exportFilters.value.id_project) {
     list = list.filter((i) => i.id_project === exportFilters.value.id_project)
@@ -14542,13 +15565,65 @@ const exportToExcel = async (listToExport = null) => {
 // =========================================================
 const openCardPanelMap = ref({})
 const openKanbanCardMenuId = ref('')
+const mobileCardActionSheet = ref(null) // { card, currentColId }
 
-const toggleKanbanCardMenu = (cardId) => {
+const closeMobileCardActionSheet = () => {
+  mobileCardActionSheet.value = null
+}
+
+const toggleKanbanCardMenu = (cardId, item = null, colId = '') => {
+  const isMob =
+    isMobile.value || (typeof window !== 'undefined' && window.innerWidth <= 768)
+  if (isMob) {
+    openKanbanCardMenuId.value = ''
+    if (mobileCardActionSheet.value?.card?.Id_pipeline === cardId) {
+      mobileCardActionSheet.value = null
+      return
+    }
+    const targetCard = item || items.value.find((it) => it.Id_pipeline === cardId)
+    if (targetCard) {
+      mobileCardActionSheet.value = {
+        card: targetCard,
+        currentColId: colId || targetCard.stage || ''
+      }
+    }
+    return
+  }
   openKanbanCardMenuId.value = openKanbanCardMenuId.value === cardId ? '' : cardId
 }
 
 const closeKanbanCardMenu = () => {
   openKanbanCardMenuId.value = ''
+}
+
+const handleMobileSheetMoveStage = (colId) => {
+  const card = mobileCardActionSheet.value?.card
+  mobileCardActionSheet.value = null
+  if (card) moveCardToColumn(card, colId)
+}
+
+const handleMobileSheetOpenDetail = () => {
+  const card = mobileCardActionSheet.value?.card
+  mobileCardActionSheet.value = null
+  if (card) openEditModal(card)
+}
+
+const handleMobileSheetDuplicate = () => {
+  const card = mobileCardActionSheet.value?.card
+  mobileCardActionSheet.value = null
+  if (card) duplicateItem(card)
+}
+
+const handleMobileSheetOpenProject = () => {
+  const card = mobileCardActionSheet.value?.card
+  mobileCardActionSheet.value = null
+  if (card?.id_project) openProjectById(card.id_project)
+}
+
+const handleMobileSheetDelete = () => {
+  const card = mobileCardActionSheet.value?.card
+  mobileCardActionSheet.value = null
+  if (card) requestAction(card, 'delete')
 }
 
 const handleKanbanMenuMoveStage = (item, colId) => {
@@ -14693,6 +15768,7 @@ const checkPendingPipelineCreate = () => {
     const parsed = JSON.parse(pendingPipeline)
     sessionStorage.removeItem('pendingPipelineCreate')
     setTimeout(() => {
+      activeTab.value = 'kanban'
       openAddModal()
       formData.value.content_of_contract_po = parsed.content || ''
       formData.value.ghi_chu_hop_dong = parsed.note || ''
@@ -14821,17 +15897,7 @@ const refreshWorkspace = async () => {
 
 const checkMobile = () => {
   if (typeof window === 'undefined') return
-  const wasMobile = isMobile.value
   isMobile.value = window.innerWidth <= 768
-  if (isMobile.value && !wasMobile) {
-    COLUMNS.value.forEach((c, idx) => {
-      collapsedCols.value[c.id] = idx !== 0
-    })
-  } else if (!isMobile.value && wasMobile) {
-    COLUMNS.value.forEach((c) => {
-      collapsedCols.value[c.id] = c.id === 'that_bai' || c.id === 'hoan_thanh'
-    })
-  }
 }
 
 let unsubscribePipelineRealtime = null
@@ -15152,7 +16218,8 @@ onUnmounted(() => {
 .pipeline-workspace.page.theme-custom-glass,
 .pl-modal-overlay.theme-custom-glass,
 .pl-dialog-overlay.theme-custom-glass,
-.pl-tuner-popover.theme-custom-glass {
+.pl-tuner-popover.theme-custom-glass,
+.smart-toast-wrap.theme-custom-glass {
   --bg-surface-1: linear-gradient(160deg, var(--cg-panel-top, rgba(15, 35, 58, 0.52)), var(--cg-panel-bot, rgba(8, 22, 40, 0.38)));
   --bg-surface-2: linear-gradient(160deg, var(--cg-card-top, rgba(20, 44, 70, 0.58)), var(--cg-card-bot, rgba(10, 26, 46, 0.42)));
   --bg-surface-3: rgba(255, 255, 255, 0.14);
@@ -15368,20 +16435,33 @@ onUnmounted(() => {
   gap: 12px;
 }
 
-/* UNIFIED SLIM TOPBAR (LEFT-ALIGNED WORKSPACE TABS) */
+/* UNIFIED TOPBAR (CENTERED WORKSPACE TABS · WORKSPACE PILLS + COLOR-CODED GLOW) */
 .bg-topbar.is-unified-bar {
-  padding: 6px 11px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 7px 12px;
   gap: 10px;
-  border-radius: 12px;
-  min-height: 44px;
+  border-radius: 14px;
+  min-height: 50px;
 }
 
-.pl-topbar-left {
+.pl-topbar-left-slot {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: flex-start;
   min-width: 0;
-  flex-wrap: wrap;
+}
+
+.pl-topbar-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+
+.bg-topbar.is-unified-bar .bg-topbar-right {
+  justify-self: end;
 }
 
 .bg-topbar.is-unified-bar .bg-brand-title-wrap {
@@ -15402,22 +16482,178 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
-.pl-workspace-tabs.is-slim-tabs {
-  padding: 2px;
-  gap: 3px;
-  border-radius: 9px;
+.pl-workspace-tabs {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 13px;
+  background: var(--bg-input-well);
+  border: 1px solid var(--bg-border-subtle);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.14);
 }
 
-.pl-workspace-tabs.is-slim-tabs .bg-seg-btn {
-  padding: 4.5px 10px;
-  font-size: 12px;
+.pl-ws-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--bg-text-muted);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+}
+
+.pl-ws-icon {
+  width: 24px;
+  height: 24px;
   border-radius: 7px;
-  gap: 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
 }
 
-.pl-workspace-tabs.is-slim-tabs .pl-ws-count {
-  padding: 0.5px 6px;
-  font-size: 10.5px;
+.pl-ws-tab.is-tab-projects .pl-ws-icon {
+  background: rgba(14, 165, 233, 0.14);
+  color: #38bdf8;
+}
+
+.pl-ws-tab.is-tab-kanban .pl-ws-icon {
+  background: rgba(16, 185, 129, 0.14);
+  color: #34d399;
+}
+
+.pl-ws-tab.is-tab-workflow .pl-ws-icon {
+  background: rgba(249, 115, 22, 0.14);
+  color: #fb923c;
+}
+
+.pl-ws-tab:hover:not(.is-active) {
+  color: var(--bg-text-primary);
+  background: var(--bg-surface-3);
+  border-color: var(--bg-border-subtle);
+  transform: translateY(-0.5px);
+}
+
+.pl-ws-tab.is-active {
+  color: #ffffff;
+}
+
+.pl-ws-tab.is-active::after {
+  content: '';
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  bottom: 2px;
+  height: 2.5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.78);
+}
+
+.pl-ws-tab.is-tab-projects.is-active {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+  border-color: rgba(125, 211, 252, 0.45);
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.36), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.pl-ws-tab.is-tab-kanban.is-active {
+  background: linear-gradient(135deg, #059669 0%, #0d9488 100%);
+  border-color: rgba(110, 231, 183, 0.45);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.36), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.pl-ws-tab.is-tab-workflow.is-active {
+  background: linear-gradient(135deg, #ea580c 0%, #f59e0b 100%);
+  border-color: rgba(253, 186, 116, 0.5);
+  box-shadow: 0 4px 14px rgba(234, 88, 12, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.pl-ws-tab.is-active .pl-ws-icon {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.pl-workspace-tabs .pl-ws-count {
+  padding: 1.5px 7px;
+  font-size: 11px;
+  font-weight: 800;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.16);
+  color: inherit;
+}
+
+.pl-ws-tab.is-active .pl-ws-count {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+.theme-light-blue .pl-workspace-tabs {
+  background: rgba(226, 232, 240, 0.65);
+  border-color: rgba(148, 163, 184, 0.35);
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+.theme-light-blue .pl-ws-tab.is-tab-projects:not(.is-active) .pl-ws-icon {
+  background: rgba(2, 132, 199, 0.14);
+  border: 1px solid rgba(2, 132, 199, 0.22);
+  color: #0284c7;
+}
+
+.theme-light-blue .pl-ws-tab.is-tab-kanban:not(.is-active) .pl-ws-icon {
+  background: rgba(5, 150, 105, 0.14);
+  border: 1px solid rgba(5, 150, 105, 0.22);
+  color: #059669;
+}
+
+.theme-light-blue .pl-ws-tab.is-tab-workflow:not(.is-active) .pl-ws-icon {
+  background: rgba(234, 88, 12, 0.14);
+  border: 1px solid rgba(234, 88, 12, 0.22);
+  color: #ea580c;
+}
+
+.theme-light-blue .pl-ws-tab.is-active .pl-ws-icon {
+  background: rgba(255, 255, 255, 0.26);
+  color: #ffffff;
+}
+
+.theme-custom-glass .pl-workspace-tabs {
+  background: rgba(15, 23, 42, 0.28);
+  border-color: rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(12px);
+}
+
+/* DESKTOP DEFAULTS FOR MOBILE-ONLY CONTROLS */
+.pl-ws-lbl.is-mobile-only,
+.pl-mob-collapse-btn,
+.pl-mob-filter-cnt,
+.pl-mob-proj-switch,
+.pl-mob-vault-summary,
+.pl-mob-unified-bar,
+.pl-mobile-dock {
+  display: none;
+}
+
+@media (max-width: 860px) and (min-width: 769px) {
+  .bg-topbar.is-unified-bar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .pl-workspace-tabs {
+    flex-wrap: wrap;
+  }
 }
 
 .pl-command-actions.is-slim-actions {
@@ -15747,6 +16983,13 @@ onUnmounted(() => {
   gap: 8px;
   flex: 1 1 auto;
   min-height: 0;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+}
+
+.pl-tab-body[style*='display: none'] {
+  display: none !important;
 }
 
 .bg-bento-deck {
@@ -15934,6 +17177,138 @@ onUnmounted(() => {
   gap: 5px;
   flex-shrink: 0;
   min-width: 0;
+  flex-wrap: wrap;
+}
+
+.pl-pfv-head-acts {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.pl-pfv-chk {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: #0284c7;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.pl-pfv-chk.is-head-chk {
+  width: 13.5px;
+  height: 13.5px;
+}
+
+.pl-pfv-bulk-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 6px;
+  border: 1px solid var(--bg-border-subtle);
+  background: var(--bg-surface-2);
+  color: var(--bg-text-secondary);
+  font-family: inherit;
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pl-pfv-bulk-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pl-pfv-bulk-btn.is-selected {
+  border-color: var(--sem-sky-bdr);
+  background: var(--sem-sky-bg);
+  color: var(--sem-sky-txt);
+}
+
+.pl-pfv-bulk-btn.is-selected:hover:not(:disabled) {
+  background: #0284c7;
+  border-color: #0284c7;
+  color: #ffffff;
+}
+
+.pl-pfv-bulk-btn.is-all:hover:not(:disabled) {
+  border-color: var(--sem-emerald-bdr);
+  background: var(--sem-emerald-bg);
+  color: var(--sem-emerald-txt);
+}
+
+.pl-pfv-bulk-btn.is-zip {
+  border-color: rgba(249, 115, 22, 0.35);
+  background: rgba(249, 115, 22, 0.12);
+  color: #fb923c;
+}
+
+.theme-light-blue .pl-pfv-bulk-btn.is-zip {
+  color: #ea580c;
+  background: rgba(234, 88, 12, 0.1);
+  border-color: rgba(234, 88, 12, 0.3);
+}
+
+.pl-pfv-bulk-btn.is-zip:hover:not(:disabled) {
+  background: #ea580c;
+  border-color: #ea580c;
+  color: #ffffff;
+}
+
+.pl-pfv-bulk-btn.is-modal-btn {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 11.5px;
+  border-radius: 7px;
+}
+
+.pl-pfv-row.is-checked {
+  background: rgba(14, 165, 233, 0.08);
+  border-radius: 7px;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+.pl-vault-fcard.is-checked {
+  border-color: var(--sem-sky-bdr);
+  background: rgba(14, 165, 233, 0.06);
+}
+
+.pl-vault-bulk-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--bg-input-well);
+  border: 1px solid var(--bg-border-subtle);
+}
+
+.pl-vault-bulk-selall {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--bg-text-primary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.pl-vault-bulk-btns {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
 }
 
 .pl-pfv-title {
@@ -16327,17 +17702,19 @@ onUnmounted(() => {
 }
 
 .bg-filter-strip.is-kanban-filter-panel.is-frameless-vertical {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
+  background: var(--bg-surface-1) !important;
+  border: 1px solid var(--bg-border-subtle) !important;
+  border-radius: 14px !important;
+  padding: 10px 14px 12px !important;
+  box-shadow: var(--bg-shadow-card) !important;
+  backdrop-filter: blur(var(--cg-blur, 18px)) !important;
 }
 
 .pl-filter-panel-col {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  gap: 2px;
+  gap: 6px;
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -16348,15 +17725,15 @@ onUnmounted(() => {
   justify-content: space-between;
   gap: 8px;
   flex-wrap: wrap;
-  padding-bottom: 6px;
+  padding: 0 2px 8px;
   border-bottom: 1px solid var(--bg-border-subtle);
-  min-height: 25px;
+  min-height: 28px;
 }
 
 .pl-fp-title {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   font-size: 12.5px;
   font-weight: 800;
   letter-spacing: 0.015em;
@@ -16365,8 +17742,20 @@ onUnmounted(() => {
 }
 
 .pl-fp-title svg {
-  color: var(--sem-sky-txt);
+  color: #34d399;
   flex-shrink: 0;
+}
+
+.is-proj-filter-panel .pl-fp-title svg {
+  color: #38bdf8;
+}
+
+.theme-light-blue .pl-fp-title svg {
+  color: #059669;
+}
+
+.theme-light-blue .is-proj-filter-panel .pl-fp-title svg {
+  color: #0284c7;
 }
 
 .pl-fp-head-controls {
@@ -16380,20 +17769,20 @@ onUnmounted(() => {
 .bg-seg-switch.is-fp-head-seg {
   padding: 2px;
   gap: 2px;
-  border-radius: 7px;
+  border-radius: 8px;
 }
 
 .bg-seg-switch.is-fp-head-seg .bg-seg-btn {
-  padding: 2.5px 7.5px;
+  padding: 3px 8.5px;
   font-size: 11px;
-  border-radius: 5.5px;
+  border-radius: 6px;
 }
 
 .pl-slim-reset-btn.is-fp-head-reset {
   margin-left: 0;
-  height: 23px;
-  padding: 0 8px;
-  border-radius: 6px;
+  height: 25px;
+  padding: 0 9px;
+  border-radius: 7px;
   font-size: 11px;
 }
 
@@ -16402,7 +17791,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  padding: 4px 6px 5px;
+  padding: 2px 2px 6px;
   border-bottom: 1px dashed var(--bg-border-subtle);
   min-width: 0;
 }
@@ -16421,54 +17810,119 @@ onUnmounted(() => {
 }
 
 .bg-date-range-capsule.is-spacious-date.is-flat-date {
-  height: 27px;
-  padding: 0 8px;
-  border-radius: 7px;
+  height: 28px;
+  padding: 0 9px;
+  border-radius: 8px;
+}
+
+.bg-bento-deck.is-proj-filter-deck {
+  display: block;
+}
+
+.bg-filter-strip.is-kanban-filter-panel.is-proj-filter-panel {
+  min-height: 0;
+  padding: 10px 14px 12px !important;
 }
 
 .pl-filter-vertical-list {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  flex: 1 1 auto;
-  gap: 0;
-  min-width: 0;
-}
-
-.pl-filter-vertical-list .pl-dropdown-anchor {
-  position: relative;
-  display: flex;
-  width: 100%;
-  min-width: 0;
-}
-
-.pl-picker-trigger.is-flat-row {
-  width: 100%;
-  max-width: none;
-  height: 35px;
-  padding: 0 8px;
-  gap: 8px;
-  border-radius: 6px 6px 0 0;
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid var(--bg-border-subtle);
-  box-shadow: none;
-  color: var(--bg-text-primary);
-  font-size: 12.5px;
   justify-content: flex-start;
-  box-sizing: border-box;
+  flex: 1 1 auto;
+  gap: 7px;
   min-width: 0;
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
-.pl-picker-trigger.is-flat-row .pl-flat-row-ic {
+.pl-filter-vertical-list.is-proj-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: 10px;
+  row-gap: 8px;
+}
+
+@media (max-width: 960px) {
+  .pl-filter-vertical-list.is-proj-filter-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.pl-fp-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 40px;
+  padding: 4px 8px 4px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--bg-border-subtle);
+  background: var(--bg-input-well);
+  min-width: 0;
+  transition: all 0.18s ease;
+}
+
+.pl-fp-row:hover {
+  background: var(--bg-surface-2);
+  border-color: var(--sem-sky-bdr);
+  transform: translateY(-0.5px);
+}
+
+.pipeline-workspace.page.theme-light-blue .pl-fp-row {
+  background: rgba(241, 245, 249, 0.85);
+  border-color: rgba(148, 163, 184, 0.35);
+}
+
+.pipeline-workspace.page.theme-light-blue .pl-fp-row:hover {
+  background: #ffffff;
+  border-color: #38bdf8;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.1);
+}
+
+.pl-fp-row.is-filtered {
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.14) 0%, rgba(37, 99, 235, 0.06) 100%);
+  border-color: rgba(56, 189, 248, 0.45);
+  box-shadow: 0 2px 10px rgba(2, 132, 199, 0.12);
+}
+
+.pipeline-workspace.page.theme-light-blue .pl-fp-row.is-filtered {
+  background: linear-gradient(135deg, rgba(2, 132, 199, 0.1) 0%, rgba(224, 242, 254, 0.55) 100%);
+  border-color: #0284c7;
+}
+
+.theme-custom-glass .pl-fp-row {
+  background: rgba(15, 23, 42, 0.28);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.theme-custom-glass .pl-fp-row:hover {
+  background: rgba(15, 23, 42, 0.4);
+  border-color: rgba(125, 211, 252, 0.45);
+}
+
+.pl-fp-row-main {
+  flex: 1 1 0%;
+  min-width: 0;
+  height: 32px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--bg-text-primary);
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pl-fp-row-main .pl-flat-row-ic {
   color: var(--bg-text-muted);
   flex-shrink: 0;
   transition: color 0.15s ease;
 }
 
-.pl-picker-trigger.is-flat-row .pl-picker-lbl {
-  width: 66px;
+.pl-fp-row-main .pl-picker-lbl {
+  width: 62px;
   flex-shrink: 0;
   text-align: left;
   font-size: 12px;
@@ -16477,78 +17931,144 @@ onUnmounted(() => {
   transition: color 0.15s ease;
 }
 
-.pl-picker-trigger.is-flat-row .pl-picker-val {
+.pl-fp-row-main .pl-picker-val {
   flex: 1 1 0%;
   min-width: 0;
-  max-width: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   text-align: left;
-  font-size: 13px;
+  font-size: 12.8px;
   font-weight: 600;
   color: var(--bg-text-primary);
 }
 
-.pl-picker-trigger.is-flat-row .pl-caret-svg,
-.pl-picker-trigger.is-flat-row .pl-picker-clear {
-  margin-left: auto;
-  flex-shrink: 0;
-}
-
-.pl-picker-trigger.is-flat-row .pl-caret-svg {
-  transition: transform 0.18s ease, color 0.15s ease;
-}
-
-.pl-picker-trigger.is-flat-row:hover,
-.pl-filter-vertical-list .pl-dropdown-anchor.is-open .pl-picker-trigger.is-flat-row {
-  background: rgba(56, 189, 248, 0.07);
-  border-bottom-color: var(--sem-sky-bdr);
-}
-
-.pipeline-workspace.page.theme-light-blue .pl-picker-trigger.is-flat-row:hover,
-.pipeline-workspace.page.theme-light-blue .pl-filter-vertical-list .pl-dropdown-anchor.is-open .pl-picker-trigger.is-flat-row {
-  background: rgba(2, 132, 199, 0.06);
-  border-bottom-color: #38bdf8;
-}
-
-.pl-picker-trigger.is-flat-row:hover .pl-flat-row-ic,
-.pl-picker-trigger.is-flat-row:hover .pl-caret-svg,
-.pl-filter-vertical-list .pl-dropdown-anchor.is-open .pl-picker-trigger.is-flat-row .pl-flat-row-ic,
-.pl-filter-vertical-list .pl-dropdown-anchor.is-open .pl-picker-trigger.is-flat-row .pl-caret-svg {
+.pl-fp-row:hover .pl-flat-row-ic {
   color: var(--sem-sky-txt);
 }
 
-.pl-filter-vertical-list .pl-dropdown-anchor.is-open .pl-picker-trigger.is-flat-row .pl-caret-svg {
-  transform: rotate(180deg);
-}
-
-.pl-picker-trigger.is-flat-row.is-filtered {
-  background: linear-gradient(90deg, rgba(14, 165, 233, 0.12) 0%, transparent 92%);
-  border: none;
-  border-bottom: 1px solid var(--sem-sky-bdr);
+.pl-fp-row.is-filtered .pl-flat-row-ic,
+.pl-fp-row.is-filtered .pl-picker-lbl {
   color: var(--sem-sky-txt);
 }
 
-.pipeline-workspace.page.theme-light-blue .pl-picker-trigger.is-flat-row.is-filtered {
-  background: linear-gradient(90deg, rgba(2, 132, 199, 0.1) 0%, transparent 92%);
-  border-bottom-color: #0284c7;
-}
-
-.pl-picker-trigger.is-flat-row.is-filtered .pl-flat-row-ic,
-.pl-picker-trigger.is-flat-row.is-filtered .pl-picker-lbl {
-  color: var(--sem-sky-txt);
-}
-
-.pl-picker-trigger.is-flat-row.is-filtered .pl-picker-val {
+.pl-fp-row.is-filtered .pl-picker-val {
   color: var(--sem-sky-txt);
   font-weight: 700;
 }
 
-.pl-filter-vertical-list .pl-dropdown-menu {
-  left: 0;
-  right: 0;
-  width: 100%;
-  min-width: min(320px, 90vw);
-  max-width: 100%;
-  top: calc(100% + 3px);
+.pl-fp-row-acts {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.pl-fp-clear-btn {
+  width: 24px !important;
+  height: 24px !important;
+  margin: 0;
+  padding: 0;
+  border-radius: 7px;
+  border: 1px solid var(--sem-rose-bdr);
+  background: var(--sem-rose-bg);
+  color: var(--sem-rose-txt);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.14s ease;
+}
+
+.pl-fp-clear-btn:hover {
+  background: #ef4444;
+  border-color: #dc2626;
+  color: #ffffff;
+}
+
+.pl-fp-nav-btn {
+  width: auto !important;
+  height: 25px !important;
+  margin: 0;
+  padding: 0 8.5px;
+  border-radius: 7px;
+  border: 1px solid var(--bg-border-strong);
+  background: var(--bg-surface-2);
+  color: var(--bg-text-secondary);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  white-space: nowrap;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.14s ease;
+}
+
+.pl-fp-nav-btn.is-ready {
+  border-color: var(--sem-emerald-bdr);
+  background: var(--sem-emerald-bg);
+  color: var(--sem-emerald-txt);
+}
+
+.pl-fp-nav-btn:hover {
+  border-color: #10b981;
+  color: var(--sem-emerald-txt);
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+.pl-fp-choose-btn {
+  width: auto !important;
+  height: 25px !important;
+  margin: 0;
+  padding: 0 10px;
+  border-radius: 7px;
+  border: 1px solid var(--sem-sky-bdr);
+  background: var(--sem-sky-bg);
+  color: var(--sem-sky-txt);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.14s ease;
+}
+
+.pl-fp-choose-btn:hover {
+  border-color: #0284c7;
+  background: #0284c7;
+  color: #ffffff;
+}
+
+.pl-kb-filter-picker-modal {
+  max-width: 720px;
+}
+
+.pl-project-card.is-nav-highlighted {
+  border-color: #0ea5e9 !important;
+  box-shadow: 0 0 0 2px #0ea5e9, 0 12px 28px -6px rgba(14, 165, 233, 0.36) !important;
+  animation: plProjNavPulse 0.65s ease-out;
+}
+
+@keyframes plProjNavPulse {
+  0% {
+    transform: scale(0.992);
+  }
+  50% {
+    transform: scale(1.008);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 /* Unified Control, Centered Search & Action Row Directly Below Deck */
@@ -16559,6 +18079,67 @@ onUnmounted(() => {
   gap: 10px;
   padding: 2px 0;
   position: relative;
+}
+
+.pl-kanban-control-bar.is-proj-control-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pl-kcb-right.is-proj-kcb-right {
+  margin-left: auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.pl-proj-status-switch {
+  flex-shrink: 0;
+}
+
+.bg-search-shell.is-proj-col-search {
+  width: 100%;
+  height: 40px;
+  padding: 0 13px;
+  border-radius: 10px;
+  border: 2px solid rgba(56, 189, 248, 0.72);
+  background: var(--bg-surface-2);
+  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.12);
+  box-sizing: border-box;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.2s ease,
+    background-color 0.18s ease;
+}
+
+.bg-search-shell.is-proj-col-search .bg-search-ic {
+  color: #38bdf8;
+}
+
+.bg-search-shell.is-proj-col-search:hover {
+  border-color: #38bdf8;
+}
+
+.bg-search-shell.is-proj-col-search:focus-within {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.22);
+}
+
+.pipeline-workspace.page.theme-light-blue .bg-search-shell.is-proj-col-search {
+  border: 2px solid #0284c7;
+  background: #ffffff;
+  box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.1);
+}
+
+.pipeline-workspace.page.theme-light-blue .bg-search-shell.is-proj-col-search .bg-search-ic {
+  color: #0284c7;
+}
+
+.pipeline-workspace.page.theme-light-blue .bg-search-shell.is-proj-col-search:focus-within {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.18);
 }
 
 .pl-kcb-left,
@@ -16599,6 +18180,8 @@ onUnmounted(() => {
   width: 100%;
   box-sizing: border-box;
   cursor: text;
+  border: 1px solid rgba(56, 189, 248, 0.42);
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.08);
   transition:
     width 0.24s cubic-bezier(0.22, 1, 0.36, 1),
     height 0.22s cubic-bezier(0.22, 1, 0.36, 1),
@@ -16609,8 +18192,28 @@ onUnmounted(() => {
     box-shadow 0.22s ease;
 }
 
+.bg-search-shell.is-control-bar-search:hover:not(:focus-within) {
+  border-color: rgba(56, 189, 248, 0.68);
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.12);
+}
+
+.pipeline-workspace.page.theme-light-blue .bg-search-shell.is-control-bar-search:not(:focus-within) {
+  border-color: rgba(2, 132, 199, 0.36);
+  box-shadow: 0 0 0 1px rgba(2, 132, 199, 0.06);
+}
+
+.pipeline-workspace.page.theme-light-blue .bg-search-shell.is-control-bar-search:hover:not(:focus-within) {
+  border-color: rgba(2, 132, 199, 0.62);
+  box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.1);
+}
+
 .bg-search-shell.is-control-bar-search .bg-search-ic {
+  color: rgba(56, 189, 248, 0.78);
   transition: color 0.18s ease, transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.pipeline-workspace.page.theme-light-blue .bg-search-shell.is-control-bar-search .bg-search-ic {
+  color: rgba(2, 132, 199, 0.78);
 }
 
 .bg-search-shell.is-control-bar-search .bg-search-inp {
@@ -17625,18 +19228,60 @@ onUnmounted(() => {
   min-width: 0;
 }
 
+.pl-project-card.is-collapsed {
+  padding: 12px 15px 12px 14px;
+  gap: 8px;
+}
+
+.pl-proj-toggle-btn {
+  width: 28px !important;
+  height: 28px !important;
+  margin: 0;
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid var(--bg-border-subtle);
+  background: var(--bg-input-well);
+  color: var(--bg-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+}
+
+.pl-proj-toggle-btn:hover {
+  background: var(--bg-surface-3);
+  border-color: var(--sem-sky-bdr);
+  color: var(--sem-sky-txt);
+}
+
+.pl-proj-toggle-btn.is-open {
+  background: var(--sem-sky-bg);
+  border-color: var(--sem-sky-bdr);
+  color: var(--sem-sky-txt);
+}
+
+.pl-proj-toggle-chevron {
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.pl-proj-toggle-btn.is-open .pl-proj-toggle-chevron {
+  transform: rotate(180deg);
+}
+
 .pl-proj-party-ic {
   color: var(--sem-sky-txt);
   flex-shrink: 0;
 }
 
-.pl-proj-company-txt {
+.pl-proj-cus-txt {
   color: var(--bg-text-secondary);
   font-weight: 700;
 }
 
-.pl-proj-cus-txt {
-  color: var(--bg-text-muted);
+.pl-proj-company-txt {
+  color: var(--bg-text-secondary);
   font-weight: 600;
 }
 
@@ -17853,6 +19498,29 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
+.pl-status-pill.is-interactive-status {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px 3px 9px;
+  border-radius: 7px;
+  font-size: 11px;
+  cursor: pointer;
+  user-select: none;
+  transition: filter 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease;
+}
+
+.pl-status-pill.is-interactive-status:hover {
+  filter: brightness(1.06);
+  box-shadow: 0 2px 8px rgba(2, 6, 23, 0.18);
+}
+
+.pl-status-pill-caret {
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
 .pl-status-pill.is-emerald {
   background: var(--sem-emerald-bg);
   color: var(--sem-emerald-txt);
@@ -17997,10 +19665,16 @@ onUnmounted(() => {
   color: #ffffff !important;
 }
 
-.pl-project-card.is-done-proj .pl-am-avatar {
-  background: rgba(255, 255, 255, 0.24) !important;
+.pl-project-card.is-done-proj .pl-am-avatar,
+.pl-project-card.is-done-proj .pl-proj-toggle-btn {
+  background: rgba(255, 255, 255, 0.22) !important;
   border: 1px solid rgba(255, 255, 255, 0.42) !important;
   color: #ffffff !important;
+}
+
+.pl-project-card.is-done-proj .pl-proj-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.34) !important;
+  border-color: #ffffff !important;
 }
 
 .pl-project-card.is-done-proj .pl-proj-prog-track {
@@ -18027,15 +19701,39 @@ onUnmounted(() => {
 }
 
 .pl-project-card.is-done-proj .pl-wf-step-flat {
-  background: rgba(255, 255, 255, 0.15) !important;
-  border-color: rgba(255, 255, 255, 0.3) !important;
+  background: rgba(15, 23, 42, 0.22) !important;
+  border-color: rgba(255, 255, 255, 0.28) !important;
+  border-left: 3.5px solid var(--st-clr, #38bdf8) !important;
   color: #ffffff !important;
 }
 
-.pl-project-card.is-done-proj .pl-wf-plus-btn,
-.pl-project-card.is-done-proj .pl-wf-detach-btn {
+.pl-project-card.is-done-proj .pl-wf-plus-btn {
   background: rgba(255, 255, 255, 0.16) !important;
   border-color: rgba(255, 255, 255, 0.32) !important;
+  color: #ffffff !important;
+}
+
+.pl-project-card.is-done-proj .pl-wf-edit-btn {
+  background: rgba(255, 255, 255, 0.18) !important;
+  border-color: rgba(255, 255, 255, 0.42) !important;
+  color: #ffffff !important;
+}
+
+.pl-project-card.is-done-proj .pl-wf-edit-btn:hover {
+  background: rgba(255, 255, 255, 0.28) !important;
+  border-color: #ffffff !important;
+  color: #ffffff !important;
+}
+
+.pl-project-card.is-done-proj .pl-wf-detach-btn {
+  background: #ef4444 !important;
+  border-color: #dc2626 !important;
+  color: #ffffff !important;
+}
+
+.pl-project-card.is-done-proj .pl-wf-detach-btn:hover {
+  background: #dc2626 !important;
+  border-color: #b91c1c !important;
   color: #ffffff !important;
 }
 
@@ -18145,10 +19843,11 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
-.pl-wf-plus-btn,
-.pl-wf-detach-btn {
-  width: 24px;
-  height: 24px;
+.pl-wf-plus-btn {
+  width: 24px !important;
+  height: 24px !important;
+  margin: 0;
+  padding: 0;
   border-radius: 6px;
   border: 1px solid var(--bg-border-subtle);
   background: var(--bg-input-well);
@@ -18158,7 +19857,7 @@ onUnmounted(() => {
   justify-content: center;
   flex-shrink: 0;
   cursor: pointer;
-  transition: color 0.14s ease, border-color 0.14s ease, background-color 0.14s ease, opacity 0.14s ease;
+  transition: color 0.14s ease, border-color 0.14s ease, background-color 0.14s ease;
 }
 
 .pl-wf-plus-btn:hover {
@@ -18167,16 +19866,58 @@ onUnmounted(() => {
   background: var(--bg-surface-3);
 }
 
+.pl-wf-edit-btn {
+  width: auto !important;
+  height: 22px !important;
+  margin: 0;
+  padding: 0 7px;
+  border-radius: 6px;
+  border: 1px solid var(--sem-sky-bdr);
+  background: var(--sem-sky-bg);
+  color: var(--sem-sky-txt);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.14s ease, border-color 0.14s ease, color 0.14s ease, transform 0.14s ease;
+}
+
+.pl-wf-edit-btn:hover {
+  border-color: #0284c7;
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
 .pl-wf-detach-btn {
-  border-color: transparent;
-  background: transparent;
-  color: var(--bg-text-faint);
+  width: 22px !important;
+  height: 22px !important;
+  margin: 0;
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid #dc2626;
+  background: #ef4444;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.28);
+  transition: background-color 0.14s ease, border-color 0.14s ease, transform 0.14s ease, box-shadow 0.14s ease;
 }
 
 .pl-wf-detach-btn:hover {
-  color: var(--sem-rose-txt);
-  border-color: var(--sem-rose-bdr);
-  background: var(--sem-rose-bg);
+  color: #ffffff;
+  border-color: #b91c1c;
+  background: #dc2626;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(220, 38, 38, 0.38);
 }
 
 /* ON-DEMAND RIGHT STICKY PALETTE ASIDE */
@@ -18347,22 +20088,41 @@ onUnmounted(() => {
   flex-wrap: wrap;
 }
 
-.pl-palette-quick-select {
-  padding: 3px 6px;
-  border-radius: 6px;
-  border: 1px solid var(--sem-sky-bdr);
-  background: var(--sem-sky-bg);
-  color: var(--sem-sky-txt);
-  font-size: 11px;
-  font-weight: 700;
-  max-width: 104px;
+.pl-palette-wf-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   flex-shrink: 0;
-  cursor: pointer;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
-.pl-palette-quick-select option {
-  background: var(--option-bg);
-  color: var(--option-txt);
+.pl-palette-attach-btn {
+  width: auto !important;
+  height: 24px;
+  margin: 0;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px solid var(--sem-emerald-bdr);
+  background: var(--sem-emerald-bg);
+  color: var(--sem-emerald-txt);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: filter 0.14s ease, border-color 0.14s ease, transform 0.14s ease;
+}
+
+.pl-palette-attach-btn:hover {
+  border-color: #10b981;
+  filter: brightness(1.06);
+  transform: translateY(-1px);
 }
 
 /* STRICTLY 1 HORIZONTAL LINE FOR WORKFLOW STEPS + LIVE ACTIVE COUNTS */
@@ -18390,46 +20150,53 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 3px 8px;
+  padding: 3px 8px 3px 7px;
   border-radius: 6px;
-  background: var(--st-clr, #3b82f6);
-  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: var(--bg-input-well);
+  border: 1px solid var(--bg-border-subtle);
+  border-left: 3.5px solid var(--st-clr, #3b82f6);
   font-size: 11px;
-  font-weight: 700;
-  color: #ffffff;
-  text-shadow: 0 1px 1.5px rgba(15, 23, 42, 0.24);
+  font-weight: 600;
+  color: var(--bg-text-primary);
+  text-shadow: none;
   white-space: nowrap;
   flex-shrink: 0;
-  opacity: 0.84;
-  transition: opacity 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease;
+  opacity: 1;
+  transition: border-color 0.14s ease, background-color 0.14s ease, box-shadow 0.14s ease;
 }
 
-.pl-wf-step-flat .pl-proj-wf-step-dot {
-  background: rgba(255, 255, 255, 0.92);
+.pipeline-workspace.page.theme-light-blue .pl-wf-step-flat,
+.pl-modal-overlay.theme-light-blue .pl-wf-step-flat {
+  background: #f8fafc;
+  border-color: rgba(15, 23, 42, 0.12);
+  border-left: 3.5px solid var(--st-clr, #3b82f6);
+  color: #0f172a;
 }
 
 .pl-wf-step-flat.is-has-active {
-  opacity: 1;
-  border-color: #ffffff;
-  color: #ffffff;
-  font-weight: 800;
-  box-shadow: 0 2px 7px -2px rgba(2, 6, 23, 0.42);
+  background: var(--bg-surface-2);
+  border-color: var(--bg-border-strong);
+  border-left: 3.5px solid var(--st-clr, #3b82f6);
+  color: var(--bg-text-primary);
+  font-weight: 700;
+  box-shadow: 0 1px 4px rgba(2, 6, 23, 0.18);
 }
 
-.pipeline-workspace.page.theme-light-blue .pl-wf-step-flat.is-has-active {
-  box-shadow: 0 0 0 1.5px rgba(15, 23, 42, 0.35), 0 2px 6px -1px rgba(15, 23, 42, 0.18);
+.pipeline-workspace.page.theme-light-blue .pl-wf-step-flat.is-has-active,
+.pl-modal-overlay.theme-light-blue .pl-wf-step-flat.is-has-active {
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.22);
+  border-left: 3.5px solid var(--st-clr, #3b82f6);
+  color: #0f172a;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
 }
 
 .pl-wf-step-flat.is-won-step {
-  background: var(--st-clr, #10b981);
-  border-color: #ffffff;
-  color: #ffffff;
+  border-left-color: var(--st-clr, #10b981);
 }
 
 .pl-wf-step-flat.is-lost-step {
-  background: var(--st-clr, #ef4444);
-  border-color: #ffffff;
-  color: #ffffff;
+  border-left-color: var(--st-clr, #ef4444);
 }
 
 .pl-wf-step-flat-lbl {
@@ -18444,17 +20211,17 @@ onUnmounted(() => {
   height: 15px;
   padding: 0 4px;
   border-radius: 999px;
-  background: rgba(15, 23, 42, 0.28);
-  border: 1px solid rgba(255, 255, 255, 0.36);
-  color: #ffffff;
+  background: var(--bg-surface-3);
+  border: 1px solid var(--bg-border-strong);
+  color: var(--bg-text-primary);
   font-size: 10px;
   font-weight: 800;
   line-height: 1;
 }
 
-.pl-wf-step-flat.is-won-step .pl-wf-step-cnt,
-.pl-wf-step-flat.is-lost-step .pl-wf-step-cnt {
-  background: rgba(15, 23, 42, 0.28);
+.pl-project-card.is-done-proj .pl-wf-step-cnt {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.4);
   color: #ffffff;
 }
 
@@ -19684,6 +21451,10 @@ onUnmounted(() => {
   top: 6px;
   right: 7px;
   z-index: 6;
+}
+
+.pl-mob-only-card-menu {
+  display: none;
 }
 
 .pl-kcard-more-btn {
@@ -21223,6 +22994,14 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
+.pl-proj-head-back-btn {
+  display: none;
+}
+
+.pl-modal-subdock {
+  display: none;
+}
+
 .pl-studio-head-pills {
   display: flex;
   align-items: center;
@@ -22482,12 +24261,21 @@ onUnmounted(() => {
   color: #ffffff;
 }
 
+.pl-proj-nav-meta-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
 .pl-proj-nav-sub {
   font-size: 11px;
   color: var(--bg-text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
 }
 
 .pl-proj-nav-foot {
@@ -22495,8 +24283,14 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding-top: 4px;
+  padding-top: 5px;
   border-top: 1px dashed var(--bg-border-subtle);
+}
+
+.pl-proj-nav-foot.is-2btn-foot {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
 }
 
 .pl-proj-nav-dots {
@@ -22504,6 +24298,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 4px;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .pl-proj-nav-dot {
@@ -22522,19 +24317,49 @@ onUnmounted(() => {
 
 .pl-proj-nav-act-btn {
   width: auto !important;
-  height: 22px;
+  height: 25px;
   margin: 0;
-  padding: 0 7px;
-  border-radius: 5px;
+  padding: 0 8px;
+  border-radius: 6px;
   border: 1px solid var(--bg-border-subtle);
   background: var(--bg-surface-2);
   color: var(--bg-text-secondary);
   font-family: inherit;
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4.5px;
   white-space: nowrap;
   cursor: pointer;
   transition: all 0.14s ease;
+}
+
+.pl-proj-nav-foot.is-2btn-foot .pl-proj-nav-act-btn {
+  width: 100% !important;
+}
+
+.pl-proj-nav-act-btn.is-add-task {
+  border-color: var(--sem-emerald-bdr);
+  background: var(--sem-emerald-bg);
+  color: var(--sem-emerald-txt);
+}
+
+.pl-proj-nav-act-btn.is-add-task:hover {
+  border-color: #10b981;
+  filter: brightness(1.06);
+}
+
+.pl-proj-nav-act-btn.is-open-pipe {
+  border-color: var(--sem-sky-bdr);
+  background: var(--sem-sky-bg);
+  color: var(--sem-sky-txt);
+}
+
+.pl-proj-nav-act-btn.is-open-pipe:hover {
+  border-color: #0ea5e9;
+  filter: brightness(1.06);
 }
 
 .pl-proj-nav-act-btn:hover {
@@ -22542,10 +24367,179 @@ onUnmounted(() => {
   color: var(--sem-sky-txt);
 }
 
+/* =========================================================
+   ATTACH WORKFLOW TO PROJECT PICKER MODAL (3-COLUMN STRUCTURED LIST)
+   ========================================================= */
+.pl-attach-proj-modal {
+  max-width: 820px;
+}
+
+.pl-attach-proj-table-wrap {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--bg-border-subtle);
+  border-radius: 11px;
+  background: var(--bg-surface-1);
+  overflow: hidden;
+}
+
+.pl-attach-proj-thead {
+  display: grid;
+  grid-template-columns: minmax(190px, 1.45fr) minmax(130px, 1fr) minmax(150px, 1.15fr) 118px;
+  gap: 10px;
+  padding: 9px 13px;
+  background: var(--bg-surface-2);
+  border-bottom: 1px solid var(--bg-border-subtle);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--bg-text-muted);
+}
+
+.pl-attach-proj-thead .is-right {
+  text-align: right;
+}
+
+.pl-attach-proj-tbody {
+  max-height: 410px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.pl-attach-proj-row {
+  display: grid;
+  grid-template-columns: minmax(190px, 1.45fr) minmax(130px, 1fr) minmax(150px, 1.15fr) 118px;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 13px;
+  border-bottom: 1px solid var(--bg-border-subtle);
+  cursor: pointer;
+  transition: background-color 0.14s ease;
+}
+
+.pl-attach-proj-row:last-child {
+  border-bottom: none;
+}
+
+.pl-attach-proj-row:hover {
+  background: var(--bg-surface-2);
+}
+
+.pl-attach-proj-row.is-already-linked {
+  background: rgba(14, 165, 233, 0.05);
+}
+
+.pl-attach-proj-cell {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pl-attach-proj-cell.is-act-col {
+  justify-content: flex-end;
+}
+
+.pl-attach-mobile-lbl {
+  display: none;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--bg-text-muted);
+  flex-shrink: 0;
+}
+
+.pl-attach-proj-name-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  min-width: 0;
+}
+
+.pl-attach-proj-name {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--bg-text-primary);
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.pl-attach-proj-val {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--bg-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pl-attach-proj-val.is-company {
+  color: var(--bg-text-primary);
+}
+
+.pl-status-pill.is-xs-pill {
+  height: 18px;
+  padding: 0 6px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.pl-attach-proj-added-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 25px;
+  padding: 0 9px;
+  border-radius: 6px;
+  background: var(--sem-sky-bg);
+  border: 1px solid var(--sem-sky-bdr);
+  color: var(--sem-sky-txt);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .pl-attach-proj-thead {
+    display: none;
+  }
+  .pl-attach-proj-row {
+    grid-template-columns: 1fr;
+    gap: 5px;
+    padding: 11px 12px;
+  }
+  .pl-attach-mobile-lbl {
+    display: inline;
+  }
+  .pl-attach-proj-name-wrap {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+  .pl-attach-proj-cell.is-act-col {
+    justify-content: flex-end;
+    padding-top: 3px;
+  }
+}
+
+.pl-proj-nav-act-btn.is-danger {
+  width: 22px !important;
+  height: 22px !important;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #ef4444;
+  border-color: #dc2626;
+  color: #ffffff;
+}
+
 .pl-proj-nav-act-btn.is-danger:hover {
-  background: var(--sem-rose-bg);
-  border-color: var(--sem-rose-bdr);
-  color: var(--sem-rose-txt);
+  background: #dc2626;
+  border-color: #b91c1c;
+  color: #ffffff;
 }
 
 .pl-proj-designer-jump {
@@ -22948,10 +24942,13 @@ onUnmounted(() => {
   color: #ffffff;
 }
 
-/* MODAL B: 2-COLUMN PROJECT FORM STUDIO */
+/* MODAL B: 100% FULLSCREEN 2-COLUMN PROJECT FORM STUDIO */
 .pl-modal-card.pl-modal-proj-studio {
-  max-width: 1080px;
-  max-height: 92vh;
+  width: 100vw;
+  max-width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100dvh;
 }
 
 .bg-input.is-proj-name-hero {
@@ -22963,13 +24960,87 @@ onUnmounted(() => {
 .pl-proj-form-col-body {
   display: flex;
   flex-direction: column;
-  gap: 11px;
+  gap: 12px;
+}
+
+.pl-proj-form-selected-sec {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed var(--bg-border-subtle);
+  flex-shrink: 0;
+}
+
+.pl-proj-wf-stack.is-modal-selected-stack {
+  padding-top: 0;
+  border-top: none;
+  max-height: 196px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.pl-proj-form-wf-browser {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.pl-proj-wf-browser-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.pl-proj-wf-browser-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1 1 auto;
+  min-height: 180px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.pl-proj-wf-card.is-selectable-wf-option {
+  background: var(--bg-surface-2);
+  border-left-color: var(--bg-border-strong);
+}
+
+.pl-proj-wf-card.is-selectable-wf-option.is-selected-wf {
+  background: var(--sem-emerald-bg);
+  border-color: var(--sem-emerald-bdr);
+  border-left: 3.5px solid #10b981;
+}
+
+.pl-wf-check-box {
+  width: 17px;
+  height: 17px;
+  border-radius: 5px;
+  border: 1.5px solid var(--bg-border-strong);
+  background: var(--bg-input-well);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.14s ease;
+}
+
+.pl-wf-check-box.is-checked {
+  background: #10b981;
+  border-color: #059669;
+  color: #ffffff;
 }
 
 @media (min-width: 921px) {
   .pl-modal-body.pl-proj-form-2col {
     display: grid;
-    grid-template-columns: minmax(0, 1.18fr) minmax(340px, 0.88fr);
+    grid-template-columns: minmax(0, 1fr) minmax(420px, 1.08fr);
     gap: 14px;
     align-items: stretch;
     overflow: hidden;
@@ -22988,6 +25059,19 @@ onUnmounted(() => {
     flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
+  }
+
+  .pl-proj-form-col-body.pl-proj-form-right-body {
+    overflow: hidden;
+  }
+}
+
+@media (max-width: 920px) {
+  .pl-modal-body.pl-proj-form-2col .pl-proj-form-col {
+    flex: 0 0 auto;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
   }
 }
 
@@ -23191,6 +25275,8 @@ onUnmounted(() => {
 
 /* MODAL GROUP + SOLID BANNER HEADER */
 .modal-group {
+  display: flex;
+  flex-direction: column;
   border-radius: 12px;
   background: var(--bg-surface-2);
   border: 1px solid var(--bg-border-subtle);
@@ -23202,6 +25288,9 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+  flex-shrink: 0;
   padding: 8px 14px;
   color: #ffffff;
   flex-wrap: wrap;
@@ -24246,13 +26335,13 @@ onUnmounted(() => {
   gap: 8px;
 }
 
-/* TOP-CENTER SMART TOAST */
+/* TOP-CENTER SMART TOAST (PC PILL + MOBILE MB-A FLOATING TOP CAPSULE) */
 .smart-toast-wrap {
   position: fixed;
   top: 18px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 100130;
+  z-index: 2000000;
   pointer-events: none;
 }
 
@@ -24270,6 +26359,12 @@ onUnmounted(() => {
   font-size: 12.5px;
   font-weight: 700;
   white-space: nowrap;
+  cursor: pointer;
+}
+
+.smart-toast-wrap.theme-custom-glass .pl-smart-toast {
+  backdrop-filter: blur(18px) saturate(155%);
+  -webkit-backdrop-filter: blur(18px) saturate(155%);
 }
 
 .pl-smart-toast.is-success {
@@ -24691,12 +26786,63 @@ onUnmounted(() => {
 }
 
 @media (max-width: 940px) {
+  .pl-mob-proj-switch {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    padding: 4px;
+    border-radius: 12px;
+    background: var(--bg-surface-1);
+    border: 1px solid var(--bg-border-subtle);
+    box-shadow: var(--bg-shadow-card);
+  }
+  .pl-mob-ps-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 36px;
+    border-radius: 9px;
+    border: none;
+    background: transparent;
+    color: var(--bg-text-muted);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.16s ease;
+  }
+  .pl-mob-ps-btn.is-active {
+    background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+    color: #ffffff;
+    box-shadow: 0 3px 10px rgba(2, 132, 199, 0.28);
+  }
+  .pl-mob-ps-cnt {
+    padding: 1px 7px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 800;
+    background: rgba(148, 163, 184, 0.18);
+  }
+  .pl-mob-ps-btn.is-active .pl-mob-ps-cnt {
+    background: rgba(255, 255, 255, 0.24);
+    color: #ffffff;
+  }
+  .pl-proj-left-col.is-mob-hidden-pane,
+  .pl-wf-palette-aside.is-mob-hidden-pane {
+    display: none !important;
+  }
   .pl-projects-split-workspace {
     grid-template-columns: minmax(0, 1fr);
   }
   .pl-wf-palette-aside {
     position: static;
-    max-height: 440px;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  .pl-palette-list {
+    max-height: none !important;
+    overflow: visible !important;
   }
   .pl-vault-modal-body {
     overflow-y: auto;
@@ -24711,64 +26857,622 @@ onUnmounted(() => {
 }
 
 @media (max-width: 768px) {
-  .pipeline-workspace.page {
-    padding: 8px 10px 76px;
+  /* =========================================================
+     1. APP-SYNCED MOBILE WORKSPACE SHELL & CLEARANCE
+     ========================================================= */
+  :global(.app-layout:has(.pipeline-workspace.page) .main-content) {
+    padding-bottom: 0 !important;
   }
+
+  .pipeline-workspace.page {
+    min-height: calc(100vh + 64px) !important;
+    min-height: calc(100dvh + 64px) !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    overflow-x: clip !important;
+    padding: 8px 10px calc(188px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .pl-tab-body,
+  .pl-projects-split-workspace,
+  .pl-proj-left-col,
+  .pl-kanban-board-area,
+  .pl-swimlane-stack {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible;
+  }
+
+  .pl-hide-mob,
+  .is-mob-deck-hidden,
+  .bg-topbar.is-unified-bar .pl-workspace-tabs,
+  .bg-topbar.is-unified-bar.is-mob-empty-topbar {
+    display: none !important;
+  }
+
+  .bg-topbar.is-unified-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 8px;
+    min-height: 36px;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .pl-ws-lbl.is-desktop-only {
+    display: none;
+  }
+
+  .pl-ws-lbl.is-mobile-only {
+    display: inline;
+  }
+
+  /* =========================================================
+     2. 5-BUTTON FLOATING GLASS BOTTOM DOCK (CHUẨN .sr-mobile-dock & APP.VUE)
+     ========================================================= */
+  .pl-mobile-dock {
+    position: fixed;
+    left: 10px;
+    right: 10px;
+    bottom: calc(74px + env(safe-area-inset-bottom, 0px));
+    width: auto;
+    max-width: 460px;
+    margin: 0 auto;
+    z-index: 955;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 4px;
+    padding: 6px;
+    border-radius: 20px;
+    background: rgba(15, 23, 42, 0.92);
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    box-shadow:
+      0 14px 36px rgba(2, 6, 23, 0.62),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(22px) saturate(165%);
+    -webkit-backdrop-filter: blur(22px) saturate(165%);
+    transform: translate3d(0, 0, 0);
+    will-change: bottom, transform;
+    transition:
+      bottom 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+      visibility 0.24s ease,
+      box-shadow 0.3s ease;
+  }
+
+  .theme-light-blue .pl-mobile-dock {
+    background: rgba(255, 255, 255, 0.94);
+    border-color: rgba(2, 132, 199, 0.28);
+    box-shadow:
+      0 14px 34px rgba(15, 23, 42, 0.16),
+      inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  }
+
+  .theme-custom-glass .pl-mobile-dock {
+    background: linear-gradient(
+      160deg,
+      var(--cg-card-top, rgba(15, 35, 58, 0.82)),
+      var(--cg-card-bot, rgba(8, 22, 40, 0.72))
+    );
+    border-color: rgba(255, 255, 255, 0.28);
+  }
+
+  /* Auto-slide down into exact parent dock position when App.vue bottom bar hides on scroll-down */
+  :global(.app-layout.mobile-nav-hidden .pl-mobile-dock) {
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* Auto-hide dock when any modal / drawer / picker opens */
+  .pl-mobile-dock.is-modal-hidden,
+  :global(.app-layout.has-open-modal .pl-mobile-dock),
+  :global(body.app-has-open-modal .pl-mobile-dock) {
+    transform: translateY(calc(100% + 96px + env(safe-area-inset-bottom, 0px))) scale(0.96) !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  .pl-dock-btn {
+    position: relative;
+    min-width: 0;
+    min-height: 48px;
+    padding: 5px 2px 4px;
+    border-radius: 14px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: #94a3b8;
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    transition: all 0.16s ease;
+  }
+
+  .pl-dock-btn > span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .theme-light-blue .pl-dock-btn {
+    color: #475569;
+  }
+
+  .theme-custom-glass .pl-dock-btn {
+    color: #e2e8f0;
+  }
+
+  .pl-dock-btn:active {
+    transform: scale(0.95);
+  }
+
+  .pl-dock-btn.is-tab-projects.active {
+    background: rgba(14, 165, 233, 0.16);
+    border-color: rgba(56, 189, 248, 0.36);
+    color: #38bdf8;
+  }
+
+  .theme-light-blue .pl-dock-btn.is-tab-projects.active {
+    background: rgba(2, 132, 199, 0.12);
+    border-color: rgba(2, 132, 199, 0.32);
+    color: #0284c7;
+  }
+
+  .pl-dock-btn.is-tab-kanban.active {
+    background: rgba(16, 185, 129, 0.16);
+    border-color: rgba(52, 211, 153, 0.36);
+    color: #34d399;
+  }
+
+  .theme-light-blue .pl-dock-btn.is-tab-kanban.active {
+    background: rgba(5, 150, 105, 0.12);
+    border-color: rgba(5, 150, 105, 0.32);
+    color: #059669;
+  }
+
+  .pl-dock-btn.is-tab-workflow.active {
+    background: rgba(249, 115, 22, 0.17);
+    border-color: rgba(251, 146, 60, 0.38);
+    color: #fb923c;
+  }
+
+  .theme-light-blue .pl-dock-btn.is-tab-workflow.active {
+    background: rgba(234, 88, 12, 0.12);
+    border-color: rgba(234, 88, 12, 0.32);
+    color: #ea580c;
+  }
+
+  /* Center Primary Create CTA */
+  .pl-dock-btn.is-primary.is-center-cta {
+    background: linear-gradient(135deg, #0284c7 0%, #059669 100%);
+    border-color: rgba(125, 211, 252, 0.44);
+    color: #ffffff !important;
+    box-shadow:
+      0 6px 16px rgba(2, 132, 199, 0.34),
+      inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  }
+
+  .pl-dock-icon-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 22px;
+  }
+
+  .pl-dock-badge {
+    position: absolute;
+    top: -4px;
+    right: -11px;
+    min-width: 16px;
+    height: 15px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: #0284c7;
+    color: #ffffff;
+    font-size: 9px;
+    font-weight: 800;
+    line-height: 15px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    box-shadow: 0 2px 6px rgba(2, 6, 23, 0.35);
+  }
+
+  .pl-dock-badge.is-emerald {
+    background: #059669;
+  }
+
+  .pl-dock-badge.is-orange {
+    background: #ea580c;
+  }
+
+  .pl-dock-badge.is-amber {
+    background: #d97706;
+  }
+
+  /* =========================================================
+     3. UNIFIED 1-ROW MOBILE SEARCH + FILTER TOGGLE + THEME CYCLE
+     ========================================================= */
+  .pl-mob-unified-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    margin-bottom: 2px;
+  }
+
+  .bg-search-shell.is-mob-unified-search {
+    flex: 1 1 0%;
+    min-width: 0;
+    height: 40px;
+    padding: 0 10px;
+    border-radius: 12px;
+    background: var(--bg-surface-1);
+    border: 1.5px solid rgba(56, 189, 248, 0.42);
+    box-shadow: var(--bg-shadow-card);
+  }
+
+  .theme-light-blue .bg-search-shell.is-mob-unified-search {
+    background: #ffffff;
+    border-color: rgba(2, 132, 199, 0.44);
+  }
+
+  .bg-search-shell.is-mob-unified-search:focus-within,
+  .bg-search-shell.is-mob-unified-search.has-query {
+    border-color: #0ea5e9;
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.16);
+  }
+
+  .pl-mob-filter-toggle-btn {
+    height: 40px;
+    padding: 0 10px;
+    border-radius: 12px;
+    border: 1px solid var(--bg-border-strong);
+    background: var(--bg-surface-1);
+    color: var(--bg-text-primary);
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
+    cursor: pointer;
+    touch-action: manipulation;
+    box-shadow: var(--bg-shadow-card);
+    transition: all 0.16s ease;
+  }
+
+  .theme-light-blue .pl-mob-filter-toggle-btn {
+    background: #ffffff;
+    border-color: rgba(15, 23, 42, 0.14);
+  }
+
+  .pl-mob-filter-toggle-btn.has-active {
+    border-color: var(--sem-sky-bdr);
+    background: var(--sem-sky-bg);
+    color: var(--sem-sky-txt);
+  }
+
+  .pl-mob-filter-toggle-btn.is-open {
+    background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+    border-color: rgba(125, 211, 252, 0.45);
+    color: #ffffff;
+  }
+
+  .pl-mob-ft-badge {
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: #0284c7;
+    color: #ffffff;
+    font-size: 10.5px;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .pl-mob-filter-toggle-btn.is-open .pl-mob-ft-badge {
+    background: rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+  }
+
+  .pl-mob-ft-caret {
+    font-size: 10px;
+    opacity: 0.82;
+  }
+
+  .pl-mob-theme-cycle-btn {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border-radius: 12px;
+    border: 1px solid var(--bg-border-strong);
+    background: var(--bg-surface-1);
+    color: var(--sem-sky-txt);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    cursor: pointer;
+    touch-action: manipulation;
+    box-shadow: var(--bg-shadow-card);
+    transition: all 0.16s ease;
+  }
+
+  .theme-light-blue .pl-mob-theme-cycle-btn {
+    background: #ffffff;
+    border-color: rgba(15, 23, 42, 0.14);
+    color: #0284c7;
+  }
+
+  .pl-mob-theme-cycle-btn:active {
+    transform: scale(0.94);
+  }
+
+  /* MOBILE COLLAPSIBLE FILTER & FILE VAULT */
+  .pl-mob-collapse-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 26px;
+    padding: 0 9px;
+    border-radius: 7px;
+    border: 1px solid var(--bg-border-strong);
+    background: var(--bg-surface-2);
+    color: var(--bg-text-primary);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .pl-mob-collapse-btn svg {
+    transition: transform 0.18s ease;
+  }
+
+  .pl-mob-filter-cnt {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 999px;
+    font-size: 10.5px;
+    font-weight: 800;
+    background: #0284c7;
+    color: #ffffff;
+  }
+
+  .pl-pfv-chk {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* Mobile Kho File directly below Kanban Search bar */
+  .pl-pipe-files-vault,
+  .pl-pipe-files-vault.is-taller-vault {
+    min-height: 0;
+    max-height: none;
+    overflow: visible;
+    padding: 8px 10px;
+    border-radius: 13px;
+    gap: 8px;
+    justify-content: flex-start;
+  }
+
+  .pl-mob-vault-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 30px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .pl-mob-vs-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    flex: 1;
+    color: var(--bg-text-primary);
+  }
+
+  .pl-mob-vs-left svg {
+    color: var(--sem-emerald-txt);
+    flex-shrink: 0;
+  }
+
+  .pl-mob-vs-title {
+    font-size: 12.5px;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+
+  .pl-mob-vs-sub {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--bg-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .pl-mob-vs-right {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .pl-pipe-files-vault.is-mob-collapsed .pl-pfv-grid {
+    display: none;
+  }
+
+  .pl-pipe-files-vault .pl-pfv-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    padding-top: 6px;
+    border-top: 1px dashed var(--bg-border-subtle);
+    height: auto;
+  }
+
+  .pl-pipe-files-vault .pl-pfv-col.is-direct-col,
+  .pl-pipe-files-vault.is-taller-vault .pl-pfv-col.is-direct-col {
+    padding-left: 0;
+    border-left: none;
+    padding-top: 8px;
+    border-top: 1px dashed var(--bg-border-subtle);
+  }
+
+  .pl-pipe-files-vault.is-taller-vault .pl-pfv-list {
+    max-height: 148px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    gap: 6px;
+  }
+
+  .pl-pipe-files-vault.is-taller-vault .pl-pfv-empty {
+    min-height: 32px;
+    padding: 6px 8px;
+  }
+
+  .pl-pfv-file-svg {
+    width: 28px;
+    height: 28px;
+  }
+
+  .pl-pfv-file-svg :deep(svg) {
+    width: 28px !important;
+    height: 28px !important;
+  }
+
+  .pl-pfv-bulk-btn {
+    height: 28px;
+    padding: 0 9px;
+    font-size: 11px;
+  }
+
+  .pl-pfv-fe-btn {
+    min-height: 30px;
+    padding: 0 8px;
+  }
+
+  .pl-pfv-fe-btn.is-dl,
+  .pl-pfv-fe-btn.is-locate {
+    width: 30px;
+  }
+
+  .bg-search-inp,
+  .pl-input {
+    font-size: 16px !important;
+  }
+
   .bg-hide-sm {
     display: none !important;
   }
-  .pl-topbar-divider {
-    display: none;
-  }
+
+  .pl-topbar-divider,
   .pl-board-sticky-shell {
     display: none;
   }
-  .pl-pipe-files-vault,
-  .pl-pipe-files-vault.is-taller-vault {
-    max-height: none;
-    min-height: 0;
-  }
+
   .bg-filter-strip.is-kanban-filter-panel {
     min-height: 0;
-    padding: 4px 0 2px;
+    padding: 10px !important;
+    border-radius: 14px;
+    background: var(--bg-surface-1);
+    border: 1px solid var(--bg-border-subtle);
+    box-shadow: var(--bg-shadow-card);
   }
+
   .pl-fp-head-controls {
     margin-left: 0;
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 6px;
   }
+
+  .is-proj-filter-panel .pl-fp-head-controls {
+    width: auto;
+    margin-left: auto;
+    flex-wrap: nowrap;
+  }
+
+  /* Compact 1-row Kanban sub-utility bar on Mobile */
   .pl-kanban-control-bar {
-    grid-template-columns: minmax(0, 1fr);
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 2px 0;
   }
+
   .pl-kcb-left {
-    width: 100%;
+    width: auto;
+    flex-wrap: nowrap;
   }
+
   .pl-kcb-right {
-    margin-left: 0;
-    width: 100%;
+    margin-left: auto;
+    width: auto;
+    flex-wrap: nowrap;
     justify-content: flex-end;
+    gap: 6px;
   }
-  .pl-pfv-file-svg,
-  .pl-pfv-file-svg :deep(svg) {
-    width: 32px !important;
-    height: 32px !important;
+
+  /* Center-align [Tất cả | Đang chạy | Hoàn thành | Tạm dừng] on Projects Mobile */
+  .pl-kanban-control-bar.is-proj-control-bar {
+    justify-content: center !important;
+    padding: 2px 0;
   }
-  .pl-pfv-grid {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 8px;
+
+  .pl-kcb-right.is-proj-kcb-right {
+    margin: 0 auto !important;
+    width: 100% !important;
+    justify-content: center !important;
   }
-  .pl-pfv-col.is-direct-col,
-  .pl-pipe-files-vault.is-taller-vault .pl-pfv-col.is-direct-col {
-    padding-left: 0;
-    padding-top: 8px;
-    border-left: none;
-    border-top: 1px dashed var(--bg-border-subtle);
+
+  .pl-proj-status-switch {
+    display: inline-flex;
+    justify-content: center;
+    max-width: 100%;
+    margin: 0 auto;
   }
+
+  .pl-proj-status-switch .bg-seg-btn {
+    padding: 5px 9px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
   .pl-vault-fcard-meta,
   .pl-vault-factions {
     padding-left: 0;
   }
-  .bg-kpi-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
+
+  .bg-kpi-grid,
   .pl-projects-grid,
   .pl-wf-board-cols,
   .pl-form-grid-2,
@@ -24776,61 +27480,683 @@ onUnmounted(() => {
   .pl-modal-kpi-grid {
     grid-template-columns: minmax(0, 1fr);
   }
+
   .pl-proj-card-actions .pl-dcard-btn-row {
     flex-wrap: wrap;
   }
+
   .pl-proj-card-actions .pl-dcard-btn.is-stage {
     flex: 1 1 100%;
   }
+
+  /* Roomier, smoother-to-swipe Workflow subcards inside Project cards on mobile */
+  .pl-proj-wf-stack {
+    gap: 8px;
+    padding-top: 10px;
+  }
+
+  .pl-proj-wf-card {
+    padding: 11px 12px;
+    border-radius: 12px;
+    gap: 9px;
+    min-width: 0;
+  }
+
+  .pl-proj-wf-row-head {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 6px 8px;
+  }
+
+  .pl-proj-wf-name {
+    font-size: 13.5px;
+    line-height: 1.35;
+  }
+
+  .pl-wf-card-mini-tools {
+    gap: 6px;
+  }
+
+  .pl-wf-live-stat {
+    padding: 3px 8px;
+    font-size: 11px;
+  }
+
+  .pl-wf-edit-btn {
+    height: 28px !important;
+    padding: 0 10px;
+    font-size: 11.5px;
+    border-radius: 7px;
+  }
+
+  .pl-wf-detach-btn {
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 7px;
+  }
+
+  .pl-proj-wf-steps-line {
+    gap: 7px;
+    padding: 4px 2px 7px;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x pan-y;
+  }
+
+  .pl-proj-wf-steps-line::-webkit-scrollbar {
+    height: 4px;
+  }
+
+  .pl-wf-step-flat {
+    min-height: 34px;
+    padding: 6px 11px 6px 10px;
+    border-radius: 8px;
+    border-left-width: 4px;
+    font-size: 12px;
+    gap: 6px;
+  }
+
+  .pl-wf-step-cnt {
+    min-width: 19px;
+    height: 18px;
+    padding: 0 5px;
+    font-size: 10.5px;
+  }
+
+  .pl-wf-step-arrow {
+    font-size: 13px;
+    opacity: 0.72;
+  }
+
   .pl-span-2 {
     grid-column: span 1;
   }
-  .kanban-board {
-    flex-direction: column;
-    min-height: auto;
-  }
-  .kanban-column,
-  .kanban-column.is-collapsed {
-    flex: 1 1 auto;
-    width: 100%;
+
+  /* =========================================================
+     4. FULL PC-PARITY HORIZONTAL SWIPE KANBAN BOARD ON MOBILE
+     ========================================================= */
+  .pipeline-workspace.page,
+  .pl-tab-body,
+  .pl-kanban-board-area {
     min-width: 0;
     max-width: 100%;
-    min-height: auto;
   }
-  .kanban-column.is-collapsed .kanban-col-head {
-    flex-direction: row;
-    padding: 10px 12px;
+
+  .pl-kanban-scroll {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x pan-y;
+    padding: 2px 0 16px !important;
   }
-  .kanban-column.is-collapsed .kanban-col-title {
+
+  .pl-kanban-scroll::-webkit-scrollbar {
+    height: 5px;
+  }
+
+  .pl-kanban-scroll::-webkit-scrollbar-thumb {
+    background: var(--bg-border-strong);
+    border-radius: 999px;
+  }
+
+  .kanban-board {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    width: max-content !important;
+    min-height: 56vh !important;
+    padding: 0 max(12px, calc((100vw - 20px - min(82vw, 336px)) / 2)) !important;
+  }
+
+  .kanban-column {
+    flex: 0 0 min(82vw, 336px) !important;
+    width: min(82vw, 336px) !important;
+    min-width: 268px !important;
+    max-width: 336px !important;
+    min-height: 56vh !important;
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
+  }
+
+  .kanban-column.is-collapsed {
+    flex: 0 0 50px !important;
+    width: 50px !important;
+    min-width: 50px !important;
+    max-width: 50px !important;
+    min-height: 56vh !important;
+    align-items: center;
+    scroll-snap-align: none;
+    scroll-snap-stop: normal;
+  }
+
+  .kanban-column.is-collapsed .kanban-col-count,
+  .kanban-column.is-collapsed .kanban-col-toggle {
     writing-mode: horizontal-tb;
   }
-  .pl-modal-overlay {
+
+  /* Horizontal center-snap carousel across stages in Swimlane ("Làn Dự Án") mode as well */
+  .pl-swimlane-grid {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: stretch;
+    gap: 10px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x pan-y;
+    padding: 10px 0 !important;
+  }
+
+  .pl-swimlane-grid::before,
+  .pl-swimlane-grid::after {
+    content: '';
+    flex: 0 0 max(2px, calc((100% - min(80vw, 326px)) / 2 - 10px));
+  }
+
+  .pl-swimlane-cell {
+    flex: 0 0 min(80vw, 326px);
+    width: min(80vw, 326px);
+    min-width: 256px;
+    max-width: 326px;
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
+  }
+
+  /* Mobile card quick-menu trigger (replaces DnD on touch devices) */
+  .pl-mob-only-card-menu {
+    display: block;
+  }
+
+  .pl-kcard-more-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: var(--bg-input-well);
+    border-color: var(--bg-border);
+    color: var(--bg-text-secondary);
+  }
+
+  .pl-card.is-compact .pl-kcard-body {
+    padding-right: 32px;
+  }
+
+  /* =========================================================
+     5. TOP SAFE-AREA CLEARANCE FOR ALL MODALS, SUB-DOCK & TOAST
+     ========================================================= */
+  .pl-modal-overlay:not(.is-fullscreen-overlay) {
     align-items: flex-end;
+    padding: max(calc(env(safe-area-inset-top, 0px) + 12px), 56px) 0 0 !important;
+  }
+
+  .pl-modal-overlay.is-fullscreen-overlay {
+    align-items: stretch;
     padding: 0;
   }
+
   .pl-modal-card {
-    border-radius: 18px 18px 0 0;
-    max-height: 94vh;
+    border-radius: 20px 20px 0 0;
+    max-height: calc(100dvh - max(calc(env(safe-area-inset-top, 0px) + 12px), 56px));
   }
+
   .pl-modal-card.pl-modal-fullscreen {
     border-radius: 0;
+    border: none;
     height: 100vh;
     height: 100dvh;
     max-height: 100dvh;
   }
-  .pl-modal-grab {
-    display: block;
+
+  .pl-cus-suite-overlay .bg-modal-card.is-mobile-sheet {
+    max-height: calc(100dvh - max(calc(env(safe-area-inset-top, 0px) + 12px), 56px));
   }
+
+  .pl-dialog-overlay {
+    padding: max(calc(env(safe-area-inset-top, 0px) + 12px), 56px) 14px calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .pl-dialog-card {
+    max-height: calc(100dvh - max(calc(env(safe-area-inset-top, 0px) + 28px), 76px) - env(safe-area-inset-bottom, 0px));
+    overflow-y: auto;
+  }
+
+  .pl-lightbox {
+    padding: max(calc(env(safe-area-inset-top, 0px) + 52px), 96px) 14px calc(20px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .pl-lightbox-img {
+    max-height: calc(100dvh - max(calc(env(safe-area-inset-top, 0px) + 64px), 116px) - env(safe-area-inset-bottom, 0px));
+  }
+
+  .pl-modal-grab {
+    display: block !important;
+    width: 38px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--bg-border-strong);
+    margin: 8px auto 2px;
+    flex-shrink: 0;
+  }
+
   .pl-modal-fullscreen .pl-modal-grab {
+    display: none !important;
+  }
+
+  .pl-modal-header {
+    padding: 10px 14px 12px;
+  }
+
+  .pl-modal-header.is-fullscreen-head {
+    padding: max(calc(env(safe-area-inset-top, 0px) + 6px), 52px) 14px 12px !important;
+  }
+
+  .pl-modal-header.is-studio-head .pl-studio-head-pills {
     display: none;
   }
-  .pl-modal-header.is-fullscreen-head,
-  .pl-modal-footer.is-fullscreen-foot {
-    padding: 12px 14px;
+
+  /* Minimal Project Modal Mobile Header: Left Back Button + Clean Project Name Only */
+  .pl-proj-head-back-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border-radius: 10px;
+    border: 1px solid var(--bg-border-strong);
+    background: var(--bg-input-well);
+    color: var(--bg-text-primary);
+    flex-shrink: 0;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.14s ease, background 0.14s ease, border-color 0.14s ease;
   }
+
+  .pl-proj-head-back-btn:active {
+    transform: scale(0.93);
+  }
+
+  .pl-modal-overlay.theme-light-blue .pl-proj-head-back-btn {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #0f172a;
+  }
+
+  .pl-modal-overlay.is-project-studio-overlay .pl-modal-header.is-studio-head .pl-modal-title-group {
+    align-items: center;
+    gap: 10px;
+  }
+
+  .pl-modal-overlay.is-project-studio-overlay .pl-modal-header.is-studio-head .pl-modal-icon,
+  .pl-modal-overlay.is-project-studio-overlay .pl-modal-header.is-studio-head .pl-code-pill,
+  .pl-modal-overlay.is-project-studio-overlay .pl-modal-header.is-studio-head .pl-status-pill,
+  .pl-modal-overlay.is-project-studio-overlay .pl-modal-header.is-studio-head .pl-proj-studio-sub {
+    display: none !important;
+  }
+
+  .pl-modal-overlay.is-project-studio-overlay .pl-proj-studio-title-row {
+    gap: 0;
+  }
+
+  .pl-modal-header.is-studio-head .pl-modal-title {
+    font-size: 15.5px;
+    line-height: 1.25;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .pl-modal-header.is-studio-head .pl-modal-sub {
+    font-size: 11.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .pl-modal-close {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    flex-shrink: 0;
+  }
+
+  /* 3-Column Studio Modals on Mobile: Single Active Panel Controlled by Bottom Sub-Dock */
+  .pl-modal-body.pl-fullscreen-form-body.is-studio-3col {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 10px 12px 12px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .pl-modal-body.is-studio-3col .pl-studio-col:not(.is-mob-active-tab) {
+    display: none !important;
+  }
+
+  .pl-modal-body.is-studio-3col .pl-studio-col.is-mob-active-tab {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100%;
+    flex: 1 0 auto;
+    min-height: 0;
+  }
+
+  .pl-modal-body.is-studio-3col .pl-studio-mob-rail-toggle {
+    display: none !important;
+  }
+
+  .pl-modal-body.is-studio-3col .pl-studio-col.is-mob-active-tab .pl-studio-left-body {
+    display: flex !important;
+  }
+
+  /* Modal Bottom Sub-Dock (Khung Pipeline | Công việc Pipeline | Report & Chứng từ) */
+  .pl-modal-subdock {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    padding: 7px 10px;
+    background: rgba(15, 23, 42, 0.94);
+    border-top: 1px solid rgba(148, 163, 184, 0.18);
+    flex-shrink: 0;
+    z-index: 6;
+  }
+
+  .pl-modal-overlay.theme-light-blue .pl-modal-subdock {
+    background: #f8fafc;
+    border-top-color: rgba(148, 163, 184, 0.3);
+  }
+
+  .pl-modal-overlay.theme-custom-glass .pl-modal-subdock {
+    background: rgba(15, 23, 42, 0.72);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border-top-color: rgba(255, 255, 255, 0.16);
+  }
+
+  .pl-msd-btn {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    min-width: 0;
+    height: 48px;
+    padding: 4px 6px;
+    border-radius: 12px;
+    border: 1px solid transparent;
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(203, 213, 225, 0.78);
+    font-family: inherit;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: all 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .pl-msd-btn svg {
+    flex-shrink: 0;
+  }
+
+  .pl-msd-lbl {
+    width: 100%;
+    font-size: 10.5px;
+    font-weight: 800;
+    line-height: 1.15;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .pl-msd-badge {
+    position: absolute;
+    top: 3px;
+    right: 6px;
+    min-width: 17px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: rgba(56, 189, 248, 0.22);
+    border: 1px solid rgba(56, 189, 248, 0.38);
+    color: #bae6fd;
+    font-size: 9.5px;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+
+  .pl-msd-btn.is-active {
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.24), rgba(56, 189, 248, 0.12));
+    border-color: rgba(56, 189, 248, 0.45);
+    color: #38bdf8;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  }
+
+  .pl-msd-btn.is-active .pl-msd-badge {
+    background: #0ea5e9;
+    border-color: transparent;
+    color: #ffffff;
+  }
+
+  .pl-modal-overlay.theme-light-blue .pl-msd-btn {
+    background: rgba(15, 23, 42, 0.035);
+    color: #475569;
+  }
+
+  .pl-modal-overlay.theme-light-blue .pl-msd-badge {
+    background: #e2e8f0;
+    border-color: #cbd5e1;
+    color: #334155;
+  }
+
+  .pl-modal-overlay.theme-light-blue .pl-msd-btn.is-active {
+    background: #e0f2fe;
+    border-color: #7dd3fc;
+    color: #0284c7;
+    box-shadow: 0 2px 6px rgba(14, 165, 233, 0.12);
+  }
+
+  .pl-modal-overlay.theme-light-blue .pl-msd-btn.is-active .pl-msd-badge {
+    background: #0284c7;
+    border-color: transparent;
+    color: #ffffff;
+  }
+
+  /* Mobile Card Quick-Stage & Action Bottom Sheet */
+  .pl-stage-sheet-overlay {
+    z-index: 12000;
+  }
+
+  .pl-stage-sheet-card {
+    max-height: 82vh !important;
+  }
+
+  .pl-stage-sheet-head {
+    padding: 10px 14px !important;
+    gap: 10px !important;
+  }
+
+  .pl-stage-sheet-title {
+    font-size: 14px !important;
+    line-height: 1.3 !important;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .pl-stage-sheet-sub {
+    font-size: 11.5px !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .pl-stage-sheet-body {
+    padding: 12px 14px calc(16px + env(safe-area-inset-bottom, 0px)) !important;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .pl-stage-sheet-sec-lbl {
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    color: var(--bg-text-muted);
+  }
+
+  .pl-stage-sheet-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .pl-stage-sheet-opt {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 46px;
+    padding: 8px 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    background: rgba(15, 23, 42, 0.52);
+    color: #e2e8f0;
+    text-align: left;
+    cursor: pointer;
+    font-family: inherit;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.14s ease, border-color 0.16s ease, background 0.16s ease;
+  }
+
+  .pl-stage-sheet-opt:active {
+    transform: scale(0.98);
+  }
+
+  .pl-stage-sheet-opt.is-current {
+    border-color: var(--step-clr, #38bdf8);
+    background: rgba(14, 165, 233, 0.16);
+    color: #ffffff;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--step-clr, #38bdf8) 40%, transparent);
+  }
+
+  .pl-stage-sheet-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--step-clr, #38bdf8);
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.07);
+  }
+
+  .pl-stage-sheet-opt-text {
+    min-width: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .pl-stage-sheet-opt-name {
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .pl-stage-sheet-opt-pct {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--step-clr, #38bdf8);
+  }
+
+  .pl-stage-sheet-check {
+    flex-shrink: 0;
+    color: var(--step-clr, #38bdf8);
+  }
+
+  .pl-stage-sheet-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(148, 163, 184, 0.22);
+  }
+
+  .pl-stage-sheet-actions .pl-btn {
+    flex: 1 1 calc(50% - 4px);
+    min-height: 40px;
+    justify-content: center;
+  }
+
+  .pl-modal-overlay.theme-light-blue .pl-stage-sheet-opt {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    color: #0f172a;
+  }
+
+  .pl-modal-overlay.theme-light-blue .pl-stage-sheet-opt.is-current {
+    background: #e0f2fe;
+    color: #0369a1;
+  }
+
+  .pl-modal-overlay.theme-light-blue .pl-stage-sheet-dot {
+    box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.06);
+  }
+
+  .pl-modal-overlay.theme-light-blue .pl-stage-sheet-actions {
+    border-top-color: #cbd5e1;
+  }
+
+  .pl-modal-overlay.theme-custom-glass .pl-stage-sheet-opt {
+    background: rgba(15, 23, 42, 0.48);
+    border-color: rgba(255, 255, 255, 0.16);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .pl-modal-overlay.theme-custom-glass .pl-stage-sheet-opt.is-current {
+    background: rgba(56, 189, 248, 0.22);
+  }
+
+  .pl-modal-footer,
+  .pl-vault-modal-foot,
+  .pl-modal-footer.is-fullscreen-foot {
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .pl-modal-footer.is-fullscreen-foot.is-studio-foot {
+    padding: 9px 12px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+    gap: 8px;
+  }
+
+  .pl-modal-footer.is-studio-foot .pl-btn {
+    height: 36px;
+    padding: 0 12px;
+    font-size: 12.5px;
+  }
+
   .pl-modal-body.pl-fullscreen-form-body {
     padding: 12px;
   }
+
   .pl-modal-card.pl-modal-fullscreen .bg-input,
   .pl-modal-card.pl-modal-fullscreen .bg-textarea,
   .pl-modal-rep-picker .bg-search-inp,
@@ -24838,13 +28164,35 @@ onUnmounted(() => {
   .pl-rep-date-quick {
     font-size: 16px;
   }
+
   .pl-rep-date-select,
   .pl-rep-date-quick {
     flex: 1 1 calc(50% - 6px);
     height: 36px;
   }
+
   .pl-rep-date-lbl {
     flex: 1 1 100%;
+  }
+
+  /* MB-A Floating Top Capsule Smart Toast */
+  .smart-toast-wrap {
+    top: calc(12px + env(safe-area-inset-top, 0px));
+    left: 12px;
+    right: 12px;
+    transform: none;
+    display: flex;
+    justify-content: center;
+  }
+
+  .pl-smart-toast {
+    width: 100%;
+    max-width: 460px;
+    padding: 10px 14px;
+    border-radius: 20px;
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.38;
   }
 }
 
@@ -26097,7 +29445,7 @@ onUnmounted(() => {
 
   .pl-cus-suite-overlay .bg-modal-card.is-mobile-sheet {
     border-radius: 20px 20px 0 0;
-    max-height: 94dvh;
+    max-height: calc(100dvh - max(calc(env(safe-area-inset-top, 0px) + 12px), 56px));
   }
 
   .pl-cus-suite-overlay .bg-grid-2,

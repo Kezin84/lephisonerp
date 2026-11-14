@@ -628,7 +628,7 @@ const isBaoGiaFirebaseRoute = computed(() => route.path === '/baogiafirebase' ||
 const hasGlobalOpenModal = ref(false)
 
 const GLOBAL_MODAL_SELECTORS =
-  '.modal, .vip-modal-overlay, .load-invoice-modal-overlay, .modal-overlay, .pipeline-modal-overlay, .pl-mobile-sheet-overlay, .qtabs-mobile-sheet-overlay, .quote-col-setting-backdrop, .async-overlay, .sr-modal-overlay, .elite-modal-overlay, .quote-guide-modal-overlay, .quote-guide-spotlight-root, .bg-modal-overlay, .pl-sheet-overlay, .bg-attach-sheet-overlay, .bg-lightbox-overlay, .baogia-dialog-overlay'
+  '.modal, .vip-modal-overlay, .load-invoice-modal-overlay, .modal-overlay, .pipeline-modal-overlay, .pl-modal-overlay, .pl-dialog-overlay, .wf-modal-overlay, .pl-cus-suite-overlay, .pl-mobile-sheet-overlay, .qtabs-mobile-sheet-overlay, .quote-col-setting-backdrop, .async-overlay, .sr-modal-overlay, .elite-modal-overlay, .quote-guide-modal-overlay, .quote-guide-spotlight-root, .bg-modal-overlay, .pl-sheet-overlay, .bg-attach-sheet-overlay, .bg-lightbox-overlay, .baogia-dialog-overlay'
 
 const EXCLUDED_SCROLL_SELECTORS =
   `${GLOBAL_MODAL_SELECTORS}, .quote-col-setting-dropdown, .mobile-drawer, .sidebar`
@@ -852,7 +852,7 @@ const handleGlobalScrollCapture = (e) => {
       resetMobileShellViewport()
       return
     }
-    const curY = window.scrollY || document.documentElement.scrollTop || 0
+    const curY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0
     if (!isScrollingToTop) {
       showScrollTop.value = computeShouldShowScrollTop()
     }
@@ -1074,7 +1074,7 @@ onUnmounted(() => {
 
 .app-layout.has-open-modal .scroll-to-top,
 body.app-has-open-modal .app-layout .scroll-to-top,
-.app-layout:has(.modal, .vip-modal-overlay, .load-invoice-modal-overlay, .modal-overlay, .pipeline-modal-overlay, .pl-mobile-sheet-overlay, .qtabs-mobile-sheet-overlay, .quote-col-setting-backdrop, .async-overlay, .bg-modal-overlay, .pl-sheet-overlay, .bg-attach-sheet-overlay, .bg-lightbox-overlay, .baogia-dialog-overlay) .scroll-to-top {
+.app-layout:has(.modal, .vip-modal-overlay, .load-invoice-modal-overlay, .modal-overlay, .pipeline-modal-overlay, .pl-modal-overlay, .pl-dialog-overlay, .wf-modal-overlay, .pl-cus-suite-overlay, .pl-mobile-sheet-overlay, .qtabs-mobile-sheet-overlay, .quote-col-setting-backdrop, .async-overlay, .bg-modal-overlay, .pl-sheet-overlay, .bg-attach-sheet-overlay, .bg-lightbox-overlay, .baogia-dialog-overlay) .scroll-to-top {
   opacity: 0 !important;
   visibility: hidden !important;
   pointer-events: none !important;
@@ -1140,6 +1140,9 @@ body.app-has-open-modal .app-layout .scroll-to-top,
     right: 14px;
     width: 38px;
     height: 38px;
+  }
+  .app-layout.mobile-nav-hidden:has(.bg-mobile-dock, .sr-mobile-dock, .pl-mobile-dock) .scroll-to-top {
+    bottom: calc(78px + env(safe-area-inset-bottom, 0px));
   }
   .scroll-to-top svg {
     width: 19px;
@@ -1804,7 +1807,7 @@ body.app-has-open-modal .app-layout .scroll-to-top,
 }
 
 @media (min-width: 769px) and (max-width: 1100px) {
-  .app-layout:has(.bg-mobile-dock, .sr-mobile-dock, .mobile-screen1-cart-bar, .mobile-screen2-action-bar) .sonai-quick-db-badge {
+  .app-layout:has(.bg-mobile-dock, .sr-mobile-dock, .pl-mobile-dock, .mobile-screen1-cart-bar, .mobile-screen2-action-bar) .sonai-quick-db-badge {
     bottom: calc(78px + env(safe-area-inset-bottom, 0px));
   }
 }
@@ -1814,12 +1817,12 @@ body.app-has-open-modal .app-layout .scroll-to-top,
     bottom: calc(74px + env(safe-area-inset-bottom, 0px));
     right: 10px;
   }
-  .app-layout:has(.bg-mobile-dock, .sr-mobile-dock, .mobile-screen1-cart-bar, .mobile-screen2-action-bar) .sonai-quick-db-badge {
+  .app-layout:has(.bg-mobile-dock, .sr-mobile-dock, .pl-mobile-dock, .mobile-screen1-cart-bar, .mobile-screen2-action-bar) .sonai-quick-db-badge {
     bottom: calc(140px + env(safe-area-inset-bottom, 0px));
     left: 12px;
     right: auto;
   }
-  .app-layout.mobile-nav-hidden:has(.bg-mobile-dock, .sr-mobile-dock, .mobile-screen1-cart-bar, .mobile-screen2-action-bar) .sonai-quick-db-badge {
+  .app-layout.mobile-nav-hidden:has(.bg-mobile-dock, .sr-mobile-dock, .pl-mobile-dock, .mobile-screen1-cart-bar, .mobile-screen2-action-bar) .sonai-quick-db-badge {
     bottom: calc(76px + env(safe-area-inset-bottom, 0px));
   }
   .nav-section-title,
