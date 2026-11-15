@@ -859,6 +859,9 @@
               Mã hàng: <span v-html="highlightText(item.Ma_hang, searchQuery)"></span>
             </div>
             <h3 class="product-name" :title="item.Ten_hang" v-html="highlightText(item.Ten_hang, searchQuery)"></h3>
+            <div v-if="item.Ten_hang_bao_gia" style="font-size: 12px; color: #34d399; font-weight: 600; margin-bottom: 4px;" :title="item.Ten_hang_bao_gia">
+              Tên báo giá: <span v-html="highlightText(item.Ten_hang_bao_gia, searchQuery)"></span>
+            </div>
             <div class="product-desc text-muted" v-if="item.Description" style="color: #cbd5e1; font-size: 12px; margin-bottom: 4px;" v-html="item.Description"></div>
             <p class="product-desc text-muted" v-else-if="item.Mo_ta_chung" :title="item.Mo_ta_chung">{{ item.Mo_ta_chung }}</p>
             <div class="price-info-box">
@@ -1109,7 +1112,11 @@
                   <input v-model="formData.Ten_hang" type="text" required />
                 </div>
                 <div class="form-group col-span-2">
-                  <label>Description (Theo file gốc)</label>
+                  <label>Tên hàng hóa báo giá</label>
+                  <input v-model="formData.Ten_hang_bao_gia" type="text" placeholder="Nhập tên hàng hóa dùng khi xuất báo giá (tùy chọn)..." />
+                </div>
+                <div class="form-group col-span-2">
+                  <label>Description nội bộ</label>
                   <ExcelEditor v-model="formData.Description" placeholder="VD: Workspace Protection - 1-9 users - 12 MOS..." class="features-excel-editor" />
                 </div>
                 <div class="form-group">
@@ -1160,8 +1167,12 @@
                   <input v-model="formData.DVT" type="text" />
                 </div>
                 <div class="form-group col-span-2">
-                  <label>Features (Tính năng)</label>
-                  <ExcelEditor v-model="formData.Features" placeholder="Nhập tính năng sản phẩm..." class="features-excel-editor" />
+                  <label>Diễn giải nội bộ</label>
+                  <ExcelEditor v-model="formData.Features" placeholder="Nhập diễn giải nội bộ..." class="features-excel-editor" />
+                </div>
+                <div class="form-group col-span-2">
+                  <label>Diễn giải báo giá</label>
+                  <ExcelEditor v-model="formData.Dien_giai_bao_gia" placeholder="Nhập diễn giải tùy chỉnh dùng khi xuất báo giá (tùy chọn)..." class="features-excel-editor" />
                 </div>
                 <div class="form-group col-span-2">
                   <label>Ghi chú</label>
@@ -1790,8 +1801,10 @@
                 <th style="min-width:155px">Mã hàng</th>
                 <th style="min-width:135px; color: #c4b5fd;">SKU Code</th>
                 <th style="min-width:250px">Tên hàng</th>
-                <th style="min-width:290px">Description (Theo file)</th>
-                <th style="min-width:520px">Features</th>
+                <th style="min-width:250px; color: #34d399;">Tên hàng báo giá</th>
+                <th style="min-width:290px">Description nội bộ</th>
+                <th style="min-width:520px">Diễn giải nội bộ</th>
+                <th style="min-width:460px; color: #34d399;">Diễn giải báo giá</th>
                 <th style="min-width:170px">Danh mục</th>
                 <th style="min-width:75px">Type</th>
                 <th style="min-width:125px; color: #e9d5ff;">Giá vốn / Giá off hãng</th>
@@ -1819,6 +1832,7 @@
                 <td><input type="text" v-model="row.Ma_hang" class="imp-input imp-input--code" /></td>
                 <td><input type="text" v-model="row.sku_code" class="imp-input imp-input--code" style="color: #c4b5fd;" placeholder="SKU Code..." /></td>
                 <td><textarea v-model="row.Ten_hang" class="imp-input imp-input--textarea imp-input--autofit" rows="1"></textarea></td>
+                <td><textarea v-model="row.Ten_hang_bao_gia" class="imp-input imp-input--textarea imp-input--autofit" rows="1" placeholder="Tên hàng báo giá..."></textarea></td>
                 <td><textarea v-model="row.Description" class="imp-input imp-input--textarea imp-input--autofit" rows="1" placeholder="Description từ file..."></textarea></td>
                 <td>
                   <div class="imp-features-cell">
@@ -1831,8 +1845,26 @@
                     <button
                       type="button"
                       class="imp-features-edit-btn"
-                      title="Mở công cụ chỉnh sửa format Features"
-                      @click="openImportFeaturesEditor(row)"
+                      title="Mở công cụ chỉnh sửa format Diễn giải nội bộ"
+                      @click="openImportFeaturesEditor(row, 'Features')"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                    </button>
+                  </div>
+                </td>
+                <td>
+                  <div class="imp-features-cell">
+                    <div
+                      class="imp-input imp-input--rich"
+                      contenteditable="true"
+                      v-html="formatFeaturesHtml(row.Dien_giai_bao_gia)"
+                      @blur="row.Dien_giai_bao_gia = cleanRichHtmlOrEmpty($event.currentTarget.innerHTML)"
+                    ></div>
+                    <button
+                      type="button"
+                      class="imp-features-edit-btn"
+                      title="Mở công cụ chỉnh sửa format Diễn giải báo giá"
+                      @click="openImportFeaturesEditor(row, 'Dien_giai_bao_gia')"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                     </button>
@@ -1895,18 +1927,29 @@
       </div>
     </div>
 
-    <!-- MODAL CHỈNH SỬA FORMAT FEATURES TRONG BẢNG IMPORT PREVIEW -->
-    <div v-if="importFeaturesEditRow" class="modal-overlay" @click.self="importFeaturesEditRow = null" style="z-index: 10400;">
+    <!-- MODAL CHỈNH SỬA FORMAT DIỄN GIẢI NỘI BỘ / DIỄN GIẢI BÁO GIÁ TRONG BẢNG IMPORT PREVIEW -->
+    <div v-if="importFeaturesEditRow" class="modal-overlay" @click.self="closeImportFeaturesEditor" style="z-index: 10400;">
       <div class="modal-content" style="max-width: 820px;">
         <div class="modal-header">
-          <h2>Chỉnh sửa định dạng Features — {{ importFeaturesEditRow.Ma_hang }}</h2>
-          <button class="close-btn" @click="importFeaturesEditRow = null">&times;</button>
+          <h2>{{ importRichEditField === 'Dien_giai_bao_gia' ? 'Chỉnh sửa Diễn giải báo giá' : 'Chỉnh sửa Diễn giải nội bộ' }} — {{ importFeaturesEditRow.Ma_hang }}</h2>
+          <button class="close-btn" @click="closeImportFeaturesEditor">&times;</button>
         </div>
         <div class="modal-body">
-          <ExcelEditor v-model="importFeaturesEditRow.Features" placeholder="Nhập tính năng sản phẩm..." class="features-excel-editor" />
+          <ExcelEditor
+            v-if="importRichEditField === 'Dien_giai_bao_gia'"
+            v-model="importFeaturesEditRow.Dien_giai_bao_gia"
+            placeholder="Nhập diễn giải báo giá..."
+            class="features-excel-editor"
+          />
+          <ExcelEditor
+            v-else
+            v-model="importFeaturesEditRow.Features"
+            placeholder="Nhập diễn giải nội bộ..."
+            class="features-excel-editor"
+          />
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-primary" @click="importFeaturesEditRow = null">Xong</button>
+          <button type="button" class="btn btn-primary" @click="closeImportFeaturesEditor">Xong</button>
         </div>
       </div>
     </div>
@@ -7733,6 +7776,7 @@ import {
   parseKasperskyWorkbookToRefPart,
   parseSophosWorkbookToRefUpdate,
   isSophosTrungGianBomSheet,
+  resolveSophosTrungGianBomColumnMap,
   resolveSophosFirewallRowDynamic,
   parseSophosCalculatorWorkbook,
   hydrateSophosCalcRefData,
@@ -7776,11 +7820,31 @@ const userVolumeFilter = ref('')
 const originalItem = ref(null)
 const confirmDeleteModal = ref({ show: false, item: null })
 const importFeaturesEditRow = ref(null)
+const importRichEditField = ref('Features')
 
-const openImportFeaturesEditor = (row) => {
+const cleanRichHtmlOrEmpty = (val) => {
+  const s = String(val ?? '').trim()
+  if (!s) return ''
+  const plain = s.replace(/<[^>]*>/g, '').replace(/&nbsp;/gi, ' ').trim()
+  return plain ? s : ''
+}
+
+const openImportFeaturesEditor = (row, field = 'Features') => {
   if (!row) return
-  row.Features = formatFeaturesHtml(row.Features)
+  importRichEditField.value = field === 'Dien_giai_bao_gia' ? 'Dien_giai_bao_gia' : 'Features'
+  if (importRichEditField.value === 'Dien_giai_bao_gia') {
+    row.Dien_giai_bao_gia = cleanRichHtmlOrEmpty(formatFeaturesHtml(row.Dien_giai_bao_gia))
+  } else {
+    row.Features = formatFeaturesHtml(row.Features)
+  }
   importFeaturesEditRow.value = row
+}
+
+const closeImportFeaturesEditor = () => {
+  if (importFeaturesEditRow.value && importRichEditField.value === 'Dien_giai_bao_gia') {
+    importFeaturesEditRow.value.Dien_giai_bao_gia = cleanRichHtmlOrEmpty(importFeaturesEditRow.value.Dien_giai_bao_gia)
+  }
+  importFeaturesEditRow.value = null
 }
 
 const decodeXmlEntities = (str) => {
@@ -9095,7 +9159,11 @@ const openSophosStandardizedReimportModal = async (mode = 'bom') => {
         const firstLine = rawMoTa.split(/\r?\n/)[0].trim().replace(/:$/, '')
         if (firstLine) tenHang = firstLine
       }
-      const features = formatFeaturesHtml(rawMoTa || tenHang)
+      const features = tg.moTaHtml || formatFeaturesHtml(rawMoTa || tenHang)
+      const tenHangBg = tg.tenHangBaoGia ? String(tg.tenHangBaoGia).trim() : ''
+      const dienGiaiBg = tg.dienGiaiBaoGia
+        ? cleanRichHtmlOrEmpty(tg.dienGiaiBaoGiaHtml || formatFeaturesHtml(String(tg.dienGiaiBaoGia).trim()))
+        : ''
       const danhMuc = inferSophosCategoryFromDesc(tg.description || gocEntry.desc, gocEntry.family, tg.group)
       if (rawMoTa && !categoryFeaturesMap.has(danhMuc)) {
         categoryFeaturesMap.set(danhMuc, features)
@@ -9109,6 +9177,7 @@ const openSophosStandardizedReimportModal = async (mode = 'bom') => {
         Ma_hang: sku,
         sku_code: sku,
         Ten_hang: tenHang || meta.description || sku,
+        Ten_hang_bao_gia: tenHangBg,
         Description: meta.description,
         Main_img: '',
         Ma_nha_cung_cap: 'SOPHOS',
@@ -9116,6 +9185,7 @@ const openSophosStandardizedReimportModal = async (mode = 'bom') => {
         Mo_ta_chung: '',
         Mo_ta_chi_tiet: '',
         Features: features,
+        Dien_giai_bao_gia: dienGiaiBg,
         Danh_muc: danhMuc,
         License_duration: meta.licenseDuration,
         DVT: isHw ? 'Thiết bị' : 'Gói',
@@ -9155,6 +9225,7 @@ const openSophosStandardizedReimportModal = async (mode = 'bom') => {
           Ma_hang: sku,
           sku_code: sku,
           Ten_hang: meta.description || sku,
+          Ten_hang_bao_gia: '',
           Description: meta.description,
           Main_img: '',
           Ma_nha_cung_cap: 'SOPHOS',
@@ -9162,6 +9233,7 @@ const openSophosStandardizedReimportModal = async (mode = 'bom') => {
           Mo_ta_chung: '',
           Mo_ta_chi_tiet: '',
           Features: formatFeaturesHtml(meta.description),
+          Dien_giai_bao_gia: '',
           Danh_muc: danhMuc,
           License_duration: meta.licenseDuration,
           DVT: isHw ? 'Thiết bị' : 'Gói',
@@ -9251,6 +9323,7 @@ const handleFileUpload = async (e) => {
               Ma_hang: sku,
               sku_code: sku,
               Ten_hang: meta.description || sku,
+              Ten_hang_bao_gia: '',
               Description: meta.description,
               Main_img: '',
               Ma_nha_cung_cap: 'SOPHOS',
@@ -9258,6 +9331,7 @@ const handleFileUpload = async (e) => {
               Mo_ta_chung: '',
               Mo_ta_chi_tiet: '',
               Features: formatFeaturesHtml(meta.description),
+              Dien_giai_bao_gia: '',
               Danh_muc: danhMuc,
               License_duration: meta.licenseDuration,
               DVT: isHw ? 'Thiết bị' : 'Gói',
@@ -9280,7 +9354,7 @@ const handleFileUpload = async (e) => {
           }
         } else {
           // Trường hợp 2: File mẫu chuẩn theo cấu trúc file_trung_gian_SOPHOS.xlsx
-          // (Cột: STT | SKU | MODEL | Description | MÔ TẢ SẢN PHẨM | GIÁ THAM KHẢO (USD) | NHẬP KHẨU | SITE)
+          // (Cột 10 cột mới: STT | SKU | MODEL | TÊN HÀNG BÁO GIÁ | Description | MÔ TẢ SẢN PHẨM | DIỄN GIẢI BÁO GIÁ | GIÁ THAM KHẢO (USD) | NHẬP KHẨU | SITE)
           const lpNhapMap = new Map()
           if (Array.isArray(refObj.lpSophos)) {
             refObj.lpSophos.forEach(lp => {
@@ -9301,13 +9375,14 @@ const handleFileUpload = async (e) => {
           }
 
           for (const sheetName of workbook.SheetNames) {
+            if (sheetName === 'LP Sophos' || /^(rotto|module\s*10g)/i.test(sheetName) || /^XGS\s+\d{3,4}$/i.test(sheetName)) continue
             const worksheet = workbook.Sheets[sheetName]
             if (!worksheet) continue
 
             const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
             let headerRowIndex = -1
 
-            let sttIdx = -1, skuIdx = -1, maSpIdx = -1, descIdx = -1, moTaIdx = -1, giaIdx = -1, typeIdx = -1, vatIdx = -1, giaNhapIdx = -1, dvtIdx = -1, siteIdx = -1
+            let sttIdx = -1, skuIdx = -1, maSpIdx = -1, tenHangBgIdx = -1, descIdx = -1, moTaIdx = -1, dienGiaiBgIdx = -1, giaIdx = -1, typeIdx = -1, vatIdx = -1, giaNhapIdx = -1, dvtIdx = -1, siteIdx = -1
             let currentStt = ''
             let currentMaSp = ''
             let currentCategory = ''
@@ -9346,17 +9421,24 @@ const handleFileUpload = async (e) => {
                     if (!hr) continue
                     hr.forEach((c, idx) => {
                       const text = String(c || '').toUpperCase().replace(/\s/g, '')
-                      if (text.includes('STT')) sttIdx = idx
-                      if (text === 'SKU' || text.includes('MÃSKU')) skuIdx = idx
-                      if (text.includes('MÃSP') || text === 'MODEL' || text.includes('MODEL')) maSpIdx = idx
-                      if (text.includes('DESCRIPTION')) descIdx = idx
-                      if (text.includes('MÔTẢSẢNPHẨM')) moTaIdx = idx
-                      if (text.includes('GIÁTHAMKHẢO')) giaIdx = idx
-                      if (text.includes('TYPE')) typeIdx = idx
-                      if (text.includes('VAT')) vatIdx = idx
-                      if (text.includes('GIÁNHẬP') || text.includes('NHẬPKHẨU')) giaNhapIdx = idx
-                      if (text === 'ĐVT' || text === 'DVT') dvtIdx = idx
-                      if (text === 'SITE') siteIdx = idx
+                      const ascii = text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/Đ/g, 'D').replace(/[^A-Z0-9]/g, '')
+                      if (ascii === 'STT' || text.includes('STT')) sttIdx = idx
+                      if (ascii === 'SKU' || text === 'SKU' || text.includes('MÃSKU') || ascii.includes('MASKU')) skuIdx = idx
+                      if (ascii.includes('TENHANGBAOGIA') || ascii.includes('TENHANGHOABAOGIA') || ascii === 'TENBAOGIA') {
+                        tenHangBgIdx = idx
+                      } else if (ascii.includes('DIENGIAIBAOGIA') || ascii.includes('MOTABAOGIA')) {
+                        dienGiaiBgIdx = idx
+                      } else {
+                        if (text.includes('MÃSP') || text === 'MODEL' || text.includes('MODEL')) maSpIdx = idx
+                        if (text.includes('DESCRIPTION')) descIdx = idx
+                        if (text.includes('MÔTẢSẢNPHẨM') || ascii.includes('MOTASANPHAM')) moTaIdx = idx
+                        if (text.includes('GIÁTHAMKHẢO') || ascii.includes('GIATHAMKHAO')) giaIdx = idx
+                        if (text.includes('TYPE')) typeIdx = idx
+                        if (text.includes('VAT')) vatIdx = idx
+                        if (text.includes('GIÁNHẬP') || text.includes('NHẬPKHẨU') || ascii.includes('NHAPKHAU')) giaNhapIdx = idx
+                        if (text === 'ĐVT' || text === 'DVT') dvtIdx = idx
+                        if (text === 'SITE') siteIdx = idx
+                      }
                     })
                   }
                 }
@@ -9367,8 +9449,14 @@ const handleFileUpload = async (e) => {
                 const stt = sttIdx >= 0 ? row[sttIdx] : ''
                 const rawSku = skuIdx >= 0 ? String(row[skuIdx] ?? '').trim().toUpperCase() : ''
                 const maSp = maSpIdx >= 0 ? row[maSpIdx] : ''
+                const rawTenHangBg = tenHangBgIdx >= 0 && row[tenHangBgIdx] !== undefined && row[tenHangBgIdx] !== null
+                  ? String(row[tenHangBgIdx]).trim()
+                  : ''
                 const rawDescCol = descIdx >= 0 ? String(row[descIdx] ?? '').trim() : ''
                 const moTa = moTaIdx >= 0 ? row[moTaIdx] : ''
+                const rawDienGiaiBg = dienGiaiBgIdx >= 0 && row[dienGiaiBgIdx] !== undefined && row[dienGiaiBgIdx] !== null
+                  ? String(row[dienGiaiBgIdx]).trim()
+                  : ''
                 const giaThamKhao = giaIdx >= 0 ? row[giaIdx] : ''
                 const typeVal = typeIdx >= 0 ? row[typeIdx] : ''
                 const giaNhap = giaNhapIdx >= 0 ? row[giaNhapIdx] : ''
@@ -9398,6 +9486,9 @@ const handleFileUpload = async (e) => {
                   }
                   const richFeatures = moTaIdx >= 0 ? extractExcelCellRichHtml(worksheet, i, moTaIdx) : ''
                   const features = richFeatures || formatFeaturesHtml(moTaStr)
+                  const dienGiaiBgHtml = rawDienGiaiBg && dienGiaiBgIdx >= 0
+                    ? cleanRichHtmlOrEmpty(extractExcelCellRichHtml(worksheet, i, dienGiaiBgIdx) || formatFeaturesHtml(rawDienGiaiBg))
+                    : ''
 
                   const rawCategory = currentCategory
                     ? String(currentCategory).split(/[\r\n:]/)[0].trim().replace(/\bXGS(\d)/gi, 'XGS $1')
@@ -9446,6 +9537,7 @@ const handleFileUpload = async (e) => {
                     Ma_hang: id,
                     sku_code: rawSku,
                     Ten_hang: tenHang,
+                    Ten_hang_bao_gia: rawTenHangBg,
                     Description: meta.description,
                     Main_img: '',
                     Ma_nha_cung_cap: globalNhaCungCap,
@@ -9453,6 +9545,7 @@ const handleFileUpload = async (e) => {
                     Mo_ta_chung: '',
                     Mo_ta_chi_tiet: '',
                     Features: features,
+                    Dien_giai_bao_gia: dienGiaiBgHtml,
                     Danh_muc: danhMucUpper,
                     License_duration: meta.licenseDuration,
                     DVT: dvtVal !== undefined && dvtVal !== null && String(dvtVal).trim() !== '' ? String(dvtVal).trim() : (isHw ? 'Thiết bị' : 'Gói'),
@@ -10485,6 +10578,7 @@ const buildFirebaseHangHoaPayload = (p) => {
     Ma_hang: String(p.Ma_hang || '').trim(),
     sku_code: resolvedSkuCode,
     Ten_hang: String(p.Ten_hang || '').trim(),
+    Ten_hang_bao_gia: String(p.Ten_hang_bao_gia ?? p.ten_hang_bao_gia ?? '').trim(),
     Description: String(p.Description ?? p.description ?? '').trim(),
     Main_img: String(p.Main_img || ''),
     Ma_nha_cung_cap: String(p.Ma_nha_cung_cap || ''),
@@ -10492,6 +10586,7 @@ const buildFirebaseHangHoaPayload = (p) => {
     Mo_ta_chung: String(p.Mo_ta_chung || ''),
     Mo_ta_chi_tiet: String(p.Mo_ta_chi_tiet || ''),
     Features: String(p.Features || ''),
+    Dien_giai_bao_gia: String(p.Dien_giai_bao_gia ?? p.dien_giai_bao_gia ?? ''),
     Danh_muc: String(p.Danh_muc || '').trim().toUpperCase(),
     License_duration: String(p.License_duration || ''),
     DVT: String(p.DVT || ''),
@@ -10632,9 +10727,20 @@ const confirmImport = async () => {
 
     importData.value.forEach(p => {
       const payloadObj = buildFirebaseHangHoaPayload(p)
+      payloadObj.Dien_giai_bao_gia = cleanRichHtmlOrEmpty(payloadObj.Dien_giai_bao_gia)
       const maHang = payloadObj.Ma_hang
       const existingFbKey = maHang ? existingMap[maHang] : null
       const existingRow = existingFbKey ? existingData[existingFbKey] : null
+      if (existingRow) {
+        const existingTenBg = String(existingRow.Ten_hang_bao_gia ?? existingRow.ten_hang_bao_gia ?? '').trim()
+        const existingDgBg = cleanRichHtmlOrEmpty(existingRow.Dien_giai_bao_gia ?? existingRow.dien_giai_bao_gia ?? '')
+        if (!payloadObj.Ten_hang_bao_gia && existingTenBg) {
+          payloadObj.Ten_hang_bao_gia = existingTenBg
+        }
+        if (!payloadObj.Dien_giai_bao_gia && existingDgBg) {
+          payloadObj.Dien_giai_bao_gia = existingDgBg
+        }
+      }
       const prevFileHistory = existingRow?.danh_sach_file || p.danh_sach_file || []
 
       payloadObj.danh_sach_file = importSessionFileMeta
@@ -10687,6 +10793,7 @@ const defaultForm = {
   Ma_hang: '',
   sku_code: '',
   Ten_hang: '',
+  Ten_hang_bao_gia: '',
   Description: '',
   Main_img: '',
   Ma_nha_cung_cap: '',
@@ -10694,6 +10801,7 @@ const defaultForm = {
   Mo_ta_chung: '',
   Mo_ta_chi_tiet: '',
   Features: '',
+  Dien_giai_bao_gia: '',
   Danh_muc: '',
   License_duration: '',
   DVT: '',
@@ -11162,6 +11270,7 @@ const filteredItems = computed(() => {
         const ma = (item.Ma_hang || '').toLowerCase()
         const sku = (item.sku_code || '').toLowerCase()
         const ten = (item.Ten_hang || '').toLowerCase()
+        const tenBg = (item.Ten_hang_bao_gia || '').toLowerCase()
         const desc = (item.Description || '').toLowerCase()
         const dm = (item.Danh_muc || '').toLowerCase()
         const ncc = (item.Ten_nha_cung_cap || '').toLowerCase()
@@ -11169,6 +11278,7 @@ const filteredItems = computed(() => {
         const maN = normalizeString(ma)
         const skuN = normalizeString(sku)
         const tenN = normalizeString(ten)
+        const tenBgN = normalizeString(tenBg)
         const descN = normalizeString(desc)
         const dmN = normalizeString(dm)
         const nccN = normalizeString(ncc)
@@ -11178,6 +11288,7 @@ const filteredItems = computed(() => {
           return ma.includes(w) || maN.includes(wN) ||
                  sku.includes(w) || skuN.includes(wN) ||
                  ten.includes(w) || tenN.includes(wN) ||
+                 tenBg.includes(w) || tenBgN.includes(wN) ||
                  desc.includes(w) || descN.includes(wN) ||
                  dm.includes(w) || dmN.includes(wN) ||
                  ncc.includes(w) || nccN.includes(wN)
@@ -12158,6 +12269,7 @@ const fetchData = async () => {
         Ma_hang: String(row.Ma_hang ?? '').trim(),
         sku_code: String(row.sku_code ?? row.SKU ?? row.sku ?? row.ma_sku ?? '').trim(),
         Ten_hang: String(row.Ten_hang ?? ''),
+        Ten_hang_bao_gia: String(row.Ten_hang_bao_gia ?? row.ten_hang_bao_gia ?? ''),
         Description: String(row.Description ?? row.description ?? ''),
         Main_img: String(row.Main_img ?? ''),
         Ma_nha_cung_cap: String(row.Ma_nha_cung_cap ?? ''),
@@ -12165,6 +12277,7 @@ const fetchData = async () => {
         Mo_ta_chung: String(row.Mo_ta_chung ?? ''),
         Mo_ta_chi_tiet: String(row.Mo_ta_chi_tiet ?? ''),
         Features: String(row.Features ?? ''),
+        Dien_giai_bao_gia: String(row.Dien_giai_bao_gia ?? row.dien_giai_bao_gia ?? ''),
         Danh_muc: String(row.Danh_muc ?? '').toUpperCase(),
         License_duration: String(row.License_duration ?? ''),
         DVT: String(row.DVT ?? ''),
@@ -12441,6 +12554,7 @@ const openAddModal = () => {
 const openEditModal = (item) => {
   sessionUploadedFileIds.value = []
   const normalizedFeatures = formatFeaturesHtml(item.Features)
+  const normalizedDienGiaiBaoGia = formatFeaturesHtml(item.Dien_giai_bao_gia)
   const normalizedFiles = normalizeProductFileHistory(item.danh_sach_file)
   const plEntry = activePriceList.value ? getPriceListEntry(item) : null
   const giaGocHeThong = toNum(item.Don_gia, 0)
@@ -12457,7 +12571,9 @@ const openEditModal = (item) => {
     const dir = plEntry.direction || (diff < 0 ? 'decrease' : 'increase')
     const baseObj = {
       ...item,
+      Ten_hang_bao_gia: String(item.Ten_hang_bao_gia ?? ''),
       Features: normalizedFeatures,
+      Dien_giai_bao_gia: normalizedDienGiaiBaoGia,
       Don_gia: giaBangGia,
       _has_pl_entry: true,
       _gia_goc_he_thong: refBasePrice,
@@ -12472,7 +12588,9 @@ const openEditModal = (item) => {
   } else {
     const baseObj = {
       ...item,
+      Ten_hang_bao_gia: String(item.Ten_hang_bao_gia ?? ''),
       Features: normalizedFeatures,
+      Dien_giai_bao_gia: normalizedDienGiaiBaoGia,
       _has_pl_entry: false,
       _gia_goc_he_thong: giaGocHeThong,
       _real_hang_hoa_don_gia: giaGocHeThong
@@ -12619,8 +12737,8 @@ const executeDelete = async () => {
 const hasSystemFieldsChanged = (cur, orig) => {
   if (!cur || !orig) return false
   const sysKeys = [
-    'sku_code', 'Ten_hang', 'Description', 'Trang_thai', 'License_duration', 'thoi_han_bao_hanh', 'volume',
-    'Danh_muc', 'Type', 'Ten_nha_cung_cap', 'DVT', 'Features',
+    'sku_code', 'Ten_hang', 'Ten_hang_bao_gia', 'Description', 'Trang_thai', 'License_duration', 'thoi_han_bao_hanh', 'volume',
+    'Danh_muc', 'Type', 'Ten_nha_cung_cap', 'DVT', 'Features', 'Dien_giai_bao_gia',
     'Ghi_chu', 'Don_vi_tien_te', 'Ti_gia', 'Thue_VAT', 'gia_nhap', 'Gia_tieu_chuan'
   ]
   if (sysKeys.some(k => String(cur[k] ?? '') !== String(orig[k] ?? ''))) return true
@@ -12630,8 +12748,8 @@ const hasSystemFieldsChanged = (cur, orig) => {
 const hasProductCoreFieldsChanged = (cur, orig) => {
   if (!cur || !orig) return true
   const coreKeys = [
-    'sku_code', 'Ten_hang', 'Description', 'Trang_thai', 'License_duration', 'thoi_han_bao_hanh', 'volume',
-    'Danh_muc', 'Type', 'Ten_nha_cung_cap', 'DVT', 'Features',
+    'sku_code', 'Ten_hang', 'Ten_hang_bao_gia', 'Description', 'Trang_thai', 'License_duration', 'thoi_han_bao_hanh', 'volume',
+    'Danh_muc', 'Type', 'Ten_nha_cung_cap', 'DVT', 'Features', 'Dien_giai_bao_gia',
     'Ghi_chu', 'Don_vi_tien_te', 'Ti_gia', 'Thue_VAT', 'gia_nhap', 'Gia_tieu_chuan', 'Don_gia'
   ]
   return coreKeys.some(k => String(cur[k] ?? '') !== String(orig[k] ?? ''))
@@ -14564,10 +14682,14 @@ const excelNavRenderedRows = computed(() => {
   // 1. Nếu đang xem file_trung_gian_SOPHOS.xlsx
   if (fileType === 'tg') {
     const rawRows = (refObj.tgSheetsRaw && refObj.tgSheetsRaw[sheet]) || []
+    const colMap = sheet === 'LP Sophos' ? null : resolveSophosTrungGianBomColumnMap(rawRows)
+    const headerRowNum = sheet === 'LP Sophos' ? 2 : ((colMap && colMap.headerRowIdx >= 0 ? colMap.headerRowIdx : 3) + 1)
+    const skuIdx = colMap && colMap.skuIdx >= 0 ? colMap.skuIdx : 1
+    const giaIdx = colMap && colMap.giaIdx >= 0 ? colMap.giaIdx : 5
     return rawRows.map((r, idx) => {
       const rowNum = idx + 1
-      const isHeader = sheet === 'LP Sophos' ? rowNum === 2 : rowNum === 4
-      const isGroup = sheet !== 'LP Sophos' && rowNum >= 5 && Boolean(r && r[0] && !r[1] && (r[5] === null || r[5] === undefined || r[5] === ''))
+      const isHeader = rowNum === headerRowNum
+      const isGroup = sheet !== 'LP Sophos' && rowNum > headerRowNum && Boolean(r && r[0] && !r[skuIdx] && (r[giaIdx] === null || r[giaIdx] === undefined || r[giaIdx] === ''))
       return {
         rowNum,
         cells: r || [],
@@ -18204,7 +18326,7 @@ const buildUpdatedSophosTrungGianExcelJs = async ({ selectedRowMap = null, updat
     for (let r = 1; r <= sampleLimit; r++) {
       const row = ws.getRow(r)
       const arr = []
-      for (let c = 1; c <= 10; c++) {
+      for (let c = 1; c <= 14; c++) {
         arr.push(getExcelJsCellPlainVal(row.getCell(c)))
       }
       headerSample.push(arr)
@@ -18212,42 +18334,51 @@ const buildUpdatedSophosTrungGianExcelJs = async ({ selectedRowMap = null, updat
 
     if (!isSophosTrungGianBomSheet(ws.name, headerSample)) continue
 
-    let currentGroup = ''
-    for (let r = 5; r <= ws.rowCount; r++) {
-      const row = ws.getRow(r)
-      const colA = getExcelJsCellPlainVal(row.getCell(1))
-      const colB = getExcelJsCellPlainVal(row.getCell(2))
-      const colF = getExcelJsCellPlainVal(row.getCell(6))
+    const colMap = resolveSophosTrungGianBomColumnMap(headerSample)
+    const sttCol = (colMap.sttIdx >= 0 ? colMap.sttIdx : 0) + 1
+    const skuCol = (colMap.skuIdx >= 0 ? colMap.skuIdx : 1) + 1
+    const modelCol = (colMap.modelIdx >= 0 ? colMap.modelIdx : 2) + 1
+    const descCol = (colMap.descIdx >= 0 ? colMap.descIdx : 3) + 1
+    const moTaCol = (colMap.moTaIdx >= 0 ? colMap.moTaIdx : 4) + 1
+    const giaCol = (colMap.giaIdx >= 0 ? colMap.giaIdx : 5) + 1
+    const startRowNum = (colMap.headerRowIdx >= 0 ? colMap.headerRowIdx : 3) + 2
 
-      if (colA && !colB && (colF === null || colF === '')) {
+    let currentGroup = ''
+    for (let r = startRowNum; r <= ws.rowCount; r++) {
+      const row = ws.getRow(r)
+      const colA = getExcelJsCellPlainVal(row.getCell(sttCol))
+      const colB = getExcelJsCellPlainVal(row.getCell(skuCol))
+      const colGia = getExcelJsCellPlainVal(row.getCell(giaCol))
+
+      if (colA && !colB && (colGia === null || colGia === '')) {
         currentGroup = String(colA).trim()
         continue
       }
-      if (!colB || colF === null || colF === '') continue
+      if (!colB || colGia === null || colGia === '') continue
 
       const rowId = `${ws.name}::R${r}`
       const rawSku = String(colB).trim().toUpperCase()
-      const oldPrice = Number(colF) || 0
+      const oldPrice = Number(colGia) || 0
 
       if (selectedRowMap) {
         const picked = selectedRowMap.get(rowId)
         if (!picked || !(picked.newPrice > 0)) continue
 
-        const cellF = row.getCell(6)
-        cellF.value = Number(picked.newPrice.toFixed(2))
-        if (!cellF.numFmt) {
-          cellF.numFmt = '_(* #,##0.00_);_(* \\(#,##0.00\\);_(* "-"??_);_(@_)'
+        const cellGia = row.getCell(giaCol)
+        cellGia.value = Number(picked.newPrice.toFixed(2))
+        if (!cellGia.numFmt) {
+          cellGia.numFmt = '_(* #,##0.00_);_(* \\(#,##0.00\\);_(* "-"??_);_(@_)'
         }
         updatedPriceCells++
 
         if (updateSku2026 && picked.hasSkuUpgrade && picked.resolvedSku) {
-          row.getCell(2).value = picked.resolvedSku
+          row.getCell(skuCol).value = picked.resolvedSku
           updatedSkuCells++
         }
       } else {
-        const modelText = String(getExcelJsCellPlainVal(row.getCell(3)) || '').trim()
-        const descText = String(getExcelJsCellPlainVal(row.getCell(4)) || '').trim()
-        const moTaText = String(getExcelJsCellPlainVal(row.getCell(5)) || '').trim()
+        const modelText = String(getExcelJsCellPlainVal(row.getCell(modelCol)) || '').trim()
+        const descText = String(getExcelJsCellPlainVal(row.getCell(descCol)) || '').trim()
+        const moTaText = String(getExcelJsCellPlainVal(row.getCell(moTaCol)) || '').trim()
         const pseudoItem = {
           Ma_hang: rawSku,
           sku_code: rawSku,
@@ -18260,17 +18391,17 @@ const buildUpdatedSophosTrungGianExcelJs = async ({ selectedRowMap = null, updat
         if (!match.found || !(match.msrp > 0)) continue
 
         const newPrice = Number(match.msrp.toFixed(2))
-        const cellF = row.getCell(6)
-        cellF.value = newPrice
-        if (!cellF.numFmt) {
-          cellF.numFmt = '_(* #,##0.00_);_(* \\(#,##0.00\\);_(* "-"??_);_(@_)'
+        const cellGia = row.getCell(giaCol)
+        cellGia.value = newPrice
+        if (!cellGia.numFmt) {
+          cellGia.numFmt = '_(* #,##0.00_);_(* \\(#,##0.00\\);_(* "-"??_);_(@_)'
         }
         if (Math.abs(newPrice - oldPrice) >= 0.01) {
           updatedPriceCells++
         }
 
         if (updateSku2026 && match.resolvedSku && match.resolvedSku !== rawSku) {
-          row.getCell(2).value = match.resolvedSku
+          row.getCell(skuCol).value = match.resolvedSku
           updatedSkuCells++
         }
       }
@@ -18392,22 +18523,33 @@ const buildSophosTgSyncPreviewRowsFromWorkbook = (wb) => {
   const previewRows = []
   for (const s of bomSheets) {
     const rows = sheetRowsMap[s] || []
+    const colMap = resolveSophosTrungGianBomColumnMap(rows)
+    const sttIdx = colMap.sttIdx >= 0 ? colMap.sttIdx : 0
+    const skuIdx = colMap.skuIdx >= 0 ? colMap.skuIdx : 1
+    const modelIdx = colMap.modelIdx >= 0 ? colMap.modelIdx : 2
+    const descIdx = colMap.descIdx >= 0 ? colMap.descIdx : 3
+    const moTaIdx = colMap.moTaIdx >= 0 ? colMap.moTaIdx : 4
+    const giaIdx = colMap.giaIdx >= 0 ? colMap.giaIdx : 5
+    const nhapIdx = colMap.nhapKhauIdx >= 0 ? colMap.nhapKhauIdx : 6
+    const startIdx = (colMap.headerRowIdx >= 0 ? colMap.headerRowIdx : 3) + 1
     let currentGroup = ''
-    for (let i = 4; i < rows.length; i++) {
+    for (let i = startIdx; i < rows.length; i++) {
       const r = rows[i]
       if (!r || !r.some(x => x !== null && x !== '')) continue
-      if (r[0] && !r[1] && (r[5] === null || r[5] === '')) {
-        currentGroup = String(r[0]).trim()
+      if (r[sttIdx] && !r[skuIdx] && (r[giaIdx] === null || r[giaIdx] === undefined || r[giaIdx] === '')) {
+        currentGroup = String(r[sttIdx]).trim()
         continue
       }
-      if (r[1] && r[5] !== null && r[5] !== '') {
+      if (r[skuIdx] && r[giaIdx] !== null && r[giaIdx] !== undefined && r[giaIdx] !== '') {
         const rowNum = i + 1
-        const rawSku = String(r[1]).trim().toUpperCase()
-        const modelText = String(r[2] || '').trim()
-        const descText = String(r[3] || '').trim()
-        const moTaText = String(r[4] || '').trim()
-        const oldPrice = Number(r[5]) || 0
-        const nhapKhau = r[6] !== null && r[6] !== '' ? (Number(r[6]) || 0) : 0
+        const rawSku = String(r[skuIdx]).trim().toUpperCase()
+        const modelText = String(r[modelIdx] || '').trim()
+        const descText = descIdx >= 0 ? String(r[descIdx] || '').trim() : ''
+        const moTaText = moTaIdx >= 0 ? String(r[moTaIdx] || '').trim() : ''
+        const oldPrice = Number(r[giaIdx]) || 0
+        const nhapKhau = nhapIdx >= 0 && r[nhapIdx] !== null && r[nhapIdx] !== undefined && r[nhapIdx] !== ''
+          ? (Number(r[nhapIdx]) || 0)
+          : 0
 
         const pseudoItem = {
           Ma_hang: rawSku,
@@ -18953,6 +19095,7 @@ const proceedToCalculateQuote = () => {
       Ma_hang: String(p.Ma_hang ?? '').trim(),
       sku_code: String(p.sku_code ?? '').trim(),
       Ten_hang: String(p.Ten_hang ?? ''),
+      Ten_hang_bao_gia: String(p.Ten_hang_bao_gia ?? ''),
       Description: String(p.Description ?? ''),
       Main_img: String(p.Main_img ?? ''),
       Ma_nha_cung_cap: String(p.Ma_nha_cung_cap ?? ''),
@@ -18960,6 +19103,7 @@ const proceedToCalculateQuote = () => {
       Mo_ta_chung: String(p.Mo_ta_chung ?? ''),
       Mo_ta_chi_tiet: String(p.Mo_ta_chi_tiet ?? ''),
       Features: String(p.Features ?? ''),
+      Dien_giai_bao_gia: String(p.Dien_giai_bao_gia ?? ''),
       Danh_muc: String(p.Danh_muc ?? '').toUpperCase(),
       License_duration: String(p.License_duration ?? ''),
       DVT: String(p.DVT ?? ''),

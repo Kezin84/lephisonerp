@@ -365,11 +365,11 @@ function rowToFbHopDongTongQuat(r: any[]) {
 
 function fbHopDongChiTietToRow(item: any): any[] {
   if (Array.isArray(item)) {
-    const r = item.slice(0, 52)
-    while (r.length < 52) r.push('')
+    const r = item.slice(0, 54)
+    while (r.length < 54) r.push('')
     return r
   }
-  if (!item || typeof item !== 'object') return new Array(52).fill('')
+  if (!item || typeof item !== 'object') return new Array(54).fill('')
   return [
     String(item.ma_hop_dong ?? item.Ma_hop_dong ?? ''),
     String(item.so_hop_dong ?? item.So_hop_dong ?? ''),
@@ -422,13 +422,15 @@ function fbHopDongChiTietToRow(item: any): any[] {
     item.Thanh_tien_truoc_thue_khach !== undefined && item.Thanh_tien_truoc_thue_khach !== '' ? toNum(item.Thanh_tien_truoc_thue_khach, 0) : (item.thanh_tien_truoc_thue_khach !== undefined && item.thanh_tien_truoc_thue_khach !== '' ? toNum(item.thanh_tien_truoc_thue_khach, 0) : ''),
     item.Tien_thue_vat_khach !== undefined && item.Tien_thue_vat_khach !== '' ? toNum(item.Tien_thue_vat_khach, 0) : (item.tien_thue_vat_khach !== undefined && item.tien_thue_vat_khach !== '' ? toNum(item.tien_thue_vat_khach, 0) : ''),
     item.Thanh_tien_sau_thue_khach !== undefined && item.Thanh_tien_sau_thue_khach !== '' ? toNum(item.Thanh_tien_sau_thue_khach, 0) : (item.thanh_tien_sau_thue_khach !== undefined && item.thanh_tien_sau_thue_khach !== '' ? toNum(item.thanh_tien_sau_thue_khach, 0) : ''),
-    item.Chenh_lech_truoc_thue !== undefined && item.Chenh_lech_truoc_thue !== '' ? toNum(item.Chenh_lech_truoc_thue, 0) : ''
+    item.Chenh_lech_truoc_thue !== undefined && item.Chenh_lech_truoc_thue !== '' ? toNum(item.Chenh_lech_truoc_thue, 0) : '',
+    String(item.Ten_hang_bao_gia ?? item.ten_hang_bao_gia ?? ''),
+    String(item.Dien_giai_bao_gia ?? item.dien_giai_bao_gia ?? '')
   ]
 }
 
 function rowToFbHopDongChiTiet(r: any[], trangThaiHopDong: string) {
-  const row = Array.isArray(r) ? r.slice(0, 52) : []
-  while (row.length < 52) row.push('')
+  const row = Array.isArray(r) ? r.slice(0, 54) : []
+  while (row.length < 54) row.push('')
   const maHang = String(row[2] ?? '')
   const tenHang = String(row[3] ?? '')
   const mainImg = String(row[4] ?? '')
@@ -451,6 +453,8 @@ function rowToFbHopDongChiTiet(r: any[], trangThaiHopDong: string) {
   const desc = String(row[33] ?? '')
   const skuCode = String(row[34] ?? '')
   const donGiaGocVnd = row[35] !== undefined && row[35] !== '' ? toNum(row[35], donGia) : donGia
+  const tenHangBaoGia = String(row[52] ?? '')
+  const dienGiaiBaoGia = String(row[53] ?? '')
   return {
     ma_hop_dong: String(row[0] ?? ''),
     so_hop_dong: String(row[1] ?? ''),
@@ -460,6 +464,8 @@ function rowToFbHopDongChiTiet(r: any[], trangThaiHopDong: string) {
     SKU: skuCode,
     Ten_hang: tenHang,
     ten_hang: tenHang,
+    Ten_hang_bao_gia: tenHangBaoGia,
+    ten_hang_bao_gia: tenHangBaoGia,
     Main_img: mainImg,
     main_img: mainImg,
     Ma_nha_cung_cap: maNcc,
@@ -473,6 +479,8 @@ function rowToFbHopDongChiTiet(r: any[], trangThaiHopDong: string) {
     Features: features,
     features: features,
     dien_giai: features,
+    Dien_giai_bao_gia: dienGiaiBaoGia,
+    dien_giai_bao_gia: dienGiaiBaoGia,
     Danh_muc: danhMuc,
     danh_muc: danhMuc,
     License_duration: licDur,
@@ -981,12 +989,14 @@ type HangHoa = {
   Ma_hang: string
   sku_code?: string
   Ten_hang: string
+  Ten_hang_bao_gia?: string
   Main_img: string
   Ma_nha_cung_cap: string
   Ten_nha_cung_cap: string
   Mo_ta_chung: string
   Mo_ta_chi_tiet: string
   Features: string
+  Dien_giai_bao_gia?: string
   Danh_muc: string
   License_duration: string
   thoi_han_bao_hanh: string
@@ -1652,6 +1662,7 @@ function onCatalogSearchFocus() {
   isSearchInputFocused.value = true
   showRecentSearches.value = true
   showCategoryPicker.value = false
+  showBrandPicker.value = false
 }
 
 function onCatalogSearchBlur() {
@@ -2719,7 +2730,8 @@ const availableExcelFields = [
   { value: 'pn', label: 'MÃ HÀNG' },
   { value: 'sku_code', label: 'SKU CODE' },
   { value: 'ten_hang', label: 'TÊN HÀNG' },
-  { value: 'description', label: 'DESCRIPTION' },
+  { value: 'ten_hang_bao_gia', label: 'TÊN HÀNG BÁO GIÁ' },
+  { value: 'description', label: 'DESCRIPTION NỘI BỘ' },
   { value: 'hang', label: 'HÃNG' },
   { value: 'danh_muc', label: 'DANH MỤC' },
   { value: 'don_vi_tien_te', label: 'ĐƠN VỊ TIỀN TỆ' },
@@ -2727,7 +2739,8 @@ const availableExcelFields = [
   { value: 'dvt', label: 'DVT' },
   { value: 'license_duration', label: 'LICENSE DURATION' },
   { value: 'thoi_gian_bao_hanh', label: 'THỜI GIAN BẢO HÀNH' },
-  { value: 'features', label: 'DIỄN GIẢI' },
+  { value: 'features', label: 'DIỄN GIẢI NỘI BỘ' },
+  { value: 'dien_giai_bao_gia', label: 'DIỄN GIẢI BÁO GIÁ' },
   { value: 'ghi_chu', label: 'GHI CHÚ' },
   { value: 'list_price', label: 'LIST PRICE' },
   { value: 'don_gia_nhap', label: 'GIÁ NHẬP' },
@@ -2749,7 +2762,9 @@ const availableExcelFields = [
 const defaultExcelConfig = [
   { header: 'Stt', field: 'stt' },
   { header: 'Tên hàng', field: 'ten_hang' },
-  { header: 'Diễn giải', field: 'features' },
+  { header: 'Tên hàng báo giá', field: 'ten_hang_bao_gia' },
+  { header: 'Diễn giải nội bộ', field: 'features' },
+  { header: 'Diễn giải báo giá', field: 'dien_giai_bao_gia' },
   { header: 'S.L', field: 'so_luong' },
   { header: 'Đơn vị', field: 'dvt' },
   { header: 'Đơn giá\n(VNĐ)', field: 'don_gia_kh' },
@@ -2779,10 +2794,31 @@ function loadExcelConfig() {
         if (isLegacyDefault) {
           excelMappingConfig.value = JSON.parse(JSON.stringify(defaultExcelConfig))
           localStorage.setItem('baogia_excelMappingConfig', JSON.stringify(defaultExcelConfig))
+          localStorage.setItem('baogia_excelMappingConfig_internalLabel_v1', '1')
         } else {
+          if (!localStorage.getItem('baogia_excelMappingConfig_internalLabel_v1')) {
+            let migrated = false
+            for (const col of parsed) {
+              if (!col || typeof col !== 'object') continue
+              const hdr = String(col.header || '').trim()
+              if (col.field === 'features' && /^diễn\s*giải$/i.test(hdr)) {
+                col.header = 'Diễn giải nội bộ'
+                migrated = true
+              } else if (col.field === 'description' && /^description$/i.test(hdr)) {
+                col.header = 'Description nội bộ'
+                migrated = true
+              }
+            }
+            if (migrated) {
+              localStorage.setItem('baogia_excelMappingConfig', JSON.stringify(parsed))
+            }
+            localStorage.setItem('baogia_excelMappingConfig_internalLabel_v1', '1')
+          }
           excelMappingConfig.value = parsed
         }
       }
+    } else {
+      localStorage.setItem('baogia_excelMappingConfig_internalLabel_v1', '1')
     }
     const savedDynamic = localStorage.getItem('baogia_useDynamicExcelMapping')
     if (savedDynamic !== null) {
@@ -3061,6 +3097,7 @@ function getPreviewCellValue(r: any, field: string) {
     case 'sku':
     case 'sku_code': return (i as any).sku_code || i.Ma_hang || '';
     case 'ten_hang': return i.Ten_hang || '';
+    case 'ten_hang_bao_gia': return String((i as any).Ten_hang_bao_gia ?? (i as any).ten_hang_bao_gia ?? '');
     case 'description': return (i as any).Description || '';
     case 'hang': return i.Ten_nha_cung_cap || '';
     case 'danh_muc': return i.Danh_muc || '';
@@ -3071,6 +3108,7 @@ function getPreviewCellValue(r: any, field: string) {
     case 'thoi_gian_bao_hanh': return i.thoi_han_bao_hanh || '';
     case 'volume': return (i as any).volume || '';
     case 'features': return i.Features || i.Ten_hang || '';
+    case 'dien_giai_bao_gia': return stripHtmlToPlain(String((i as any).Dien_giai_bao_gia ?? (i as any).dien_giai_bao_gia ?? ''));
     case 'ghi_chu': return i.Ghi_chu || '';
     
     case 'list_price': {
@@ -3442,12 +3480,14 @@ const itemForm = ref<HangHoa & { So_luong: number }>({
   Ma_hang: '',
   sku_code: '',
   Ten_hang: '',
+  Ten_hang_bao_gia: '',
   Main_img: '',
   Ma_nha_cung_cap: '',
   Ten_nha_cung_cap: '',
   Mo_ta_chung: '',
   Mo_ta_chi_tiet: '',
   Features: '',
+  Dien_giai_bao_gia: '',
   Danh_muc: '',
   License_duration: '',
   thoi_han_bao_hanh: '',
@@ -3491,6 +3531,7 @@ const isManualFormDirty = computed<boolean>(() => {
     'Ma_hang',
     'sku_code',
     'Ten_hang',
+    'Ten_hang_bao_gia',
     'Ten_nha_cung_cap',
     'Danh_muc',
     'DVT',
@@ -3503,6 +3544,7 @@ const isManualFormDirty = computed<boolean>(() => {
   if (textKeys.some(k => String(f[k] ?? '').trim() !== '')) return true
   if (hasRichTextMeaningfulContent(f.Description)) return true
   if (hasRichTextMeaningfulContent(f.Features)) return true
+  if (hasRichTextMeaningfulContent(f.Dien_giai_bao_gia)) return true
   if (toNum(f.Don_gia, 0) !== 0) return true
   if (toNum(f.Gia_tieu_chuan, 0) !== 0) return true
   if (toNum(f.gia_nhap, 0) !== 0) return true
@@ -3905,8 +3947,10 @@ function hasCardCoreFieldsChanged(cur: any, orig: any): boolean {
   const textKeys = [
     'sku_code',
     'Ten_hang',
+    'Ten_hang_bao_gia',
     'Description',
     'Features',
+    'Dien_giai_bao_gia',
     'License_duration',
     'thoi_han_bao_hanh',
     'volume',
@@ -3953,8 +3997,10 @@ async function persistCardEditToFirebaseIfChanged(itemSnapshot: any, origSnapsho
   const updatePayload: Record<string, any> = {
     sku_code: String(itemSnapshot.sku_code || '').trim(),
     Ten_hang: String(itemSnapshot.Ten_hang || '').trim(),
+    Ten_hang_bao_gia: String(itemSnapshot.Ten_hang_bao_gia ?? '').trim(),
     Description: String(itemSnapshot.Description || '').trim(),
     Features: String(itemSnapshot.Features || ''),
+    Dien_giai_bao_gia: String(itemSnapshot.Dien_giai_bao_gia ?? ''),
     Danh_muc: cleanCat,
     License_duration: String(itemSnapshot.License_duration || ''),
     thoi_han_bao_hanh: String(itemSnapshot.thoi_han_bao_hanh || ''),
@@ -3986,8 +4032,10 @@ async function persistCardEditToFirebaseIfChanged(itemSnapshot: any, origSnapsho
       Object.assign(p, {
         sku_code: updatePayload.sku_code,
         Ten_hang: updatePayload.Ten_hang,
+        Ten_hang_bao_gia: updatePayload.Ten_hang_bao_gia,
         Description: updatePayload.Description,
         Features: updatePayload.Features,
+        Dien_giai_bao_gia: updatePayload.Dien_giai_bao_gia,
         Danh_muc: updatePayload.Danh_muc,
         License_duration: updatePayload.License_duration,
         thoi_han_bao_hanh: updatePayload.thoi_han_bao_hanh,
@@ -4960,12 +5008,14 @@ function mapHopDongChiTietRowToItem(row: any[]) {
   const item: HangHoa & { So_luong: number } = {
     Ma_hang: maHang,
     Ten_hang: String(row?.[3] ?? ''),
+    Ten_hang_bao_gia: String(row?.[52] ?? ''),
     Main_img: String(row?.[4] ?? ''),
     Ma_nha_cung_cap: String(row?.[5] ?? ''),
     Ten_nha_cung_cap: String(row?.[6] ?? ''),
     Mo_ta_chung: String(row?.[7] ?? ''),
     Mo_ta_chi_tiet: String(row?.[8] ?? ''),
     Features: String(row?.[9] ?? ''),
+    Dien_giai_bao_gia: String(row?.[53] ?? ''),
     Danh_muc: String(row?.[10] ?? '').toUpperCase(),
     License_duration: String(row?.[11] ?? ''),
     DVT: String(row?.[12] ?? ''),
@@ -5068,10 +5118,84 @@ function isContractRowOfficial(r: any[] | null | undefined): boolean {
   return false
 }
 
+function isUnclosedExternalCraftRow(r: any[] | null | undefined): boolean {
+  if (!r || !Array.isArray(r)) return false
+  const ma = String(r?.[0] ?? '').trim()
+  if (!ma.startsWith('HD_CRAFT_')) return false
+  return !isContractRowOfficial(r)
+}
+
+interface ContractVersionMeta {
+  verNum: number
+  verLabel: string
+  familyTotal: number
+  isLatest: boolean
+  maGoc: string
+}
+
+const contractVersionMetaMap = computed(() => {
+  const familyMap = new Map<string, any[][]>()
+  contractsRaw.value.forEach(r => {
+    if (!Array.isArray(r) || isUnclosedExternalCraftRow(r)) return
+    const ma = String(r[0] ?? '').trim()
+    if (!ma) return
+    const goc = String(r[32] || ma).trim()
+    if (!goc) return
+    if (!familyMap.has(goc)) familyMap.set(goc, [])
+    const arr = familyMap.get(goc)!
+    if (!arr.some(x => String(x?.[0] ?? '').trim() === ma)) {
+      arr.push(r)
+    }
+  })
+
+  const metaMap = new Map<string, ContractVersionMeta>()
+  familyMap.forEach((arr, goc) => {
+    arr.sort((a, b) => {
+      const ta = parseDateStr(String(a?.[21] || a?.[4] || ''))
+      const tb = parseDateStr(String(b?.[21] || b?.[4] || ''))
+      if (ta !== tb) return ta - tb
+      return String(a?.[0] ?? '').localeCompare(String(b?.[0] ?? ''))
+    })
+    const total = arr.length
+    arr.forEach((row, idx) => {
+      const ma = String(row?.[0] ?? '').trim()
+      if (!ma) return
+      metaMap.set(ma, {
+        verNum: idx + 1,
+        verLabel: total > 1 ? `V${idx + 1}` : '',
+        familyTotal: total,
+        isLatest: total > 1 && idx === total - 1,
+        maGoc: goc
+      })
+    })
+  })
+  return metaMap
+})
+
+function getContractVersionLabelByMa(ma?: string | null): string {
+  const key = String(ma || '').trim()
+  if (!key) return ''
+  return contractVersionMetaMap.value.get(key)?.verLabel || ''
+}
+
+function findOpenTabByMaHopDong(ma?: string | null): QuoteTabSession | undefined {
+  const target = String(ma || '').trim().toLowerCase()
+  if (!target) return undefined
+  return quoteTabs.value.find(t => {
+    const isCurrent = t.id === activeQuoteTabId.value
+    const tLoadedMa = String(isCurrent ? loadedMaHopDong.value || '' : t.loadedMaHopDong || '').trim().toLowerCase()
+    const tMa = String(isCurrent ? maHopDong.value || '' : t.maHopDong || '').trim().toLowerCase()
+    return tLoadedMa === target || tMa === target
+  })
+}
+
 const selectedLoadContractRow = computed(() => findContractRow())
 const isSelectedLoadContractOfficial = computed(() => isContractRowOfficial(selectedLoadContractRow.value))
 
 async function openLoadInvoiceModal() {
+  loadMode.value = 'MA';
+  loadKey.value = '';
+  loadMsg.value = '';
   loadSortBy.value = 'desc';
   loadStatusFilter.value = '';
   loadFromDate.value = '';
@@ -5097,25 +5221,14 @@ async function openLoadInvoiceModal() {
 function findExistingTabByContractRow(row: any, fallbackMa = ''): QuoteTabSession | undefined {
   snapshotCurrentStateToActiveTab()
   const ma = String(row?.[0] ?? fallbackMa ?? '').trim().toLowerCase()
-  const so = String(row?.[1] ?? '').trim().toLowerCase()
-  const maGoc = String(row?.[32] ?? '').trim().toLowerCase()
+  if (!ma) return undefined
 
+  // Phương án 1: Mỗi phiên bản (ma_hop_dong riêng biệt) mở trên 1 Tab độc lập.
+  // Chỉ coi là đã mở sẵn khi trùng chính xác mã lưu của đúng phiên bản đó.
   return quoteTabs.value.find(t => {
     const tLoadedMa = String(t.loadedMaHopDong || '').trim().toLowerCase()
-    const tLoadedGoc = String(t.loadedMaHopDongGoc || '').trim().toLowerCase()
     const tMa = String(t.maHopDong || '').trim().toLowerCase()
-    const tSo = String(t.soHopDong || '').trim().toLowerCase()
-
-    if (ma && (tLoadedMa === ma || tMa === ma || (tLoadedGoc && tLoadedGoc === ma))) {
-      return true
-    }
-    if (maGoc && tLoadedMa && (tLoadedGoc === maGoc || tLoadedMa === maGoc)) {
-      return true
-    }
-    if (so && tLoadedMa && tSo === so) {
-      return true
-    }
-    return false
+    return tLoadedMa === ma || tMa === ma
   })
 }
 
@@ -5136,6 +5249,8 @@ async function loadInvoiceToFE() {
 
   const ma = String(row?.[0] ?? '').trim()
   const so = String(row?.[1] ?? '').trim()
+  const verLabel = getContractVersionLabelByMa(ma)
+  const displayLabel = `${so || ma}${verLabel ? ` (${verLabel})` : ''}`
 
   const existingTab = findExistingTabByContractRow(row, loadKey.value)
   if (existingTab) {
@@ -5148,15 +5263,14 @@ async function loadInvoiceToFE() {
     showLoadInvoiceModal.value = false
     loadKey.value = ''
     if (window.innerWidth <= 1100) setMobileStep(2)
-    const displayLabel = so || ma
-    loadMsg.value = `✅ Đã chuyển tới tab đang mở hợp đồng ${displayLabel}.`
-    triggerToast(`Đã chuyển tới tab đang mở hợp đồng ${displayLabel}`)
+    loadMsg.value = `✅ Đã chuyển tới tab đang sửa ${displayLabel}.`
+    triggerToast(`Đã chuyển tới tab đang sửa ${displayLabel}`)
     return
   }
 
   try {
     loadingInvoice.value = true
-    showAsyncLoading('Đang load hóa đơn...')
+    showAsyncLoading(`Đang nạp ${displayLabel}...`)
 
     await createNewQuoteTab({ silent: true, skipGenerateIds: true })
 
@@ -5217,8 +5331,9 @@ async function loadInvoiceToFE() {
     showLoadInvoiceModal.value = false
     loadKey.value = ''
     if (window.innerWidth <= 1100) setMobileStep(2)
-    loadMsg.value = '✅ Đã load hóa đơn/hợp đồng lên FE.'
-    showAsyncSuccess('Load thành công', 'Hóa đơn đã được mở ở tab mới.')
+    loadMsg.value = `✅ Đã mở ${displayLabel} ở tab mới.`
+    showAsyncSuccess('Load thành công', `Đã mở ${displayLabel} ở tab mới.`)
+    triggerToast(`Đã mở ${displayLabel} ở tab mới`)
   } catch (e: any) {
     loadMsg.value = '❌ Lỗi load: ' + String(e?.message || e)
     showAsyncError('Load thất bại', String(e?.message || e))
@@ -8278,9 +8393,10 @@ const saveMsg = ref('')
 
 async function postApi(action: string, payload: any) {
   if (action === 'save_contract_temp') {
-    const hdRow = Array.isArray(payload?.hd_tong_quat_row) ? payload.hd_tong_quat_row.slice(0, 46) : []
-    while (hdRow.length < 46) hdRow.push('')
+    const hdRow = Array.isArray(payload?.hd_tong_quat_row) ? payload.hd_tong_quat_row.slice(0, 47) : []
+    while (hdRow.length < 47) hdRow.push('')
     const ctRows = Array.isArray(payload?.hd_chi_tiet_rows) ? payload.hd_chi_tiet_rows : []
+    const isOverwriteExisting = Boolean(payload?.overwrite_existing)
     if (!hdRow.length) throw new Error('Thiếu hd_tong_quat_row')
 
     const maMoi = String(hdRow[0] || '').trim()
@@ -8288,13 +8404,19 @@ async function postApi(action: string, payload: any) {
     const maCu = String(hdRow[19] || '').trim()
     const maKH = String(hdRow[2] || '').trim()
 
-    let maGoc = maMoi
-    if (maCu) {
-      maGoc = (await getMaHopDongGocFromFirebase(maCu)) || maCu
+    let maGoc = String(hdRow[32] || '').trim() || maMoi
+    if (!isOverwriteExisting) {
+      maGoc = maMoi
+      if (maCu) {
+        maGoc = (await getMaHopDongGocFromFirebase(maCu)) || maCu
+      }
     }
     hdRow[32] = maGoc
     hdRow[33] = false
     hdRow[15] = 'Tạm'
+    if (payload?.preserve_created_time) {
+      hdRow[21] = String(payload.preserve_created_time)
+    }
 
     if (maKH) {
       const custFound = await findCustomerInFirebase(maKH)
@@ -8305,24 +8427,42 @@ async function postApi(action: string, payload: any) {
 
     const fbHdObj = rowToFbHopDongTongQuat(hdRow)
     await set(dbRef(database, `hop_dong_tong_quat/${maMoi}`), fbHdObj)
-    await saveContractVersionFirebase(maMoi, soHopDongStr, maCu)
+    if (!isOverwriteExisting) {
+      await saveContractVersionFirebase(maMoi, soHopDongStr, maCu)
+    }
 
+    const ctUpdates: Record<string, any> = {}
+    if (isOverwriteExisting && maMoi) {
+      const oldCtSnap = await get(dbRef(database, 'hop_dong_chi_tiet'))
+      if (oldCtSnap.exists()) {
+        const allCt = oldCtSnap.val() || {}
+        for (const [ctKey, ctVal] of Object.entries(allCt) as [string, any][]) {
+          const mhd = Array.isArray(ctVal)
+            ? String(ctVal[0] || '').trim()
+            : String(ctVal?.ma_hop_dong ?? ctVal?.Ma_hop_dong ?? '').trim()
+          if (mhd === maMoi) {
+            ctUpdates[`hop_dong_chi_tiet/${ctKey}`] = null
+          }
+        }
+      }
+    }
     if (ctRows.length > 0) {
-      const ctUpdates: Record<string, any> = {}
       ctRows.forEach((r: any[]) => {
         const key = push(dbRef(database, 'hop_dong_chi_tiet')).key
         if (key) {
           ctUpdates[`hop_dong_chi_tiet/${key}`] = rowToFbHopDongChiTiet(r, 'Tạm')
         }
       })
+    }
+    if (Object.keys(ctUpdates).length > 0) {
       await update(dbRef(database), ctUpdates)
     }
     return { ok: true, status: 'success', maGoc }
   }
 
   if (action === 'save_contract_official') {
-    const hdRow = Array.isArray(payload?.hd_tong_quat_row) ? payload.hd_tong_quat_row.slice(0, 46) : []
-    while (hdRow.length < 46) hdRow.push('')
+    const hdRow = Array.isArray(payload?.hd_tong_quat_row) ? payload.hd_tong_quat_row.slice(0, 47) : []
+    while (hdRow.length < 47) hdRow.push('')
     const ctRows = Array.isArray(payload?.hd_chi_tiet_rows) ? payload.hd_chi_tiet_rows : []
     const maKH = String(payload?.ma_khach_hang || hdRow[2] || '').trim()
     const tongSau = toNum(payload?.tong_sau_thue ?? hdRow[7], 0)
@@ -8389,12 +8529,14 @@ async function postApi(action: string, payload: any) {
       Ma_hang: String(row[0] ?? '').trim(),
       sku_code: String(row[27] ?? '').trim(),
       Ten_hang: String(row[1] ?? '').trim(),
+      Ten_hang_bao_gia: String(row[29] ?? '').trim(),
       Main_img: String(row[2] ?? '').trim(),
       Ma_nha_cung_cap: String(row[3] ?? '').trim(),
       Ten_nha_cung_cap: String(row[4] ?? '').trim(),
       Mo_ta_chung: String(row[5] ?? ''),
       Mo_ta_chi_tiet: String(row[6] ?? ''),
       Features: String(row[7] ?? ''),
+      Dien_giai_bao_gia: String(row[30] ?? ''),
       Danh_muc: danhMuc,
       License_duration: String(row[9] ?? ''),
       DVT: String(row[10] ?? ''),
@@ -8673,6 +8815,16 @@ function buildQuoteSaleReportGoodsAndTotals(existingCraft?: any) {
     clGia = baseClGia
   }
 
+  const comPctRefBucket = activeB._comPctActive
+    ? activeB
+    : otherB._comPctActive
+      ? otherB
+      : null
+  const comPctActive = Boolean(comPctRefBucket && comPctRefBucket.grossComPct !== null && comPctRefBucket.grossComPct !== 0)
+  const grossComPctVal = comPctActive
+    ? roundCmpSrComPct(Number(comPctRefBucket!.grossComPct) || 0)
+    : (truocHD ? roundCmpSrComPct((grossComVal / truocHD) * 100) : 0)
+
   const goodsTotal = {
     // Chuẩn camelCase (SaleReportFirebase.vue)
     ttTruoc: truocHD,
@@ -8715,6 +8867,8 @@ function buildQuoteSaleReportGoodsAndTotals(existingCraft?: any) {
     thueCLPct,
     clGia,
     grossComVal,
+    grossComPctVal,
+    comPctActive,
     conLaiVal,
     tongCKVal,
     netComVal
@@ -8768,10 +8922,13 @@ async function findExistingSaleReportCraftInfo(
 
 type QuoteFileSlotMode = 'template' | 'upload' | 'skip'
 const saveQuoteFileConfigModal = reactive<{
+  strategyModalVisible: boolean
   visible: boolean
   saveMode: 'temp' | 'official'
   fromSaveModal: boolean
   previewingSlot: 'hd' | 'khach' | null
+  canOverwriteDraft: boolean
+  tempEditStrategy: 'overwrite' | 'new_version'
   hdMode: QuoteFileSlotMode
   hdTemplateId: string
   hdCustomFile: File | null
@@ -8779,10 +8936,13 @@ const saveQuoteFileConfigModal = reactive<{
   khachTemplateId: string
   khachCustomFile: File | null
 }>({
+  strategyModalVisible: false,
   visible: false,
   saveMode: 'temp',
   fromSaveModal: false,
   previewingSlot: null,
+  canOverwriteDraft: false,
+  tempEditStrategy: 'overwrite',
   hdMode: 'template',
   hdTemplateId: 'MINTL_HOP_DONG',
   hdCustomFile: null,
@@ -8822,16 +8982,65 @@ async function openSaveQuoteFileConfigModal(saveMode: 'temp' | 'official', fromS
     ) ||
     list[0]
 
+  let canOverwrite = false
+  const editingCode = String(loadedMaHopDong.value || '').trim()
+  if (saveMode === 'temp' && editingCode) {
+    try {
+      const snap = await get(dbRef(database, `hop_dong_tong_quat/${editingCode}`))
+      if (snap.exists()) {
+        const val = snap.val()
+        const isComp = Array.isArray(val)
+          ? val[33] === true || String(val[33]).toUpperCase() === 'TRUE' || String(val[15] || '') === 'Chính thức'
+          : val?.isCompleted === true || String(val?.isCompleted).toUpperCase() === 'TRUE' || String(val?.Trang_thai_hop_dong || '') === 'Chính thức'
+        if (!isComp) canOverwrite = true
+      }
+    } catch {}
+  }
+
   saveQuoteFileConfigModal.saveMode = saveMode
   saveQuoteFileConfigModal.fromSaveModal = fromSaveModal
   saveQuoteFileConfigModal.previewingSlot = null
+  saveQuoteFileConfigModal.canOverwriteDraft = canOverwrite
+  saveQuoteFileConfigModal.tempEditStrategy = canOverwrite ? 'overwrite' : 'new_version'
   saveQuoteFileConfigModal.hdMode = 'template'
   saveQuoteFileConfigModal.hdTemplateId = defaultHdTpl?.id || 'MINTL_HOP_DONG'
   saveQuoteFileConfigModal.hdCustomFile = null
   saveQuoteFileConfigModal.khachMode = 'template'
   saveQuoteFileConfigModal.khachTemplateId = defaultKhachTpl?.id || 'MINTL_DEFAULT_NTS'
   saveQuoteFileConfigModal.khachCustomFile = null
+
+  // Nếu Lưu tạm trên 1 bản nháp đang chỉnh sửa -> mở Modal Chọn Chế Độ Lưu trước, sau đó mới sang Modal Đính Kèm File
+  if (saveMode === 'temp' && canOverwrite && editingCode) {
+    saveQuoteFileConfigModal.visible = false
+    saveQuoteFileConfigModal.strategyModalVisible = true
+  } else {
+    saveQuoteFileConfigModal.strategyModalVisible = false
+    saveQuoteFileConfigModal.visible = true
+  }
+}
+
+function proceedFromStrategyToFileModal() {
+  saveQuoteFileConfigModal.strategyModalVisible = false
   saveQuoteFileConfigModal.visible = true
+}
+
+function selectTempStrategyAndProceed(strategy: 'overwrite' | 'new_version') {
+  saveQuoteFileConfigModal.tempEditStrategy = strategy
+  proceedFromStrategyToFileModal()
+}
+
+function backToTempStrategyModal() {
+  saveQuoteFileConfigModal.visible = false
+  saveQuoteFileConfigModal.strategyModalVisible = true
+}
+
+function cancelTempSaveStrategyModal() {
+  const reopenSaveModal = saveQuoteFileConfigModal.fromSaveModal
+  saveQuoteFileConfigModal.strategyModalVisible = false
+  saveQuoteFileConfigModal.visible = false
+  if (reopenSaveModal) {
+    showSaveModal.value = true
+  }
 }
 
 function openPreviewFromSaveQuoteFileSlot(slot: 'hd' | 'khach') {
@@ -8901,10 +9110,23 @@ function onCustomQuoteFilePicked(slot: 'hd' | 'khach', e: Event) {
 
 function cancelSaveQuoteFileConfigModal() {
   const reopenSaveModal = saveQuoteFileConfigModal.fromSaveModal
+  saveQuoteFileConfigModal.strategyModalVisible = false
   saveQuoteFileConfigModal.visible = false
   if (reopenSaveModal) {
     showSaveModal.value = true
   }
+}
+
+function backFromSaveQuoteFileConfigModal() {
+  if (
+    saveQuoteFileConfigModal.saveMode === 'temp' &&
+    saveQuoteFileConfigModal.canOverwriteDraft &&
+    String(loadedMaHopDong.value || '').trim()
+  ) {
+    backToTempStrategyModal()
+    return
+  }
+  cancelSaveQuoteFileConfigModal()
 }
 
 async function skipAllFilesAndSaveQuoteNow() {
@@ -9053,7 +9275,8 @@ function buildHopDongTongQuatRow(
   idSaleReport: string = '',
   tenFileBaoGiaKhach: string = '',
   linkBaoGiaKhach: string = '',
-  srMetricsOverride?: ReturnType<typeof buildQuoteSaleReportGoodsAndTotals>
+  srMetricsOverride?: ReturnType<typeof buildQuoteSaleReportGoodsAndTotals>,
+  contentPoOverride?: string
 ) {
   syncCustomerInputsToKhach()
   const ngay = formatDateTimeVN(new Date())
@@ -9112,7 +9335,7 @@ function buildHopDongTongQuatRow(
       formatCreatedTimeVN(new Date()), // ✅ index 21 - created_time
       soPO,                            // ✅ index 22 - So_PO
       tenPO,                           // ✅ index 23 - Ten_PO
-      contentOfContractPO.value.trim(),    // ✅ index 24 - content_of_contract_po
+      (contentPoOverride !== undefined ? contentPoOverride : contentOfContractPO.value).trim(),    // ✅ index 24 - content_of_contract_po
       srMetrics.ckTruocThue,                    // 25 - chiet_khau_tong_truoc_thue
       srMetrics.ckTruocThuePct,                 // 26 - phan_tram_chiet_khau_tong_truoc_thue
       srMetrics.thueCL,                         // 27 - thue_chenh_lech_gia
@@ -9233,7 +9456,9 @@ function buildHopDongChiTietRows() {
       ttTruocKhach,                        // [48] Thanh_tien_truoc_thue_khach
       tienVatKhach,                        // [49] Tien_thue_vat_khach
       ttSauKhach,                          // [50] Thanh_tien_sau_thue_khach
-      chenhLechTruocThue                   // [51] Chenh_lech_truoc_thue
+      chenhLechTruocThue,                  // [51] Chenh_lech_truoc_thue
+      String((it as any).Ten_hang_bao_gia ?? ''),   // [52] Ten_hang_bao_gia
+      String((it as any).Dien_giai_bao_gia ?? '')   // [53] Dien_giai_bao_gia
     ]
   })
 }
@@ -9324,6 +9549,29 @@ async function saveContractTemp(force = false, skipFileModal = false, fromSaveMo
   showAsyncLoading('Đang đồng bộ lưu tạm & Sale Report Craft...')
 
   ;(async () => {
+    const isOverwriteDraft = Boolean(
+      saveQuoteFileConfigModal.canOverwriteDraft &&
+        saveQuoteFileConfigModal.tempEditStrategy === 'overwrite' &&
+        String(loadedMaHopDong.value || '').trim()
+    )
+    const targetMaToSave = isOverwriteDraft
+      ? String(loadedMaHopDong.value || '').trim()
+      : maHopDong.value
+
+    let existingOverwriteHdRow: any[] | null = null
+    if (isOverwriteDraft && targetMaToSave) {
+      try {
+        const snap = await get(dbRef(database, `hop_dong_tong_quat/${targetMaToSave}`))
+        if (snap.exists()) {
+          existingOverwriteHdRow = fbHopDongTongQuatToRow(snap.val(), targetMaToSave)
+        }
+      } catch {}
+    }
+
+    if (isOverwriteDraft && targetMaToSave) {
+      maHopDong.value = targetMaToSave
+    }
+
     const [fileRes, craftInfo] = await Promise.all([
       resolveAndUploadConfiguredQuoteFiles(),
       findExistingSaleReportCraftInfo(
@@ -9333,7 +9581,18 @@ async function saveContractTemp(force = false, skipFileModal = false, fromSaveMo
       )
     ])
 
-    const { tenFileHD, linkFileHD, tenFileKhach, linkFileKhach } = fileRes
+    let { tenFileHD, linkFileHD, tenFileKhach, linkFileKhach } = fileRes
+    if (isOverwriteDraft && existingOverwriteHdRow) {
+      if (!linkFileHD && saveQuoteFileConfigModal.hdMode === 'skip') {
+        tenFileHD = String(existingOverwriteHdRow[34] || '')
+        linkFileHD = String(existingOverwriteHdRow[35] || '')
+      }
+      if (!linkFileKhach && saveQuoteFileConfigModal.khachMode === 'skip') {
+        tenFileKhach = String(existingOverwriteHdRow[43] || '')
+        linkFileKhach = String(existingOverwriteHdRow[44] || '')
+      }
+    }
+
     const craftKey = craftInfo.craftKey
     const existingCraft = craftInfo.existingData || {}
     const existingSoPo = String(existingCraft.So_PO || existingCraft.soPO || currentPO.value || '').trim()
@@ -9341,131 +9600,162 @@ async function saveContractTemp(force = false, skipFileModal = false, fromSaveMo
     // Tính chỉ số tài chính & hàng hóa đồng bộ từ Bảng hàng hóa + Box Chỉ số tài chính
     const srMetrics = buildQuoteSaleReportGoodsAndTotals(existingCraft)
 
+    const parentMaCuForRow = isOverwriteDraft
+      ? String(existingOverwriteHdRow?.[19] || '')
+      : loadedMaHopDong.value
+    const gocForRow = isOverwriteDraft
+      ? String(existingOverwriteHdRow?.[32] || loadedMaHopDongGoc.value || targetMaToSave)
+      : loadedMaHopDongGoc.value
+
+    // Nếu người dùng nhấn Lưu tạm mà chưa nhập Ghi chú lẫn Content of Contract / PO -> lấy theo tên file xuất tại trang báo giá
+    const trimmedContentPo = contentOfContractPO.value.trim()
+    const trimmedGhiChu = (ghiChuHopDong.value || '').trim()
+    const effectiveContentPo = trimmedContentPo || (!trimmedGhiChu ? getQuoteDownloadBaseName() : '')
+
     const payload = {
+      overwrite_existing: isOverwriteDraft,
+      preserve_created_time: isOverwriteDraft ? String(existingOverwriteHdRow?.[21] || '') : '',
       hd_tong_quat_row: buildHopDongTongQuatRow(
         'Tạm',
-        loadedMaHopDong.value,
+        parentMaCuForRow || null,
         existingSoPo,
         soHopDong.value || '',
-        loadedMaHopDongGoc.value,
+        gocForRow,
         tenFileHD,
         linkFileHD,
         craftKey,
         '',
         tenFileKhach,
         linkFileKhach,
-        srMetrics
+        srMetrics,
+        effectiveContentPo
       ),
       hd_chi_tiet_rows: buildHopDongChiTietRows()
     }
 
     const postRes = await postApi('save_contract_temp', payload)
-    const maGocFinal = String(postRes?.maGoc || loadedMaHopDongGoc.value || maHopDong.value).trim()
+    const maGocFinal = String(postRes?.maGoc || gocForRow || maHopDong.value).trim()
 
-    // Lưu / cập nhật bản ghi tương ứng vào sale_report_craft
-    const firstItem = selectedItems.value[0] || ({} as any)
-    const contentPoStr = contentOfContractPO.value.trim() || soHopDong.value
-    const nowSr = new Date()
-    const padSr = (n: number) => String(n).padStart(2, '0')
-    const nowSrStr = `${padSr(nowSr.getDate())}/${padSr(nowSr.getMonth() + 1)}/${nowSr.getFullYear()} ${padSr(nowSr.getHours())}:${padSr(nowSr.getMinutes())}:${padSr(nowSr.getSeconds())}`
+    // Lưu / cập nhật bản ghi đại diện tương ứng vào sale_report_craft
+    // Nếu đang Lưu đè 1 bản cũ nhưng trên Sale Report Tạm đang ghim 1 version khác làm Active, không tự ý ghi đè mất bản Active đó
+    const curActiveCraftMaHD = String(existingCraft.ma_hop_dong || '').trim()
+    const shouldSyncToActiveCraft =
+      !isOverwriteDraft || !curActiveCraftMaHD || curActiveCraftMaHD === maHopDong.value
 
-    const craftPayload = {
-      ...existingCraft,
-      ID: craftKey,
-      created_time: String(existingCraft.created_time || '').trim() || nowSrStr,
-      updated_at: Date.now(),
-      ma_hop_dong: maHopDong.value,
-      so_hop_dong: soHopDong.value,
-      ma_hop_dong_goc: maGocFinal,
-      So_PO: existingSoPo,
-      soPO: existingSoPo,
-      content_of_contract_po: contentPoStr,
-      content_of_contract_PO: contentPoStr,
-      content: contentPoStr,
-      Ma_khach_hang: (khach.value.Ma_khach_hang || '').trim(),
-      Ten_khach_hang: (khach.value.Ten_khach_hang || '').trim(),
-      Ma_cong_ty: (khach.value.Ma_cong_ty || '').trim(),
-      Ten_cong_ty: (khach.value.Ten_cong_ty || '').trim(),
-      customer: (khach.value.Ten_cong_ty || khach.value.Ten_khach_hang || '').trim(),
-      recipient: (khach.value.Ten_khach_hang || '').trim(),
-      MST: (khach.value.MST || '').trim(),
-      mst: (khach.value.MST || '').trim(),
-      Ma_nha_cung_cap: firstItem.Ma_nha_cung_cap || '',
-      Ten_nha_cung_cap: firstItem.Ten_nha_cung_cap || '',
-      productType: firstItem.Ten_nha_cung_cap || firstItem.Danh_muc || '',
-      ghi_chu: (ghiChuHopDong.value || '').trim(),
-      ghiChu: (ghiChuHopDong.value || '').trim(),
-      // Tổng Giá Hợp Đồng
-      Tong_tien_truoc_thueVAT: srMetrics.truocHD,
-      Tong_thueVAT: srMetrics.vatHD,
-      Tong_tien_sau_thueVAT: srMetrics.sauHD,
-      doanhSoBan: srMetrics.truocHD,
-      // Tổng Giá Khách / Thực tế
-      Tong_gia_thuc_te: srMetrics.truocKhach,
-      Tong_tien_truoc_thueVAT_khach: srMetrics.truocKhach,
-      tong_truoc_vat_goc: srMetrics.truocKhach,
-      Tong_thueVAT_khach: srMetrics.vatKhach,
-      Tong_tien_sau_thueVAT_khach: srMetrics.sauKhach,
-      doanhSoBan_khach: srMetrics.truocKhach,
-      // Tổng Giá List & Giá vốn Mua hàng & Tổng CP đơn hàng
-      Tong_tien_truoc_thueVAT_list: srMetrics.truocList,
-      Tong_thanh_tien_chua_VAT_mua_hang: srMetrics.tongMuaChuaVat,
-      giaMua: srMetrics.tongMuaChuaVat,
-      Tong_CP_don_hang: srMetrics.tongCpDonHang,
-      tongCP: srMetrics.tongCpDonHang,
-      // Chiết khấu / Chênh lệch / COM
-      chiet_khau_tong_truoc_thue: srMetrics.ckTruocThue,
-      phan_tram_chiet_khau_tong_truoc_thue: srMetrics.ckTruocThuePct,
-      thue_chenh_lech_gia: srMetrics.thueCL,
-      phan_tram_thue_chenh_lech_gia: srMetrics.thueCLPct,
-      taxPct: srMetrics.thueCLPct,
-      chenh_lech_gia: srMetrics.clGia,
-      gross_com: srMetrics.grossComVal,
-      grossCom: srMetrics.grossComVal,
-      con_lai: srMetrics.conLaiVal,
-      tong_chiet_khau: srMetrics.tongCKVal,
-      net_com: srMetrics.netComVal,
-      netCom: srMetrics.netComVal,
-      account_manager_name: String(existingCraft.account_manager_name || 'LÊ PHI SƠN'),
-      am: String(existingCraft.am || 'LÊ PHI SƠN'),
-      link_excel_bao_gia: linkFileHD,
-      link_excel_bao_gia_hd: linkFileHD,
-      linkBaoGia: linkFileHD,
-      ten_file_bao_gia: tenFileHD,
-      ten_file_bao_gia_hd: tenFileHD,
-      tenFileBG: tenFileHD,
-      link_excel_bao_gia_khach: linkFileKhach,
-      linkBaoGiaKhach: linkFileKhach,
-      ten_file_bao_gia_khach: tenFileKhach,
-      tenFileBGKhach: tenFileKhach,
-      cong_no: Math.max(0, srMetrics.sauHD - toNum(existingCraft.so_tien_da_thanh_toan, 0)),
-      so_tien_da_thanh_toan: toNum(existingCraft.so_tien_da_thanh_toan, 0),
-      thoi_gian_thanh_toan: String(existingCraft.thoi_gian_thanh_toan || ''),
-      loai_thanh_toan: String(existingCraft.loai_thanh_toan || 'mot_lan'),
-      han_thanh_toan: String(existingCraft.han_thanh_toan || ''),
-      ke_hoach_thanh_toan: Array.isArray(existingCraft.ke_hoach_thanh_toan) ? existingCraft.ke_hoach_thanh_toan : [],
-      goodsList: srMetrics.goodsList,
-      goodsTotal: srMetrics.goodsTotal,
-      lam_tron_ti_suat: Boolean(cmpSrIsRatioRounded.value),
-      is_craft: true,
-      chotDeal: false
-    }
+    if (shouldSyncToActiveCraft) {
+      const firstItem = selectedItems.value[0] || ({} as any)
+      const contentPoStr = effectiveContentPo || soHopDong.value
+      const nowSr = new Date()
+      const padSr = (n: number) => String(n).padStart(2, '0')
+      const nowSrStr = `${padSr(nowSr.getDate())}/${padSr(nowSr.getMonth() + 1)}/${nowSr.getFullYear()} ${padSr(nowSr.getHours())}:${padSr(nowSr.getMinutes())}:${padSr(nowSr.getSeconds())}`
 
-    await set(dbRef(database, `sale_report_craft/${craftKey}`), craftPayload)
-
-    const existingFileId = String(existingCraft.id_quanlyfile || existingCraft.id_quan_ly_file || '').trim()
-    if (existingFileId) {
-      await update(dbRef(database, `quan_ly_file/${existingFileId}`), {
+      const craftPayload = {
+        ...existingCraft,
+        ID: craftKey,
+        source_type: 'baogia_goc',
+        created_time: String(existingCraft.created_time || '').trim() || nowSrStr,
+        updated_at: Date.now(),
+        ma_hop_dong: maHopDong.value,
+        so_hop_dong: soHopDong.value,
+        ma_hop_dong_goc: maGocFinal,
+        So_PO: existingSoPo,
+        soPO: existingSoPo,
+        content_of_contract_po: contentPoStr,
+        content_of_contract_PO: contentPoStr,
+        content: contentPoStr,
+        Ma_khach_hang: (khach.value.Ma_khach_hang || '').trim(),
+        Ten_khach_hang: (khach.value.Ten_khach_hang || '').trim(),
+        Ma_cong_ty: (khach.value.Ma_cong_ty || '').trim(),
+        Ten_cong_ty: (khach.value.Ten_cong_ty || '').trim(),
+        customer: (khach.value.Ten_cong_ty || khach.value.Ten_khach_hang || '').trim(),
+        recipient: (khach.value.Ten_khach_hang || '').trim(),
+        MST: (khach.value.MST || '').trim(),
+        mst: (khach.value.MST || '').trim(),
+        Ma_nha_cung_cap: firstItem.Ma_nha_cung_cap || '',
+        Ten_nha_cung_cap: firstItem.Ten_nha_cung_cap || '',
+        productType: firstItem.Ten_nha_cung_cap || firstItem.Danh_muc || '',
+        ghi_chu: (ghiChuHopDong.value || '').trim(),
+        ghiChu: (ghiChuHopDong.value || '').trim(),
+        // Tổng Giá Hợp Đồng
+        Tong_tien_truoc_thueVAT: srMetrics.truocHD,
+        Tong_thueVAT: srMetrics.vatHD,
+        Tong_tien_sau_thueVAT: srMetrics.sauHD,
+        doanhSoBan: srMetrics.truocHD,
+        // Tổng Giá Khách / Thực tế
+        Tong_gia_thuc_te: srMetrics.truocKhach,
+        Tong_tien_truoc_thueVAT_khach: srMetrics.truocKhach,
+        tong_truoc_vat_goc: srMetrics.truocKhach,
+        Tong_thueVAT_khach: srMetrics.vatKhach,
+        Tong_tien_sau_thueVAT_khach: srMetrics.sauKhach,
+        doanhSoBan_khach: srMetrics.truocKhach,
+        // Tổng Giá List & Giá vốn Mua hàng & Tổng CP đơn hàng
+        Tong_tien_truoc_thueVAT_list: srMetrics.truocList,
+        Tong_thanh_tien_chua_VAT_mua_hang: srMetrics.tongMuaChuaVat,
+        giaMua: srMetrics.tongMuaChuaVat,
+        Tong_CP_don_hang: srMetrics.tongCpDonHang,
+        tongCP: srMetrics.tongCpDonHang,
+        // Chiết khấu / Chênh lệch / COM
+        chiet_khau_tong_truoc_thue: srMetrics.ckTruocThue,
+        phan_tram_chiet_khau_tong_truoc_thue: srMetrics.ckTruocThuePct,
+        thue_chenh_lech_gia: srMetrics.thueCL,
+        phan_tram_thue_chenh_lech_gia: srMetrics.thueCLPct,
+        taxPct: srMetrics.thueCLPct,
+        chenh_lech_gia: srMetrics.clGia,
+        gross_com: srMetrics.grossComVal,
+        grossCom: srMetrics.grossComVal,
+        phan_tram_com: srMetrics.grossComPctVal,
+        gross_com_pct: srMetrics.grossComPctVal,
+        com_pct_active: srMetrics.comPctActive,
+        con_lai: srMetrics.conLaiVal,
+        tong_chiet_khau: srMetrics.tongCKVal,
+        net_com: srMetrics.netComVal,
+        netCom: srMetrics.netComVal,
+        account_manager_name: String(existingCraft.account_manager_name || 'LÊ PHI SƠN'),
+        am: String(existingCraft.am || 'LÊ PHI SƠN'),
         link_excel_bao_gia: linkFileHD,
+        link_excel_bao_gia_hd: linkFileHD,
+        linkBaoGia: linkFileHD,
         ten_file_bao_gia: tenFileHD,
+        ten_file_bao_gia_hd: tenFileHD,
+        tenFileBG: tenFileHD,
         link_excel_bao_gia_khach: linkFileKhach,
-        ten_file_bao_gia_khach: tenFileKhach
-      }).catch(() => {})
+        linkBaoGiaKhach: linkFileKhach,
+        ten_file_bao_gia_khach: tenFileKhach,
+        tenFileBGKhach: tenFileKhach,
+        cong_no: Math.max(0, srMetrics.sauHD - toNum(existingCraft.so_tien_da_thanh_toan, 0)),
+        so_tien_da_thanh_toan: toNum(existingCraft.so_tien_da_thanh_toan, 0),
+        thoi_gian_thanh_toan: String(existingCraft.thoi_gian_thanh_toan || ''),
+        loai_thanh_toan: String(existingCraft.loai_thanh_toan || 'mot_lan'),
+        han_thanh_toan: String(existingCraft.han_thanh_toan || ''),
+        ke_hoach_thanh_toan: Array.isArray(existingCraft.ke_hoach_thanh_toan) ? existingCraft.ke_hoach_thanh_toan : [],
+        goodsList: srMetrics.goodsList,
+        goodsTotal: srMetrics.goodsTotal,
+        lam_tron_ti_suat: Boolean(cmpSrIsRatioRounded.value),
+        is_craft: true,
+        chotDeal: false
+      }
+
+      await set(dbRef(database, `sale_report_craft/${craftKey}`), craftPayload)
+
+      const existingFileId = String(existingCraft.id_quanlyfile || existingCraft.id_quan_ly_file || '').trim()
+      if (existingFileId) {
+        await update(dbRef(database, `quan_ly_file/${existingFileId}`), {
+          link_excel_bao_gia: linkFileHD,
+          ten_file_bao_gia: tenFileHD,
+          link_excel_bao_gia_khach: linkFileKhach,
+          ten_file_bao_gia_khach: tenFileKhach
+        }).catch(() => {})
+      }
     }
 
     isDataSaved.value = true
     showSaveModal.value = false
-    showAsyncSuccess('Lưu tạm thành công', 'Hợp đồng tạm & Phương án tạm (Sale Report Craft) đã được đồng bộ.')
+    showAsyncSuccess(
+      isOverwriteDraft ? 'Đã cập nhật bản báo giá' : 'Lưu phiên bản mới thành công',
+      isOverwriteDraft
+        ? `Đã lưu đè vào mã ${maHopDong.value} & đồng bộ Sale Report Tạm.`
+        : 'Hợp đồng tạm mới & Phương án tạm (Sale Report Craft) đã được đồng bộ.'
+    )
     await closeQuoteTabAfterSave(savingTabId)
   })().catch((e: any) => {
     showAsyncError('Lưu tạm thất bại', 'Lỗi: ' + String(e?.message || e) + '. Vui lòng thử lại.')
@@ -9610,6 +9900,9 @@ async function saveContractOfficialAndSaleReport(force = false, skipFileModal = 
       chenh_lech_gia: srMetrics.clGia,
       gross_com: srMetrics.grossComVal,
       grossCom: srMetrics.grossComVal,
+      phan_tram_com: srMetrics.grossComPctVal,
+      gross_com_pct: srMetrics.grossComPctVal,
+      com_pct_active: srMetrics.comPctActive,
       con_lai: srMetrics.conLaiVal,
       tong_chiet_khau: srMetrics.tongCKVal,
       net_com: srMetrics.netComVal,
@@ -9851,14 +10144,15 @@ function parseDateStr(str: string) {
 const contractsSortedDesc = computed(() => {
   const uniqueMap = new Map()
   contractsRaw.value.forEach(r => {
+    if (isUnclosedExternalCraftRow(r)) return
     const ma = String(r?.[0] ?? '').trim()
     if (ma && !uniqueMap.has(ma)) {
       uniqueMap.set(ma, r)
     }
   })
   return Array.from(uniqueMap.values()).sort((a, b) => {
-    const ta = parseDateStr(String(a?.[IDX_TIME] ?? ''))
-    const tb = parseDateStr(String(b?.[IDX_TIME] ?? ''))
+    const ta = parseDateStr(String(a?.[21] || a?.[IDX_TIME] || ''))
+    const tb = parseDateStr(String(b?.[21] || b?.[IDX_TIME] || ''))
     return tb - ta
   })
 })
@@ -9924,19 +10218,27 @@ const filteredContractRowsForCards = computed(() => {
   }
 
   if (loadSearchQuery.value) {
-    const kw = loadSearchQuery.value.trim().toLowerCase()
-    list = list.filter(r => {
-      const maHD = String(r?.[0] ?? '').toLowerCase()
-      const soHD = String(r?.[1] ?? '').toLowerCase()
-      const maKH = String(r?.[2] ?? '').toLowerCase()
-      const tenKH = String(r?.[3] ?? '').toLowerCase()
-      const soPO = String(r?.[22] ?? '').toLowerCase()
-      
-      const c = customers.value.find(x => x.Ma_khach_hang === String(r?.[2] ?? '').trim())
-      const tenCongTy = c ? String(c.Ten_cong_ty || '').toLowerCase() : ''
+    const tokens = loadSearchQuery.value.trim().toLowerCase().split(/\s+/).filter(Boolean)
+    if (tokens.length) {
+      list = list.filter(r => {
+        const rawMa = String(r?.[0] ?? '').trim()
+        const verLbl = getContractVersionLabelByMa(rawMa).toLowerCase()
+        const maHD = rawMa.toLowerCase()
+        const soHD = String(r?.[1] ?? '').toLowerCase()
+        const maKH = String(r?.[2] ?? '').toLowerCase()
+        const tenKH = String(r?.[3] ?? '').toLowerCase()
+        const ghiChu = String(r?.[16] ?? '').toLowerCase()
+        const soPO = String(r?.[22] ?? '').toLowerCase()
+        const maGoc = String(r?.[32] ?? '').toLowerCase()
 
-      return maHD.includes(kw) || soHD.includes(kw) || maKH.includes(kw) || tenKH.includes(kw) || soPO.includes(kw) || tenCongTy.includes(kw)
-    })
+        const c = customers.value.find(x => x.Ma_khach_hang === String(r?.[2] ?? '').trim())
+        const tenCongTy = c ? String(c.Ten_cong_ty || '').toLowerCase() : ''
+        const mst = c ? String(c.MST || '').toLowerCase() : ''
+
+        const haystack = `${soHD} ${verLbl} ${maHD} ${maGoc} ${maKH} ${tenKH} ${tenCongTy} ${mst} ${soPO} ${ghiChu}`
+        return tokens.every(tk => haystack.includes(tk))
+      })
+    }
   }
 
   return list
@@ -9945,13 +10247,25 @@ const filteredContractRowsForCards = computed(() => {
 const contractCards = computed(() => {
   // Chỉ map theo số lượng thẻ hiển thị (lazy loading 20 thẻ / lần)
   return filteredContractRowsForCards.value.slice(0, loadInvoiceDisplayLimit.value).map(r => {
+    const maHD = String(r?.[0] ?? '').trim()
+    const soHD = String(r?.[1] ?? '').trim()
+    const maGoc = String(r?.[32] || maHD).trim()
     const maKH = String(r?.[2] ?? '').trim()
     const c = customers.value.find(x => x.Ma_khach_hang === maKH)
+    const verMeta = contractVersionMetaMap.value.get(maHD)
+    const openTab = findOpenTabByMaHopDong(maHD)
     return {
       _raw: r,
-      maHD: String(r?.[0] ?? ''),
-      soHD: String(r?.[1] ?? ''),
-      maKH: maKH,
+      maHD,
+      soHD,
+      maGoc,
+      ghiChu: String(r?.[16] ?? '').trim(),
+      versionLabel: verMeta?.verLabel || '',
+      familyTotal: verMeta?.familyTotal || 1,
+      isLatestVersion: Boolean(verMeta?.isLatest),
+      isOpenedInTab: Boolean(openTab),
+      openTabLabel: openTab ? `Tab ${openTab.tabNumber}` : '',
+      maKH,
       tenKH: String(r?.[3] ?? ''),
       ngay: String(r?.[4] ?? ''),
       truocThue: toNum(r?.[5], 0),
@@ -9967,6 +10281,22 @@ const contractCards = computed(() => {
       tongChietKhau: toNum(r?.[31], 0)
     }
   })
+})
+
+const selectedLoadContractMeta = computed(() => {
+  const r = selectedLoadContractRow.value
+  if (!r) return null
+  const maHD = String(r?.[0] ?? '').trim()
+  if (!maHD) return null
+  const verMeta = contractVersionMetaMap.value.get(maHD)
+  const openTab = findOpenTabByMaHopDong(maHD)
+  return {
+    maHD,
+    soHD: String(r?.[1] ?? '').trim(),
+    versionLabel: verMeta?.verLabel || '',
+    isOpenedInTab: Boolean(openTab),
+    openTabLabel: openTab ? `Tab ${openTab.tabNumber}` : ''
+  }
 })
 
 function loadMoreInvoiceCards() {
@@ -10066,234 +10396,259 @@ function mapKhachRow(row: any, fbKey = ''): KhachHang {
 /* ======================
    INIT
 ====================== */
+let isInitialMountRunning = false
+let isBaogiaComponentActive = false
+let isHandlingExternalRouteAction = false
+
 async function handleExternalRouteAndCloneActions() {
-  const pendingEditMa = String(localStorage.getItem('pendingEditQuoteMaHopDong') || route.query.ma || '').trim()
-  if (pendingEditMa) {
-    localStorage.removeItem('pendingEditQuoteMaHopDong')
-    const existingQuickTab = findExistingTabByContractRow(null, pendingEditMa)
-    if (existingQuickTab) {
-      if (existingQuickTab.id !== activeQuoteTabId.value) {
-        switchQuoteTab(existingQuickTab.id)
-      } else {
-        scrollActiveTabIntoView()
-      }
-      flushQuoteTabsToStorageNow()
-      if (window.innerWidth <= 1100) setMobileStep(2)
-      const displayLabel = existingQuickTab.soHopDong || existingQuickTab.loadedMaHopDong || pendingEditMa
-      triggerToast(`Đã chuyển tới tab đang mở hợp đồng ${displayLabel}`)
-      if (route.query.ma) {
-        router.replace('/baogiafirebase')
-      }
-    } else {
-      try {
-        const [hdRows, khList] = await Promise.all([
-          fetchHopDongTongQuatFromFirebase(),
-          fetchKhachHangFromFirebase()
-        ])
-        if (Array.isArray(hdRows)) contractsRaw.value = hdRows
-        if (Array.isArray(khList)) customers.value = khList
-      } catch (err) {
-        console.warn('Lỗi tải mới hợp đồng/khách hàng khi mở tab sửa:', err)
-      }
-      loadMode.value = 'MA'
-      loadKey.value = pendingEditMa
-      await loadInvoiceToFE()
-      flushQuoteTabsToStorageNow()
-      if (window.innerWidth <= 1100) setMobileStep(2)
-      if (route.query.ma) {
-        router.replace('/baogiafirebase')
-      }
-    }
-  }
+  if (isHandlingExternalRouteAction) return
+  isHandlingExternalRouteAction = true
+  try {
+    const pendingEditMa = String(localStorage.getItem('pendingEditQuoteMaHopDong') || route.query.ma || '').trim()
+    if (pendingEditMa) {
+      localStorage.removeItem('pendingEditQuoteMaHopDong')
 
-  const cloneDataRaw = localStorage.getItem('cloneQuoteProductsRaw')
-  if (cloneDataRaw) {
-    localStorage.removeItem('cloneQuoteProductsRaw')
-    try {
-      showAsyncLoading('Đang nhân bản hàng hóa...')
-      await createNewQuoteTab({ silent: true })
-
-      const parsedRaw = JSON.parse(cloneDataRaw)
-      selectedItems.value = parsedRaw.map(mapHopDongChiTietRowToItem)
-      selectedItems.value.forEach(it => {
-        if (it.Ma_hang) qtyMap[it.Ma_hang] = Math.max(1, toNum(it.So_luong, 1))
-      })
-
-      const metaRaw = localStorage.getItem('cloneQuoteMeta')
-      if (metaRaw) {
-        const meta = JSON.parse(metaRaw)
-        chietKhauTruocThuePct.value = meta.chietKhauTruocThuePct || 0
-        thueChenhLechPct.value = meta.thueChenhLechPct !== undefined ? toNum(meta.thueChenhLechPct, 25) : 25
-
-        if (meta.structure && String(meta.structure).trim().startsWith('[')) {
-          try {
-            excelMappingConfig.value = JSON.parse(meta.structure)
-          } catch (err) {
-            console.warn('Cannot parse structure JSON from cloned quote', err)
-          }
+      const existingQuickTab = findExistingTabByContractRow(null, pendingEditMa)
+      if (existingQuickTab) {
+        if (existingQuickTab.id !== activeQuoteTabId.value) {
+          switchQuoteTab(existingQuickTab.id)
+        } else {
+          scrollActiveTabIntoView()
         }
-        localStorage.removeItem('cloneQuoteMeta')
+        flushQuoteTabsToStorageNow()
+        if (window.innerWidth <= 1100) setMobileStep(2)
+        // Cập nhật ngầm danh sách hợp đồng để nhãn V1/V2/V3 luôn mới nhất
+        fetchHopDongTongQuatFromFirebase()
+          .then(hdRows => {
+            if (Array.isArray(hdRows)) contractsRaw.value = hdRows
+          })
+          .catch(() => {})
+        const verLbl = getContractVersionLabelByMa(pendingEditMa)
+        const baseLabel = existingQuickTab.soHopDong || existingQuickTab.loadedMaHopDong || pendingEditMa
+        const displayLabel = `${baseLabel}${verLbl ? ` (${verLbl})` : ''}`
+        triggerToast(`Đã chuyển tới tab đang sửa ${displayLabel}`)
+      } else {
+        try {
+          const [hdRows, khList] = await Promise.all([
+            fetchHopDongTongQuatFromFirebase(),
+            fetchKhachHangFromFirebase()
+          ])
+          if (Array.isArray(hdRows)) contractsRaw.value = hdRows
+          if (Array.isArray(khList)) customers.value = khList
+        } catch (err) {
+          console.warn('Lỗi tải mới hợp đồng/khách hàng khi mở tab sửa:', err)
+        }
+        loadMode.value = 'MA'
+        loadKey.value = pendingEditMa
+        await loadInvoiceToFE()
+        flushQuoteTabsToStorageNow()
+        if (window.innerWidth <= 1100) setMobileStep(2)
       }
 
-      syncFlatRows()
-      flushQuoteTabsToStorageNow()
-      scrollActiveTabIntoView()
-      if (window.innerWidth <= 1100) setMobileStep(2)
-      if (route.query.clone) {
-        router.replace('/baogiafirebase')
+      if (route.query.ma || route.query._ts) {
+        router.replace('/baogiafirebase').catch(() => {})
       }
-      showAsyncSuccess('Thành công', 'Đã đổ dữ liệu hàng hóa sang tab báo giá mới')
-      triggerToast('Đã nhân bản hàng hóa sang tab mới!')
-    } catch (e: any) {
-      console.error(e)
-      showAsyncError('Lỗi', 'Không thể nhân bản: ' + String(e?.message || e))
     }
-  }
 
-  const cloneData = localStorage.getItem('cloneQuoteProducts')
-  if (cloneData) {
-    localStorage.removeItem('cloneQuoteProducts')
-    try {
-      await createNewQuoteTab({ silent: true })
-      const parsedItems = JSON.parse(cloneData)
-      selectedItems.value = Array.isArray(parsedItems)
-        ? parsedItems.map((it: any) =>
-            withOriginalPriceFields({
-              ...it,
-              So_luong: Math.max(1, toNum(it?.So_luong, 1))
-            })
-          )
-        : []
-      selectedItems.value.forEach(it => {
-        if (it.Ma_hang) qtyMap[it.Ma_hang] = Math.max(1, toNum(it.So_luong, 1))
-      })
-      const cartPriceListId = localStorage.getItem('cloneQuotePriceListId')
-      if (cartPriceListId !== null) {
-        selectedPriceListId.value = cartPriceListId
-        localStorage.removeItem('cloneQuotePriceListId')
+    const cloneDataRaw = localStorage.getItem('cloneQuoteProductsRaw')
+    if (cloneDataRaw) {
+      localStorage.removeItem('cloneQuoteProductsRaw')
+      try {
+        showAsyncLoading('Đang nhân bản hàng hóa...')
+        await createNewQuoteTab({ silent: true })
+
+        const parsedRaw = JSON.parse(cloneDataRaw)
+        selectedItems.value = parsedRaw.map(mapHopDongChiTietRowToItem)
+        selectedItems.value.forEach(it => {
+          if (it.Ma_hang) qtyMap[it.Ma_hang] = Math.max(1, toNum(it.So_luong, 1))
+        })
+
+        const metaRaw = localStorage.getItem('cloneQuoteMeta')
+        if (metaRaw) {
+          const meta = JSON.parse(metaRaw)
+          chietKhauTruocThuePct.value = meta.chietKhauTruocThuePct || 0
+          thueChenhLechPct.value = meta.thueChenhLechPct !== undefined ? toNum(meta.thueChenhLechPct, 25) : 25
+
+          if (meta.structure && String(meta.structure).trim().startsWith('[')) {
+            try {
+              excelMappingConfig.value = JSON.parse(meta.structure)
+            } catch (err) {
+              console.warn('Cannot parse structure JSON from cloned quote', err)
+            }
+          }
+          localStorage.removeItem('cloneQuoteMeta')
+        }
+
+        syncFlatRows()
+        flushQuoteTabsToStorageNow()
+        scrollActiveTabIntoView()
+        if (window.innerWidth <= 1100) setMobileStep(2)
+        showAsyncSuccess('Thành công', 'Đã đổ dữ liệu hàng hóa sang tab báo giá mới')
+        triggerToast('Đã nhân bản hàng hóa sang tab mới!')
+      } catch (e: any) {
+        console.error(e)
+        showAsyncError('Lỗi', 'Không thể nhân bản: ' + String(e?.message || e))
       }
-      syncFlatRows()
-      flushQuoteTabsToStorageNow()
-      scrollActiveTabIntoView()
-      if (window.innerWidth <= 1100) setMobileStep(2)
-      showAsyncSuccess(
-        'Thành công',
-        `Đã tạo tab báo giá mới với ${selectedItems.value.length} sản phẩm từ giỏ hàng`
-      )
-      triggerToast(`Đã nạp ${selectedItems.value.length} sản phẩm vào tab báo giá mới!`)
-    } catch (e) {
-      console.error(e)
+      if (route.query.clone || route.query._ts) {
+        router.replace('/baogiafirebase').catch(() => {})
+      }
     }
+
+    const cloneData = localStorage.getItem('cloneQuoteProducts')
+    if (cloneData) {
+      localStorage.removeItem('cloneQuoteProducts')
+      try {
+        await createNewQuoteTab({ silent: true })
+        const parsedItems = JSON.parse(cloneData)
+        selectedItems.value = Array.isArray(parsedItems)
+          ? parsedItems.map((it: any) =>
+              withOriginalPriceFields({
+                ...it,
+                So_luong: Math.max(1, toNum(it?.So_luong, 1))
+              })
+            )
+          : []
+        selectedItems.value.forEach(it => {
+          if (it.Ma_hang) qtyMap[it.Ma_hang] = Math.max(1, toNum(it.So_luong, 1))
+        })
+        const cartPriceListId = localStorage.getItem('cloneQuotePriceListId')
+        if (cartPriceListId !== null) {
+          selectedPriceListId.value = cartPriceListId
+          localStorage.removeItem('cloneQuotePriceListId')
+        }
+        syncFlatRows()
+        flushQuoteTabsToStorageNow()
+        scrollActiveTabIntoView()
+        if (window.innerWidth <= 1100) setMobileStep(2)
+        showAsyncSuccess(
+          'Thành công',
+          `Đã tạo tab báo giá mới với ${selectedItems.value.length} sản phẩm từ giỏ hàng`
+        )
+        triggerToast(`Đã nạp ${selectedItems.value.length} sản phẩm vào tab báo giá mới!`)
+      } catch (e) {
+        console.error(e)
+      }
+    }
+  } finally {
+    isHandlingExternalRouteAction = false
   }
 }
 
 onMounted(async () => {
-  // Khôi phục các tab báo giá đã lưu trong localStorage (giữ nguyên khi F5)
-  restoreQuoteTabsFromStorage()
-
-  // hop_dong_tong_quat
-  contractsState.value = 'loading'
-  const hdRows = await fetchHopDongTongQuatFromFirebase()
-  contractsRaw.value = Array.isArray(hdRows) ? hdRows : []
-  if (!soHopDong.value) {
-    soHopDong.value = computeNextLocalSoHopDongAndPO(activeQuoteTabId.value).soHopDong
-  }
-  markLoaded(contractsState)
-
-  // hang_hoa
-  productsState.value = 'loading'
-  let mappedProducts: any[] = []
+  isInitialMountRunning = true
   try {
-    const hangHoaSnapshot = await get(dbRef(database, 'hang_hoa'))
-    const hangHoaData = hangHoaSnapshot.val() || {}
-    
-    Object.entries(hangHoaData).forEach(([fbKey, item]: [string, any]) => {
-      if (!item || typeof item !== 'object') return
-      mappedProducts.push({
-        _firebaseKey: fbKey,
-        Ma_hang: String(item.Ma_hang ?? ''),
-        sku_code: String(item.sku_code ?? item.SKU ?? item.sku ?? item.ma_sku ?? ''),
-        Ten_hang: String(item.Ten_hang ?? ''),
-        Main_img: String(item.Main_img ?? ''),
-        Ma_nha_cung_cap: String(item.Ma_nha_cung_cap ?? ''),
-        Ten_nha_cung_cap: String(item.Ten_nha_cung_cap ?? ''),
-        Mo_ta_chung: String(item.Mo_ta_chung ?? ''),
-        Mo_ta_chi_tiet: String(item.Mo_ta_chi_tiet ?? ''),
-        Features: String(item.Features ?? ''),
-        Danh_muc: String(item.Danh_muc ?? '').toUpperCase(),
-        License_duration: String(item.License_duration ?? ''),
-        DVT: String(item.DVT ?? ''),
-        Gia_tieu_chuan: Number(item.Gia_tieu_chuan) || 0,
-        Don_gia: Number(item.Don_gia) || 0,
-        Trang_thai: String(item.Trang_thai ?? ''),
-        Don_vi_tien_te: String(item.Don_vi_tien_te ?? 'VND'),
-        Ti_gia: Number(item.Ti_gia) || 1,
-        Thue_VAT: Number(item.Thue_VAT) || 0,
-        Ma_hang_lien_ket: String(item.Ma_hang_lien_ket ?? ''),
-        Ten_hang_lien_ket: String(item.Ten_hang_lien_ket ?? ''),
-        Ghi_chu: String(item.Ghi_chu ?? ''),
-        gia_hardware: Number(item.gia_hardware) || 0,
-        gia_nhap: Number(item.gia_nhap) || 0,
-        muc_phan_tram_off: Number(item['muc_%_off'] ?? item.muc_phan_tram_off ?? 0),
-        Type: String(item.TYPE ?? item.Type ?? '').trim(),
-        thoi_han_bao_hanh: String(item.thoi_han_bao_hanh ?? ''),
-        volume: String(item.volume ?? ''),
-        Description: String(item.Description ?? item.description ?? '').trim(),
-        last_updated: String(item.last_updated ?? ''),
-        danh_sach_file: normalizeProductFileHistory(item.danh_sach_file)
+    // Khôi phục các tab báo giá đã lưu trong localStorage (giữ nguyên khi F5)
+    restoreQuoteTabsFromStorage()
+
+    // hop_dong_tong_quat
+    contractsState.value = 'loading'
+    const hdRows = await fetchHopDongTongQuatFromFirebase()
+    contractsRaw.value = Array.isArray(hdRows) ? hdRows : []
+    if (!soHopDong.value) {
+      soHopDong.value = computeNextLocalSoHopDongAndPO(activeQuoteTabId.value).soHopDong
+    }
+    markLoaded(contractsState)
+
+    // hang_hoa
+    productsState.value = 'loading'
+    let mappedProducts: any[] = []
+    try {
+      const hangHoaSnapshot = await get(dbRef(database, 'hang_hoa'))
+      const hangHoaData = hangHoaSnapshot.val() || {}
+      
+      Object.entries(hangHoaData).forEach(([fbKey, item]: [string, any]) => {
+        if (!item || typeof item !== 'object') return
+        mappedProducts.push({
+          _firebaseKey: fbKey,
+          Ma_hang: String(item.Ma_hang ?? ''),
+          sku_code: String(item.sku_code ?? item.SKU ?? item.sku ?? item.ma_sku ?? ''),
+          Ten_hang: String(item.Ten_hang ?? ''),
+          Ten_hang_bao_gia: String(item.Ten_hang_bao_gia ?? item.ten_hang_bao_gia ?? ''),
+          Main_img: String(item.Main_img ?? ''),
+          Ma_nha_cung_cap: String(item.Ma_nha_cung_cap ?? ''),
+          Ten_nha_cung_cap: String(item.Ten_nha_cung_cap ?? ''),
+          Mo_ta_chung: String(item.Mo_ta_chung ?? ''),
+          Mo_ta_chi_tiet: String(item.Mo_ta_chi_tiet ?? ''),
+          Features: String(item.Features ?? ''),
+          Dien_giai_bao_gia: String(item.Dien_giai_bao_gia ?? item.dien_giai_bao_gia ?? ''),
+          Danh_muc: String(item.Danh_muc ?? '').toUpperCase(),
+          License_duration: String(item.License_duration ?? ''),
+          DVT: String(item.DVT ?? ''),
+          Gia_tieu_chuan: Number(item.Gia_tieu_chuan) || 0,
+          Don_gia: Number(item.Don_gia) || 0,
+          Trang_thai: String(item.Trang_thai ?? ''),
+          Don_vi_tien_te: String(item.Don_vi_tien_te ?? 'VND'),
+          Ti_gia: Number(item.Ti_gia) || 1,
+          Thue_VAT: Number(item.Thue_VAT) || 0,
+          Ma_hang_lien_ket: String(item.Ma_hang_lien_ket ?? ''),
+          Ten_hang_lien_ket: String(item.Ten_hang_lien_ket ?? ''),
+          Ghi_chu: String(item.Ghi_chu ?? ''),
+          gia_hardware: Number(item.gia_hardware) || 0,
+          gia_nhap: Number(item.gia_nhap) || 0,
+          muc_phan_tram_off: Number(item['muc_%_off'] ?? item.muc_phan_tram_off ?? 0),
+          Type: String(item.TYPE ?? item.Type ?? '').trim(),
+          thoi_han_bao_hanh: String(item.thoi_han_bao_hanh ?? ''),
+          volume: String(item.volume ?? ''),
+          Description: String(item.Description ?? item.description ?? '').trim(),
+          last_updated: String(item.last_updated ?? ''),
+          danh_sach_file: normalizeProductFileHistory(item.danh_sach_file)
+        })
       })
+      products.value = mappedProducts
+    } catch (error) {
+      console.error('Error fetching hang_hoa from Firebase:', error)
+      products.value = []
+    }
+    markLoaded(productsState)
+
+    // init qtyMap
+    mappedProducts.forEach(p => {
+      if (!qtyMap[p.Ma_hang]) qtyMap[p.Ma_hang] = 1
     })
-    products.value = mappedProducts
-  } catch (error) {
-    console.error('Error fetching hang_hoa from Firebase:', error)
-    products.value = []
-  }
-  markLoaded(productsState)
+    selectedItems.value.forEach(it => {
+      if (it.Ma_hang) qtyMap[it.Ma_hang] = Math.max(1, toNum(it.So_luong, 1))
+    })
 
-  // init qtyMap
-  mappedProducts.forEach(p => {
-    if (!qtyMap[p.Ma_hang]) qtyMap[p.Ma_hang] = 1
-  })
-  selectedItems.value.forEach(it => {
-    if (it.Ma_hang) qtyMap[it.Ma_hang] = Math.max(1, toNum(it.So_luong, 1))
-  })
+    // khach_hang
+    customersState.value = 'loading'
+    customers.value = await fetchKhachHangFromFirebase()
+    markLoaded(customersState)
 
-  // khach_hang
-  customersState.value = 'loading'
-  customers.value = await fetchKhachHangFromFirebase()
-  markLoaded(customersState)
+    // dieu_khoan
+    termsState.value = 'loading'
+    const dkRows = await fetchDieuKhoanFromFirebase()
+    termsRaw.value = Array.isArray(dkRows) ? dkRows : []
+    markLoaded(termsState)
 
-  // dieu_khoan
-  termsState.value = 'loading'
-  const dkRows = await fetchDieuKhoanFromFirebase()
-  termsRaw.value = Array.isArray(dkRows) ? dkRows : []
-  markLoaded(termsState)
+    // upload_file_mau & mau_in_thiet_lap
+    try {
+      customTemplates.value = await fetchUploadFileMauFromFirebase()
+      await loadPrintTemplates()
+    } catch (err) { console.error('Lỗi lấy template tùy chỉnh:', err) }
 
-  // upload_file_mau & mau_in_thiet_lap
-  try {
-    customTemplates.value = await fetchUploadFileMauFromFirebase()
-    await loadPrintTemplates()
-  } catch (err) { console.error('Lỗi lấy template tùy chỉnh:', err) }
+    // bang_gia
+    fetchPriceListsFromFirebase().catch(err => console.error('Lỗi lấy bang_gia:', err))
 
-  // bang_gia
-  fetchPriceListsFromFirebase().catch(err => console.error('Lỗi lấy bang_gia:', err))
-
-  // Tự động load Số PO tiếp theo từ po_dxmh
-  try {
-    const poData = await fetchPoDxmhFromFirebase()
-    let maxPO = 0
-    if (Array.isArray(poData)) {
-      poData.forEach((row: any) => {
-        const soPo = parseInt(String(row[2] || '').replace(/\D/g, ''))
-        if (!isNaN(soPo) && soPo > maxPO) maxPO = soPo
-      })
+    // Tự động load Số PO tiếp theo từ po_dxmh
+    try {
+      const poData = await fetchPoDxmhFromFirebase()
+      let maxPO = 0
+      if (Array.isArray(poData)) {
+        poData.forEach((row: any) => {
+          const soPo = parseInt(String(row[2] || '').replace(/\D/g, ''))
+          if (!isNaN(soPo) && soPo > maxPO) maxPO = soPo
+        })
+      }
+      latestMaxPoFromDb.value = maxPO
+      if (!currentPO.value) {
+        currentPO.value = computeNextLocalSoHopDongAndPO(activeQuoteTabId.value).currentPO
+      }
+    } catch (e) {
+      console.error('Không thể load số PO:', e)
     }
-    latestMaxPoFromDb.value = maxPO
-    if (!currentPO.value) {
-      currentPO.value = computeNextLocalSoHopDongAndPO(activeQuoteTabId.value).currentPO
-    }
-  } catch (e) {
-    console.error('Không thể load số PO:', e)
+  } finally {
+    isInitialMountRunning = false
+    isBaogiaComponentActive = true
   }
 
   await handleExternalRouteAndCloneActions()
@@ -10302,13 +10657,17 @@ onMounted(async () => {
 
 // ✅ Handle keep-alive reactivation with ?ma= query param (from QuanLyBaoGia)
 onActivated(async () => {
+  isBaogiaComponentActive = true
   // Tránh đụng độ với onMounted trong lần tải trang đầu tiên
-  if (contractsState.value === 'loading') return
+  if (isInitialMountRunning) return
 
   // Đồng bộ lại các tab báo giá mới nhất từ localStorage
   restoreQuoteTabsFromStorage()
 
-  // Luôn cập nhật lại danh sách điều khoản, mẫu in và bảng giá mới nhất từ Firebase
+  // Luôn cập nhật lại danh sách hợp đồng, điều khoản, mẫu in và bảng giá mới nhất từ Firebase
+  fetchHopDongTongQuatFromFirebase().then(hdRows => {
+    if (Array.isArray(hdRows)) contractsRaw.value = hdRows
+  }).catch(e => console.error('Lỗi refresh hop_dong_tong_quat:', e))
   fetchDieuKhoanFromFirebase().then(dkRows => {
     termsRaw.value = Array.isArray(dkRows) ? dkRows : []
   }).catch(e => console.error('Lỗi refresh dieu_khoan:', e))
@@ -10320,8 +10679,19 @@ onActivated(async () => {
 })
 
 onDeactivated(() => {
+  isBaogiaComponentActive = false
   flushQuoteTabsToStorageNow()
 })
+
+watch(
+  () => [route.query.ma, route.query.clone, route.query._ts],
+  async ([newMa, newClone]) => {
+    if (!isBaogiaComponentActive || isInitialMountRunning) return
+    if (!newMa && !newClone) return
+    await handleExternalRouteAndCloneActions()
+    flushQuoteTabsToStorageNow()
+  }
+)
 /* ======================
    AUTO FILL KHÁCH (theo mã hoặc tên)
 ====================== */
@@ -10463,6 +10833,7 @@ function togglePriceListPicker() {
   if (next) {
     priceListSearchQuery.value = ''
     showCategoryPicker.value = false
+    showBrandPicker.value = false
     showRecentSearches.value = false
   }
   showPriceListPicker.value = next
@@ -10480,12 +10851,18 @@ function selectPriceListOption(id: string) {
   }
 }
 
-// --- PRODUCT CATALOG CATEGORY PICKER (BÊN DƯỚI Ô SEARCH - PC POPOVER & MOBILE BOTTOM SHEET) ---
+// --- PRODUCT CATALOG CATEGORY & BRAND PICKER (BÊN DƯỚI Ô SEARCH - PC POPOVER & MOBILE BOTTOM SHEET) ---
 const selectedCatalogCategory = ref<string>('')
 const showCategoryPicker = ref<boolean>(false)
 const categoryPickerSearchQuery = ref<string>('')
 const catPickerRootRef = ref<HTMLElement | null>(null)
 const catMobileSheetRef = ref<HTMLElement | null>(null)
+
+const selectedCatalogBrand = ref<string>('')
+const showBrandPicker = ref<boolean>(false)
+const brandPickerSearchQuery = ref<string>('')
+const brandPickerRootRef = ref<HTMLElement | null>(null)
+const brandMobileSheetRef = ref<HTMLElement | null>(null)
 
 interface CatalogCategoryOption {
   key: string
@@ -10493,10 +10870,19 @@ interface CatalogCategoryOption {
   count: number
 }
 
+function getProductBrandRaw(p: Partial<HangHoa> | null | undefined): string {
+  return String(p?.Ten_nha_cung_cap || p?.Ma_nha_cung_cap || '').trim()
+}
+
+function getProductBrandKey(p: Partial<HangHoa> | null | undefined): string {
+  return getProductBrandRaw(p).toUpperCase()
+}
+
 function toggleCategoryPicker() {
   const next = !showCategoryPicker.value
   if (next) {
     categoryPickerSearchQuery.value = ''
+    showBrandPicker.value = false
     showPriceListPicker.value = false
     showRecentSearches.value = false
   }
@@ -10512,29 +10898,55 @@ function selectCatalogCategory(catKey: string) {
   showCategoryPicker.value = false
 }
 
-function handleCategoryDocPointerDown(ev: MouseEvent) {
-  if (!showCategoryPicker.value) return
-  const target = ev.target as Node | null
-  if (!target) return
-  if (catPickerRootRef.value?.contains(target)) return
-  if (catMobileSheetRef.value?.contains(target)) return
-  showCategoryPicker.value = false
+function toggleBrandPicker() {
+  const next = !showBrandPicker.value
+  if (next) {
+    brandPickerSearchQuery.value = ''
+    showCategoryPicker.value = false
+    showPriceListPicker.value = false
+    showRecentSearches.value = false
+  }
+  showBrandPicker.value = next
 }
 
-function handleCategoryDocKeyDown(ev: KeyboardEvent) {
-  if (ev.key === 'Escape' && showCategoryPicker.value) {
-    showCategoryPicker.value = false
+function closeBrandPicker() {
+  showBrandPicker.value = false
+}
+
+function selectCatalogBrand(brandKey: string) {
+  selectedCatalogBrand.value = brandKey
+  showBrandPicker.value = false
+}
+
+function handleCatalogPickerDocPointerDown(ev: MouseEvent) {
+  const target = ev.target as Node | null
+  if (!target) return
+  if (showCategoryPicker.value) {
+    if (!catPickerRootRef.value?.contains(target) && !catMobileSheetRef.value?.contains(target)) {
+      showCategoryPicker.value = false
+    }
+  }
+  if (showBrandPicker.value) {
+    if (!brandPickerRootRef.value?.contains(target) && !brandMobileSheetRef.value?.contains(target)) {
+      showBrandPicker.value = false
+    }
   }
 }
 
-watch(showCategoryPicker, (open) => {
+function handleCatalogPickerDocKeyDown(ev: KeyboardEvent) {
+  if (ev.key !== 'Escape') return
+  if (showCategoryPicker.value) showCategoryPicker.value = false
+  if (showBrandPicker.value) showBrandPicker.value = false
+}
+
+watch([showCategoryPicker, showBrandPicker], ([catOpen, brandOpen]) => {
   if (typeof document === 'undefined') return
-  if (open) {
-    document.addEventListener('mousedown', handleCategoryDocPointerDown, true)
-    document.addEventListener('keydown', handleCategoryDocKeyDown)
+  if (catOpen || brandOpen) {
+    document.addEventListener('mousedown', handleCatalogPickerDocPointerDown, true)
+    document.addEventListener('keydown', handleCatalogPickerDocKeyDown)
   } else {
-    document.removeEventListener('mousedown', handleCategoryDocPointerDown, true)
-    document.removeEventListener('keydown', handleCategoryDocKeyDown)
+    document.removeEventListener('mousedown', handleCatalogPickerDocPointerDown, true)
+    document.removeEventListener('keydown', handleCatalogPickerDocKeyDown)
   }
 })
 
@@ -10567,14 +10979,15 @@ watch(showPriceListPicker, (open) => {
 onDeactivated(() => {
   showPriceListPicker.value = false
   showCategoryPicker.value = false
+  showBrandPicker.value = false
 })
 
 onUnmounted(() => {
   if (typeof document !== 'undefined') {
     document.removeEventListener('mousedown', handlePriceListDocPointerDown, true)
     document.removeEventListener('keydown', handlePriceListDocKeyDown)
-    document.removeEventListener('mousedown', handleCategoryDocPointerDown, true)
-    document.removeEventListener('keydown', handleCategoryDocKeyDown)
+    document.removeEventListener('mousedown', handleCatalogPickerDocPointerDown, true)
+    document.removeEventListener('keydown', handleCatalogPickerDocKeyDown)
   }
 })
 
@@ -10676,18 +11089,34 @@ const activePriceListMap = computed(() => {
   return map
 })
 
-const catalogCategoryBasePool = computed(() => {
+function matchesCatalogBaseFilters(p: HangHoa): boolean {
   const hasPriceListFilter = Boolean(selectedPriceListId.value && activePriceList.value && filterOnlyPriceListItems.value)
-  return products.value.filter(p => {
-    if (hasPriceListFilter && !activePriceListMap.value.has(String(p.Ma_hang || '').trim())) {
-      return false
-    }
-    const okSupplier =
-      supplierFilter.value === 'ALL' ||
-      p.Ten_nha_cung_cap === supplierFilter.value ||
-      p.Ma_nha_cung_cap === supplierFilter.value
-    return okSupplier
-  })
+  if (hasPriceListFilter && !activePriceListMap.value.has(String(p.Ma_hang || '').trim())) {
+    return false
+  }
+  return (
+    supplierFilter.value === 'ALL' ||
+    p.Ten_nha_cung_cap === supplierFilter.value ||
+    p.Ma_nha_cung_cap === supplierFilter.value
+  )
+}
+
+function matchesCatalogCategory(p: HangHoa, catKey: string): boolean {
+  if (!catKey) return true
+  const pCat = String(p.Danh_muc || '').trim().toUpperCase()
+  return catKey === '__NONE__' ? pCat === '' : pCat === catKey
+}
+
+function matchesCatalogBrand(p: HangHoa, brandKey: string): boolean {
+  if (!brandKey) return true
+  const pBrand = getProductBrandKey(p)
+  return brandKey === '__NONE__' ? pBrand === '' : pBrand === brandKey
+}
+
+const catalogCategoryBasePool = computed(() => {
+  return products.value.filter(
+    p => matchesCatalogBaseFilters(p) && matchesCatalogBrand(p, selectedCatalogBrand.value)
+  )
 })
 
 const totalCatalogPoolCount = computed(() => catalogCategoryBasePool.value.length)
@@ -10740,6 +11169,72 @@ const filteredCatalogCategoryOptions = computed<CatalogCategoryOption[]>(() => {
   if (!q) return catalogCategoryOptions.value
   return catalogCategoryOptions.value.filter(cat => {
     const hay = normalizePriceListSearchText(cat.label)
+    return hay.includes(q)
+  })
+})
+
+const catalogBrandBasePool = computed(() => {
+  return products.value.filter(
+    p => matchesCatalogBaseFilters(p) && matchesCatalogCategory(p, selectedCatalogCategory.value)
+  )
+})
+
+const totalBrandPoolCount = computed(() => catalogBrandBasePool.value.length)
+
+const catalogBrandOptions = computed<CatalogCategoryOption[]>(() => {
+  const brandMap = new Map<string, { label: string; count: number }>()
+  let unbrandedCount = 0
+
+  for (const p of catalogBrandBasePool.value) {
+    const rawBrand = getProductBrandRaw(p)
+    const key = rawBrand.toUpperCase()
+    if (key) {
+      const existing = brandMap.get(key)
+      if (existing) {
+        existing.count++
+      } else {
+        brandMap.set(key, { label: rawBrand, count: 1 })
+      }
+    } else {
+      unbrandedCount++
+    }
+  }
+
+  const list: CatalogCategoryOption[] = Array.from(brandMap.entries())
+    .map(([key, info]) => ({
+      key,
+      label: info.label,
+      count: info.count
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label, 'vi'))
+
+  if (unbrandedCount > 0) {
+    list.push({
+      key: '__NONE__',
+      label: 'Chưa phân hãng',
+      count: unbrandedCount
+    })
+  }
+
+  return list
+})
+
+const selectedBrandOption = computed<CatalogCategoryOption | null>(() => {
+  if (!selectedCatalogBrand.value) return null
+  return (
+    catalogBrandOptions.value.find(b => b.key === selectedCatalogBrand.value) || {
+      key: selectedCatalogBrand.value,
+      label: selectedCatalogBrand.value === '__NONE__' ? 'Chưa phân hãng' : selectedCatalogBrand.value,
+      count: 0
+    }
+  )
+})
+
+const filteredCatalogBrandOptions = computed<CatalogCategoryOption[]>(() => {
+  const q = normalizePriceListSearchText(brandPickerSearchQuery.value)
+  if (!q) return catalogBrandOptions.value
+  return catalogBrandOptions.value.filter(brand => {
+    const hay = normalizePriceListSearchText(brand.label)
     return hay.includes(q)
   })
 })
@@ -11326,41 +11821,27 @@ const filteredProducts = computed(() => {
   const kw = keyword.value.trim()
   const uCount = parseInt(userVolumeFilter.value, 10)
   const hasVolumeFilter = userVolumeFilter.value !== '' && !isNaN(uCount)
-  const hasPriceListFilter = Boolean(selectedPriceListId.value && activePriceList.value && filterOnlyPriceListItems.value)
 
   const words = kw ? kw.toLowerCase().split(/\s+/).filter(Boolean) : []
 
   return products.value
     .filter(p => {
-      if (hasPriceListFilter && !activePriceListMap.value.has(String(p.Ma_hang || '').trim())) {
-        return false
-      }
-
-      const okSupplier =
-        supplierFilter.value === 'ALL' ||
-        p.Ten_nha_cung_cap === supplierFilter.value ||
-        p.Ma_nha_cung_cap === supplierFilter.value
-      if (!okSupplier) return false
-
-      if (selectedCatalogCategory.value) {
-        const pCat = String(p.Danh_muc || '').trim().toUpperCase()
-        if (selectedCatalogCategory.value === '__NONE__') {
-          if (pCat !== '') return false
-        } else if (pCat !== selectedCatalogCategory.value) {
-          return false
-        }
-      }
+      if (!matchesCatalogBaseFilters(p)) return false
+      if (!matchesCatalogCategory(p, selectedCatalogCategory.value)) return false
+      if (!matchesCatalogBrand(p, selectedCatalogBrand.value)) return false
 
       let okKw = true
       if (words.length > 0) {
         const ma = (p.Ma_hang || '').toLowerCase()
         const sku = (p.sku_code || '').toLowerCase()
         const ten = (p.Ten_hang || '').toLowerCase()
+        const tenBg = (p.Ten_hang_bao_gia || '').toLowerCase()
         const ncc = (p.Ten_nha_cung_cap || '').toLowerCase()
 
         const maN = normalizeString(ma)
         const skuN = normalizeString(sku)
         const tenN = normalizeString(ten)
+        const tenBgN = normalizeString(tenBg)
         const nccN = normalizeString(ncc)
 
         okKw = words.every(w => {
@@ -11368,6 +11849,7 @@ const filteredProducts = computed(() => {
           return ma.includes(w) || maN.includes(wN) ||
                  sku.includes(w) || skuN.includes(wN) ||
                  ten.includes(w) || tenN.includes(wN) ||
+                 tenBg.includes(w) || tenBgN.includes(wN) ||
                  ncc.includes(w) || nccN.includes(wN)
         })
       }
@@ -11398,7 +11880,7 @@ const displayLimit = ref(PRODUCT_LAZY_BATCH_SIZE)
 const productLazySentinelRef = ref<HTMLElement | null>(null)
 let productLazyObserver: IntersectionObserver | null = null
 
-watch([keyword, supplierFilter, userVolumeFilter, selectedPriceListId, filterOnlyPriceListItems, selectedCatalogCategory, isMobileQuoteViewport], () => {
+watch([keyword, supplierFilter, userVolumeFilter, selectedPriceListId, filterOnlyPriceListItems, selectedCatalogCategory, selectedCatalogBrand, isMobileQuoteViewport], () => {
   displayLimit.value = PRODUCT_LAZY_BATCH_SIZE
 })
 
@@ -12708,7 +13190,9 @@ function confirmAddToDb() {
     (addedItem as any).volume || '',    // [25] volume
     (addedItem as any).Description || '', // [26] Description
     addedItem.sku_code || '',           // [27] sku_code
-    normalizedFiles                     // [28] danh_sach_file
+    normalizedFiles,                    // [28] danh_sach_file
+    addedItem.Ten_hang_bao_gia || '',   // [29] Ten_hang_bao_gia
+    addedItem.Dien_giai_bao_gia || ''   // [30] Dien_giai_bao_gia
   ];
 
   // Optimistic: show toast + loading immediately
@@ -12725,12 +13209,14 @@ function confirmAddToDb() {
           Ma_hang: cleanMa,
           sku_code: String(addedItem.sku_code || ''),
           Ten_hang: String(addedItem.Ten_hang || ''),
+          Ten_hang_bao_gia: String(addedItem.Ten_hang_bao_gia || ''),
           Main_img: String(addedItem.Main_img || ''),
           Ma_nha_cung_cap: String(addedItem.Ma_nha_cung_cap || ''),
           Ten_nha_cung_cap: String(addedItem.Ten_nha_cung_cap || ''),
           Mo_ta_chung: String(addedItem.Mo_ta_chung || ''),
           Mo_ta_chi_tiet: String(addedItem.Mo_ta_chi_tiet || ''),
           Features: String(addedItem.Features || ''),
+          Dien_giai_bao_gia: String(addedItem.Dien_giai_bao_gia || ''),
           Danh_muc: String(addedItem.Danh_muc || '').toUpperCase(),
           License_duration: String(addedItem.License_duration || ''),
           thoi_han_bao_hanh: String(addedItem.thoi_han_bao_hanh || ''),
@@ -12777,12 +13263,14 @@ function resetItem() {
     Ma_hang: '',
     sku_code: '',
     Ten_hang: '',
+    Ten_hang_bao_gia: '',
     Main_img: '',
     Ma_nha_cung_cap: '',
     Ten_nha_cung_cap: '',
     Mo_ta_chung: '',
     Mo_ta_chi_tiet: '',
     Features: '',
+    Dien_giai_bao_gia: '',
     Danh_muc: '',
     License_duration: '',
     thoi_han_bao_hanh: '',
@@ -14456,6 +14944,8 @@ function addFromCardModal() {
     const existing = selectedItems.value[foundIdx] as any
     existing.So_luong += Math.max(1, toNum(cardEdit.value.So_luong, 1))
     if (hadCardChanges) {
+      existing.Ten_hang_bao_gia = String(cardEdit.value.Ten_hang_bao_gia ?? '')
+      existing.Dien_giai_bao_gia = String(cardEdit.value.Dien_giai_bao_gia ?? '')
       existing.Don_gia = toNum(cardEdit.value.Don_gia, 0)
       existing._Don_gia_goc = toNum(cardEdit.value.Don_gia, 0)
       existing._Don_gia_kho = toNum(cardEdit.value.Don_gia, 0)
@@ -14950,6 +15440,7 @@ const chietKhauTruocThueRaw = computed(() => {
    ✅ 3 KHỐI CHỈ SỐ TÀI CHÍNH & COM (CHẾ ĐỘ ĐỐI CHIẾU 3 GIÁ — TƯƠNG ĐỒNG SALEREPORT)
 ====================== */
 const showCompareFinancePanel = ref(true)
+const isQuoteTableCollapsed = ref(false)
 const cmpSrPriceSource = ref<'contract' | 'customer'>(
   quotePriceViewMode.value === 'customer' ? 'customer' : 'contract'
 )
@@ -14966,18 +15457,36 @@ watch(
   { immediate: true }
 )
 
+type CmpSrComAdjustHistoryEntry = {
+  field: 'grossCom' | 'netCom'
+  prevGrossOverride: number | null
+  prevNetOverride: number | null
+  prevGrossPctOverride: number | null
+  prevComPctActive: boolean
+  prevPredictPct: string
+  prevDisplayGross: number
+  prevDisplayNet: number
+  delta: number
+}
+
 type CmpSrOverrideBucket = {
   doanhSoBan: number | null
   giaMua: number | null
   tongCP: number | null
   grossCom: number | null
   netCom: number | null
+  grossComPct: number | null
+  _comPctActive: boolean
   taxPct: number | null
   predictPct: string
   lamTronTiSuat: boolean
   _origGross: number | null
   _origNet: number | null
   _hasOrigSaved: boolean
+  _comAdjustOpenField?: 'grossCom' | 'netCom' | null
+  _comAdjustSign?: 1 | -1
+  _comAdjustAmount?: number
+  _comAdjustHistory?: CmpSrComAdjustHistoryEntry[]
 }
 
 function createEmptyCmpSrBucket(): CmpSrOverrideBucket {
@@ -14987,12 +15496,18 @@ function createEmptyCmpSrBucket(): CmpSrOverrideBucket {
     tongCP: null,
     grossCom: null,
     netCom: null,
+    grossComPct: null,
+    _comPctActive: false,
     taxPct: null,
     predictPct: '',
     lamTronTiSuat: false,
     _origGross: null,
     _origNet: null,
-    _hasOrigSaved: false
+    _hasOrigSaved: false,
+    _comAdjustOpenField: null,
+    _comAdjustSign: 1,
+    _comAdjustAmount: 0,
+    _comAdjustHistory: []
   }
 }
 
@@ -15076,11 +15591,27 @@ const cmpSrTongCP = computed(() => {
   return cmpSrBaseGiaMua.value
 })
 
+function roundCmpSrComPct(val: number): number {
+  if (!Number.isFinite(val) || Math.abs(val) < 1e-9) return 0
+  return Math.round(val * 100) / 100
+}
+
 const cmpSrTaxPct = computed(() => cmpSrBaseTaxPct.value)
 
 const cmpSrGrossCom = computed(() =>
   cmpSrOverrides.value.grossCom !== null ? cmpSrOverrides.value.grossCom : cmpSrBaseGrossCom.value
 )
+
+const cmpSrGrossComPct = computed(() => {
+  const b = cmpSrOverrides.value
+  if (b._comPctActive && b.grossComPct !== null) {
+    return b.grossComPct
+  }
+  const dsb = cmpSrDoanhSoBan.value
+  const gc = cmpSrGrossCom.value
+  if (!dsb || !gc) return 0
+  return roundCmpSrComPct((gc / dsb) * 100)
+})
 
 const cmpSrNetCom = computed(() => {
   if (cmpSrOverrides.value.netCom !== null) return cmpSrOverrides.value.netCom
@@ -15173,12 +15704,17 @@ function toggleCmpSrRatioRounding() {
 }
 
 function onCmpSrFieldChange(
-  field: 'doanhSoBan' | 'giaMua' | 'tongCP' | 'netCom' | 'grossCom' | 'taxPct',
+  field: 'doanhSoBan' | 'giaMua' | 'tongCP' | 'netCom' | 'grossCom' | 'grossComPct' | 'taxPct',
   rawVal: number | string
 ) {
   const bucket = cmpSrOverrides.value
   const numVal = toNum(rawVal, 0)
-  const nextVal = field === 'taxPct' ? Math.max(0, round2(numVal)) : cmpSrRound(numVal)
+  const nextVal =
+    field === 'taxPct'
+      ? Math.max(0, round2(numVal))
+      : field === 'grossComPct'
+        ? roundCmpSrComPct(numVal)
+        : cmpSrRound(numVal)
   const currentVal =
     field === 'doanhSoBan'
       ? cmpSrDoanhSoBan.value
@@ -15190,7 +15726,9 @@ function onCmpSrFieldChange(
             ? cmpSrNetCom.value
             : field === 'grossCom'
               ? cmpSrGrossCom.value
-              : cmpSrTaxPct.value
+              : field === 'grossComPct'
+                ? cmpSrGrossComPct.value
+                : cmpSrTaxPct.value
 
   if (Math.abs(currentVal - nextVal) < 1e-6) return
 
@@ -15199,17 +15737,36 @@ function onCmpSrFieldChange(
   } else if (field === 'giaMua' || field === 'tongCP') {
     cmpSrOverridesMap.contract[field] = nextVal
     cmpSrOverridesMap.customer[field] = nextVal
+  } else if (field === 'grossComPct') {
+    bucket.grossComPct = nextVal
+    bucket._comPctActive = nextVal !== 0
   } else {
     bucket[field] = nextVal
   }
   const pct = (field === 'taxPct' ? nextVal : cmpSrTaxPct.value) / 100
 
-  if (field === 'netCom') {
+  if (field === 'grossComPct') {
+    const gc = cmpSrRound(cmpSrDoanhSoBan.value * (nextVal / 100))
+    bucket.grossCom = gc
+    bucket.netCom = cmpSrRound(gc * (1 - pct))
+  } else if (field === 'doanhSoBan') {
+    if (bucket._comPctActive && (Number(bucket.grossComPct) || 0) !== 0) {
+      const gc = cmpSrRound(nextVal * ((Number(bucket.grossComPct) || 0) / 100))
+      bucket.grossCom = gc
+      bucket.netCom = cmpSrRound(gc * (1 - pct))
+    }
+  } else if (field === 'netCom') {
     if (pct < 1) {
       bucket.grossCom = cmpSrRound(nextVal / (1 - pct))
     }
-  } else if (field === 'grossCom' || field === 'taxPct') {
-    const gc = field === 'grossCom' ? nextVal : cmpSrGrossCom.value
+    bucket._comPctActive = false
+    bucket.grossComPct = null
+  } else if (field === 'grossCom') {
+    bucket.netCom = cmpSrRound(nextVal * (1 - pct))
+    bucket._comPctActive = false
+    bucket.grossComPct = null
+  } else if (field === 'taxPct') {
+    const gc = cmpSrGrossCom.value
     bucket.netCom = cmpSrRound(gc * (1 - pct))
   }
 
@@ -15269,6 +15826,8 @@ function applyCmpSrPredictPct(rawStr: string) {
 
   bucket.grossCom = requiredGrossCom
   bucket.netCom = requiredNetCom
+  bucket._comPctActive = false
+  bucket.grossComPct = null
 }
 
 function resetCmpSrPredictPct() {
@@ -15364,9 +15923,117 @@ const hasCmpSrOverrides = computed(() => {
     b.tongCP !== null ||
     b.grossCom !== null ||
     b.netCom !== null ||
+    b.grossComPct !== null ||
+    b._comPctActive ||
     b.taxPct !== null ||
     b.predictPct !== ''
   )
+})
+
+const lastCmpSrComAdjust = computed(() => {
+  const hist = cmpSrOverrides.value._comAdjustHistory
+  return hist && hist.length > 0 ? hist[hist.length - 1] : null
+})
+
+function syncCmpSrComAdjustInputWidth() {
+  if (typeof document === 'undefined') return
+  const field = cmpSrOverrides.value._comAdjustOpenField
+  if (!field) return
+  const mainId = field === 'grossCom' ? 'cmp-sr-input-grossCom' : 'cmp-sr-input-netCom'
+  const mainEl = document.getElementById(mainId)
+  const adjEl = document.getElementById('cmp-sr-input-comAdjust')
+  const editorEl = adjEl?.closest('.cmp-sr-com-inline-editor') as HTMLElement | null
+  if (mainEl && editorEl) {
+    const w = Math.round(mainEl.getBoundingClientRect().width)
+    if (w > 0) {
+      editorEl.style.setProperty('--cmp-sr-com-money-w', `${w}px`)
+    }
+  }
+}
+
+function toggleCmpSrComAdjustPanel(field: 'grossCom' | 'netCom') {
+  const bucket = cmpSrOverrides.value
+  if (bucket._comAdjustOpenField === field) {
+    closeCmpSrComAdjustPanel()
+    return
+  }
+  bucket._comAdjustOpenField = field
+  bucket._comAdjustSign = 1
+  bucket._comAdjustAmount = 0
+  nextTick(() => {
+    syncCmpSrComAdjustInputWidth()
+    const el = document.getElementById('cmp-sr-input-comAdjust') as HTMLInputElement | null
+    if (el) {
+      el.focus()
+      el.select()
+    }
+  })
+}
+
+function closeCmpSrComAdjustPanel() {
+  const bucket = cmpSrOverrides.value
+  bucket._comAdjustOpenField = null
+  bucket._comAdjustAmount = 0
+  bucket._comAdjustSign = 1
+}
+
+function applyCmpSrComAdjust() {
+  const bucket = cmpSrOverrides.value
+  const field = bucket._comAdjustOpenField
+  if (!field) return
+  const sign = (bucket._comAdjustSign ?? 1) >= 0 ? 1 : -1
+  const rawAmt = Math.abs(Number(bucket._comAdjustAmount) || 0)
+  const amt = quoteCurrency.value === 'USD' ? round2(rawAmt) : Math.round(rawAmt)
+  if (!amt) return
+
+  const delta = quoteCurrency.value === 'USD' ? round2(sign * amt) : sign * amt
+  if (!Array.isArray(bucket._comAdjustHistory)) {
+    bucket._comAdjustHistory = []
+  }
+  bucket._comAdjustHistory.push({
+    field,
+    prevGrossOverride: bucket.grossCom,
+    prevNetOverride: bucket.netCom,
+    prevGrossPctOverride: bucket.grossComPct,
+    prevComPctActive: Boolean(bucket._comPctActive),
+    prevPredictPct: bucket.predictPct || '',
+    prevDisplayGross: cmpSrGrossCom.value,
+    prevDisplayNet: cmpSrNetCom.value,
+    delta
+  })
+
+  const baseVal = field === 'grossCom' ? cmpSrGrossCom.value : cmpSrNetCom.value
+  const nextVal = cmpSrRound(baseVal + delta)
+  onCmpSrFieldChange(field, nextVal)
+  closeCmpSrComAdjustPanel()
+}
+
+function undoCmpSrComAdjust() {
+  const bucket = cmpSrOverrides.value
+  const hist = bucket._comAdjustHistory
+  if (!hist || hist.length === 0) return
+  const snap = hist.pop()!
+  bucket.grossCom = snap.prevGrossOverride
+  bucket.netCom = snap.prevNetOverride
+  bucket.grossComPct = snap.prevGrossPctOverride
+  bucket._comPctActive = snap.prevComPctActive
+  bucket.predictPct = snap.prevPredictPct
+}
+
+watch([cmpSrPriceSource, showCompareFinancePanel], () => {
+  nextTick(syncCmpSrComAdjustInputWidth)
+})
+
+onMounted(() => {
+  if (typeof window !== 'undefined') {
+    window.addEventListener('resize', syncCmpSrComAdjustInputWidth)
+  }
+})
+
+onUnmounted(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('resize', syncCmpSrComAdjustInputWidth)
+  }
 })
 
 watch(quoteCurrency, () => {
@@ -19009,6 +19676,8 @@ function identifyExcelCol(text: string): string | null {
   const t = String(text || '').toUpperCase().trim()
   if (!t) return null
   if (t === 'STT' || t === 'SỐ TT' || t === 'NO.' || t === 'TT') return 'stt'
+  if (t.includes('TÊN HÀNG BÁO GIÁ') || t.includes('TEN HANG BAO GIA') || t.includes('TÊN BÁO GIÁ') || t.includes('TEN BAO GIA')) return 'ten_hang_bao_gia'
+  if (t.includes('DIỄN GIẢI BÁO GIÁ') || t.includes('DIEN GIAI BAO GIA')) return 'dien_giai_bao_gia'
   if (t.includes('TÊN HÀNG') || t.includes('HÀNG HÓA') || t.includes('DỊCH VỤ') || t.includes('SẢN PHẨM') || t === 'MODEL') return 'ten_hang'
   if (t.includes('DIỄN GIẢI') || t.includes('DIEN GIAI') || t.includes('MÔ TẢ') || t.includes('ĐẶC TÍNH') || t.includes('THÔNG SỐ') || t.includes('NỘI DUNG') || t.includes('HẠNG MỤC') || t.includes('DESCRIPTION') || t.includes('SPEC')) return 'mo_ta'
   if (t === 'ĐVT' || t === 'DVT' || t.includes('ĐƠN VỊ TÍNH') || t.includes('DON VI TINH') || t === 'UNIT') return 'dvt'
@@ -19394,7 +20063,9 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value, specificTe
           Object.keys(rm).forEach(k => {
              origWidths[k] = ws.getColumn(rm[k]).width || 15;
           });
+          origWidths['ten_hang_bao_gia'] = origWidths['ten_hang'] || 20;
           origWidths['features'] = origWidths['mo_ta'] || 28.43;
+          origWidths['dien_giai_bao_gia'] = origWidths['mo_ta'] || 28.43;
           origWidths['don_gia_kh'] = origWidths['don_gia'] || 15;
           origWidths['gia_tieu_chuan'] = origWidths['don_gia'] || 15;
           origWidths['list_price'] = origWidths['don_gia'] || 15;
@@ -19659,6 +20330,7 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value, specificTe
       if (colMap.pn) row.getCell(colMap.pn).value = i.Ma_hang || '';
       if (colMap.sku_code) row.getCell(colMap.sku_code).value = i.sku_code || i.Ma_hang || '';
       if (colMap.ten_hang) row.getCell(colMap.ten_hang).value = i.Ten_hang || '';
+      if (colMap.ten_hang_bao_gia) row.getCell(colMap.ten_hang_bao_gia).value = (i as any).Ten_hang_bao_gia || '';
       if (colMap.description) {
         const descText = (i as any).Description || '';
         const baseFont = dataRowStyle[colMap.description]?.font || {};
@@ -19676,6 +20348,11 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value, specificTe
         const text = i.Features || i.Ten_hang || '';
         const baseFont = dataRowStyle[featuresField]?.font || {};
         row.getCell(featuresField).value = toDescriptionRichText(text, baseFont);
+      }
+      if (colMap.dien_giai_bao_gia) {
+        const dgbgText = (i as any).Dien_giai_bao_gia || '';
+        const baseFont = dataRowStyle[colMap.dien_giai_bao_gia]?.font || {};
+        row.getCell(colMap.dien_giai_bao_gia).value = dgbgText ? toDescriptionRichText(dgbgText, baseFont) : '';
       }
       
       if (colMap.hang) row.getCell(colMap.hang).value = i.Ten_nha_cung_cap || '';
@@ -19710,10 +20387,13 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value, specificTe
         // Override vertical alignment to middle and enable wrapText for auto-fit height
         cell.alignment = Object.assign({}, cell.alignment || {}, { vertical: 'middle', wrapText: true });
       }
-      // Cột diễn giải (features/mo_ta) dùng top align
+      // Cột diễn giải (features/mo_ta/dien_giai_bao_gia) dùng top align
       const descCol = colMap.features || colMap.mo_ta;
       if (descCol) {
         row.getCell(descCol).alignment = Object.assign({}, row.getCell(descCol).alignment || {}, { vertical: 'top', wrapText: true });
+      }
+      if (colMap.dien_giai_bao_gia) {
+        row.getCell(colMap.dien_giai_bao_gia).alignment = Object.assign({}, row.getCell(colMap.dien_giai_bao_gia).alignment || {}, { vertical: 'top', wrapText: true });
       }
       // Cột TÊN HÀNG HÓA luôn middle align (full style override)
       if (colMap.ten_hang) {
@@ -19721,6 +20401,12 @@ async function generateQuoteExcelBlob(targetKhach: any = khach.value, specificTe
         const thStyle = JSON.parse(JSON.stringify(dataRowStyle[colMap.ten_hang] || {}));
         thStyle.alignment = { vertical: 'middle', wrapText: true };
         thCell.style = thStyle;
+      }
+      if (colMap.ten_hang_bao_gia) {
+        const thBgCell = row.getCell(colMap.ten_hang_bao_gia);
+        const thBgStyle = JSON.parse(JSON.stringify(dataRowStyle[colMap.ten_hang_bao_gia] || dataRowStyle[colMap.ten_hang] || {}));
+        thBgStyle.alignment = { vertical: 'middle', wrapText: true };
+        thBgCell.style = thBgStyle;
       }
       const numCols = [colMap.so_luong, colMap.don_gia, colMap.don_gia_kh, colMap.gia_tieu_chuan, colMap.don_gia_nhap, colMap.truoc_thue, colMap.vat, colMap.sau_thue, colMap.list_price, colMap.muc_off_hang, colMap.muc_off, colMap.thue_vat].filter(Boolean) as number[];
       numCols.forEach(nc => {
@@ -21915,7 +22601,10 @@ function scrollActiveTabIntoView() {
     if (!wrap) return
     const activeEl = wrap.querySelector('.quote-tab-item.active') as HTMLElement | null
     if (activeEl) {
-      const targetLeft = activeEl.offsetLeft - wrap.clientWidth / 2 + activeEl.offsetWidth / 2
+      const wrapRect = wrap.getBoundingClientRect()
+      const elRect = activeEl.getBoundingClientRect()
+      const targetLeft =
+        wrap.scrollLeft + (elRect.left - wrapRect.left) - (wrapRect.width / 2 - elRect.width / 2)
       wrap.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' })
     }
   })
@@ -21964,7 +22653,7 @@ async function closeQuoteTab(tabId: string, forceWithoutConfirm = false) {
 
   const tabToClose = quoteTabs.value[idx]
   if (!forceWithoutConfirm && hasQuoteTabData(tabToClose)) {
-    const title = getQuoteTabDisplayTitle(tabToClose, idx)
+    const title = getQuoteTabTitleWithVersion(tabToClose, idx)
     const ok = await openBaogiaConfirm({
       variant: 'danger',
       eyebrow: 'Quản lý Tab báo giá',
@@ -22160,6 +22849,13 @@ function onQuoteTabDragEnd() {
   }
 }
 
+function getTabVersionBadge(tab: QuoteTabSession): string {
+  const isCurrent = tab.id === activeQuoteTabId.value
+  const loadedMa = String(isCurrent ? loadedMaHopDong.value || '' : tab.loadedMaHopDong || '').trim()
+  if (!loadedMa) return ''
+  return getContractVersionLabelByMa(loadedMa)
+}
+
 function getQuoteTabFallbackTitle(tab: QuoteTabSession, idx: number): string {
   const isCurrent = tab.id === activeQuoteTabId.value
   const loadedMa = isCurrent ? loadedMaHopDong.value : tab.loadedMaHopDong
@@ -22175,6 +22871,12 @@ function getQuoteTabDisplayTitle(tab: QuoteTabSession, idx: number): string {
   if (note) return note
 
   return getQuoteTabFallbackTitle(tab, idx)
+}
+
+function getQuoteTabTitleWithVersion(tab: QuoteTabSession, idx: number): string {
+  const base = getQuoteTabDisplayTitle(tab, idx)
+  const ver = getTabVersionBadge(tab)
+  return ver ? `${base} (${ver})` : base
 }
 
 function startRenameQuoteTab(tab: QuoteTabSession, e?: Event) {
@@ -22239,6 +22941,7 @@ function getQuoteTabFullTooltip(tab: QuoteTabSession): string {
   const soHD = isCurrent ? soHopDong.value : tab.soHopDong
   const po = isCurrent ? currentPO.value : tab.currentPO
   const loadedMa = isCurrent ? loadedMaHopDong.value : tab.loadedMaHopDong
+  const ver = getTabVersionBadge(tab)
   const note = String(isCurrent ? ghiChuHopDong.value : (tab.ghiChuHopDong || '')).trim()
   const cus = isCurrent
     ? (khach.value?.Ten_cong_ty || khach.value?.Ten_khach_hang || tenKHInput.value || 'Chưa chọn KH')
@@ -22246,11 +22949,11 @@ function getQuoteTabFullTooltip(tab: QuoteTabSession): string {
   const count = getTabItemCount(tab)
   const parts = [
     note ? `${note} (Báo giá ${tab.tabNumber})` : `Báo giá ${tab.tabNumber}`,
-    `Số HĐ: ${soHD || '—'}`,
+    `Số HĐ: ${soHD || '—'}${ver ? ` (${ver})` : ''}`,
     `Số PO: ${po || '—'}`,
     `Mã HĐ: ${maHD || '—'}`
   ]
-  if (loadedMa) parts.push(`Mã HĐ cũ: ${loadedMa}`)
+  if (loadedMa) parts.push(`Đang sửa bản: ${loadedMa}${ver ? ` [${ver}]` : ''}`)
   parts.push(`Khách hàng: ${cus}`)
   parts.push(`Số SP: ${count}`)
   parts.push('Click vào tab đang mở để đổi tên (Ghi chú HĐ)')
@@ -22283,10 +22986,12 @@ function getTabContractMetaText(tab: QuoteTabSession): string {
   const soHD = String(isCurrent ? soHopDong.value : tab.soHopDong || '').trim()
   const po = String(isCurrent ? currentPO.value : tab.currentPO || '').trim()
   const loadedMa = String(isCurrent ? loadedMaHopDong.value || '' : tab.loadedMaHopDong || '').trim()
+  const ver = getTabVersionBadge(tab)
   const segs: string[] = []
-  if (soHD) segs.push(`Số HĐ: ${soHD}`)
+  if (soHD) segs.push(`Số HĐ: ${soHD}${ver ? ` (${ver})` : ''}`)
+  else if (ver) segs.push(`Phiên bản: ${ver}`)
   if (po) segs.push(`PO: ${po}`)
-  if (loadedMa && loadedMa !== soHD) segs.push(`Mã cũ: ${loadedMa}`)
+  if (loadedMa && loadedMa !== soHD) segs.push(`Mã lưu: ${loadedMa}`)
   return segs.join(' • ')
 }
 
@@ -26429,8 +27134,10 @@ const QUOTE_TABLE_COLUMNS = [
   { key: 'pn', label: 'P/N' },
   { key: 'sku_code', label: 'SKU Code' },
   { key: 'ten_hang', label: 'Tên hàng' },
-  { key: 'description', label: 'Description' },
-  { key: 'dien_giai', label: 'Diễn giải' },
+  { key: 'ten_hang_bao_gia', label: 'Tên hàng báo giá' },
+  { key: 'description', label: 'Description nội bộ' },
+  { key: 'dien_giai', label: 'Diễn giải nội bộ' },
+  { key: 'dien_giai_bao_gia', label: 'Diễn giải báo giá' },
   { key: 'hang', label: 'Hãng' },
   { key: 'dvt', label: 'ĐVT' },
   { key: 'sl', label: 'SL' },
@@ -26605,8 +27312,10 @@ function loadSavedQuoteCols(): Record<QuoteColKey, boolean> {
     pn: true,
     sku_code: true,
     ten_hang: true,
+    ten_hang_bao_gia: true,
     description: true,
     dien_giai: true,
+    dien_giai_bao_gia: true,
     hang: true,
     dvt: true,
     sl: true,
@@ -26662,7 +27371,7 @@ function setAllQuoteCols(visible: boolean) {
 
 const visibleCompareLeadingColSpan = computed(() => {
   const compareLeadingKeys: QuoteColKey[] = [
-    'stt', 'pn', 'sku_code', 'ten_hang', 'description', 'dien_giai', 'hang', 'dvt', 'sl', 'ti_gia'
+    'stt', 'pn', 'sku_code', 'ten_hang', 'ten_hang_bao_gia', 'description', 'dien_giai', 'dien_giai_bao_gia', 'hang', 'dvt', 'sl', 'ti_gia'
   ]
   let count = 0
   for (const k of compareLeadingKeys) {
@@ -26695,7 +27404,7 @@ const visibleLeadingFooterColSpan = computed(() => {
     return visibleCompareLeadingColSpan.value
   }
   const leadingKeys: QuoteColKey[] = [
-    'stt', 'pn', 'sku_code', 'ten_hang', 'description', 'dien_giai', 'hang', 'dvt', 'sl',
+    'stt', 'pn', 'sku_code', 'ten_hang', 'ten_hang_bao_gia', 'description', 'dien_giai', 'dien_giai_bao_gia', 'hang', 'dvt', 'sl',
     'ti_gia', 'gia_off_hang', 'list_price', 'gia_nhap'
   ]
   let count = 0
@@ -26716,8 +27425,10 @@ const desktopQuoteTableMinWidthPx = computed(() => {
     pn: isCompare ? 88 : 82,
     sku_code: isCompare ? 90 : 84,
     ten_hang: isCompare ? 155 : 140,
+    ten_hang_bao_gia: isCompare ? 155 : 140,
     description: 220,
     dien_giai: 220,
+    dien_giai_bao_gia: 220,
     hang: isCompare ? 76 : 70,
     dvt: isCompare ? 58 : 55,
     sl: isCompare ? 46 : 40
@@ -27343,6 +28054,7 @@ const isAnyQuoteModalOpen = computed(() => Boolean(
   showVoiceQuoteModal.value ||
   (showPriceListPicker.value && isMobileQuoteViewport.value) ||
   (showCategoryPicker.value && isMobileQuoteViewport.value) ||
+  (showBrandPicker.value && isMobileQuoteViewport.value) ||
   showMobileQuoteTabsSheet.value ||
   showMobileQuoteModeSheet.value ||
   splitItemModal.value.show ||
@@ -27953,131 +28665,260 @@ onUnmounted(() => {
             </button>
           </div>
 
-          <!-- NUT CHON DANH MUC SAN PHAM (PC POPOVER > 1100PX & MOBILE BOTTOM SHEET <= 1100PX) -->
-          <div ref="catPickerRootRef" class="cat-picker-root">
-            <button
-              type="button"
-              class="pl-picker-trigger cat-picker-trigger"
-              :class="{ 'is-custom': Boolean(selectedCatalogCategory), 'is-open': showCategoryPicker }"
-              title="Lọc sản phẩm theo danh mục"
-              @click.stop="toggleCategoryPicker"
-            >
-              <span class="pl-trig-icon" aria-hidden="true">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
-                  <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
-                  <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
-                  <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
-                </svg>
-              </span>
-              <span class="pl-trig-name">
-                {{ selectedCategoryOption ? selectedCategoryOption.label : 'Tất cả danh mục' }}
-              </span>
-              <span class="pl-trig-count">
-                {{ selectedCategoryOption ? `${formatVND(selectedCategoryOption.count)} SP` : `${catalogCategoryOptions.length} danh mục` }}
-              </span>
-              <span
-                v-if="selectedCatalogCategory"
-                role="button"
-                tabindex="0"
-                class="pl-trig-reset"
-                title="Bỏ lọc danh mục (hiện tất cả)"
-                aria-label="Bỏ lọc danh mục"
-                @click.stop="selectCatalogCategory('')"
-                @keydown.enter.stop.prevent="selectCatalogCategory('')"
+          <!-- HANG LOC DANH MUC & HANG SAN PHAM (PC POPOVER > 1100PX & MOBILE BOTTOM SHEET <= 1100PX) -->
+          <div class="catalog-filter-duo-row">
+            <!-- NUT CHON DANH MUC SAN PHAM -->
+            <div ref="catPickerRootRef" class="cat-picker-root">
+              <button
+                type="button"
+                class="pl-picker-trigger cat-picker-trigger"
+                :class="{ 'is-custom': Boolean(selectedCatalogCategory), 'is-open': showCategoryPicker }"
+                :title="selectedCategoryOption ? `Danh mục: ${selectedCategoryOption.label}` : 'Lọc sản phẩm theo danh mục'"
+                @click.stop="toggleCategoryPicker"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="10.5" height="10.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-              </span>
-              <svg
-                class="pl-trig-chevron"
-                xmlns="http://www.w3.org/2000/svg"
-                width="12.5"
-                height="12.5"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.5"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <polyline points="6 9 12 15 18 9"></polyline>
-              </svg>
-            </button>
-
-            <Transition name="pl-pop">
-              <div v-if="showCategoryPicker" class="pl-desktop-popover cat-desktop-popover" @click.stop>
-                <div v-if="catalogCategoryOptions.length > 0" class="pl-pop-search-box">
-                  <svg class="pl-pop-search-ic" xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                <span class="pl-trig-icon" aria-hidden="true">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+                    <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+                    <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+                    <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
                   </svg>
-                  <input
-                    v-model="categoryPickerSearchQuery"
-                    type="text"
-                    class="pl-pop-search-input"
-                    placeholder="Tìm nhanh danh mục..."
-                  />
-                  <button
-                    v-if="categoryPickerSearchQuery"
-                    type="button"
-                    class="pl-pop-search-clear"
-                    title="Xóa từ khóa"
-                    @click="categoryPickerSearchQuery = ''"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
-                      <line x1="18" y1="6" x2="6" y2="18"></line>
-                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                </span>
+                <span class="pl-trig-name">
+                  {{ selectedCategoryOption ? selectedCategoryOption.label : 'Danh mục' }}
+                </span>
+                <span class="pl-trig-count">
+                  {{ selectedCategoryOption ? `${formatVND(selectedCategoryOption.count)} SP` : `${catalogCategoryOptions.length}` }}
+                </span>
+                <span
+                  v-if="selectedCatalogCategory"
+                  role="button"
+                  tabindex="0"
+                  class="pl-trig-reset"
+                  title="Bỏ lọc danh mục (hiện tất cả)"
+                  aria-label="Bỏ lọc danh mục"
+                  @click.stop="selectCatalogCategory('')"
+                  @keydown.enter.stop.prevent="selectCatalogCategory('')"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="10.5" height="10.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </span>
+                <svg
+                  class="pl-trig-chevron"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="12.5"
+                  height="12.5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </button>
+
+              <Transition name="pl-pop">
+                <div v-if="showCategoryPicker" class="pl-desktop-popover cat-desktop-popover" @click.stop>
+                  <div v-if="catalogCategoryOptions.length > 0" class="pl-pop-search-box">
+                    <svg class="pl-pop-search-ic" xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="11" cy="11" r="8"></circle>
+                      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                     </svg>
-                  </button>
-                </div>
-
-                <div class="pl-pop-list">
-                  <button
-                    type="button"
-                    class="pl-opt-card is-base-opt"
-                    :class="{ 'is-selected': !selectedCatalogCategory }"
-                    @click="selectCatalogCategory('')"
-                  >
-                    <div class="pl-opt-top">
-                      <span class="pl-opt-radio">
-                        <svg v-if="!selectedCatalogCategory" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                      </span>
-                      <span class="pl-opt-title">Tất cả danh mục</span>
-                      <span class="pl-opt-count">{{ formatVND(totalCatalogPoolCount) }} SP</span>
-                    </div>
-                    <div class="pl-opt-sub">Hiển thị toàn bộ sản phẩm trong kho ({{ catalogCategoryOptions.length }} danh mục)</div>
-                  </button>
-
-                  <div v-if="catalogCategoryOptions.length > 0" class="pl-pop-section-lbl">
-                    <span>Danh mục ({{ filteredCatalogCategoryOptions.length }})</span>
+                    <input
+                      v-model="categoryPickerSearchQuery"
+                      type="text"
+                      class="pl-pop-search-input"
+                      placeholder="Tìm nhanh danh mục..."
+                    />
+                    <button
+                      v-if="categoryPickerSearchQuery"
+                      type="button"
+                      class="pl-pop-search-clear"
+                      title="Xóa từ khóa"
+                      @click="categoryPickerSearchQuery = ''"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                    </button>
                   </div>
 
-                  <div v-if="catalogCategoryOptions.length > 0 && filteredCatalogCategoryOptions.length === 0" class="pl-pop-empty">
-                    Không tìm thấy danh mục phù hợp với "{{ categoryPickerSearchQuery }}"
+                  <div class="pl-pop-list">
+                    <button
+                      type="button"
+                      class="pl-opt-card is-base-opt"
+                      :class="{ 'is-selected': !selectedCatalogCategory }"
+                      @click="selectCatalogCategory('')"
+                    >
+                      <div class="pl-opt-top">
+                        <span class="pl-opt-radio">
+                          <svg v-if="!selectedCatalogCategory" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        </span>
+                        <span class="pl-opt-title">Tất cả danh mục</span>
+                        <span class="pl-opt-count">{{ formatVND(totalCatalogPoolCount) }} SP</span>
+                      </div>
+                      <div class="pl-opt-sub">Hiển thị toàn bộ sản phẩm trong kho ({{ catalogCategoryOptions.length }} danh mục)</div>
+                    </button>
+
+                    <div v-if="catalogCategoryOptions.length > 0" class="pl-pop-section-lbl">
+                      <span>Danh mục ({{ filteredCatalogCategoryOptions.length }})</span>
+                    </div>
+
+                    <div v-if="catalogCategoryOptions.length > 0 && filteredCatalogCategoryOptions.length === 0" class="pl-pop-empty">
+                      Không tìm thấy danh mục phù hợp với "{{ categoryPickerSearchQuery }}"
+                    </div>
+
+                    <button
+                      v-for="cat in filteredCatalogCategoryOptions"
+                      :key="cat.key"
+                      type="button"
+                      class="pl-opt-card cat-opt-card"
+                      :class="{ 'is-selected': selectedCatalogCategory === cat.key }"
+                      @click="selectCatalogCategory(cat.key)"
+                    >
+                      <div class="pl-opt-top">
+                        <span class="pl-opt-radio">
+                          <svg v-if="selectedCatalogCategory === cat.key" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        </span>
+                        <span class="pl-opt-title">{{ cat.label }}</span>
+                        <span class="pl-opt-count">{{ formatVND(cat.count) }} SP</span>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              </Transition>
+            </div>
+
+            <!-- NUT CHON HANG SAN PHAM -->
+            <div ref="brandPickerRootRef" class="brand-picker-root">
+              <button
+                type="button"
+                class="pl-picker-trigger brand-picker-trigger"
+                :class="{ 'is-custom': Boolean(selectedCatalogBrand), 'is-open': showBrandPicker }"
+                :title="selectedBrandOption ? `Hãng: ${selectedBrandOption.label}` : 'Lọc sản phẩm theo hãng'"
+                @click.stop="toggleBrandPicker"
+              >
+                <span class="pl-trig-icon" aria-hidden="true">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2 2 7l10 5 10-5-10-5z"></path>
+                    <path d="m2 17 10 5 10-5"></path>
+                    <path d="m2 12 10 5 10-5"></path>
+                  </svg>
+                </span>
+                <span class="pl-trig-name">
+                  {{ selectedBrandOption ? selectedBrandOption.label : 'Hãng' }}
+                </span>
+                <span class="pl-trig-count">
+                  {{ selectedBrandOption ? `${formatVND(selectedBrandOption.count)} SP` : `${catalogBrandOptions.length}` }}
+                </span>
+                <span
+                  v-if="selectedCatalogBrand"
+                  role="button"
+                  tabindex="0"
+                  class="pl-trig-reset"
+                  title="Bỏ lọc hãng (hiện tất cả)"
+                  aria-label="Bỏ lọc hãng"
+                  @click.stop="selectCatalogBrand('')"
+                  @keydown.enter.stop.prevent="selectCatalogBrand('')"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="10.5" height="10.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </span>
+                <svg
+                  class="pl-trig-chevron"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="12.5"
+                  height="12.5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </button>
+
+              <Transition name="pl-pop">
+                <div v-if="showBrandPicker" class="pl-desktop-popover brand-desktop-popover" @click.stop>
+                  <div v-if="catalogBrandOptions.length > 0" class="pl-pop-search-box">
+                    <svg class="pl-pop-search-ic" xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="11" cy="11" r="8"></circle>
+                      <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input
+                      v-model="brandPickerSearchQuery"
+                      type="text"
+                      class="pl-pop-search-input"
+                      placeholder="Tìm nhanh hãng..."
+                    />
+                    <button
+                      v-if="brandPickerSearchQuery"
+                      type="button"
+                      class="pl-pop-search-clear"
+                      title="Xóa từ khóa"
+                      @click="brandPickerSearchQuery = ''"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                    </button>
                   </div>
 
-                  <button
-                    v-for="cat in filteredCatalogCategoryOptions"
-                    :key="cat.key"
-                    type="button"
-                    class="pl-opt-card cat-opt-card"
-                    :class="{ 'is-selected': selectedCatalogCategory === cat.key }"
-                    @click="selectCatalogCategory(cat.key)"
-                  >
-                    <div class="pl-opt-top">
-                      <span class="pl-opt-radio">
-                        <svg v-if="selectedCatalogCategory === cat.key" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                      </span>
-                      <span class="pl-opt-title">{{ cat.label }}</span>
-                      <span class="pl-opt-count">{{ formatVND(cat.count) }} SP</span>
+                  <div class="pl-pop-list">
+                    <button
+                      type="button"
+                      class="pl-opt-card is-base-opt"
+                      :class="{ 'is-selected': !selectedCatalogBrand }"
+                      @click="selectCatalogBrand('')"
+                    >
+                      <div class="pl-opt-top">
+                        <span class="pl-opt-radio">
+                          <svg v-if="!selectedCatalogBrand" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        </span>
+                        <span class="pl-opt-title">Tất cả hãng</span>
+                        <span class="pl-opt-count">{{ formatVND(totalBrandPoolCount) }} SP</span>
+                      </div>
+                      <div class="pl-opt-sub">Hiển thị toàn bộ hãng trong kho ({{ catalogBrandOptions.length }} hãng)</div>
+                    </button>
+
+                    <div v-if="catalogBrandOptions.length > 0" class="pl-pop-section-lbl">
+                      <span>Hãng ({{ filteredCatalogBrandOptions.length }})</span>
                     </div>
-                  </button>
+
+                    <div v-if="catalogBrandOptions.length > 0 && filteredCatalogBrandOptions.length === 0" class="pl-pop-empty">
+                      Không tìm thấy hãng phù hợp với "{{ brandPickerSearchQuery }}"
+                    </div>
+
+                    <button
+                      v-for="brand in filteredCatalogBrandOptions"
+                      :key="brand.key"
+                      type="button"
+                      class="pl-opt-card brand-opt-card"
+                      :class="{ 'is-selected': selectedCatalogBrand === brand.key }"
+                      @click="selectCatalogBrand(brand.key)"
+                    >
+                      <div class="pl-opt-top">
+                        <span class="pl-opt-radio">
+                          <svg v-if="selectedCatalogBrand === brand.key" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        </span>
+                        <span class="pl-opt-title">{{ brand.label }}</span>
+                        <span class="pl-opt-count">{{ formatVND(brand.count) }} SP</span>
+                      </div>
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </Transition>
+              </Transition>
+            </div>
           </div>
         </div>
         </div>
@@ -28117,6 +28958,9 @@ onUnmounted(() => {
                   <span>x{{ getSelectedQtyForProduct(p) }}</span>
                 </span>
                 <h4 class="clamp2" v-html="highlightText(p.Ten_hang, keyword)"></h4>
+              </div>
+              <div v-if="p.Ten_hang_bao_gia" class="clamp1" style="font-size: 11px; color: #f59e0b; font-weight: 600; margin-top: 2px;" :title="p.Ten_hang_bao_gia">
+                Tên báo giá: <span v-html="highlightText(p.Ten_hang_bao_gia, keyword)"></span>
               </div>
               <div v-if="p.License_duration || p.thoi_han_bao_hanh || p.volume" class="card-specs-row" style="display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 1px;">
                 <span class="card-license clamp1" v-if="p.License_duration">{{ p.License_duration }}</span>
@@ -28354,7 +29198,26 @@ onUnmounted(() => {
       <!-- ================== CENTER: BẢNG BÁO GIÁ VÀ TỔNG TIỀN ================== -->
       <section class="box center quote-center">
         <div class="quote-table-container" ref="quoteTableContainerRef">
-          <div class="quote-main-table-card">
+          <div class="quote-main-table-card" :class="{ 'is-collapsed': isQuoteTableCollapsed }">
+            <!-- THANH DỌC THU GỌN BẢNG BÁO GIÁ CHI TIẾT TRÊN PC -->
+            <button
+              v-if="isQuoteTableCollapsed"
+              type="button"
+              class="cmp-sr-collapsed-rail is-center-quote-rail hide-on-mobile-quote"
+              @click="isQuoteTableCollapsed = false"
+              title="Nhấn để mở Bảng báo giá chi tiết"
+            >
+              <span class="cmp-sr-rail-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="13 17 18 12 13 7"></polyline>
+                  <polyline points="6 17 11 12 6 7"></polyline>
+                </svg>
+              </span>
+              <span class="cmp-sr-rail-label">BẢNG BÁO GIÁ CHI TIẾT</span>
+              <span class="cmp-sr-rail-badge is-com-text">
+                {{ selectedItems.length }} SP
+              </span>
+            </button>
           <!-- THANH ĐA TAB BÁO GIÁ & CỤM NÚT THAO TÁC GHIM CỐ ĐỊNH TRÊN MOBILE -->
           <div class="quote-workspace-topbar">
             <button
@@ -28417,6 +29280,13 @@ onUnmounted(() => {
                   />
                   <span v-else class="quote-tab-title">
                     {{ getQuoteTabDisplayTitle(tab, tIdx) }}
+                  </span>
+                  <span
+                    v-if="getTabVersionBadge(tab)"
+                    class="quote-tab-ver-pill tabular-nums"
+                    :title="`Đang sửa phiên bản ${getTabVersionBadge(tab)} (Mã lưu: ${tab.id === activeQuoteTabId ? loadedMaHopDong : tab.loadedMaHopDong})`"
+                  >
+                    {{ getTabVersionBadge(tab) }}
                   </span>
                   <span v-if="getTabItemCount(tab) > 0" class="quote-tab-sp-pill">
                     {{ getTabItemCount(tab) }}
@@ -29207,6 +30077,19 @@ onUnmounted(() => {
 
               <button
                 type="button"
+                class="btn-collapse-quote-table hide-on-mobile-quote"
+                @click.stop="isQuoteTableCollapsed = true"
+                title="Thu gọn Bảng báo giá chi tiết"
+                aria-label="Thu gọn Bảng báo giá chi tiết"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="11 17 6 12 11 7"></polyline>
+                  <polyline points="18 17 13 12 18 7"></polyline>
+                </svg>
+              </button>
+
+              <button
+                type="button"
                 class="mobile-top-util-btn"
                 @click.stop="showMoreActionsModal = true"
                 title="Thao tác & Tiện ích mở rộng"
@@ -29417,8 +30300,10 @@ onUnmounted(() => {
                   <th v-if="quoteColVisible.pn" class="col-pn">P/N</th>
                   <th v-if="quoteColVisible.sku_code" class="col-pn">SKU Code</th>
                   <th v-if="quoteColVisible.ten_hang" class="col-name">Tên hàng</th>
-                  <th v-if="quoteColVisible.description" class="col-desc">Description</th>
-                  <th v-if="quoteColVisible.dien_giai" class="col-desc">Diễn giải</th>
+                  <th v-if="quoteColVisible.ten_hang_bao_gia" class="col-name">Tên hàng báo giá</th>
+                  <th v-if="quoteColVisible.description" class="col-desc">Description nội bộ</th>
+                  <th v-if="quoteColVisible.dien_giai" class="col-desc">Diễn giải nội bộ</th>
+                  <th v-if="quoteColVisible.dien_giai_bao_gia" class="col-desc">Diễn giải báo giá</th>
                   <th v-if="quoteColVisible.hang" class="col-hang">Hãng</th>
                   <th v-if="quoteColVisible.dvt" class="col-dvt">ĐVT</th>
                   <th v-if="quoteColVisible.sl" class="col-sl">SL</th>
@@ -29597,16 +30482,22 @@ onUnmounted(() => {
                     <td v-if="quoteColVisible.pn" data-label="P/N" class="col-pn-cell" :title="r.item.Ma_hang" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Ma_hang')">{{ r.item.Ma_hang }}</td>
                     <td v-if="quoteColVisible.sku_code" data-label="SKU Code" class="col-pn-cell" :title="r.item.sku_code" style="color: #38bdf8; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'sku_code')">{{ r.item.sku_code }}</td>
                     <td v-if="quoteColVisible.ten_hang" data-label="Tên hàng" class="nowrap" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Ten_hang')">{{ r.item.Ten_hang }}</td>
-                    <td v-if="quoteColVisible.description" data-label="Description" class="col-desc-cell" :title="stripHtmlToPlain(r.item.Description)" style="color: #ffffff;" @click.stop="openQuoteEdit(r.idx, 'Description')">
+                    <td v-if="quoteColVisible.ten_hang_bao_gia" data-label="Tên hàng báo giá" class="nowrap" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Ten_hang_bao_gia')">{{ r.item.Ten_hang_bao_gia || '' }}</td>
+                    <td v-if="quoteColVisible.description" data-label="Description nội bộ" class="col-desc-cell" :title="stripHtmlToPlain(r.item.Description)" style="color: #ffffff;" @click.stop="openQuoteEdit(r.idx, 'Description')">
                       <div class="preline">
                         <div v-if="r.item.Description" v-html="r.item.Description"></div>
                       </div>
                     </td>
-                    <td v-if="quoteColVisible.dien_giai" data-label="Diễn giải" class="col-desc-cell" :title="stripHtmlToPlain([r.item.Mo_ta_chung, r.item.Mo_ta_chi_tiet, r.item.Features].filter(Boolean).join('\n'))" style="color: #ffffff;" @click.stop="openQuoteEdit(r.idx, 'Features')">
+                    <td v-if="quoteColVisible.dien_giai" data-label="Diễn giải nội bộ" class="col-desc-cell" :title="stripHtmlToPlain([r.item.Mo_ta_chung, r.item.Mo_ta_chi_tiet, r.item.Features].filter(Boolean).join('\n'))" style="color: #ffffff;" @click.stop="openQuoteEdit(r.idx, 'Features')">
                       <div class="preline">
                         <div v-if="r.item.Mo_ta_chung">{{ r.item.Mo_ta_chung }}</div>
                         <div v-if="r.item.Mo_ta_chi_tiet">{{ r.item.Mo_ta_chi_tiet }}</div>
                         <div v-if="r.item.Features" v-html="r.item.Features"></div>
+                      </div>
+                    </td>
+                    <td v-if="quoteColVisible.dien_giai_bao_gia" data-label="Diễn giải báo giá" class="col-desc-cell" :title="stripHtmlToPlain(r.item.Dien_giai_bao_gia)" style="color: #ffffff;" @click.stop="openQuoteEdit(r.idx, 'Dien_giai_bao_gia')">
+                      <div class="preline">
+                        <div v-if="r.item.Dien_giai_bao_gia" v-html="r.item.Dien_giai_bao_gia"></div>
                       </div>
                     </td>
                     <td v-if="quoteColVisible.hang" data-label="Hãng" class="col-hang-cell" :title="r.item.Ten_nha_cung_cap" style="color: #ffffff; font-weight: 700;" @click.stop="openQuoteEdit(r.idx, 'Ten_nha_cung_cap')">{{ r.item.Ten_nha_cung_cap }}</td>
@@ -29751,6 +30642,14 @@ onUnmounted(() => {
                               </span>
                             </div>
                             <div class="m-qcard-title">{{ r.item.Ten_hang || 'Chưa có tên hàng' }}</div>
+                            <div
+                              v-if="quoteColVisible.ten_hang_bao_gia && r.item.Ten_hang_bao_gia"
+                              class="m-qcard-quote-name"
+                              style="font-size: 11.5px; color: #f59e0b; font-weight: 600; margin-top: 2px;"
+                              @click.stop="openQuoteEdit(r.idx, 'Ten_hang_bao_gia')"
+                            >
+                              Tên báo giá: {{ r.item.Ten_hang_bao_gia }}
+                            </div>
                           </div>
                           <div class="m-qcard-top-actions" @click.stop>
                             <Transition name="m-qcard-move-slide">
@@ -30184,6 +31083,8 @@ onUnmounted(() => {
                   </div>
                 </div>
 
+                <!-- KHỐI CUỘN CHỈ SỐ TÀI CHÍNH (KHỐI 1, 2, 3) ĐỂ GHIM KHÁCH HÀNG & TỔNG KẾT CỐ ĐỊNH BÊN DƯỚI TRÊN PC -->
+                <div class="cmp-sr-blocks-scroll">
                 <!-- KHỐI 1: Doanh số & Chi phí -->
                 <div class="cmp-sr-po1-block">
                   <div class="cmp-sr-block-title is-blue-head">
@@ -30234,41 +31135,170 @@ onUnmounted(() => {
                   <div class="cmp-sr-block-title is-green-head">
                     <span>COM, Thuế &amp; Margin</span>
                   </div>
-                  <div class="cmp-sr-b-row is-primary">
-                    <span class="cmp-sr-b-lbl">Net COM</span>
-                    <FormattedInput
-                      :modelValue="cmpSrNetCom"
-                      @update:modelValue="val => onCmpSrFieldChange('netCom', val)"
-                      :decimals="quoteCurrency === 'USD' ? 2 : 0"
-                      :allowNegative="true"
-                      placeholder="0"
-                      class="cmp-sr-b-input is-com-text is-primary-input"
-                    />
-                  </div>
-                  <div class="cmp-sr-b-row">
-                    <span class="cmp-sr-b-lbl">Gross COM</span>
-                    <FormattedInput
-                      :modelValue="cmpSrGrossCom"
-                      @update:modelValue="val => onCmpSrFieldChange('grossCom', val)"
-                      :decimals="quoteCurrency === 'USD' ? 2 : 0"
-                      :allowNegative="true"
-                      placeholder="0"
-                      class="cmp-sr-b-input is-com-text"
-                    />
-                  </div>
-                  <div class="cmp-sr-b-row">
-                    <span class="cmp-sr-b-lbl cmp-sr-tax-lbl-wrap">
-                      <span>Thuế</span>
+                  <div class="cmp-sr-com-inline-grid">
+                    <!-- Hàng 1: Gross COM | [ô %] % | [ô tiền] + [+] -->
+                    <div class="cmp-sr-com-grid-row">
+                      <label class="cmp-sr-b-lbl cmp-sr-com-grid-lbl" for="cmp-sr-input-grossCom">Gross COM</label>
+                      <div class="cmp-sr-com-grid-pct-cell">
+                        <FormattedInput
+                          id="cmp-sr-input-grossComPct"
+                          :modelValue="cmpSrGrossComPct"
+                          @update:modelValue="val => onCmpSrFieldChange('grossComPct', val)"
+                          :decimals="2"
+                          :allowNegative="true"
+                          placeholder="0"
+                          class="cmp-sr-tax-pct-input"
+                          title="Nhập % COM để tính Gross COM = Doanh số bán × (% COM / 100)"
+                        />
+                        <span class="cmp-sr-com-grid-pct-unit">%</span>
+                      </div>
+                      <div class="cmp-sr-com-grid-val-cell">
+                        <div class="cmp-sr-com-money-act-wrap">
+                          <FormattedInput
+                            id="cmp-sr-input-grossCom"
+                            :modelValue="cmpSrGrossCom"
+                            @update:modelValue="val => onCmpSrFieldChange('grossCom', val)"
+                            :decimals="quoteCurrency === 'USD' ? 2 : 0"
+                            :allowNegative="true"
+                            placeholder="0"
+                            class="cmp-sr-b-input is-com-text"
+                          />
+                          <button
+                            type="button"
+                            class="cmp-sr-com-adj-btn"
+                            :class="{ 'is-active': cmpSrOverrides._comAdjustOpenField === 'grossCom' }"
+                            title="Cộng / trừ thêm tiền vào Gross COM"
+                            @click.stop="toggleCmpSrComAdjustPanel('grossCom')"
+                          >+</button>
+                        </div>
+                        <div
+                          v-if="lastCmpSrComAdjust?.field === 'grossCom'"
+                          class="cmp-sr-com-delta-hint"
+                          :class="lastCmpSrComAdjust.delta >= 0 ? 'is-pos' : 'is-neg'"
+                        >
+                          <span class="cmp-sr-com-delta-val">
+                            {{ lastCmpSrComAdjust.delta >= 0 ? '+' : '−' }}{{ fmtCmpSrMoney(Math.abs(lastCmpSrComAdjust.delta)) }}
+                          </span>
+                          <button
+                            type="button"
+                            class="cmp-sr-com-delta-undo-ic"
+                            :title="`Hoàn tác về ${fmtCmpSrMoney(lastCmpSrComAdjust.prevDisplayGross)}`"
+                            @click.stop="undoCmpSrComAdjust()"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Hàng 2: Thuế | [ô %] % | tiền thuế -->
+                    <div class="cmp-sr-com-grid-row">
+                      <label class="cmp-sr-b-lbl cmp-sr-com-grid-lbl" for="cmp-sr-input-taxPct">Thuế</label>
+                      <div class="cmp-sr-com-grid-pct-cell">
+                        <FormattedInput
+                          id="cmp-sr-input-taxPct"
+                          :modelValue="cmpSrTaxPct"
+                          @update:modelValue="val => onCmpSrFieldChange('taxPct', val)"
+                          :decimals="2"
+                          placeholder="25"
+                          class="cmp-sr-tax-pct-input"
+                        />
+                        <span class="cmp-sr-com-grid-pct-unit">%</span>
+                      </div>
+                      <div class="cmp-sr-com-grid-val-cell is-readonly-val">
+                        <span class="cmp-sr-b-val is-debt-text">{{ fmtCmpSrMoney(cmpSrTaxAmount) }}</span>
+                      </div>
+                    </div>
+
+                    <!-- Hàng 3: Net COM | (trống cột %) | [ô tiền] + [+] -->
+                    <div class="cmp-sr-com-grid-row is-primary">
+                      <label class="cmp-sr-b-lbl cmp-sr-com-grid-lbl" for="cmp-sr-input-netCom">Net COM</label>
+                      <span class="cmp-sr-com-grid-pct-spacer" aria-hidden="true"></span>
+                      <div class="cmp-sr-com-grid-val-cell">
+                        <div class="cmp-sr-com-money-act-wrap">
+                          <FormattedInput
+                            id="cmp-sr-input-netCom"
+                            :modelValue="cmpSrNetCom"
+                            @update:modelValue="val => onCmpSrFieldChange('netCom', val)"
+                            :decimals="quoteCurrency === 'USD' ? 2 : 0"
+                            :allowNegative="true"
+                            placeholder="0"
+                            class="cmp-sr-b-input is-com-text is-primary-input"
+                          />
+                          <button
+                            type="button"
+                            class="cmp-sr-com-adj-btn"
+                            :class="{ 'is-active': cmpSrOverrides._comAdjustOpenField === 'netCom' }"
+                            title="Cộng / trừ thêm tiền vào Net COM"
+                            @click.stop="toggleCmpSrComAdjustPanel('netCom')"
+                          >+</button>
+                        </div>
+                        <div
+                          v-if="lastCmpSrComAdjust?.field === 'netCom'"
+                          class="cmp-sr-com-delta-hint"
+                          :class="lastCmpSrComAdjust.delta >= 0 ? 'is-pos' : 'is-neg'"
+                        >
+                          <span class="cmp-sr-com-delta-val">
+                            {{ lastCmpSrComAdjust.delta >= 0 ? '+' : '−' }}{{ fmtCmpSrMoney(Math.abs(lastCmpSrComAdjust.delta)) }}
+                          </span>
+                          <button
+                            type="button"
+                            class="cmp-sr-com-delta-undo-ic"
+                            :title="`Hoàn tác về ${fmtCmpSrMoney(lastCmpSrComAdjust.prevDisplayNet)}`"
+                            @click.stop="undoCmpSrComAdjust()"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Hàng cộng/trừ thêm tiền (trải rộng toàn hàng: [+|-] bên trái ô nhập, ô nhập rộng bằng ô chính, OK & × bên phải) -->
+                    <div
+                      v-if="cmpSrOverrides._comAdjustOpenField"
+                      class="cmp-sr-com-inline-editor"
+                      :class="cmpSrOverrides._comAdjustOpenField === 'grossCom' ? 'is-after-gross' : 'is-after-net'"
+                      @click.stop
+                    >
+                      <div class="cmp-sr-com-sign-group" role="group" aria-label="Phép tính">
+                        <button
+                          type="button"
+                          class="cmp-sr-com-sign-btn"
+                          :class="{ 'is-active is-plus': (cmpSrOverrides._comAdjustSign ?? 1) >= 0 }"
+                          @click="cmpSrOverrides._comAdjustSign = 1"
+                          title="Cộng thêm"
+                        >+</button>
+                        <button
+                          type="button"
+                          class="cmp-sr-com-sign-btn"
+                          :class="{ 'is-active is-minus': (cmpSrOverrides._comAdjustSign ?? 1) < 0 }"
+                          @click="cmpSrOverrides._comAdjustSign = -1"
+                          title="Trừ bớt"
+                        >−</button>
+                      </div>
                       <FormattedInput
-                        :modelValue="cmpSrTaxPct"
-                        @update:modelValue="val => onCmpSrFieldChange('taxPct', val)"
-                        :decimals="2"
-                        placeholder="25"
-                        class="cmp-sr-tax-pct-input"
+                        id="cmp-sr-input-comAdjust"
+                        :modelValue="cmpSrOverrides._comAdjustAmount ?? 0"
+                        @update:modelValue="val => (cmpSrOverrides._comAdjustAmount = Math.abs(quoteCurrency === 'USD' ? round2(Number(val) || 0) : Math.round(Number(val) || 0)))"
+                        @keyup.enter="applyCmpSrComAdjust()"
+                        @keyup.escape="closeCmpSrComAdjustPanel()"
+                        :decimals="quoteCurrency === 'USD' ? 2 : 0"
+                        placeholder="Số tiền"
+                        class="cmp-sr-b-input cmp-sr-com-adjust-input"
                       />
-                      <span>%</span>
-                    </span>
-                    <span class="cmp-sr-b-val is-debt-text">{{ fmtCmpSrMoney(cmpSrTaxAmount) }}</span>
+                      <button
+                        type="button"
+                        class="cmp-sr-com-adjust-apply"
+                        :disabled="!cmpSrOverrides._comAdjustAmount"
+                        @click="applyCmpSrComAdjust()"
+                      >OK</button>
+                      <button
+                        type="button"
+                        class="cmp-sr-com-adjust-close"
+                        title="Đóng (Esc)"
+                        @click="closeCmpSrComAdjustPanel()"
+                      >×</button>
+                    </div>
                   </div>
                   <div class="cmp-sr-b-row">
                     <span class="cmp-sr-b-lbl">Net PO</span>
@@ -30346,6 +31376,7 @@ onUnmounted(() => {
                       <span class="cmp-sr-predict-pct">%</span>
                     </div>
                   </div>
+                </div>
                 </div>
               </template>
 
@@ -32978,6 +34009,14 @@ onUnmounted(() => {
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 6px;">
+              <label style="font-size: 11px; text-transform: uppercase; color: #fbbf24; font-weight: 600; letter-spacing: 0.5px;">Tên hàng hóa báo giá</label>
+              <div style="position: relative; display: flex; align-items: center;">
+                <textarea rows="1" class="m-wrap-input has-left-icon" v-auto-grow @keydown.enter.prevent v-model="itemForm.Ten_hang_bao_gia" placeholder="Nhập tên hàng hóa báo giá (để trống nếu không dùng)..." style="width: 100%; padding: 10px 14px 10px 36px; border-radius: 8px; font-weight: 500; margin: 0;"></textarea>
+                <i class="lucide-file-text" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #f59e0b; pointer-events: none;"></i>
+              </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 6px;">
               <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">SKU Code</label>
               <div style="position: relative; display: flex; align-items: center;">
                 <textarea rows="1" class="m-wrap-input has-left-icon" v-auto-grow @keydown.enter.prevent v-model="itemForm.sku_code" placeholder="Nhập mã SKU (SKU Code)..." @input="updateMaHang" style="width: 100%; padding: 10px 14px 10px 36px; border-radius: 8px; font-weight: 500; margin: 0;"></textarea>
@@ -33056,13 +34095,18 @@ onUnmounted(() => {
             </h4>
             
             <div class="modal-form-group" style="display: flex; flex-direction: column; gap: 6px; flex: 1;">
-              <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Description</label>
-              <ExcelEditor v-model="itemForm.Description" placeholder="Nhập Description..." />
+              <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Description nội bộ</label>
+              <ExcelEditor v-model="itemForm.Description" placeholder="Nhập Description nội bộ..." />
             </div>
 
             <div class="modal-form-group" style="display: flex; flex-direction: column; gap: 6px; flex: 1;">
-              <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Diễn giải</label>
+              <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Diễn giải nội bộ</label>
               <ExcelEditor v-model="itemForm.Features" placeholder="Mô tả cấu hình, thông số nổi bật..." />
+            </div>
+
+            <div class="modal-form-group" style="display: flex; flex-direction: column; gap: 6px; flex: 1;">
+              <label style="font-size: 11px; text-transform: uppercase; color: #fbbf24; font-weight: 600; letter-spacing: 0.5px;">Diễn giải báo giá</label>
+              <ExcelEditor v-model="itemForm.Dien_giai_bao_gia" placeholder="Nhập diễn giải báo giá (để trống nếu không dùng)..." />
             </div>
           </div>
 
@@ -33501,6 +34545,14 @@ onUnmounted(() => {
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 6px;">
+              <label style="font-size: 11px; text-transform: uppercase; color: #fbbf24; font-weight: 600; letter-spacing: 0.5px;">Tên hàng hóa báo giá</label>
+              <div style="position: relative; display: flex; align-items: center;">
+                <textarea rows="1" class="m-wrap-input has-left-icon" v-auto-grow @keydown.enter.prevent v-model="cardEdit.Ten_hang_bao_gia" placeholder="Nhập tên hàng hóa báo giá (để trống nếu không dùng)..." style="width: 100%; padding: 10px 14px 10px 36px; border-radius: 8px; font-weight: 500; margin: 0;"></textarea>
+                <i class="lucide-file-text" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #f59e0b; pointer-events: none;"></i>
+              </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 6px;">
               <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">SKU Code</label>
               <div class="input-with-picker">
                 <textarea rows="1" class="m-wrap-input has-left-icon has-right-picker" v-auto-grow @keydown.enter.prevent v-model="cardEdit.sku_code" placeholder="Nhập mã SKU (SKU Code)..." style="width: 100%; padding: 10px 64px 10px 36px; border-radius: 8px; font-weight: 500; margin: 0;"></textarea>
@@ -33719,13 +34771,18 @@ onUnmounted(() => {
             </h4>
 
             <div class="modal-form-group" style="display: flex; flex-direction: column; gap: 6px; flex: 1;">
-              <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Description</label>
-              <ExcelEditor v-model="cardEdit.Description" placeholder="Nhập Description..." />
+              <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Description nội bộ</label>
+              <ExcelEditor v-model="cardEdit.Description" placeholder="Nhập Description nội bộ..." />
             </div>
 
             <div class="modal-form-group" style="display: flex; flex-direction: column; gap: 6px; flex: 1;">
-              <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Diễn giải</label>
+              <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Diễn giải nội bộ</label>
               <ExcelEditor v-model="cardEdit.Features" placeholder="Mô tả cấu hình, thông số nổi bật..." />
+            </div>
+
+            <div class="modal-form-group" style="display: flex; flex-direction: column; gap: 6px; flex: 1;">
+              <label style="font-size: 11px; text-transform: uppercase; color: #fbbf24; font-weight: 600; letter-spacing: 0.5px;">Diễn giải báo giá</label>
+              <ExcelEditor v-model="cardEdit.Dien_giai_bao_gia" placeholder="Nhập diễn giải báo giá (để trống nếu không dùng)..." />
             </div>
           </div>
 
@@ -34828,8 +35885,8 @@ onUnmounted(() => {
                 <th class="col-stt">STT</th>
                 <th class="col-pn">P/N</th>
                 <th class="col-name">Tên hàng</th>
-                <th class="col-desc">Description</th>
-                <th class="col-desc">Diễn giải</th>
+                <th class="col-desc">Description nội bộ</th>
+                <th class="col-desc">Diễn giải nội bộ</th>
                 <th class="col-dvt">ĐVT</th>
                 <th class="col-sl">SL</th>
                 <th class="col-dg">GIÁ VỐN / GIÁ OFF HÃNG</th>
@@ -35260,6 +36317,15 @@ onUnmounted(() => {
                 </div>
               </div>
 
+              <!-- Hàng 2b: Tên hàng hóa báo giá (chỉ sửa cho báo giá này, không ghi đè DB) -->
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fbbf24; font-weight: 600; letter-spacing: 0.5px;">Tên hàng hóa báo giá</label>
+                <div style="position: relative; display: flex; align-items: center;">
+                  <textarea id="qe-Ten_hang_bao_gia" rows="1" class="m-wrap-input has-left-icon" v-auto-grow @keydown.enter.prevent v-model="quoteEdit.Ten_hang_bao_gia" placeholder="Nhập tên hàng hóa báo giá (để trống nếu không dùng)..." style="width: 100%; padding: 10px 14px 10px 36px; border-radius: 8px; font-weight: 600; margin: 0;"></textarea>
+                  <i class="lucide-file-text" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #f59e0b; pointer-events: none;"></i>
+                </div>
+              </div>
+
               <!-- Hàng 3: Hãng + Danh mục -->
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
                 <div style="display: flex; flex-direction: column; gap: 6px;">
@@ -35437,25 +36503,31 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <!-- CỘT PHẢI: CHI TIẾT KỸ THUẬT (DESCRIPTION & DIỄN GIẢI) -->
+            <!-- CỘT PHẢI: CHI TIẾT KỸ THUẬT (DESCRIPTION NỘI BỘ & DIỄN GIẢI NỘI BỘ) -->
             <div class="modal-group" style="margin: 0; display: flex; flex-direction: column; gap: 16px; background: rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
               <div class="modal-section-header" style="padding-bottom: 10px; border-bottom: 1px dashed rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: space-between; gap: 8px;">
                 <h4 class="modal-group-title" style="margin: 0; padding: 0; border: none; display: flex; align-items: center; gap: 8px;">
                   <i class="ri-file-list-3-line" style="color: #38bdf8; font-size: 17px;"></i>
-                  <span>Chi tiết kỹ thuật (Description &amp; Diễn giải)</span>
+                  <span>Chi tiết kỹ thuật (Description nội bộ &amp; Diễn giải nội bộ)</span>
                 </h4>
               </div>
 
-              <!-- Description -->
+              <!-- Description nội bộ -->
               <div class="modal-form-group" style="display: flex; flex-direction: column; gap: 6px; flex: 1; min-height: 220px;">
-                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Description</label>
-                <ExcelEditor id="qe-Description" v-model="quoteEdit.Description" placeholder="Nhập Description..." />
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Description nội bộ</label>
+                <ExcelEditor id="qe-Description" v-model="quoteEdit.Description" placeholder="Nhập Description nội bộ..." />
               </div>
 
-              <!-- Diễn giải / Features -->
-              <div class="modal-form-group" style="display: flex; flex-direction: column; gap: 6px; flex: 1; min-height: 220px;">
-                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Diễn giải</label>
-                <ExcelEditor id="qe-Features" v-model="quoteEdit.Features" placeholder="Nhập diễn giải / tính năng..." />
+              <!-- Diễn giải nội bộ / Features -->
+              <div class="modal-form-group" style="display: flex; flex-direction: column; gap: 6px; flex: 1; min-height: 180px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Diễn giải nội bộ</label>
+                <ExcelEditor id="qe-Features" v-model="quoteEdit.Features" placeholder="Nhập diễn giải nội bộ..." />
+              </div>
+
+              <!-- Diễn giải báo giá -->
+              <div class="modal-form-group" style="display: flex; flex-direction: column; gap: 6px; flex: 1; min-height: 180px;">
+                <label style="font-size: 11px; text-transform: uppercase; color: #fbbf24; font-weight: 600; letter-spacing: 0.5px;">Diễn giải báo giá</label>
+                <ExcelEditor id="qe-Dien_giai_bao_gia" v-model="quoteEdit.Dien_giai_bao_gia" placeholder="Nhập diễn giải báo giá (để trống nếu không dùng)..." />
               </div>
             </div>
           </div>
@@ -36329,12 +37401,12 @@ onUnmounted(() => {
       </div>
       <div class="grid2">
         <div>
-          <label>Description</label>
-          <ExcelEditor id="qeraw-Description" v-model="quoteEditRaw.Description" placeholder="Nhập Description..." />
+          <label>Description nội bộ</label>
+          <ExcelEditor id="qeraw-Description" v-model="quoteEditRaw.Description" placeholder="Nhập Description nội bộ..." />
         </div>
         <div>
-          <label>Diễn giải</label>
-          <ExcelEditor id="qeraw-Features" v-model="quoteEditRaw.Features" placeholder="Nhập diễn giải..." />
+          <label>Diễn giải nội bộ</label>
+          <ExcelEditor id="qeraw-Features" v-model="quoteEditRaw.Features" placeholder="Nhập diễn giải nội bộ..." />
         </div>
       </div>
     </div>
@@ -36513,7 +37585,7 @@ onUnmounted(() => {
     </div>
 
     <div class="load-invoice-search dt-only-load-toolbar" style="padding: 16px 24px 8px; flex-shrink: 0;">
-       <input v-model="loadSearchQuery" placeholder="Tìm kiếm theo Số HĐ, Mã HĐ, Số PO, Tên khách hàng, Tên công ty..." class="search-input" style="width: 100%; padding: 12px 16px; border-radius: 8px; border: 1px solid #334155; background: #1e293b; color: #f8fafc; font-size: 15px;" />
+       <input v-model="loadSearchQuery" placeholder="Tìm theo Số HĐ, Phiên bản (V1, V2...), Mã lưu, Số PO, Khách hàng, Công ty..." class="search-input" style="width: 100%; padding: 12px 16px; border-radius: 8px; border: 1px solid #334155; background: #1e293b; color: #f8fafc; font-size: 15px;" />
     </div>
 
     <div class="load-invoice-filters dt-only-load-toolbar" style="display: flex; gap: 12px; padding: 0 24px 12px; align-items: center; justify-content: flex-start; flex-wrap: wrap; flex-shrink: 0;">
@@ -36674,16 +37746,44 @@ onUnmounted(() => {
         v-for="r in contractCards" 
         :key="r.maHD" 
         class="invoice-card"
-        :class="{ 'selected': loadMode === 'MA' && loadKey === r.maHD }"
+        :class="{
+          'selected': loadMode === 'MA' && loadKey === r.maHD,
+          'is-opened-in-tab': r.isOpenedInTab
+        }"
         @click="loadMode = 'MA'; loadKey = r.maHD;"
         @dblclick="loadMode = 'MA'; loadKey = r.maHD; r.isOfficial ? cloneInvoiceToFE() : loadInvoiceToFE()"
       >
         <div class="invoice-card-header">
-          <span class="invoice-ma-hd"><i class="lucide-file-text" style="width: 14px; height: 14px;"></i> {{ r.maHD || 'Chưa có Mã HĐ' }}</span>
-          <span class="invoice-date">{{ r.ngay }}</span>
+          <div class="inv-head-left">
+            <span class="invoice-ma-hd tabular-nums">
+              <i class="lucide-file-text" style="width: 14px; height: 14px;"></i>
+              {{ r.soHD || r.maHD || 'Chưa có Số HĐ' }}
+            </span>
+            <span
+              v-if="r.versionLabel"
+              class="inv-ver-pill tabular-nums"
+              :class="{ 'is-latest': r.isLatestVersion }"
+              :title="`Phiên bản ${r.versionLabel} / ${r.familyTotal} bản trong cùng nhóm báo giá`"
+            >
+              {{ r.versionLabel }}
+            </span>
+            <span
+              v-if="r.isOpenedInTab"
+              class="inv-open-tab-pill tabular-nums"
+              :title="`Phiên bản này đang mở sẵn tại ${r.openTabLabel}`"
+            >
+              Đang mở • {{ r.openTabLabel }}
+            </span>
+          </div>
+          <span class="invoice-date tabular-nums">{{ r.ngay }}</span>
         </div>
         <div class="invoice-card-body">
-          <p v-if="r.soPO" class="invoice-po">Số PO: {{ r.soPO }}</p>
+          <div class="inv-code-subrow tabular-nums">
+            <span v-if="r.soHD && r.maHD">Mã lưu: <b>{{ r.maHD }}</b></span>
+            <span v-if="r.maGoc && r.maGoc !== r.maHD">Gốc: <b>{{ r.maGoc }}</b></span>
+          </div>
+          <p v-if="r.soPO" class="invoice-po tabular-nums">Số PO: {{ r.soPO }}</p>
+          <p v-if="r.ghiChu" class="inv-note-line" :title="r.ghiChu">Ghi chú: {{ r.ghiChu }}</p>
           <p class="invoice-status">Trạng thái hợp đồng: <span class="status-badge" :class="{'badge-temp': r.trangThai === 'Tạm', 'badge-official': r.trangThai === 'Chính thức'}">{{ r.trangThai }}</span></p>
           
           <hr class="invoice-divider" />
@@ -36729,7 +37829,13 @@ onUnmounted(() => {
         @click="loadInvoiceToFE"
         style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);"
       >
-        {{ loadingInvoice ? 'Đang load...' : 'Chỉnh sửa báo giá' }}
+        <template v-if="loadingInvoice">Đang load...</template>
+        <template v-else-if="selectedLoadContractMeta?.isOpenedInTab">
+          Chuyển tới {{ selectedLoadContractMeta.openTabLabel }}{{ selectedLoadContractMeta.versionLabel ? ` (${selectedLoadContractMeta.versionLabel})` : '' }}
+        </template>
+        <template v-else>
+          Chỉnh sửa báo giá{{ selectedLoadContractMeta?.versionLabel ? ` (${selectedLoadContractMeta.versionLabel})` : '' }}
+        </template>
       </button>
     </div>
   </div>
@@ -37204,7 +38310,90 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- ================== MODAL: CHỌN FILE BÁO GIÁ ĐÍNH KÈM VÀO SALE REPORT (HĐ & KHÁCH) ================== -->
+    <!-- ================== MODAL BƯỚC 1: CHỌN CHẾ ĐỘ LƯU BẢN TẠM (LƯU ĐÈ VS PHIÊN BẢN MỚI) ================== -->
+    <div
+      v-if="saveQuoteFileConfigModal.strategyModalVisible"
+      class="modal vip-modal-overlay temp-save-strategy-overlay"
+      style="z-index: 10025;"
+      @click.self="cancelTempSaveStrategyModal"
+    >
+      <div class="modal-card vip-modal-card save-quote-file-cfg-modal temp-save-strategy-modal">
+        <div class="modal-head modal-head-themed sqfc-head is-temp">
+          <div class="sqfc-head-left dt-only-head">
+            <span class="sqfc-eyebrow">BƯỚC 1 / 2 • LƯU BẢN TẠM BÁO GIÁ ĐANG SỬA</span>
+            <h3 class="sqfc-title">Chọn Chế Độ Lưu Bản Tạm</h3>
+          </div>
+          <div class="m-grab-head-stack">
+            <span class="m-grab-eyebrow">Bước 1 / 2 • Lưu bản tạm</span>
+            <span class="m-grab-title">Chọn chế độ lưu</span>
+          </div>
+          <button type="button" class="x sqfc-close-btn" @click="cancelTempSaveStrategyModal" title="Đóng">✕</button>
+        </div>
+
+        <div class="modal-body sqfc-body tssm-body">
+          <div class="sqfc-intro-banner">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 20h9"></path>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+            </svg>
+            <span>
+              Bạn đang chỉnh sửa bản báo giá tạm <b>{{ soHopDong || loadedMaHopDong }}{{ getContractVersionLabelByMa(loadedMaHopDong) ? ` (${getContractVersionLabelByMa(loadedMaHopDong)})` : '' }}</b> (Mã lưu: <b>{{ loadedMaHopDong }}</b>). Hãy chọn cách lưu trước khi sang bước đính kèm file:
+            </span>
+          </div>
+
+          <div class="sqfc-strategy-grid is-modal-step">
+            <button
+              type="button"
+              class="sqfc-strategy-card"
+              :class="{ active: saveQuoteFileConfigModal.tempEditStrategy === 'overwrite' }"
+              @click="saveQuoteFileConfigModal.tempEditStrategy = 'overwrite'"
+              @dblclick="selectTempStrategyAndProceed('overwrite')"
+            >
+              <div class="sqfc-strat-top">
+                <span class="sqfc-strat-radio"></span>
+                <span class="sqfc-strat-title">Lưu cập nhật vào bản này (Lưu đè)</span>
+                <span class="sqfc-strat-tag is-sky">Giữ mã {{ loadedMaHopDong }}</span>
+              </div>
+              <div class="sqfc-strat-desc">
+                Cập nhật trực tiếp vào bản đang sửa, không sinh thêm version mới (phù hợp khi sửa lỗi chính tả, MST, ghi chú hoặc tinh chỉnh nhỏ).
+              </div>
+            </button>
+
+            <button
+              type="button"
+              class="sqfc-strategy-card is-newver"
+              :class="{ active: saveQuoteFileConfigModal.tempEditStrategy === 'new_version' }"
+              @click="saveQuoteFileConfigModal.tempEditStrategy = 'new_version'"
+              @dblclick="selectTempStrategyAndProceed('new_version')"
+            >
+              <div class="sqfc-strat-top">
+                <span class="sqfc-strat-radio"></span>
+                <span class="sqfc-strat-title">Lưu thành Phiên bản mới</span>
+                <span class="sqfc-strat-tag is-emerald">Mã mới {{ maHopDong }}</span>
+              </div>
+              <div class="sqfc-strat-desc">
+                Giữ nguyên bản <b>{{ loadedMaHopDong }}</b> cũ làm lịch sử đối chiếu, tạo thêm version mới nối chung nhóm báo giá gốc.
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <div class="sqfc-footer">
+          <button type="button" class="sqfc-btn is-back" @click="cancelTempSaveStrategyModal">
+            Quay lại
+          </button>
+          <button
+            type="button"
+            class="sqfc-btn is-confirm is-temp"
+            @click="proceedFromStrategyToFileModal"
+          >
+            Tiếp tục đính kèm file →
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================== MODAL BƯỚC 2: CHỌN FILE BÁO GIÁ ĐÍNH KÈM VÀO SALE REPORT (HĐ & KHÁCH) ================== -->
     <div
       v-if="saveQuoteFileConfigModal.visible"
       class="modal vip-modal-overlay modal-fullscreen-overlay save-quote-file-cfg-overlay"
@@ -37218,13 +38407,17 @@ onUnmounted(() => {
         >
           <div class="sqfc-head-left dt-only-head">
             <span class="sqfc-eyebrow">
-              {{ saveQuoteFileConfigModal.saveMode === 'official' ? 'CHỐT DEAL & LƯU CHÍNH THỨC • SALE REPORT' : 'LƯU TẠM & CHỜ DUYỆT • PHƯƠNG ÁN TẠM' }}
+              <template v-if="saveQuoteFileConfigModal.saveMode === 'official'">CHỐT DEAL &amp; LƯU CHÍNH THỨC • SALE REPORT</template>
+              <template v-else-if="saveQuoteFileConfigModal.canOverwriteDraft && loadedMaHopDong">BƯỚC 2 / 2 • ĐÍNH KÈM FILE BÁO GIÁ TẠM</template>
+              <template v-else>LƯU TẠM &amp; CHỜ DUYỆT • PHƯƠNG ÁN TẠM</template>
             </span>
             <h3 class="sqfc-title">Đính Kèm File Báo Giá Vào Sale Report</h3>
           </div>
           <div class="m-grab-head-stack">
             <span class="m-grab-eyebrow">
-              {{ saveQuoteFileConfigModal.saveMode === 'official' ? 'Chốt Deal & Lưu chính thức • Sale Report' : 'Lưu tạm & Chờ duyệt • Phương án tạm' }}
+              <template v-if="saveQuoteFileConfigModal.saveMode === 'official'">Chốt Deal &amp; Lưu chính thức • Sale Report</template>
+              <template v-else-if="saveQuoteFileConfigModal.canOverwriteDraft && loadedMaHopDong">Bước 2 / 2 • Đính kèm file</template>
+              <template v-else>Lưu tạm &amp; Chờ duyệt • Phương án tạm</template>
             </span>
             <span class="m-grab-title">Đính kèm file báo giá</span>
           </div>
@@ -37232,6 +38425,26 @@ onUnmounted(() => {
         </div>
 
         <div class="modal-body sqfc-body">
+          <!-- Tóm tắt chế độ lưu đã chọn ở Bước 1 (có nút đổi lại nhanh) -->
+          <div
+            v-if="saveQuoteFileConfigModal.saveMode === 'temp' && saveQuoteFileConfigModal.canOverwriteDraft && loadedMaHopDong"
+            class="sqfc-chosen-strategy-bar"
+            :class="saveQuoteFileConfigModal.tempEditStrategy === 'overwrite' ? 'is-overwrite' : 'is-newver'"
+          >
+            <div class="sqfc-csb-left">
+              <span class="sqfc-csb-step">BƯỚC 1 ĐÃ CHỌN</span>
+              <span v-if="saveQuoteFileConfigModal.tempEditStrategy === 'overwrite'" class="sqfc-csb-text">
+                Lưu cập nhật vào bản hiện tại (Lưu đè mã <b>{{ loadedMaHopDong }}</b>)
+              </span>
+              <span v-else class="sqfc-csb-text">
+                Lưu thành Phiên bản mới (Tạo mã <b>{{ maHopDong }}</b>)
+              </span>
+            </div>
+            <button type="button" class="sqfc-csb-change-btn" @click="backToTempStrategyModal">
+              ← Đổi chế độ lưu
+            </button>
+          </div>
+
           <div class="sqfc-intro-banner">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -37435,7 +38648,7 @@ onUnmounted(() => {
         </div>
 
         <div class="sqfc-footer">
-          <button type="button" class="sqfc-btn is-back" @click="cancelSaveQuoteFileConfigModal">
+          <button type="button" class="sqfc-btn is-back" @click="backFromSaveQuoteFileConfigModal">
             Quay lại
           </button>
           <button type="button" class="sqfc-btn is-skip-all" @click="skipAllFilesAndSaveQuoteNow">
@@ -38491,18 +39704,20 @@ onUnmounted(() => {
 
         <!-- TOP SEARCH TOOLBAR -->
         <div class="cust-top-toolbar" style="padding: 12px 20px; border-bottom: 1px solid rgba(148,163,184,0.16); background: rgba(15,23,42,0.35); display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; flex-shrink: 0;">
-          <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 240px;">
+          <div class="picker-search-row" style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 240px;">
             <input
               v-model="customerPickerSearch"
               type="text"
+              class="picker-search-input"
               :placeholder="'Tìm kiếm ' + customerPickerColumnLabel + '...'"
-              style="flex: 1; padding: 8px 12px; border-radius: 8px; font-size: 13px; font-weight: 600; margin: 0;"
+              style="flex: 1; min-width: 0; padding: 8px 12px; border-radius: 8px; font-size: 13px; font-weight: 600; margin: 0;"
             />
             <button
               v-if="customerPickerSearch"
               type="button"
+              class="picker-search-clear-btn"
               @click="customerPickerSearch = ''"
-              style="padding: 8px 12px; border-radius: 7px; font-size: 12px; font-weight: 700; background: #64748b; color: #ffffff !important; border: none; cursor: pointer; width: fit-content; margin: 0;"
+              style="padding: 8px 12px; border-radius: 7px; font-size: 12px; font-weight: 700; background: #64748b; color: #ffffff !important; border: none; cursor: pointer; width: fit-content; flex-shrink: 0; white-space: nowrap; margin: 0;"
             >
               Xóa
             </button>
@@ -38602,27 +39817,30 @@ onUnmounted(() => {
 
         <!-- TOP SEARCH TOOLBAR -->
         <div class="cust-top-toolbar" style="padding: 12px 20px; border-bottom: 1px solid rgba(148,163,184,0.16); background: rgba(15,23,42,0.35); display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; flex-shrink: 0;">
-          <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 240px;">
+          <div class="picker-search-row" style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 240px;">
             <input
               v-model="productPickerSearch"
               type="text"
+              class="picker-search-input"
               :placeholder="isAttributePickerField ? ('Tìm hoặc nhập mới ' + productPickerColumnLabel + '...') : ('Tìm kiếm ' + productPickerColumnLabel + '...')"
               @keydown.enter.prevent="canAddCustomOptionInPicker && addAndSelectCustomPickerOption()"
-              style="flex: 1; padding: 8px 12px; border-radius: 8px; font-size: 13px; font-weight: 600; margin: 0;"
+              style="flex: 1; min-width: 0; padding: 8px 12px; border-radius: 8px; font-size: 13px; font-weight: 600; margin: 0;"
             />
             <button
               v-if="canAddCustomOptionInPicker"
               type="button"
+              class="picker-add-custom-btn"
               @click="addAndSelectCustomPickerOption"
-              style="padding: 8px 12px; border-radius: 7px; font-size: 12px; font-weight: 700; background: #10b981; color: #ffffff !important; border: none; cursor: pointer; width: fit-content; white-space: nowrap; margin: 0;"
+              style="padding: 8px 12px; border-radius: 7px; font-size: 12px; font-weight: 700; background: #10b981; color: #ffffff !important; border: none; cursor: pointer; width: fit-content; flex-shrink: 0; white-space: nowrap; margin: 0;"
             >
               + Thêm &amp; Chọn
             </button>
             <button
               v-if="productPickerSearch"
               type="button"
+              class="picker-search-clear-btn"
               @click="productPickerSearch = ''"
-              style="padding: 8px 12px; border-radius: 7px; font-size: 12px; font-weight: 700; background: #64748b; color: #ffffff !important; border: none; cursor: pointer; width: fit-content; margin: 0;"
+              style="padding: 8px 12px; border-radius: 7px; font-size: 12px; font-weight: 700; background: #64748b; color: #ffffff !important; border: none; cursor: pointer; width: fit-content; flex-shrink: 0; white-space: nowrap; margin: 0;"
             >
               Xóa
             </button>
@@ -39400,7 +40618,7 @@ onUnmounted(() => {
           <tr>
             <th style="width: 5%">STT</th>
             <th style="width: 15%">TÊN HÀNG HÓA</th>
-            <th style="width: 25%">DIỄN GIẢI</th>
+            <th style="width: 25%">DIỄN GIẢI NỘI BỘ</th>
             <th style="width: 5%">DVT</th>
             <th style="width: 5%">S.L</th>
             <th style="width: 10%">ĐƠN GIÁ (VND)</th>
@@ -40526,6 +41744,7 @@ onUnmounted(() => {
             </div>
             <button
               type="button"
+              class="picker-mark-new-btn"
               style="padding: 6px 12px; border-radius: 7px; font-size: 11.5px; font-weight: 800; background: #10b981; color: #ffffff !important; border: none; cursor: pointer; width: fit-content; margin: 0; white-space: nowrap;"
               @click="selectRelatedDbProductForImportItem(activeImportRowForDbPicker, null)"
             >
@@ -40533,18 +41752,20 @@ onUnmounted(() => {
             </button>
           </div>
 
-          <div style="display: flex; align-items: center; gap: 8px;">
+          <div class="picker-search-row" style="display: flex; align-items: center; gap: 8px;">
             <input
               v-model="activeImportRowForDbPicker._relatedSearchQuery"
               type="text"
+              class="picker-search-input"
               placeholder="Tìm sản phẩm trong Database theo Mã hàng hoặc Tên hàng..."
-              style="flex: 1; padding: 8px 12px; border-radius: 8px; font-size: 13px; font-weight: 600; margin: 0;"
+              style="flex: 1; min-width: 0; padding: 8px 12px; border-radius: 8px; font-size: 13px; font-weight: 600; margin: 0;"
             />
             <button
               v-if="activeImportRowForDbPicker._relatedSearchQuery"
               type="button"
+              class="picker-search-clear-btn"
               @click="activeImportRowForDbPicker._relatedSearchQuery = ''"
-              style="padding: 8px 12px; border-radius: 7px; font-size: 12px; font-weight: 700; background: #64748b; color: #ffffff !important; border: none; cursor: pointer; width: fit-content; margin: 0;"
+              style="padding: 8px 12px; border-radius: 7px; font-size: 12px; font-weight: 700; background: #64748b; color: #ffffff !important; border: none; cursor: pointer; width: fit-content; flex-shrink: 0; white-space: nowrap; margin: 0;"
             >
               Xóa
             </button>
@@ -40643,7 +41864,7 @@ onUnmounted(() => {
       <div class="modal-card picker-modal-card" style="width: 600px; max-width: 92vw; max-height: 75vh; border-radius: 14px; display: flex; flex-direction: column; padding: 0; overflow: hidden;">
         <div class="modal-head" style="padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); position: relative; flex-shrink: 0;">
           <h3 style="margin: 0; font-size: 14px; font-weight: 800; color: #ffffff !important; letter-spacing: 0.4px; text-transform: uppercase;">
-            MÔ TẢ / DIỄN GIẢI — {{ activeImportRowForDescPreview.Ten_hang }}
+            MÔ TẢ / DIỄN GIẢI NỘI BỘ — {{ activeImportRowForDescPreview.Ten_hang }}
           </h3>
           <button class="x" @click="activeImportRowForDescPreview = null">✕</button>
         </div>
@@ -41228,6 +42449,108 @@ onUnmounted(() => {
       </div>
     </Transition>
 
+    <!-- MOBILE PRODUCT BRAND BOTTOM SHEET (<= 1100px) -->
+    <Transition name="pl-sheet">
+      <div
+        v-if="showBrandPicker"
+        ref="brandMobileSheetRef"
+        class="pl-mobile-sheet-overlay"
+        @click.self="closeBrandPicker"
+      >
+        <div class="pl-mobile-sheet" @click.stop>
+          <div class="pl-sheet-grabber-wrap">
+            <span class="pl-sheet-grabber"></span>
+          </div>
+
+          <div class="pl-sheet-head">
+            <div class="pl-sheet-head-txt">
+              <h4>Chọn hãng sản phẩm</h4>
+              <p>{{ catalogBrandOptions.length }} hãng • Kho {{ formatVND(totalBrandPoolCount) }} SP</p>
+            </div>
+            <button
+              type="button"
+              class="pl-sheet-close-btn"
+              aria-label="Đóng"
+              @click="closeBrandPicker"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+
+          <div v-if="catalogBrandOptions.length > 0" class="pl-sheet-search-wrap">
+            <svg class="pl-pop-search-ic" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input
+              v-model="brandPickerSearchQuery"
+              type="text"
+              class="pl-sheet-search-input"
+              placeholder="Tìm nhanh hãng..."
+            />
+            <button
+              v-if="brandPickerSearchQuery"
+              type="button"
+              class="pl-pop-search-clear"
+              aria-label="Xóa từ khóa"
+              @click="brandPickerSearchQuery = ''"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+
+          <div class="pl-sheet-list">
+            <button
+              type="button"
+              class="pl-opt-card is-sheet-card is-base-opt"
+              :class="{ 'is-selected': !selectedCatalogBrand }"
+              @click="selectCatalogBrand('')"
+            >
+              <div class="pl-opt-top">
+                <span class="pl-opt-radio">
+                  <svg v-if="!selectedCatalogBrand" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </span>
+                <span class="pl-opt-title">Tất cả hãng</span>
+                <span class="pl-opt-count">{{ formatVND(totalBrandPoolCount) }} SP</span>
+              </div>
+              <div class="pl-opt-sub">Hiển thị toàn bộ hãng trong kho ({{ catalogBrandOptions.length }} hãng)</div>
+            </button>
+
+            <div v-if="catalogBrandOptions.length > 0" class="pl-pop-section-lbl is-sheet-lbl">
+              <span>Hãng ({{ filteredCatalogBrandOptions.length }})</span>
+            </div>
+
+            <div v-if="catalogBrandOptions.length > 0 && filteredCatalogBrandOptions.length === 0" class="pl-pop-empty">
+              Không tìm thấy hãng phù hợp với "{{ brandPickerSearchQuery }}"
+            </div>
+
+            <button
+              v-for="brand in filteredCatalogBrandOptions"
+              :key="'m-brand-' + brand.key"
+              type="button"
+              class="pl-opt-card is-sheet-card brand-opt-card"
+              :class="{ 'is-selected': selectedCatalogBrand === brand.key }"
+              @click="selectCatalogBrand(brand.key)"
+            >
+              <div class="pl-opt-top">
+                <span class="pl-opt-radio">
+                  <svg v-if="selectedCatalogBrand === brand.key" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </span>
+                <span class="pl-opt-title">{{ brand.label }}</span>
+                <span class="pl-opt-count">{{ formatVND(brand.count) }} SP</span>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
     <!-- MOBILE QUOTE TABS OVERVIEW BOTTOM SHEET (<= 1100px) -->
     <Transition name="pl-sheet">
       <div
@@ -41294,6 +42617,7 @@ onUnmounted(() => {
                     <svg v-if="tab.id === activeQuoteTabId" xmlns="http://www.w3.org/2000/svg" width="10.5" height="10.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                   </span>
                   <span class="qtabs-card-title">{{ getQuoteTabDisplayTitle(tab, tIdx) }}</span>
+                  <span v-if="getTabVersionBadge(tab)" class="qtabs-ver-pill tabular-nums">{{ getTabVersionBadge(tab) }}</span>
                   <span v-if="tab.id === activeQuoteTabId" class="qtabs-card-status-pill is-active-pill">Đang mở</span>
                   <span v-else-if="Boolean(tab.loadedMaHopDong)" class="qtabs-card-status-pill is-edit-pill">Sửa HĐ</span>
                 </div>
@@ -50689,6 +52013,144 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
     min-height: 0 !important;
     overflow: auto !important;
   }
+
+  #app .page .quote-main-table-card.is-collapsed,
+  #app .page.theme-light-blue .quote-main-table-card.is-collapsed {
+    width: 48px !important;
+    min-width: 48px !important;
+    max-width: 48px !important;
+    flex: 0 0 48px !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  #app .page .quote-main-table-card.is-collapsed > :not(.is-center-quote-rail) {
+    display: none !important;
+  }
+
+  #app .page .quote-table-container:has(.quote-main-table-card.is-collapsed) > .cmp-sr-finance-wrap:not(.is-collapsed) {
+    flex: 1 1 0%;
+    width: auto;
+    min-width: 336px;
+    max-width: none;
+  }
+
+  #app .page .quote-table-container:has(.quote-main-table-card.is-collapsed) > .cmp-sr-finance-wrap:not(.is-collapsed) .cmp-sr-source-pills {
+    max-width: 320px;
+  }
+
+  #app .page .quote-table-container:has(.quote-main-table-card.is-collapsed) > .cmp-sr-finance-wrap:not(.is-collapsed) .cmp-sr-blocks-scroll {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+    align-items: start;
+    align-content: start;
+    gap: 10px;
+  }
+
+  #app .page .main-grid:has(.quote-main-table-card.is-collapsed):has(.cmp-sr-finance-wrap.is-collapsed) > .sidebar-left:not(.closed) {
+    flex: 1 1 0%;
+    width: auto;
+    max-width: none;
+  }
+
+  /* Ghim cố định Khách hàng & Tổng kết ở đáy sidebar phải trên PC; chỉ 3 khối chỉ số ở giữa cuộn */
+  #app .page .cmp-sr-finance-wrap {
+    overflow: hidden;
+  }
+
+  #app .page .cmp-sr-po1-blocks {
+    flex: 1 1 0%;
+    min-height: 0;
+    height: 100%;
+  }
+
+  #app .page .cmp-sr-blocks-scroll {
+    flex: 1 1 0%;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-right: 2px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+  }
+
+  #app .page .cmp-sr-blocks-scroll::-webkit-scrollbar {
+    width: 5px;
+  }
+
+  #app .page .cmp-sr-blocks-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  #app .page .cmp-sr-blocks-scroll::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.35);
+    border-radius: 999px;
+  }
+
+  #app .page .pc-right-finance-dock {
+    flex-shrink: 0;
+    margin-top: auto;
+  }
+
+  #app .page .pc-right-finance-dock .totals-box.dock-tab-panel {
+    max-height: min(250px, 34vh);
+    overflow-y: auto;
+  }
+
+  #app .page .pc-right-sticky-actions {
+    position: static;
+  }
+}
+
+.cmp-sr-blocks-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.btn-collapse-quote-table {
+  width: 28px !important;
+  min-width: 28px !important;
+  height: 28px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 6px !important;
+  border: 1px solid #334155 !important;
+  background: #1e293b !important;
+  color: #cbd5e1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.16s ease;
+}
+
+.btn-collapse-quote-table:hover {
+  background: #0284c7 !important;
+  border-color: #38bdf8 !important;
+  color: #ffffff !important;
+}
+
+.page.theme-light-blue .btn-collapse-quote-table {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.page.theme-light-blue .btn-collapse-quote-table:hover {
+  background: #eff6ff !important;
+  border-color: #2563eb !important;
+  color: #1d4ed8 !important;
 }
 
 .cmp-sr-finance-wrap {
@@ -50993,6 +52455,7 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
   flex-shrink: 0;
   gap: 6px;
   min-width: 0;
+  text-align: left;
 }
 
 .cmp-sr-po1-block:last-child {
@@ -51138,6 +52601,7 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
   color: #94a3b8;
   line-height: 1.35;
   white-space: normal;
+  text-align: left;
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -51229,6 +52693,276 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
   border-color: #38bdf8 !important;
   box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.18) !important;
   outline: none;
+}
+
+.cmp-sr-com-inline-grid {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  column-gap: 6px;
+  row-gap: 6px;
+  align-items: start;
+  width: 100%;
+}
+
+.cmp-sr-com-grid-row {
+  display: contents;
+}
+
+.cmp-sr-com-grid-lbl {
+  min-height: 25px;
+  margin: 0 !important;
+  font-size: 12.5px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  text-align: left;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  white-space: nowrap;
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+
+.cmp-sr-com-grid-row.is-primary .cmp-sr-com-grid-lbl {
+  color: #cbd5e1;
+  font-weight: 600;
+}
+
+.cmp-sr-com-grid-pct-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 25px;
+  flex-shrink: 0;
+}
+
+.cmp-sr-com-grid-pct-unit {
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  line-height: 1;
+}
+
+.cmp-sr-com-grid-pct-spacer {
+  display: block;
+}
+
+.cmp-sr-com-grid-val-cell {
+  min-width: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+}
+
+.cmp-sr-com-grid-val-cell.is-readonly-val {
+  min-height: 25px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.cmp-sr-com-money-act-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+}
+
+.cmp-sr-com-money-act-wrap .cmp-sr-b-input {
+  flex: 1 1 0;
+  width: auto !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  margin-left: 0 !important;
+}
+
+#app .page button.cmp-sr-com-adj-btn {
+  flex: 0 0 24px;
+  width: 24px !important;
+  height: 25px !important;
+  min-height: 25px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 5px;
+  border: 1px solid rgba(56, 189, 248, 0.38);
+  background: rgba(14, 165, 233, 0.14);
+  color: #38bdf8;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+#app .page button.cmp-sr-com-adj-btn:hover,
+#app .page button.cmp-sr-com-adj-btn.is-active {
+  background: #0284c7;
+  border-color: #38bdf8;
+  color: #ffffff;
+}
+
+.cmp-sr-com-inline-editor {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+}
+
+.cmp-sr-com-inline-editor.is-after-gross {
+  grid-row: 2;
+}
+
+.cmp-sr-com-sign-group {
+  display: inline-flex;
+  border-radius: 5px;
+  overflow: hidden;
+  border: 1px solid #334155;
+  flex-shrink: 0;
+}
+
+#app .page button.cmp-sr-com-sign-btn {
+  width: 21px !important;
+  height: 25px !important;
+  min-height: 25px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  border: none;
+  background: rgba(15, 23, 42, 0.78);
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.14s ease;
+}
+
+#app .page button.cmp-sr-com-sign-btn.is-active.is-plus {
+  background: #059669;
+  color: #ffffff;
+}
+
+#app .page button.cmp-sr-com-sign-btn.is-active.is-minus {
+  background: #e11d48;
+  color: #ffffff;
+}
+
+.cmp-sr-com-adjust-input {
+  flex: 0 1 auto !important;
+  width: var(--cmp-sr-com-money-w, clamp(105px, calc(100% - 160px), 220px)) !important;
+  max-width: calc(100% - 110px) !important;
+  min-width: 0 !important;
+  margin-left: 0 !important;
+  height: 26px !important;
+  font-size: 12px !important;
+  color: #f8fafc !important;
+}
+
+#app .page button.cmp-sr-com-adjust-apply {
+  width: auto !important;
+  height: 26px !important;
+  min-height: 26px !important;
+  padding: 0 8px !important;
+  margin: 0 !important;
+  border-radius: 5px;
+  border: 1px solid rgba(16, 185, 129, 0.55);
+  background: #059669;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+#app .page button.cmp-sr-com-adjust-apply:hover:not(:disabled) {
+  background: #10b981;
+}
+
+#app .page button.cmp-sr-com-adjust-apply:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+#app .page button.cmp-sr-com-adjust-close {
+  width: 21px !important;
+  height: 26px !important;
+  min-height: 26px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 5px;
+  border: 1px solid #334155;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+#app .page button.cmp-sr-com-adjust-close:hover {
+  border-color: #64748b;
+  color: #f8fafc;
+}
+
+.cmp-sr-com-delta-hint {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 0 2px;
+  background: transparent;
+  border: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.cmp-sr-com-delta-hint.is-pos {
+  color: #22c55e;
+}
+
+.cmp-sr-com-delta-hint.is-neg {
+  color: #ef4444;
+}
+
+#app .page button.cmp-sr-com-delta-undo-ic {
+  width: auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  color: currentColor !important;
+  opacity: 0.8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: opacity 0.14s ease, transform 0.14s ease;
+}
+
+#app .page button.cmp-sr-com-delta-undo-ic:hover {
+  opacity: 1;
+  transform: scale(1.12);
 }
 
 .cmp-sr-predict-card {
@@ -51517,6 +53251,70 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
   color: #0f172a !important;
 }
 
+.page.theme-light-blue .cmp-sr-com-grid-row.is-primary .cmp-sr-com-grid-lbl {
+  color: #0f172a;
+}
+
+.page.theme-light-blue .cmp-sr-com-grid-pct-unit {
+  color: #475569;
+}
+
+#app .page.theme-light-blue button.cmp-sr-com-adj-btn {
+  background: #e0f2fe;
+  border-color: #7dd3fc;
+  color: #0284c7;
+}
+
+#app .page.theme-light-blue button.cmp-sr-com-adj-btn:hover,
+#app .page.theme-light-blue button.cmp-sr-com-adj-btn.is-active {
+  background: #0284c7;
+  border-color: #0284c7;
+  color: #ffffff;
+}
+
+.page.theme-light-blue .cmp-sr-com-sign-group,
+#app .page.theme-light-blue button.cmp-sr-com-adjust-close {
+  border-color: #cbd5e1;
+}
+
+#app .page.theme-light-blue button.cmp-sr-com-sign-btn {
+  background: #ffffff;
+  color: #475569;
+}
+
+#app .page.theme-light-blue button.cmp-sr-com-sign-btn.is-active.is-plus {
+  background: #059669;
+  color: #ffffff;
+}
+
+#app .page.theme-light-blue button.cmp-sr-com-sign-btn.is-active.is-minus {
+  background: #e11d48;
+  color: #ffffff;
+}
+
+.page.theme-light-blue .cmp-sr-com-adjust-input {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+#app .page.theme-light-blue button.cmp-sr-com-adjust-close {
+  color: #64748b;
+}
+
+#app .page.theme-light-blue button.cmp-sr-com-adjust-close:hover {
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.page.theme-light-blue .cmp-sr-com-delta-hint.is-pos {
+  color: #16a34a;
+}
+
+.page.theme-light-blue .cmp-sr-com-delta-hint.is-neg {
+  color: #dc2626;
+}
+
 .page.theme-light-blue .cmp-sr-predict-card {
   background: #f0f9ff !important;
   border-color: #7dd3fc !important;
@@ -51614,6 +53412,23 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
   .cmp-sr-head-collapse-btn svg,
   .cmp-sr-source-collapse-btn svg {
     transform: rotate(-90deg);
+  }
+
+  #app .page button.cmp-sr-com-sign-btn {
+    width: 24px !important;
+    height: 29px !important;
+    min-height: 29px !important;
+  }
+
+  .cmp-sr-com-adjust-input {
+    height: 29px !important;
+    max-width: calc(100% - 116px) !important;
+  }
+
+  #app .page button.cmp-sr-com-adjust-apply,
+  #app .page button.cmp-sr-com-adjust-close {
+    height: 29px !important;
+    min-height: 29px !important;
   }
 }
 
@@ -56905,6 +58720,90 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
     overflow: hidden !important;
   }
 
+  /* Fix layout thanh tìm kiếm & các nút bên trong picker modal trên mobile */
+  #app .page .modal .modal-card.picker-modal-card .cust-top-toolbar {
+    padding: 10px 14px !important;
+    gap: 8px !important;
+  }
+
+  #app .page .modal .modal-card.picker-modal-card .picker-search-row {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    flex: 1 1 100% !important;
+  }
+
+  #app .page .modal .modal-card.picker-modal-card input.picker-search-input {
+    flex: 1 1 0% !important;
+    width: auto !important;
+    min-width: 0 !important;
+    height: 40px !important;
+    min-height: 40px !important;
+    padding: 0 12px !important;
+    margin: 0 !important;
+    border-radius: 9px !important;
+    font-size: 16px !important;
+  }
+
+  #app .page.theme-light-blue .modal .modal-card.picker-modal-card input.picker-search-input {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border: 1px solid #cbd5e1 !important;
+  }
+
+  #app .page .modal .modal-card.picker-modal-card button.picker-search-clear-btn,
+  #app .page .modal .modal-card.picker-modal-card button.picker-add-custom-btn,
+  #app .page .modal .modal-card.picker-modal-card button.picker-mark-new-btn {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    min-width: max-content !important;
+    max-width: none !important;
+    height: 40px !important;
+    min-height: 40px !important;
+    padding: 0 12px !important;
+    margin: 0 !important;
+    border-radius: 9px !important;
+    font-size: 12.5px !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+    box-shadow: none !important;
+  }
+
+  #app .page .modal .modal-card.picker-modal-card button.picker-mark-new-btn {
+    height: 34px !important;
+    min-height: 34px !important;
+    font-size: 11.5px !important;
+  }
+
+  #app .page .modal .modal-card.picker-modal-card button.picker-select-action-btn {
+    width: auto !important;
+    min-width: 58px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    padding: 0 12px !important;
+    margin: 0 auto !important;
+    border-radius: 7px !important;
+    font-size: 12px !important;
+    font-weight: 800 !important;
+    white-space: nowrap !important;
+    box-shadow: none !important;
+  }
+
+  #app .page .modal .modal-card.picker-modal-card .cust-modal-footer button.modal-btn-secondary {
+    width: auto !important;
+    min-width: 88px !important;
+    height: 38px !important;
+    min-height: 38px !important;
+    padding: 0 18px !important;
+    margin: 0 !important;
+    border-radius: 9px !important;
+    font-size: 13px !important;
+    white-space: nowrap !important;
+  }
+
   #app .page .modal .modal-card.more-actions-modal .more-actions-body,
   #app .page .modal .modal-content > .modal-body,
   #app .page .modal-overlay .modal-content > .modal-body {
@@ -61369,15 +63268,27 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
   min-width: 0;
 }
 
-#app .page .cat-picker-root {
-  position: relative;
+#app .page .catalog-filter-duo-row {
+  position: relative !important;
+  z-index: 20 !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  gap: 6px !important;
+  width: 100% !important;
+  margin-top: 6px !important;
+}
+
+#app .page .cat-picker-root,
+#app .page .brand-picker-root {
+  position: static !important;
   width: 100%;
   min-width: 0;
-  margin-top: 6px;
+  margin-top: 0 !important;
 }
 
 #app .page .sidebar-head-product button.pl-picker-trigger,
-#app .page .cat-picker-root button.pl-picker-trigger {
+#app .page .cat-picker-root button.pl-picker-trigger,
+#app .page .brand-picker-root button.pl-picker-trigger {
   width: 100% !important;
   min-width: 0 !important;
   height: 34px !important;
@@ -61399,22 +63310,30 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
   transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease !important;
 }
 
+#app .page .catalog-filter-duo-row button.pl-picker-trigger {
+  padding: 0 7px !important;
+  gap: 5px !important;
+}
+
 #app .page .sidebar-head-product button.pl-picker-trigger:hover,
-#app .page .cat-picker-root button.pl-picker-trigger:hover {
+#app .page .cat-picker-root button.pl-picker-trigger:hover,
+#app .page .brand-picker-root button.pl-picker-trigger:hover {
   border-color: rgba(56, 189, 248, 0.45) !important;
   background: rgba(15, 23, 42, 0.96) !important;
   transform: none !important;
 }
 
 #app .page .sidebar-head-product button.pl-picker-trigger.is-custom,
-#app .page .cat-picker-root button.pl-picker-trigger.is-custom {
+#app .page .cat-picker-root button.pl-picker-trigger.is-custom,
+#app .page .brand-picker-root button.pl-picker-trigger.is-custom {
   border-color: rgba(16, 185, 129, 0.55) !important;
   background: linear-gradient(135deg, rgba(16, 185, 129, 0.14) 0%, rgba(15, 23, 42, 0.94) 100%) !important;
   box-shadow: 0 2px 10px rgba(16, 185, 129, 0.12) !important;
 }
 
 #app .page .sidebar-head-product button.pl-picker-trigger.is-open,
-#app .page .cat-picker-root button.pl-picker-trigger.is-open {
+#app .page .cat-picker-root button.pl-picker-trigger.is-open,
+#app .page .brand-picker-root button.pl-picker-trigger.is-open {
   border-color: #38bdf8 !important;
   box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.16) !important;
 }
@@ -61978,12 +63897,18 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
     display: none !important;
   }
 
-  #app .page .cat-picker-root {
+  #app .page .catalog-filter-duo-row {
     margin-top: 5px !important;
   }
 
+  #app .page .cat-picker-root,
+  #app .page .brand-picker-root {
+    margin-top: 0 !important;
+  }
+
   #app .page .sidebar-head-product button.pl-picker-trigger,
-  #app .page .cat-picker-root button.pl-picker-trigger {
+  #app .page .cat-picker-root button.pl-picker-trigger,
+  #app .page .brand-picker-root button.pl-picker-trigger {
     height: 31px !important;
     min-height: 31px !important;
     max-height: 31px !important;
@@ -62152,7 +64077,8 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
    LIGHT MODE (.page.theme-light-blue) CHO PRICE LIST PICKER V2 & CATEGORY PICKER
    ========================================================================= */
 #app .page.theme-light-blue .sidebar-head-product button.pl-picker-trigger,
-#app .page.theme-light-blue .cat-picker-root button.pl-picker-trigger {
+#app .page.theme-light-blue .cat-picker-root button.pl-picker-trigger,
+#app .page.theme-light-blue .brand-picker-root button.pl-picker-trigger {
   background: #f8fbff !important;
   border: 1px solid #cbd5e1 !important;
   color: #0f172a !important;
@@ -62160,20 +64086,23 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
 }
 
 #app .page.theme-light-blue .sidebar-head-product button.pl-picker-trigger:hover,
-#app .page.theme-light-blue .cat-picker-root button.pl-picker-trigger:hover {
+#app .page.theme-light-blue .cat-picker-root button.pl-picker-trigger:hover,
+#app .page.theme-light-blue .brand-picker-root button.pl-picker-trigger:hover {
   background: #ffffff !important;
   border-color: #60a5fa !important;
 }
 
 #app .page.theme-light-blue .sidebar-head-product button.pl-picker-trigger.is-custom,
-#app .page.theme-light-blue .cat-picker-root button.pl-picker-trigger.is-custom {
+#app .page.theme-light-blue .cat-picker-root button.pl-picker-trigger.is-custom,
+#app .page.theme-light-blue .brand-picker-root button.pl-picker-trigger.is-custom {
   background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%) !important;
   border-color: #2563eb !important;
   box-shadow: 0 2px 8px rgba(37, 99, 235, 0.12) !important;
 }
 
 #app .page.theme-light-blue .sidebar-head-product button.pl-picker-trigger.is-open,
-#app .page.theme-light-blue .cat-picker-root button.pl-picker-trigger.is-open {
+#app .page.theme-light-blue .cat-picker-root button.pl-picker-trigger.is-open,
+#app .page.theme-light-blue .brand-picker-root button.pl-picker-trigger.is-open {
   border-color: #2563eb !important;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15) !important;
 }
@@ -63839,8 +65768,14 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
   width: 100% !important;
 }
 
-#app .page .cat-picker-root {
+#app .page .catalog-filter-duo-row {
   position: relative !important;
+  z-index: 20 !important;
+}
+
+#app .page .cat-picker-root,
+#app .page .brand-picker-root {
+  position: static !important;
   z-index: 20 !important;
 }
 
@@ -68991,6 +70926,203 @@ button.export-quick-fmt-pill.fmt-html:hover {
   color: #38bdf8;
 }
 
+.temp-save-strategy-modal {
+  max-width: 640px !important;
+  width: min(640px, 95vw) !important;
+  height: auto !important;
+  max-height: 90vh !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 0 !important;
+  background: #0f172a !important;
+  border: 1px solid rgba(148, 163, 184, 0.24) !important;
+}
+.tssm-body {
+  padding: 18px 20px !important;
+  gap: 14px !important;
+}
+.sqfc-strategy-grid.is-modal-step {
+  grid-template-columns: 1fr;
+  gap: 11px;
+}
+#app .page .modal-card .sqfc-strategy-grid.is-modal-step button.sqfc-strategy-card {
+  padding: 14px 16px !important;
+  border-radius: 12px !important;
+  gap: 7px !important;
+}
+
+.sqfc-chosen-strategy-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 9px 13px;
+  border-radius: 10px;
+  background: rgba(14, 165, 233, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #e2e8f0;
+  font-size: 12.5px;
+}
+.sqfc-chosen-strategy-bar.is-newver {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.38);
+}
+.sqfc-csb-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.sqfc-csb-step {
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  background: rgba(56, 189, 248, 0.2);
+  color: #7dd3fc;
+}
+.sqfc-chosen-strategy-bar.is-newver .sqfc-csb-step {
+  background: rgba(16, 185, 129, 0.2);
+  color: #6ee7b7;
+}
+.sqfc-csb-text b {
+  font-variant-numeric: tabular-nums;
+  color: #ffffff;
+}
+#app .page .modal-card button.sqfc-csb-change-btn {
+  width: auto !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  margin: 0 !important;
+  padding: 0 10px !important;
+  border-radius: 7px !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  background: rgba(15, 23, 42, 0.65) !important;
+  border: 1px solid rgba(148, 163, 184, 0.3) !important;
+  color: #cbd5e1 !important;
+  cursor: pointer;
+  white-space: nowrap !important;
+}
+#app .page .modal-card button.sqfc-csb-change-btn:hover {
+  background: #0284c7 !important;
+  border-color: #38bdf8 !important;
+  color: #ffffff !important;
+}
+
+.sqfc-strategy-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+}
+.sqfc-strategy-label {
+  font-size: 11.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #94a3b8;
+}
+.sqfc-strategy-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+#app .page .modal-card button.sqfc-strategy-card,
+.sqfc-strategy-card {
+  width: 100% !important;
+  margin: 0 !important;
+  text-align: left !important;
+  padding: 11px 13px !important;
+  border-radius: 10px !important;
+  background: rgba(2, 6, 23, 0.55) !important;
+  border: 1.5px solid rgba(148, 163, 184, 0.24) !important;
+  color: #e2e8f0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 6px !important;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+#app .page .modal-card button.sqfc-strategy-card.active,
+.sqfc-strategy-card.active {
+  background: rgba(14, 165, 233, 0.14) !important;
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.28) !important;
+}
+#app .page .modal-card button.sqfc-strategy-card.is-newver.active,
+.sqfc-strategy-card.is-newver.active {
+  background: rgba(16, 185, 129, 0.14) !important;
+  border-color: #10b981 !important;
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.28) !important;
+}
+.sqfc-strat-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  flex-wrap: wrap;
+}
+.sqfc-strat-radio {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 2px solid #64748b;
+  flex-shrink: 0;
+  position: relative;
+}
+.sqfc-strategy-card.active .sqfc-strat-radio {
+  border-color: #38bdf8;
+  background: radial-gradient(circle, #38bdf8 45%, transparent 50%);
+}
+.sqfc-strategy-card.is-newver.active .sqfc-strat-radio {
+  border-color: #10b981;
+  background: radial-gradient(circle, #10b981 45%, transparent 50%);
+}
+.sqfc-strat-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #f8fafc;
+}
+.sqfc-strat-tag {
+  margin-left: auto;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.sqfc-strat-tag.is-sky {
+  background: rgba(14, 165, 233, 0.18);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+}
+.sqfc-strat-tag.is-emerald {
+  background: rgba(16, 185, 129, 0.18);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+.sqfc-strat-desc {
+  font-size: 11.5px;
+  line-height: 1.42;
+  color: #94a3b8;
+  font-weight: 500;
+}
+@media (max-width: 768px) {
+  .sqfc-strategy-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .sqfc-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -69397,6 +71529,82 @@ button.export-quick-fmt-pill.fmt-html:hover {
   color: #0f172a !important;
 }
 
+.page.theme-light-blue .temp-save-strategy-modal {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.18) !important;
+}
+.page.theme-light-blue .sqfc-chosen-strategy-bar {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+  color: #0f172a !important;
+}
+.page.theme-light-blue .sqfc-chosen-strategy-bar.is-newver {
+  background: #ecfdf5 !important;
+  border-color: #6ee7b7 !important;
+}
+.page.theme-light-blue .sqfc-csb-step {
+  background: #dbeafe !important;
+  color: #1d4ed8 !important;
+}
+.page.theme-light-blue .sqfc-chosen-strategy-bar.is-newver .sqfc-csb-step {
+  background: #d1fae5 !important;
+  color: #047857 !important;
+}
+.page.theme-light-blue .sqfc-csb-text b {
+  color: #0f172a !important;
+}
+#app .page.theme-light-blue .modal-card button.sqfc-csb-change-btn {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+#app .page.theme-light-blue .modal-card button.sqfc-csb-change-btn:hover {
+  background: #0284c7 !important;
+  border-color: #0284c7 !important;
+  color: #ffffff !important;
+}
+
+.page.theme-light-blue .sqfc-strategy-box {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+.page.theme-light-blue .sqfc-strategy-label {
+  color: #475569 !important;
+}
+#app .page.theme-light-blue .modal-card button.sqfc-strategy-card,
+.page.theme-light-blue .sqfc-strategy-card {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+#app .page.theme-light-blue .modal-card button.sqfc-strategy-card.active,
+.page.theme-light-blue .sqfc-strategy-card.active {
+  background: #eff6ff !important;
+  border-color: #0284c7 !important;
+}
+#app .page.theme-light-blue .modal-card button.sqfc-strategy-card.is-newver.active,
+.page.theme-light-blue .sqfc-strategy-card.is-newver.active {
+  background: #ecfdf5 !important;
+  border-color: #059669 !important;
+}
+.page.theme-light-blue .sqfc-strat-title {
+  color: #0f172a !important;
+}
+.page.theme-light-blue .sqfc-strat-desc {
+  color: #475569 !important;
+}
+.page.theme-light-blue .sqfc-strat-tag.is-sky {
+  background: #e0f2fe !important;
+  color: #0369a1 !important;
+  border-color: #7dd3fc !important;
+}
+.page.theme-light-blue .sqfc-strat-tag.is-emerald {
+  background: #d1fae5 !important;
+  color: #047857 !important;
+  border-color: #6ee7b7 !important;
+}
+
 .page.theme-light-blue .sqfc-slot-card {
   background: #f8fafc !important;
   border-color: #cbd5e1 !important;
@@ -69540,7 +71748,7 @@ button.export-quick-fmt-pill.fmt-html:hover {
 }
 
 @media (max-width: 1100px) {
-  .modal .modal-card.save-quote-file-cfg-modal {
+  .modal .modal-card.save-quote-file-cfg-modal:not(.temp-save-strategy-modal) {
     padding: 0 !important;
     display: flex !important;
     flex-direction: column !important;
@@ -69582,8 +71790,24 @@ button.export-quick-fmt-pill.fmt-html:hover {
     min-height: 40px !important;
   }
 
-  #app .page .modal-card button.sqfc-btn.is-confirm {
+  #app .page .modal-card:not(.temp-save-strategy-modal) button.sqfc-btn.is-confirm {
     grid-column: 1 / -1 !important;
+  }
+
+  .temp-save-strategy-overlay {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+  .modal .modal-card.temp-save-strategy-modal {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    max-height: 92vh !important;
+    border-radius: 18px 18px 0 0 !important;
+    border-bottom: none !important;
+    margin: 0 !important;
+  }
+  .modal .modal-card.temp-save-strategy-modal .sqfc-footer {
+    grid-template-columns: 1fr 1.6fr !important;
   }
 }
 
@@ -71794,5 +74018,147 @@ label.m-qcard-bulk-check-pill input[type='checkbox'] {
     font-size: 11px !important;
     height: 32px !important;
   }
+}
+
+/* =====================================================================
+   ĐỒNG BỘ PHIÊN BẢN (V1 / V2 / V3) TRÊN QUOTE TABS & MODAL LOAD HÓA ĐƠN
+   ===================================================================== */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.quote-tab-ver-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 6px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+  white-space: nowrap;
+  flex-shrink: 0;
+  background: rgba(56, 189, 248, 0.16);
+  color: #7dd3fc;
+  border: 1px solid rgba(56, 189, 248, 0.38);
+}
+
+.quote-tab-item.active .quote-tab-ver-pill {
+  background: rgba(14, 165, 233, 0.28);
+  color: #e0f2fe;
+  border-color: #38bdf8;
+}
+
+.page.theme-light-blue .quote-tab-ver-pill {
+  background: #e0f2fe !important;
+  color: #0369a1 !important;
+  border: 1px solid #7dd3fc !important;
+}
+
+.page.theme-light-blue .quote-tab-item.active .quote-tab-ver-pill {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  border-color: #1d4ed8 !important;
+}
+
+.qtabs-ver-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5px 6.5px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.25;
+  white-space: nowrap;
+  flex-shrink: 0;
+  background: rgba(56, 189, 248, 0.18);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  color: #7dd3fc;
+}
+
+#app .page.theme-light-blue .qtabs-ver-pill {
+  background: #e0f2fe !important;
+  border-color: #7dd3fc !important;
+  color: #0369a1 !important;
+}
+
+#app .page.theme-light-blue .qtabs-sheet-card.is-active .qtabs-ver-pill {
+  background: #2563eb !important;
+  border-color: #1d4ed8 !important;
+  color: #ffffff !important;
+}
+
+.invoice-card.is-opened-in-tab:not(.selected) {
+  border-color: rgba(56, 189, 248, 0.45);
+}
+
+.inv-head-left {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+  flex: 1 1 0%;
+}
+
+.inv-ver-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.25;
+  white-space: nowrap;
+  background: rgba(56, 189, 248, 0.16);
+  color: #7dd3fc;
+  border: 1px solid rgba(56, 189, 248, 0.36);
+}
+
+.inv-ver-pill.is-latest {
+  background: rgba(16, 185, 129, 0.18);
+  color: #6ee7b7;
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.inv-open-tab-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+  background: rgba(245, 158, 11, 0.16);
+  color: #fcd34d;
+  border: 1px solid rgba(245, 158, 11, 0.38);
+}
+
+.inv-code-subrow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  font-size: 11.5px;
+  color: #94a3b8;
+  margin-bottom: 2px;
+}
+
+.inv-code-subrow b {
+  color: #cbd5e1;
+  font-weight: 700;
+}
+
+.inv-note-line {
+  font-size: 12px !important;
+  color: #93c5fd !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 </style>

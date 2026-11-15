@@ -620,8 +620,10 @@ export const AVAILABLE_TOKENS: TokenDef[] = [
   { token: '{{MA_HANG}}', key: 'MA_HANG', label: 'Mã hàng (P/N)', group: 'item_row', sample: 'KL4867XARFS' },
   { token: '{{SKU}}', key: 'SKU', label: 'Mã SKU (SKU Code)', group: 'item_row', sample: 'XGS88S12-ZZ01' },
   { token: '{{TEN_HANG}}', key: 'TEN_HANG', label: 'Tên hàng hóa / Sản phẩm', group: 'item_row', sample: 'Kaspersky Endpoint Security for Business Select' },
-  { token: '{{DESCRIPTION}}', key: 'DESCRIPTION', label: 'Description (Theo file gốc)', group: 'item_row', sample: 'Workspace Protection - 1-9 users - 12 MOS' },
-  { token: '{{DIEN_GIAI}}', key: 'DIEN_GIAI', label: 'Diễn giải / Thông số (Features)', group: 'item_row', sample: 'Bản quyền phần mềm bảo mật hệ thống\n- Bảo vệ máy trạm và File Server\n- Hỗ trợ kỹ thuật 24/7' },
+  { token: '{{TEN_HANG_BAO_GIA}}', key: 'TEN_HANG_BAO_GIA', label: 'Tên hàng hóa báo giá', group: 'item_row', sample: 'Phần mềm bảo mật Kaspersky Endpoint Select (Bản quyền 1 năm)' },
+  { token: '{{DESCRIPTION}}', key: 'DESCRIPTION', label: 'Description nội bộ', group: 'item_row', sample: 'Workspace Protection - 1-9 users - 12 MOS' },
+  { token: '{{DIEN_GIAI}}', key: 'DIEN_GIAI', label: 'Diễn giải nội bộ', group: 'item_row', sample: 'Bản quyền phần mềm bảo mật hệ thống\n- Bảo vệ máy trạm và File Server\n- Hỗ trợ kỹ thuật 24/7' },
+  { token: '{{DIEN_GIAI_BAO_GIA}}', key: 'DIEN_GIAI_BAO_GIA', label: 'Diễn giải báo giá', group: 'item_row', sample: '- Bảo vệ máy trạm và File Server\n- Hỗ trợ kỹ thuật 24/7 theo tiêu chuẩn hãng' },
   { token: '{{MO_TA_CHUNG}}', key: 'MO_TA_CHUNG', label: 'Mô tả chung SP', group: 'item_row', sample: 'Giải pháp bảo mật Endpoint cho doanh nghiệp' },
   { token: '{{MO_TA_CHI_TIET}}', key: 'MO_TA_CHI_TIET', label: 'Mô tả chi tiết SP', group: 'item_row', sample: 'Tích hợp chống mã độc, tường lửa, kiểm soát thiết bị' },
   { token: '{{MA_NCC}}', key: 'MA_NCC', label: 'Mã nhà cung cấp', group: 'item_row', sample: 'NCC_KASPERSKY' },
@@ -725,9 +727,11 @@ export const LEGACY_FIELD_TO_TOKEN: Record<string, string> = {
   sku: '{{SKU}}',
   sku_code: '{{SKU}}',
   ten_hang: '{{TEN_HANG}}',
+  ten_hang_bao_gia: '{{TEN_HANG_BAO_GIA}}',
   description: '{{DESCRIPTION}}',
   features: '{{DIEN_GIAI}}',
   mo_ta: '{{DIEN_GIAI}}',
+  dien_giai_bao_gia: '{{DIEN_GIAI_BAO_GIA}}',
   hang: '{{HANG}}',
   danh_muc: '{{DANH_MUC}}',
   dvt: '{{DVT}}',
@@ -935,6 +939,8 @@ export interface PrintTemplateConfig {
 
   // Dữ liệu lưới thiết kế trên web & chế độ Code song song (HTML/CSS/JS)
   che_do_soan_thao?: 'manual' | 'code'
+  da_bo_sung_cot_bao_gia?: boolean
+  da_doi_nhan_noi_bo?: boolean
   custom_css?: string
   custom_js?: string
   so_dong: number
@@ -982,7 +988,7 @@ export function createStarterTemplateConfig(customId?: string, name = 'Mẫu Bá
 
   // Row 2: Kính gởi & Ngày báo giá (Row 5 in baogiachuan.xlsx)
   setCell(2, 1, 'Kính gởi : {{TEN_CONG_TY}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', align: 'left', valign: 'middle', wrapText: true })
-  setCell(2, 7, 'Ngày : {{NGAY_BAO_GIA}}', { italic: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', align: 'right', valign: 'middle', wrapText: true })
+  setCell(2, 9, 'Ngày : {{NGAY_BAO_GIA}}', { italic: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', align: 'right', valign: 'middle', wrapText: true })
 
   // Row 3: Địa chỉ công ty KH (Row 6 in baogiachuan.xlsx)
   setCell(3, 1, 'Địa chỉ : {{DIA_CHI_KH}}', { fontSize: 11, fontFamily: 'Arial', color: '#000000', align: 'left', valign: 'middle', wrapText: true })
@@ -996,17 +1002,19 @@ export function createStarterTemplateConfig(customId?: string, name = 'Mẫu Bá
   // Row 6: Lời mở đầu (Row 10 in baogiachuan.xlsx)
   setCell(6, 1, 'Công ty Nam Trường Sơn trân trọng gởi đến Quý khách hàng bảng báo giá như sau:', { fontSize: 11, fontFamily: 'Arial', color: '#000000', align: 'left', valign: 'middle', wrapText: true })
 
-  // Row 7: Table Header (9 columns A..I — Row 11 in baogiachuan.xlsx)
+  // Row 7: Table Header (11 columns A..K — thêm Tên hàng báo giá & Diễn giải báo giá bên phải cột gốc)
   const headers = [
     { c: 1, text: 'Stt' },
     { c: 2, text: 'Tên hàng' },
-    { c: 3, text: 'Diễn giải' },
-    { c: 4, text: 'S.L' },
-    { c: 5, text: 'Đơn vị' },
-    { c: 6, text: 'Đơn giá\n({{DON_VI_TIEN_TE}})' },
-    { c: 7, text: 'Thành tiền\n({{DON_VI_TIEN_TE}})' },
-    { c: 8, text: 'Thuế\nVAT' },
-    { c: 9, text: 'Thành tiền sau VAT' }
+    { c: 3, text: 'Tên hàng báo giá' },
+    { c: 4, text: 'Diễn giải nội bộ' },
+    { c: 5, text: 'Diễn giải báo giá' },
+    { c: 6, text: 'S.L' },
+    { c: 7, text: 'Đơn vị' },
+    { c: 8, text: 'Đơn giá\n({{DON_VI_TIEN_TE}})' },
+    { c: 9, text: 'Thành tiền\n({{DON_VI_TIEN_TE}})' },
+    { c: 10, text: 'Thuế\nVAT' },
+    { c: 11, text: 'Thành tiền sau VAT' }
   ]
   headers.forEach(h => {
     setCell(7, h.c, h.text, {
@@ -1043,7 +1051,7 @@ export function createStarterTemplateConfig(customId?: string, name = 'Mẫu Bá
     border: true,
     wrapText: true
   })
-  for (let c = 3; c <= 9; c++) {
+  for (let c = 3; c <= 11; c++) {
     setCell(8, c, '', {
       bold: true,
       fontSize: 11,
@@ -1060,13 +1068,15 @@ export function createStarterTemplateConfig(customId?: string, name = 'Mẫu Bá
   const itemTokens: { c: number; val: string; align: 'left' | 'center' | 'right'; bold?: boolean; fontSize?: number }[] = [
     { c: 1, val: '{{STT}}', align: 'center', bold: true, fontSize: 11 },
     { c: 2, val: '{{TEN_HANG}}', align: 'left', bold: false, fontSize: 11 },
-    { c: 3, val: '{{DIEN_GIAI}}', align: 'left', bold: false, fontSize: 10 },
-    { c: 4, val: '{{SO_LUONG}}', align: 'center', bold: true, fontSize: 11 },
-    { c: 5, val: '{{DVT}}', align: 'center', bold: false, fontSize: 11 },
-    { c: 6, val: '{{DON_GIA_KH}}', align: 'right', bold: true, fontSize: 11 },
-    { c: 7, val: '{{TT_TRUOC_THUE}}', align: 'right', bold: true, fontSize: 11 },
-    { c: 8, val: '{{TIEN_VAT}}', align: 'right', bold: true, fontSize: 11 },
-    { c: 9, val: '{{TT_SAU_THUE}}', align: 'right', bold: true, fontSize: 11 }
+    { c: 3, val: '{{TEN_HANG_BAO_GIA}}', align: 'left', bold: false, fontSize: 11 },
+    { c: 4, val: '{{DIEN_GIAI}}', align: 'left', bold: false, fontSize: 10 },
+    { c: 5, val: '{{DIEN_GIAI_BAO_GIA}}', align: 'left', bold: false, fontSize: 10 },
+    { c: 6, val: '{{SO_LUONG}}', align: 'center', bold: true, fontSize: 11 },
+    { c: 7, val: '{{DVT}}', align: 'center', bold: false, fontSize: 11 },
+    { c: 8, val: '{{DON_GIA_KH}}', align: 'right', bold: true, fontSize: 11 },
+    { c: 9, val: '{{TT_TRUOC_THUE}}', align: 'right', bold: true, fontSize: 11 },
+    { c: 10, val: '{{TIEN_VAT}}', align: 'right', bold: true, fontSize: 11 },
+    { c: 11, val: '{{TT_SAU_THUE}}', align: 'right', bold: true, fontSize: 11 }
   ]
   itemTokens.forEach(it => {
     setCell(9, it.c, it.val, {
@@ -1083,12 +1093,12 @@ export function createStarterTemplateConfig(customId?: string, name = 'Mẫu Bá
 
   // Row 10: Total Row (`danh_sach_dong_tong = [10]`)
   setCell(10, 1, 'TỔNG CỘNG', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'center', valign: 'middle', border: true, wrapText: true })
-  for (let c = 2; c <= 6; c++) {
+  for (let c = 2; c <= 8; c++) {
     setCell(10, c, '', { bold: true, fontSize: 11, fontFamily: 'Arial', bgColor: '#ffff00', border: true })
   }
-  setCell(10, 7, '{{TONG_TRUOC_THUE}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
-  setCell(10, 8, '{{TONG_TIEN_VAT}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
-  setCell(10, 9, '{{TONG_SAU_THUE}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(10, 9, '{{TONG_TRUOC_THUE}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(10, 10, '{{TONG_TIEN_VAT}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(10, 11, '{{TONG_SAU_THUE}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
 
   // Row 11: Terms Header
   setCell(11, 1, 'CÁC ĐIỀU KHOẢN THƯƠNG MẠI KHÁC:', { bold: true, underline: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', align: 'left', valign: 'middle' })
@@ -1107,7 +1117,7 @@ export function createStarterTemplateConfig(customId?: string, name = 'Mẫu Bá
 
   // Row 14-16: Signature Block (`dong_chu_ky = 14`)
   setCell(14, 1, 'Trân Trọng,', { bold: true, fontSize: 10, fontFamily: 'Arial', color: '#000000', align: 'left', valign: 'middle' })
-  setCell(14, 7, 'Xác nhận đặt hàng', { bold: true, fontSize: 10, fontFamily: 'Arial', color: '#000000', align: 'center', valign: 'middle' })
+  setCell(14, 9, 'Xác nhận đặt hàng', { bold: true, fontSize: 10, fontFamily: 'Arial', color: '#000000', align: 'center', valign: 'middle' })
 
   setCell(15, 1, '', { fontSize: 10, fontFamily: 'Arial', align: 'left' })
 
@@ -1121,9 +1131,11 @@ export function createStarterTemplateConfig(customId?: string, name = 'Mẫu Bá
   return {
     id,
     ten_mau: name,
-    ghi_chu: 'Mẫu báo giá chuẩn NTS (baogiachuan.xlsx - 9 cột A4 Dọc, cố định 1 trang ngang)',
+    ghi_chu: 'Mẫu báo giá chuẩn NTS (baogiachuan.xlsx - 11 cột A4 Dọc, cố định 1 trang ngang)',
     loai_mau: 'imported_excel',
     mac_dinh: false,
+    da_bo_sung_cot_bao_gia: true,
+    da_doi_nhan_noi_bo: true,
     ngay_tao: now,
     ngay_cap_nhat: now,
     link_file_goc: '/baogiachuan.xlsx',
@@ -1162,39 +1174,41 @@ export function createStarterTemplateConfig(customId?: string, name = 'Mẫu Bá
     },
     cau_hinh_cot_bang: [
       { colIndex: 1, header: 'Stt', field: 'stt', token: '{{STT}}', width: 5 },
-      { colIndex: 2, header: 'Tên hàng', field: 'ten_hang', token: '{{TEN_HANG}}', width: 21 },
-      { colIndex: 3, header: 'Diễn giải', field: 'features', token: '{{DIEN_GIAI}}', width: 46 },
-      { colIndex: 4, header: 'S.L', field: 'so_luong', token: '{{SO_LUONG}}', width: 5 },
-      { colIndex: 5, header: 'Đơn vị', field: 'dvt', token: '{{DVT}}', width: 7 },
-      { colIndex: 6, header: 'Đơn giá\n({{DON_VI_TIEN_TE}})', field: 'don_gia_kh', token: '{{DON_GIA_KH}}', width: 14 },
-      { colIndex: 7, header: 'Thành tiền\n({{DON_VI_TIEN_TE}})', field: 'truoc_thue', token: '{{TT_TRUOC_THUE}}', width: 14 },
-      { colIndex: 8, header: 'Thuế\nVAT', field: 'vat', token: '{{TIEN_VAT}}', width: 9 },
-      { colIndex: 9, header: 'Thành tiền sau VAT', field: 'sau_thue', token: '{{TT_SAU_THUE}}', width: 14 }
+      { colIndex: 2, header: 'Tên hàng', field: 'ten_hang', token: '{{TEN_HANG}}', width: 17 },
+      { colIndex: 3, header: 'Tên hàng báo giá', field: 'ten_hang_bao_gia', token: '{{TEN_HANG_BAO_GIA}}', width: 17 },
+      { colIndex: 4, header: 'Diễn giải nội bộ', field: 'features', token: '{{DIEN_GIAI}}', width: 26 },
+      { colIndex: 5, header: 'Diễn giải báo giá', field: 'dien_giai_bao_gia', token: '{{DIEN_GIAI_BAO_GIA}}', width: 26 },
+      { colIndex: 6, header: 'S.L', field: 'so_luong', token: '{{SO_LUONG}}', width: 5 },
+      { colIndex: 7, header: 'Đơn vị', field: 'dvt', token: '{{DVT}}', width: 7 },
+      { colIndex: 8, header: 'Đơn giá\n({{DON_VI_TIEN_TE}})', field: 'don_gia_kh', token: '{{DON_GIA_KH}}', width: 13 },
+      { colIndex: 9, header: 'Thành tiền\n({{DON_VI_TIEN_TE}})', field: 'truoc_thue', token: '{{TT_TRUOC_THUE}}', width: 14 },
+      { colIndex: 10, header: 'Thuế\nVAT', field: 'vat', token: '{{TIEN_VAT}}', width: 9 },
+      { colIndex: 11, header: 'Thành tiền sau VAT', field: 'sau_thue', token: '{{TT_SAU_THUE}}', width: 14 }
     ],
     so_dong: 19,
-    so_cot: 9,
-    col_widths: { 1: 38, 2: 152, 3: 280, 4: 36, 5: 52, 6: 102, 7: 104, 8: 70, 9: 104 },
+    so_cot: 11,
+    col_widths: { 1: 34, 2: 120, 3: 120, 4: 190, 5: 190, 6: 36, 7: 48, 8: 92, 9: 96, 10: 66, 11: 96 },
     row_heights: { 1: 84, 2: 22, 3: 22, 4: 24, 5: 36, 6: 24, 7: 54, 8: 28, 9: 64, 10: 34, 11: 24, 12: 48, 13: 38, 14: 22, 15: 44, 16: 22, 17: 20, 18: 20, 19: 22 },
     merges: [
-      { top: 1, left: 1, bottom: 1, right: 9 },
-      { top: 2, left: 1, bottom: 2, right: 6 },
-      { top: 2, left: 7, bottom: 2, right: 9 },
-      { top: 3, left: 1, bottom: 3, right: 9 },
-      { top: 4, left: 1, bottom: 4, right: 9 },
-      { top: 5, left: 1, bottom: 5, right: 9 },
-      { top: 6, left: 1, bottom: 6, right: 9 },
-      { top: 8, left: 2, bottom: 8, right: 9 },
-      { top: 10, left: 1, bottom: 10, right: 6 },
-      { top: 11, left: 1, bottom: 11, right: 9 },
-      { top: 12, left: 2, bottom: 12, right: 9 },
-      { top: 13, left: 2, bottom: 13, right: 9 },
-      { top: 14, left: 1, bottom: 14, right: 3 },
-      { top: 14, left: 7, bottom: 14, right: 9 },
-      { top: 15, left: 1, bottom: 15, right: 5 },
-      { top: 16, left: 1, bottom: 16, right: 5 },
-      { top: 17, left: 1, bottom: 17, right: 9 },
-      { top: 18, left: 1, bottom: 18, right: 9 },
-      { top: 19, left: 1, bottom: 19, right: 9 }
+      { top: 1, left: 1, bottom: 1, right: 11 },
+      { top: 2, left: 1, bottom: 2, right: 8 },
+      { top: 2, left: 9, bottom: 2, right: 11 },
+      { top: 3, left: 1, bottom: 3, right: 11 },
+      { top: 4, left: 1, bottom: 4, right: 11 },
+      { top: 5, left: 1, bottom: 5, right: 11 },
+      { top: 6, left: 1, bottom: 6, right: 11 },
+      { top: 8, left: 2, bottom: 8, right: 11 },
+      { top: 10, left: 1, bottom: 10, right: 8 },
+      { top: 11, left: 1, bottom: 11, right: 11 },
+      { top: 12, left: 2, bottom: 12, right: 11 },
+      { top: 13, left: 2, bottom: 13, right: 11 },
+      { top: 14, left: 1, bottom: 14, right: 4 },
+      { top: 14, left: 9, bottom: 14, right: 11 },
+      { top: 15, left: 1, bottom: 15, right: 6 },
+      { top: 16, left: 1, bottom: 16, right: 6 },
+      { top: 17, left: 1, bottom: 17, right: 11 },
+      { top: 18, left: 1, bottom: 18, right: 11 },
+      { top: 19, left: 1, bottom: 19, right: 11 }
     ],
     grid_cells: cells
   }
@@ -1301,7 +1315,7 @@ export function createThreePriceComparisonTemplateConfig(
 
   // Row 2: Kính gởi & Ngày báo giá
   setCell(2, 1, 'Kính gởi : {{TEN_CONG_TY}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', align: 'left', valign: 'middle', wrapText: true })
-  setCell(2, 8, 'Ngày : {{NGAY_BAO_GIA}}', { italic: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', align: 'right', valign: 'middle', wrapText: true })
+  setCell(2, 11, 'Ngày : {{NGAY_BAO_GIA}}', { italic: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', align: 'right', valign: 'middle', wrapText: true })
 
   // Row 3: Địa chỉ công ty KH
   setCell(3, 1, 'Địa chỉ : {{DIA_CHI_KH}}', { fontSize: 11, fontFamily: 'Arial', color: '#000000', align: 'left', valign: 'middle', wrapText: true })
@@ -1315,21 +1329,23 @@ export function createThreePriceComparisonTemplateConfig(
   // Row 6: Lời mở đầu
   setCell(6, 1, 'Công ty Nam Trường Sơn trân trọng gởi đến Quý khách hàng bảng báo giá như sau:', { fontSize: 11, fontFamily: 'Arial', color: '#000000', align: 'left', valign: 'middle', wrapText: true })
 
-  // Row 7: Table Header (13 columns A..M — 3 price pairs + Giá vốn/Off hãng + Net Margin)
+  // Row 7: Table Header (15 columns A..O — 3 price pairs + Giá vốn/Off hãng + Net Margin)
   const headers: { c: number; text: string; bgColor: string }[] = [
     { c: 1, text: 'Stt', bgColor: '#ccffcc' },
     { c: 2, text: 'Tên hàng', bgColor: '#ccffcc' },
-    { c: 3, text: 'Diễn giải', bgColor: '#ccffcc' },
-    { c: 4, text: 'S.L', bgColor: '#ccffcc' },
-    { c: 5, text: 'Đơn vị', bgColor: '#ccffcc' },
-    { c: 6, text: 'Đơn giá List\n({{DON_VI_TIEN_TE}})', bgColor: '#dbeafe' },
-    { c: 7, text: 'Thành tiền List\n({{DON_VI_TIEN_TE}})', bgColor: '#dbeafe' },
-    { c: 8, text: 'Đơn giá khách\n({{DON_VI_TIEN_TE}})', bgColor: '#dcfce7' },
-    { c: 9, text: 'Thành tiền khách\n({{DON_VI_TIEN_TE}})', bgColor: '#dcfce7' },
-    { c: 10, text: 'Đơn giá HĐ\n({{DON_VI_TIEN_TE}})', bgColor: '#fef3c7' },
-    { c: 11, text: 'Thành tiền HĐ\n({{DON_VI_TIEN_TE}})', bgColor: '#fef3c7' },
-    { c: 12, text: 'Giá vốn / Giá off hãng\n({{DON_VI_TIEN_TE}})', bgColor: '#ccffcc' },
-    { c: 13, text: 'Net Margin\n({{DON_VI_TIEN_TE}})', bgColor: '#ccffcc' }
+    { c: 3, text: 'Tên hàng báo giá', bgColor: '#ccffcc' },
+    { c: 4, text: 'Diễn giải nội bộ', bgColor: '#ccffcc' },
+    { c: 5, text: 'Diễn giải báo giá', bgColor: '#ccffcc' },
+    { c: 6, text: 'S.L', bgColor: '#ccffcc' },
+    { c: 7, text: 'Đơn vị', bgColor: '#ccffcc' },
+    { c: 8, text: 'Đơn giá List\n({{DON_VI_TIEN_TE}})', bgColor: '#dbeafe' },
+    { c: 9, text: 'Thành tiền List\n({{DON_VI_TIEN_TE}})', bgColor: '#dbeafe' },
+    { c: 10, text: 'Đơn giá khách\n({{DON_VI_TIEN_TE}})', bgColor: '#dcfce7' },
+    { c: 11, text: 'Thành tiền khách\n({{DON_VI_TIEN_TE}})', bgColor: '#dcfce7' },
+    { c: 12, text: 'Đơn giá HĐ\n({{DON_VI_TIEN_TE}})', bgColor: '#fef3c7' },
+    { c: 13, text: 'Thành tiền HĐ\n({{DON_VI_TIEN_TE}})', bgColor: '#fef3c7' },
+    { c: 14, text: 'Giá vốn / Giá off hãng\n({{DON_VI_TIEN_TE}})', bgColor: '#ccffcc' },
+    { c: 15, text: 'Net Margin\n({{DON_VI_TIEN_TE}})', bgColor: '#ccffcc' }
   ]
   headers.forEach(h => {
     setCell(7, h.c, h.text, {
@@ -1366,7 +1382,7 @@ export function createThreePriceComparisonTemplateConfig(
     border: true,
     wrapText: true
   })
-  for (let c = 3; c <= 13; c++) {
+  for (let c = 3; c <= 15; c++) {
     setCell(8, c, '', {
       bold: true,
       fontSize: 11,
@@ -1383,17 +1399,19 @@ export function createThreePriceComparisonTemplateConfig(
   const itemTokens: { c: number; val: string; align: 'left' | 'center' | 'right'; bold?: boolean; fontSize?: number; color?: string }[] = [
     { c: 1, val: '{{STT}}', align: 'center', bold: true, fontSize: 11 },
     { c: 2, val: '{{TEN_HANG}}', align: 'left', bold: false, fontSize: 11 },
-    { c: 3, val: '{{DIEN_GIAI}}', align: 'left', bold: false, fontSize: 10 },
-    { c: 4, val: '{{SO_LUONG}}', align: 'center', bold: true, fontSize: 11 },
-    { c: 5, val: '{{DVT}}', align: 'center', bold: false, fontSize: 11 },
-    { c: 6, val: '{{GIA_LIST_DG}}', align: 'right', bold: false, fontSize: 11 },
-    { c: 7, val: '{{GIA_LIST_TT}}', align: 'right', bold: true, fontSize: 11 },
-    { c: 8, val: '{{GIA_KHACH_DG}}', align: 'right', bold: false, fontSize: 11 },
-    { c: 9, val: '{{GIA_KHACH_TT}}', align: 'right', bold: true, fontSize: 11 },
-    { c: 10, val: '{{GIA_HD_DG}}', align: 'right', bold: false, fontSize: 11 },
-    { c: 11, val: '{{GIA_HD_TT}}', align: 'right', bold: true, fontSize: 11 },
-    { c: 12, val: '{{GIA_OFF_HANG_KEM_PCT}}', align: 'right', bold: true, fontSize: 11, color: '#059669' },
-    { c: 13, val: '{{NET_MARGIN}}', align: 'right', bold: true, fontSize: 11, color: '#059669' }
+    { c: 3, val: '{{TEN_HANG_BAO_GIA}}', align: 'left', bold: false, fontSize: 11 },
+    { c: 4, val: '{{DIEN_GIAI}}', align: 'left', bold: false, fontSize: 10 },
+    { c: 5, val: '{{DIEN_GIAI_BAO_GIA}}', align: 'left', bold: false, fontSize: 10 },
+    { c: 6, val: '{{SO_LUONG}}', align: 'center', bold: true, fontSize: 11 },
+    { c: 7, val: '{{DVT}}', align: 'center', bold: false, fontSize: 11 },
+    { c: 8, val: '{{GIA_LIST_DG}}', align: 'right', bold: false, fontSize: 11 },
+    { c: 9, val: '{{GIA_LIST_TT}}', align: 'right', bold: true, fontSize: 11 },
+    { c: 10, val: '{{GIA_KHACH_DG}}', align: 'right', bold: false, fontSize: 11 },
+    { c: 11, val: '{{GIA_KHACH_TT}}', align: 'right', bold: true, fontSize: 11 },
+    { c: 12, val: '{{GIA_HD_DG}}', align: 'right', bold: false, fontSize: 11 },
+    { c: 13, val: '{{GIA_HD_TT}}', align: 'right', bold: true, fontSize: 11 },
+    { c: 14, val: '{{GIA_OFF_HANG_KEM_PCT}}', align: 'right', bold: true, fontSize: 11, color: '#059669' },
+    { c: 15, val: '{{NET_MARGIN}}', align: 'right', bold: true, fontSize: 11, color: '#059669' }
   ]
   itemTokens.forEach(it => {
     setCell(9, it.c, it.val, {
@@ -1408,47 +1426,47 @@ export function createThreePriceComparisonTemplateConfig(
     })
   })
 
-  // Row 10: TỔNG CỘNG TRƯỚC THUẾ (Số tổng đặt thẳng dưới cột Thành tiền 7, 9, 11 và Net Margin 13)
+  // Row 10: TỔNG CỘNG TRƯỚC THUẾ (Số tổng đặt thẳng dưới cột Thành tiền 9, 11, 13 và Net Margin 15)
   setCell(10, 1, 'TỔNG CỘNG TRƯỚC THUẾ', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#e2efda', align: 'center', valign: 'middle', border: true, wrapText: true })
-  for (let c = 2; c <= 5; c++) {
+  for (let c = 2; c <= 7; c++) {
     setCell(10, c, '', { bold: true, fontSize: 11, fontFamily: 'Arial', bgColor: '#e2efda', border: true })
   }
-  setCell(10, 6, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#e2efda', align: 'right', valign: 'middle', border: true, wrapText: true })
-  setCell(10, 7, '{{TONG_TRUOC_LIST}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#e2efda', align: 'right', valign: 'middle', border: true, wrapText: true })
   setCell(10, 8, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#e2efda', align: 'right', valign: 'middle', border: true, wrapText: true })
-  setCell(10, 9, '{{TONG_TRUOC_KHACH}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#e2efda', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(10, 9, '{{TONG_TRUOC_LIST}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#e2efda', align: 'right', valign: 'middle', border: true, wrapText: true })
   setCell(10, 10, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#e2efda', align: 'right', valign: 'middle', border: true, wrapText: true })
-  setCell(10, 11, '{{TONG_TRUOC_HD}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#e2efda', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(10, 11, '{{TONG_TRUOC_KHACH}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#e2efda', align: 'right', valign: 'middle', border: true, wrapText: true })
   setCell(10, 12, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#e2efda', align: 'right', valign: 'middle', border: true, wrapText: true })
-  setCell(10, 13, '{{TONG_NET_MARGIN}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#059669', bgColor: '#e2efda', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(10, 13, '{{TONG_TRUOC_HD}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#e2efda', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(10, 14, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#e2efda', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(10, 15, '{{TONG_NET_MARGIN}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#059669', bgColor: '#e2efda', align: 'right', valign: 'middle', border: true, wrapText: true })
 
   // Row 11: THUẾ VAT
   setCell(11, 1, 'THUẾ VAT', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#fff2cc', align: 'center', valign: 'middle', border: true, wrapText: true })
-  for (let c = 2; c <= 5; c++) {
+  for (let c = 2; c <= 7; c++) {
     setCell(11, c, '', { bold: true, fontSize: 11, fontFamily: 'Arial', bgColor: '#fff2cc', border: true })
   }
-  setCell(11, 6, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#fff2cc', align: 'right', valign: 'middle', border: true, wrapText: true })
-  setCell(11, 7, '{{TONG_VAT_LIST}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#fff2cc', align: 'right', valign: 'middle', border: true, wrapText: true })
   setCell(11, 8, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#fff2cc', align: 'right', valign: 'middle', border: true, wrapText: true })
-  setCell(11, 9, '{{TONG_VAT_KHACH}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#fff2cc', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(11, 9, '{{TONG_VAT_LIST}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#fff2cc', align: 'right', valign: 'middle', border: true, wrapText: true })
   setCell(11, 10, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#fff2cc', align: 'right', valign: 'middle', border: true, wrapText: true })
-  setCell(11, 11, '{{TONG_VAT_HD}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#fff2cc', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(11, 11, '{{TONG_VAT_KHACH}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#fff2cc', align: 'right', valign: 'middle', border: true, wrapText: true })
   setCell(11, 12, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#fff2cc', align: 'right', valign: 'middle', border: true, wrapText: true })
-  setCell(11, 13, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#fff2cc', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(11, 13, '{{TONG_VAT_HD}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#fff2cc', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(11, 14, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#fff2cc', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(11, 15, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#fff2cc', align: 'right', valign: 'middle', border: true, wrapText: true })
 
   // Row 12: TỔNG CỘNG SAU THUẾ
   setCell(12, 1, 'TỔNG CỘNG SAU THUẾ', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'center', valign: 'middle', border: true, wrapText: true })
-  for (let c = 2; c <= 5; c++) {
+  for (let c = 2; c <= 7; c++) {
     setCell(12, c, '', { bold: true, fontSize: 11, fontFamily: 'Arial', bgColor: '#ffff00', border: true })
   }
-  setCell(12, 6, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
-  setCell(12, 7, '{{TONG_SAU_LIST}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
   setCell(12, 8, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
-  setCell(12, 9, '{{TONG_SAU_KHACH}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(12, 9, '{{TONG_SAU_LIST}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
   setCell(12, 10, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
-  setCell(12, 11, '{{TONG_SAU_HD}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(12, 11, '{{TONG_SAU_KHACH}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
   setCell(12, 12, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
-  setCell(12, 13, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(12, 13, '{{TONG_SAU_HD}}', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(12, 14, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
+  setCell(12, 15, '', { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ffff00', align: 'right', valign: 'middle', border: true, wrapText: true })
 
   // Row 13: Terms Header
   setCell(13, 1, 'CÁC ĐIỀU KHOẢN THƯƠNG MẠI KHÁC:', { bold: true, underline: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', align: 'left', valign: 'middle' })
@@ -1467,7 +1485,7 @@ export function createThreePriceComparisonTemplateConfig(
 
   // Row 16-18: Signature Block (`dong_chu_ky = 16`)
   setCell(16, 1, 'Trân Trọng,', { bold: true, fontSize: 10, fontFamily: 'Arial', color: '#000000', align: 'left', valign: 'middle' })
-  setCell(16, 9, 'Xác nhận đặt hàng', { bold: true, fontSize: 10, fontFamily: 'Arial', color: '#000000', align: 'center', valign: 'middle' })
+  setCell(16, 11, 'Xác nhận đặt hàng', { bold: true, fontSize: 10, fontFamily: 'Arial', color: '#000000', align: 'center', valign: 'middle' })
 
   setCell(17, 1, '', { fontSize: 10, fontFamily: 'Arial', align: 'left' })
 
@@ -1481,9 +1499,11 @@ export function createThreePriceComparisonTemplateConfig(
   return {
     id,
     ten_mau: name,
-    ghi_chu: 'Mẫu in đối chiếu 3 giá: Giá List - Giá khách - Giá hợp đồng kèm Giá vốn/Off hãng & Net Margin (13 cột A4 Ngang)',
+    ghi_chu: 'Mẫu in đối chiếu 3 giá: Giá List - Giá khách - Giá hợp đồng kèm Giá vốn/Off hãng & Net Margin (15 cột A4 Ngang)',
     loai_mau: 'web_builder',
     mac_dinh: false,
+    da_bo_sung_cot_bao_gia: true,
+    da_doi_nhan_noi_bo: true,
     ngay_tao: now,
     ngay_cap_nhat: now,
     link_file_goc: '',
@@ -1522,35 +1542,39 @@ export function createThreePriceComparisonTemplateConfig(
     },
     cau_hinh_cot_bang: [
       { colIndex: 1, header: 'Stt', field: 'stt', token: '{{STT}}', width: 5 },
-      { colIndex: 2, header: 'Tên hàng', field: 'ten_hang', token: '{{TEN_HANG}}', width: 18 },
-      { colIndex: 3, header: 'Diễn giải', field: 'features', token: '{{DIEN_GIAI}}', width: 28 },
-      { colIndex: 4, header: 'S.L', field: 'so_luong', token: '{{SO_LUONG}}', width: 5 },
-      { colIndex: 5, header: 'Đơn vị', field: 'dvt', token: '{{DVT}}', width: 7 },
-      { colIndex: 6, header: 'Đơn giá List\n({{DON_VI_TIEN_TE}})', field: 'gia_list_dg', token: '{{GIA_LIST_DG}}', width: 13 },
-      { colIndex: 7, header: 'Thành tiền List\n({{DON_VI_TIEN_TE}})', field: 'gia_list_tt', token: '{{GIA_LIST_TT}}', width: 14 },
-      { colIndex: 8, header: 'Đơn giá khách\n({{DON_VI_TIEN_TE}})', field: 'gia_khach_dg', token: '{{GIA_KHACH_DG}}', width: 13 },
-      { colIndex: 9, header: 'Thành tiền khách\n({{DON_VI_TIEN_TE}})', field: 'gia_khach_tt', token: '{{GIA_KHACH_TT}}', width: 14 },
-      { colIndex: 10, header: 'Đơn giá HĐ\n({{DON_VI_TIEN_TE}})', field: 'gia_hd_dg', token: '{{GIA_HD_DG}}', width: 13 },
-      { colIndex: 11, header: 'Thành tiền HĐ\n({{DON_VI_TIEN_TE}})', field: 'gia_hd_tt', token: '{{GIA_HD_TT}}', width: 14 },
-      { colIndex: 12, header: 'Giá vốn / Giá off hãng\n({{DON_VI_TIEN_TE}})', field: 'gia_off_hang_kem_pct', token: '{{GIA_OFF_HANG_KEM_PCT}}', width: 14 },
-      { colIndex: 13, header: 'Net Margin\n({{DON_VI_TIEN_TE}})', field: 'net_margin', token: '{{NET_MARGIN}}', width: 14 }
+      { colIndex: 2, header: 'Tên hàng', field: 'ten_hang', token: '{{TEN_HANG}}', width: 15 },
+      { colIndex: 3, header: 'Tên hàng báo giá', field: 'ten_hang_bao_gia', token: '{{TEN_HANG_BAO_GIA}}', width: 15 },
+      { colIndex: 4, header: 'Diễn giải nội bộ', field: 'features', token: '{{DIEN_GIAI}}', width: 22 },
+      { colIndex: 5, header: 'Diễn giải báo giá', field: 'dien_giai_bao_gia', token: '{{DIEN_GIAI_BAO_GIA}}', width: 22 },
+      { colIndex: 6, header: 'S.L', field: 'so_luong', token: '{{SO_LUONG}}', width: 5 },
+      { colIndex: 7, header: 'Đơn vị', field: 'dvt', token: '{{DVT}}', width: 7 },
+      { colIndex: 8, header: 'Đơn giá List\n({{DON_VI_TIEN_TE}})', field: 'gia_list_dg', token: '{{GIA_LIST_DG}}', width: 13 },
+      { colIndex: 9, header: 'Thành tiền List\n({{DON_VI_TIEN_TE}})', field: 'gia_list_tt', token: '{{GIA_LIST_TT}}', width: 14 },
+      { colIndex: 10, header: 'Đơn giá khách\n({{DON_VI_TIEN_TE}})', field: 'gia_khach_dg', token: '{{GIA_KHACH_DG}}', width: 13 },
+      { colIndex: 11, header: 'Thành tiền khách\n({{DON_VI_TIEN_TE}})', field: 'gia_khach_tt', token: '{{GIA_KHACH_TT}}', width: 14 },
+      { colIndex: 12, header: 'Đơn giá HĐ\n({{DON_VI_TIEN_TE}})', field: 'gia_hd_dg', token: '{{GIA_HD_DG}}', width: 13 },
+      { colIndex: 13, header: 'Thành tiền HĐ\n({{DON_VI_TIEN_TE}})', field: 'gia_hd_tt', token: '{{GIA_HD_TT}}', width: 14 },
+      { colIndex: 14, header: 'Giá vốn / Giá off hãng\n({{DON_VI_TIEN_TE}})', field: 'gia_off_hang_kem_pct', token: '{{GIA_OFF_HANG_KEM_PCT}}', width: 14 },
+      { colIndex: 15, header: 'Net Margin\n({{DON_VI_TIEN_TE}})', field: 'net_margin', token: '{{NET_MARGIN}}', width: 14 }
     ],
     so_dong: 21,
-    so_cot: 13,
+    so_cot: 15,
     col_widths: {
-      1: 36,
-      2: 140,
-      3: 210,
-      4: 36,
-      5: 48,
-      6: 90,
-      7: 98,
-      8: 90,
-      9: 98,
-      10: 90,
-      11: 98,
-      12: 96,
-      13: 96
+      1: 34,
+      2: 115,
+      3: 115,
+      4: 165,
+      5: 165,
+      6: 36,
+      7: 48,
+      8: 88,
+      9: 94,
+      10: 88,
+      11: 94,
+      12: 88,
+      13: 94,
+      14: 92,
+      15: 92
     },
     row_heights: {
       1: 84,
@@ -1576,27 +1600,27 @@ export function createThreePriceComparisonTemplateConfig(
       21: 22
     },
     merges: [
-      { top: 1, left: 1, bottom: 1, right: 13 },
-      { top: 2, left: 1, bottom: 2, right: 8 },
-      { top: 2, left: 9, bottom: 2, right: 13 },
-      { top: 3, left: 1, bottom: 3, right: 13 },
-      { top: 4, left: 1, bottom: 4, right: 13 },
-      { top: 5, left: 1, bottom: 5, right: 13 },
-      { top: 6, left: 1, bottom: 6, right: 13 },
-      { top: 8, left: 2, bottom: 8, right: 13 },
-      { top: 10, left: 1, bottom: 10, right: 5 },
-      { top: 11, left: 1, bottom: 11, right: 5 },
-      { top: 12, left: 1, bottom: 12, right: 5 },
-      { top: 13, left: 1, bottom: 13, right: 13 },
-      { top: 14, left: 2, bottom: 14, right: 13 },
-      { top: 15, left: 2, bottom: 15, right: 13 },
-      { top: 16, left: 1, bottom: 16, right: 4 },
-      { top: 16, left: 9, bottom: 16, right: 13 },
-      { top: 17, left: 1, bottom: 17, right: 6 },
-      { top: 18, left: 1, bottom: 18, right: 6 },
-      { top: 19, left: 1, bottom: 19, right: 13 },
-      { top: 20, left: 1, bottom: 20, right: 13 },
-      { top: 21, left: 1, bottom: 21, right: 13 }
+      { top: 1, left: 1, bottom: 1, right: 15 },
+      { top: 2, left: 1, bottom: 2, right: 10 },
+      { top: 2, left: 11, bottom: 2, right: 15 },
+      { top: 3, left: 1, bottom: 3, right: 15 },
+      { top: 4, left: 1, bottom: 4, right: 15 },
+      { top: 5, left: 1, bottom: 5, right: 15 },
+      { top: 6, left: 1, bottom: 6, right: 15 },
+      { top: 8, left: 2, bottom: 8, right: 15 },
+      { top: 10, left: 1, bottom: 10, right: 7 },
+      { top: 11, left: 1, bottom: 11, right: 7 },
+      { top: 12, left: 1, bottom: 12, right: 7 },
+      { top: 13, left: 1, bottom: 13, right: 15 },
+      { top: 14, left: 2, bottom: 14, right: 15 },
+      { top: 15, left: 2, bottom: 15, right: 15 },
+      { top: 16, left: 1, bottom: 16, right: 5 },
+      { top: 16, left: 11, bottom: 16, right: 15 },
+      { top: 17, left: 1, bottom: 17, right: 7 },
+      { top: 18, left: 1, bottom: 18, right: 7 },
+      { top: 19, left: 1, bottom: 19, right: 15 },
+      { top: 20, left: 1, bottom: 20, right: 15 },
+      { top: 21, left: 1, bottom: 21, right: 15 }
     ],
     grid_cells: cells
   }
@@ -1764,6 +1788,202 @@ export function ensureStandardTemplateGroupTokenRow(tpl: PrintTemplateConfig): b
   tpl.row_heights = nextHeights
   tpl.merges = nextMerges
   return true
+}
+
+function insertTemplateColumnRightOf(
+  tpl: PrintTemplateConfig,
+  targetCol: number,
+  headerLabel: string,
+  fieldKey: string,
+  itemToken: string,
+  colWidthPx: number
+): void {
+  const oldCols = Math.max(Number(tpl.so_cot) || 9, targetCol)
+  const insertCol = targetCol + 1
+  const headerR = Number(tpl.mapping_vung?.dong_tieu_de_bang) || 0
+  const groupR = Number(tpl.mapping_vung?.dong_mau_nhom) || 0
+  const itemR = Number(tpl.mapping_vung?.dong_mau_san_pham) || 0
+  const totalRows = Array.isArray(tpl.mapping_vung?.danh_sach_dong_tong)
+    ? tpl.mapping_vung.danh_sach_dong_tong
+    : []
+
+  const nextCells: Record<string, GridCellData> = {}
+  Object.entries(tpl.grid_cells || {}).forEach(([k, v]) => {
+    const [rStr, cStr] = k.split('_')
+    const r = Number(rStr)
+    const c = Number(cStr)
+    if (!r || !c) return
+    if (c <= targetCol) nextCells[k] = v
+    else nextCells[`${r}_${c + 1}`] = v
+  })
+
+  if (headerR > 0) {
+    const srcHeaderStyle = tpl.grid_cells?.[`${headerR}_${targetCol}`]?.style
+    nextCells[`${headerR}_${insertCol}`] = {
+      value: headerLabel,
+      style: srcHeaderStyle
+        ? JSON.parse(JSON.stringify(srcHeaderStyle))
+        : { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', bgColor: '#ccffcc', align: 'center', valign: 'middle', border: true, wrapText: true }
+    }
+  }
+
+  if (groupR > 0) {
+    const srcGroupStyle = tpl.grid_cells?.[`${groupR}_${Math.min(oldCols, Math.max(targetCol, 3))}`]?.style || tpl.grid_cells?.[`${groupR}_${targetCol}`]?.style
+    nextCells[`${groupR}_${insertCol}`] = {
+      value: '',
+      style: srcGroupStyle
+        ? JSON.parse(JSON.stringify(srcGroupStyle))
+        : { bold: true, fontSize: 11, fontFamily: 'Arial', color: '#000000', align: 'left', valign: 'middle', border: true, wrapText: true }
+    }
+  }
+
+  if (itemR > 0) {
+    const srcItemStyle = tpl.grid_cells?.[`${itemR}_${targetCol}`]?.style
+    nextCells[`${itemR}_${insertCol}`] = {
+      value: itemToken,
+      style: srcItemStyle
+        ? JSON.parse(JSON.stringify(srcItemStyle))
+        : { bold: false, fontSize: 11, fontFamily: 'Arial', color: '#000000', align: 'left', valign: 'middle', border: true, wrapText: true }
+    }
+  }
+
+  totalRows.forEach(totR => {
+    if (totR > 0) {
+      const srcTotStyle = tpl.grid_cells?.[`${totR}_${targetCol}`]?.style
+      if (srcTotStyle) {
+        nextCells[`${totR}_${insertCol}`] = {
+          value: '',
+          style: JSON.parse(JSON.stringify(srcTotStyle))
+        }
+      }
+    }
+  })
+
+  tpl.grid_cells = nextCells
+
+  const nextWidths: Record<number, number> = {}
+  for (let c = 1; c <= oldCols; c++) {
+    const w = tpl.col_widths?.[c] ?? 100
+    if (c <= targetCol) nextWidths[c] = w
+    else nextWidths[c + 1] = w
+  }
+  nextWidths[insertCol] = colWidthPx
+  tpl.col_widths = nextWidths
+
+  tpl.merges = (tpl.merges || []).map(m => {
+    if (m.left > targetCol) {
+      return { ...m, left: m.left + 1, right: m.right + 1 }
+    }
+    if (m.right >= targetCol && m.right > m.left) {
+      return { ...m, right: m.right + 1 }
+    }
+    return { ...m }
+  })
+
+  if (Array.isArray(tpl.cau_hinh_cot_bang)) {
+    const nextCfg: PrintTemplateConfig['cau_hinh_cot_bang'] = []
+    tpl.cau_hinh_cot_bang.forEach((col, idx) => {
+      const curIdx = col.colIndex || idx + 1
+      if (curIdx < targetCol) {
+        nextCfg.push({ ...col, colIndex: curIdx })
+      } else if (curIdx === targetCol) {
+        nextCfg.push({ ...col, colIndex: curIdx })
+        nextCfg.push({
+          colIndex: insertCol,
+          header: headerLabel,
+          field: fieldKey,
+          token: itemToken,
+          width: Math.max(8, Math.round(colWidthPx / 7.2))
+        })
+      } else {
+        nextCfg.push({ ...col, colIndex: curIdx + 1 })
+      }
+    })
+    tpl.cau_hinh_cot_bang = nextCfg
+  }
+
+  tpl.so_cot = oldCols + 1
+}
+
+export function ensureTemplateQuoteColumns(tpl: PrintTemplateConfig): boolean {
+  if (!tpl || isDealRegTemplate(tpl)) return false
+  const needQuoteCols = !tpl.da_bo_sung_cot_bao_gia
+  const needInternalLabels = !tpl.da_doi_nhan_noi_bo
+  if (!needQuoteCols && !needInternalLabels) return false
+
+  const headerR = Number(tpl.mapping_vung?.dong_tieu_de_bang) || 0
+  const itemR = Number(tpl.mapping_vung?.dong_mau_san_pham) || 0
+  if (headerR <= 0 || itemR <= 0) {
+    tpl.da_bo_sung_cot_bao_gia = true
+    tpl.da_doi_nhan_noi_bo = true
+    return true
+  }
+
+  let changed = false
+  const findColByExactToken = (regex: RegExp): number => {
+    const maxC = Math.max(Number(tpl.so_cot) || 9, 1)
+    for (let c = 1; c <= maxC; c++) {
+      const raw = String(tpl.grid_cells?.[`${itemR}_${c}`]?.value || '')
+      if (regex.test(raw)) return c
+    }
+    return 0
+  }
+
+  if (needQuoteCols) {
+    const hasTenBg = findColByExactToken(/\{\{\s*TEN_HANG_BAO_GIA\s*\}\}/) > 0
+    if (!hasTenBg) {
+      const tenGocCol = findColByExactToken(/\{\{\s*TEN_HANG\s*\}\}/)
+      if (tenGocCol > 0 && (Number(tpl.so_cot) || 9) < 24) {
+        const refW = tpl.col_widths?.[tenGocCol] || 120
+        insertTemplateColumnRightOf(tpl, tenGocCol, 'Tên hàng báo giá', 'ten_hang_bao_gia', '{{TEN_HANG_BAO_GIA}}', refW)
+        changed = true
+      }
+    }
+
+    const hasDienGiaiBg = findColByExactToken(/\{\{\s*DIEN_GIAI_BAO_GIA\s*\}\}/) > 0
+    if (!hasDienGiaiBg) {
+      const dienGiaiGocCol = findColByExactToken(/\{\{\s*DIEN_GIAI\s*\}\}/)
+      if (dienGiaiGocCol > 0 && (Number(tpl.so_cot) || 9) < 24) {
+        const refW = tpl.col_widths?.[dienGiaiGocCol] || 180
+        insertTemplateColumnRightOf(tpl, dienGiaiGocCol, 'Diễn giải báo giá', 'dien_giai_bao_gia', '{{DIEN_GIAI_BAO_GIA}}', refW)
+        changed = true
+      }
+    }
+    tpl.da_bo_sung_cot_bao_gia = true
+    changed = true
+  }
+
+  if (needInternalLabels) {
+    const maxC = Math.max(Number(tpl.so_cot) || 9, 1)
+    for (let c = 1; c <= maxC; c++) {
+      const itemTokenStr = String(tpl.grid_cells?.[`${itemR}_${c}`]?.value || '').trim()
+      const hCell = tpl.grid_cells?.[`${headerR}_${c}`]
+      const curHeader = String(hCell?.value || '').trim()
+      if (/^\{\{\s*DIEN_GIAI\s*\}\}$/.test(itemTokenStr) && /^diễn\s*giải$/i.test(curHeader)) {
+        if (hCell) hCell.value = 'Diễn giải nội bộ'
+        changed = true
+      } else if (/^\{\{\s*DESCRIPTION\s*\}\}$/.test(itemTokenStr) && /^description$/i.test(curHeader)) {
+        if (hCell) hCell.value = 'Description nội bộ'
+        changed = true
+      }
+    }
+    if (Array.isArray(tpl.cau_hinh_cot_bang)) {
+      tpl.cau_hinh_cot_bang.forEach(col => {
+        const h = String(col.header || '').trim()
+        if ((col.field === 'features' || col.token === '{{DIEN_GIAI}}') && /^diễn\s*giải$/i.test(h)) {
+          col.header = 'Diễn giải nội bộ'
+          changed = true
+        } else if ((col.field === 'description' || col.token === '{{DESCRIPTION}}') && /^description$/i.test(h)) {
+          col.header = 'Description nội bộ'
+          changed = true
+        }
+      })
+    }
+    tpl.da_doi_nhan_noi_bo = true
+    changed = true
+  }
+
+  return changed
 }
 
 export function normalizeLegacyTokenSyntax(val: string): string {
@@ -2319,21 +2539,23 @@ export function createAgencyTemplateConfig(customId?: string, name = 'Mẫu Báo
     }
   }
 
-  // Row 2: Table Header (`dong_tieu_de_bang = 2`, 13 columns A..M matching bao_gia_dl_template.xlsx)
+  // Row 2: Table Header (`dong_tieu_de_bang = 2`, 15 columns A..O matching bao_gia_dl_template.xlsx + 2 cột báo giá)
   const headers: { c: number; text: string; bgColor: string }[] = [
     { c: 1, text: 'STT', bgColor: '#00B050' },
     { c: 2, text: 'SẢN PHẨM', bgColor: '#00B050' },
-    { c: 3, text: 'Diễn giải', bgColor: '#00B050' },
-    { c: 4, text: 'Số lượng', bgColor: '#00B050' },
-    { c: 5, text: 'Nhập khẩu', bgColor: '#00B050' },
-    { c: 6, text: 'Đơn giá LP', bgColor: '#00B050' },
-    { c: 7, text: 'OFF NTS S', bgColor: '#00B050' },
-    { c: 8, text: 'Đơn giá sau OFF + nhập khẩu', bgColor: '#00B050' },
-    { c: 9, text: 'Thành tiền sau OFF\nUSD', bgColor: '#00B050' },
-    { c: 10, text: 'Tỷ giá', bgColor: '#00B050' },
-    { c: 11, text: 'VNĐ NTS S', bgColor: '#FFFF00' },
-    { c: 12, text: 'VAT 8%', bgColor: '#FFFF00' },
-    { c: 13, text: 'Tổng Cộng + VAT', bgColor: '#FFFF00' }
+    { c: 3, text: 'Tên hàng báo giá', bgColor: '#00B050' },
+    { c: 4, text: 'Diễn giải nội bộ', bgColor: '#00B050' },
+    { c: 5, text: 'Diễn giải báo giá', bgColor: '#00B050' },
+    { c: 6, text: 'Số lượng', bgColor: '#00B050' },
+    { c: 7, text: 'Nhập khẩu', bgColor: '#00B050' },
+    { c: 8, text: 'Đơn giá LP', bgColor: '#00B050' },
+    { c: 9, text: 'OFF NTS S', bgColor: '#00B050' },
+    { c: 10, text: 'Đơn giá sau OFF + nhập khẩu', bgColor: '#00B050' },
+    { c: 11, text: 'Thành tiền sau OFF\nUSD', bgColor: '#00B050' },
+    { c: 12, text: 'Tỷ giá', bgColor: '#00B050' },
+    { c: 13, text: 'VNĐ NTS S', bgColor: '#FFFF00' },
+    { c: 14, text: 'VAT 8%', bgColor: '#FFFF00' },
+    { c: 15, text: 'Tổng Cộng + VAT', bgColor: '#FFFF00' }
   ]
   headers.forEach(h => {
     setCell(2, h.c, h.text, {
@@ -2347,17 +2569,19 @@ export function createAgencyTemplateConfig(customId?: string, name = 'Mẫu Báo
   const itemTokens: { c: number; val: string; align: 'left' | 'center' | 'right'; bold: boolean }[] = [
     { c: 1, val: '{{STT}}', align: 'center', bold: true },
     { c: 2, val: '{{TEN_HANG}}', align: 'left', bold: true },
-    { c: 3, val: '{{DIEN_GIAI}}', align: 'left', bold: false },
-    { c: 4, val: '{{SO_LUONG}}', align: 'center', bold: true },
-    { c: 5, val: '{{DL_NHAP_KHAU}}', align: 'right', bold: true },
-    { c: 6, val: '{{DL_DON_GIA_LP}}', align: 'right', bold: true },
-    { c: 7, val: '{{DL_OFF_NTS}}', align: 'center', bold: true },
-    { c: 8, val: '{{DL_DON_GIA_SAU_OFF}}', align: 'right', bold: true },
-    { c: 9, val: '{{DL_THANH_TIEN_USD}}', align: 'right', bold: true },
-    { c: 10, val: '{{DL_TY_GIA}}', align: 'right', bold: true },
-    { c: 11, val: '{{DL_VND_NTS}}', align: 'right', bold: true },
-    { c: 12, val: '{{DL_TIEN_VAT}}', align: 'right', bold: true },
-    { c: 13, val: '{{DL_TONG_CONG_VAT}}', align: 'right', bold: true }
+    { c: 3, val: '{{TEN_HANG_BAO_GIA}}', align: 'left', bold: true },
+    { c: 4, val: '{{DIEN_GIAI}}', align: 'left', bold: false },
+    { c: 5, val: '{{DIEN_GIAI_BAO_GIA}}', align: 'left', bold: false },
+    { c: 6, val: '{{SO_LUONG}}', align: 'center', bold: true },
+    { c: 7, val: '{{DL_NHAP_KHAU}}', align: 'right', bold: true },
+    { c: 8, val: '{{DL_DON_GIA_LP}}', align: 'right', bold: true },
+    { c: 9, val: '{{DL_OFF_NTS}}', align: 'center', bold: true },
+    { c: 10, val: '{{DL_DON_GIA_SAU_OFF}}', align: 'right', bold: true },
+    { c: 11, val: '{{DL_THANH_TIEN_USD}}', align: 'right', bold: true },
+    { c: 12, val: '{{DL_TY_GIA}}', align: 'right', bold: true },
+    { c: 13, val: '{{DL_VND_NTS}}', align: 'right', bold: true },
+    { c: 14, val: '{{DL_TIEN_VAT}}', align: 'right', bold: true },
+    { c: 15, val: '{{DL_TONG_CONG_VAT}}', align: 'right', bold: true }
   ]
   itemTokens.forEach(it => {
     setCell(3, it.c, it.val, {
@@ -2366,14 +2590,14 @@ export function createAgencyTemplateConfig(customId?: string, name = 'Mẫu Báo
     })
   })
 
-  // Row 4: Total Row (`danh_sach_dong_tong = [4]`, A4:H4 merged "TỔNG CỘNG")
+  // Row 4: Total Row (`danh_sach_dong_tong = [4]`, A4:J4 merged "TỔNG CỘNG")
   setCell(4, 1, 'TỔNG CỘNG', {
     bold: true,
     fontSize: 14,
     bgColor: '#FFFF00',
     align: 'center'
   })
-  for (let c = 2; c <= 8; c++) {
+  for (let c = 2; c <= 10; c++) {
     setCell(4, c, '', {
       bold: true,
       fontSize: 14,
@@ -2381,25 +2605,25 @@ export function createAgencyTemplateConfig(customId?: string, name = 'Mẫu Báo
       align: 'center'
     })
   }
-  setCell(4, 9, '{{DL_TONG_USD}}', {
+  setCell(4, 11, '{{DL_TONG_USD}}', {
     bold: true,
     align: 'right'
   })
-  setCell(4, 10, '', {
+  setCell(4, 12, '', {
     bold: true,
     align: 'center'
   })
-  setCell(4, 11, '{{DL_TONG_VND}}', {
+  setCell(4, 13, '{{DL_TONG_VND}}', {
     bold: true,
     bgColor: '#FFFF00',
     align: 'right'
   })
-  setCell(4, 12, '{{DL_TIEN_VAT}}'.replace('{{DL_TIEN_VAT}}', '{{DL_TONG_VAT}}'), {
+  setCell(4, 14, '{{DL_TONG_VAT}}', {
     bold: true,
     bgColor: '#FFFF00',
     align: 'right'
   })
-  setCell(4, 13, '{{DL_TONG_SAU_THUE}}', {
+  setCell(4, 15, '{{DL_TONG_SAU_THUE}}', {
     bold: true,
     bgColor: '#FFFF00',
     align: 'right'
@@ -2408,9 +2632,11 @@ export function createAgencyTemplateConfig(customId?: string, name = 'Mẫu Báo
   return {
     id,
     ten_mau: name,
-    ghi_chu: 'Mẫu báo giá dành cho Đại lý (13 cột chuẩn bao_gia_dl_template - USD & VNĐ NTS S)',
+    ghi_chu: 'Mẫu báo giá dành cho Đại lý (15 cột chuẩn bao_gia_dl_template - USD & VNĐ NTS S)',
     loai_mau: 'imported_excel',
     mac_dinh: false,
+    da_bo_sung_cot_bao_gia: true,
+    da_doi_nhan_noi_bo: true,
     ngay_tao: now,
     ngay_cap_nhat: now,
     link_file_goc: '/bao_gia_dl_template.xlsx',
@@ -2450,34 +2676,38 @@ export function createAgencyTemplateConfig(customId?: string, name = 'Mẫu Báo
     cau_hinh_cot_bang: [
       { colIndex: 1, header: 'STT', field: 'stt', token: '{{STT}}', width: 6 },
       { colIndex: 2, header: 'SẢN PHẨM', field: 'ten_hang', token: '{{TEN_HANG}}', width: 12 },
-      { colIndex: 3, header: 'Diễn giải', field: 'features', token: '{{DIEN_GIAI}}', width: 40 },
-      { colIndex: 4, header: 'Số lượng', field: 'so_luong', token: '{{SO_LUONG}}', width: 10 },
-      { colIndex: 5, header: 'Nhập khẩu', field: 'dl_nhap_khau', token: '{{DL_NHAP_KHAU}}', width: 8 },
-      { colIndex: 6, header: 'Đơn giá LP', field: 'dl_don_gia_lp', token: '{{DL_DON_GIA_LP}}', width: 11 },
-      { colIndex: 7, header: 'OFF NTS S', field: 'dl_off_nts', token: '{{DL_OFF_NTS}}', width: 10 },
-      { colIndex: 8, header: 'Đơn giá sau OFF + nhập khẩu', field: 'dl_don_gia_sau_off', token: '{{DL_DON_GIA_SAU_OFF}}', width: 14 },
-      { colIndex: 9, header: 'Thành tiền sau OFF\nUSD', field: 'dl_thanh_tien_usd', token: '{{DL_THANH_TIEN_USD}}', width: 12 },
-      { colIndex: 10, header: 'Tỷ giá', field: 'dl_ty_gia', token: '{{DL_TY_GIA}}', width: 9 },
-      { colIndex: 11, header: 'VNĐ NTS S', field: 'dl_vnd_nts', token: '{{DL_VND_NTS}}', width: 16 },
-      { colIndex: 12, header: 'VAT 8%', field: 'dl_tien_vat', token: '{{DL_TIEN_VAT}}', width: 15 },
-      { colIndex: 13, header: 'Tổng Cộng + VAT', field: 'dl_tong_cong_vat', token: '{{DL_TONG_CONG_VAT}}', width: 16 }
+      { colIndex: 3, header: 'Tên hàng báo giá', field: 'ten_hang_bao_gia', token: '{{TEN_HANG_BAO_GIA}}', width: 14 },
+      { colIndex: 4, header: 'Diễn giải nội bộ', field: 'features', token: '{{DIEN_GIAI}}', width: 28 },
+      { colIndex: 5, header: 'Diễn giải báo giá', field: 'dien_giai_bao_gia', token: '{{DIEN_GIAI_BAO_GIA}}', width: 28 },
+      { colIndex: 6, header: 'Số lượng', field: 'so_luong', token: '{{SO_LUONG}}', width: 10 },
+      { colIndex: 7, header: 'Nhập khẩu', field: 'dl_nhap_khau', token: '{{DL_NHAP_KHAU}}', width: 8 },
+      { colIndex: 8, header: 'Đơn giá LP', field: 'dl_don_gia_lp', token: '{{DL_DON_GIA_LP}}', width: 11 },
+      { colIndex: 9, header: 'OFF NTS S', field: 'dl_off_nts', token: '{{DL_OFF_NTS}}', width: 10 },
+      { colIndex: 10, header: 'Đơn giá sau OFF + nhập khẩu', field: 'dl_don_gia_sau_off', token: '{{DL_DON_GIA_SAU_OFF}}', width: 14 },
+      { colIndex: 11, header: 'Thành tiền sau OFF\nUSD', field: 'dl_thanh_tien_usd', token: '{{DL_THANH_TIEN_USD}}', width: 12 },
+      { colIndex: 12, header: 'Tỷ giá', field: 'dl_ty_gia', token: '{{DL_TY_GIA}}', width: 9 },
+      { colIndex: 13, header: 'VNĐ NTS S', field: 'dl_vnd_nts', token: '{{DL_VND_NTS}}', width: 16 },
+      { colIndex: 14, header: 'VAT 8%', field: 'dl_tien_vat', token: '{{DL_TIEN_VAT}}', width: 15 },
+      { colIndex: 15, header: 'Tổng Cộng + VAT', field: 'dl_tong_cong_vat', token: '{{DL_TONG_CONG_VAT}}', width: 16 }
     ],
     so_dong: 4,
-    so_cot: 13,
+    so_cot: 15,
     col_widths: {
       1: 42,
       2: 95,
-      3: 245,
-      4: 58,
-      5: 68,
-      6: 82,
+      3: 110,
+      4: 185,
+      5: 185,
+      6: 58,
       7: 68,
-      8: 98,
-      9: 92,
-      10: 66,
-      11: 112,
-      12: 98,
-      13: 116
+      8: 82,
+      9: 68,
+      10: 98,
+      11: 92,
+      12: 66,
+      13: 112,
+      14: 98,
+      15: 116
     },
     row_heights: {
       1: 18,
@@ -2486,7 +2716,7 @@ export function createAgencyTemplateConfig(customId?: string, name = 'Mẫu Báo
       4: 42
     },
     merges: [
-      { top: 4, left: 1, bottom: 4, right: 8 }
+      { top: 4, left: 1, bottom: 4, right: 10 }
     ],
     grid_cells: cells
   }
@@ -2574,8 +2804,10 @@ export function identifyHeaderField(text: string): string | null {
   if (t.includes('VNĐ NTS') || t.includes('VND NTS')) return 'dl_vnd_nts'
   if (t.includes('TỔNG CỘNG + VAT') || t.includes('TONG CONG + VAT')) return 'dl_tong_cong_vat'
   if (t.includes('VAT 8%') || t.includes('VAT 10%')) return 'dl_tien_vat'
+  if (t.includes('TÊN HÀNG BÁO GIÁ') || t.includes('TÊN HÀNG HÓA BÁO GIÁ') || t.includes('TÊN BÁO GIÁ') || t.includes('TEN HANG BAO GIA') || t.includes('TEN BAO GIA')) return 'ten_hang_bao_gia'
+  if (t.includes('DIỄN GIẢI BÁO GIÁ') || t.includes('DIEN GIAI BAO GIA')) return 'dien_giai_bao_gia'
   if (t.includes('TÊN HÀNG') || t.includes('HÀNG HÓA') || t.includes('DỊCH VỤ') || t.includes('SẢN PHẨM') || t === 'MODEL') return 'ten_hang'
-  if (t === 'DESCRIPTION' || t === 'PRODUCT DESCRIPTION' || t.startsWith('DESCRIPTION (')) return 'description'
+  if (t === 'DESCRIPTION' || t === 'PRODUCT DESCRIPTION' || t.startsWith('DESCRIPTION')) return 'description'
   if (t.includes('DIỄN GIẢI') || t.includes('DIEN GIAI') || t.includes('MÔ TẢ') || t.includes('ĐẶC TÍNH') || t.includes('THÔNG SỐ') || t.includes('NỘI DUNG') || t.includes('HẠNG MỤC') || t.includes('SPEC')) return 'features'
   if (t === 'ĐVT' || t === 'DVT' || t.includes('ĐƠN VỊ') || t.includes('DON VI') || t === 'UNIT') return 'dvt'
   if (t.includes('THỜI HẠN') || t.includes('THOI HAN') || t.includes('DURATION')) return 'license_duration'
@@ -3186,6 +3418,8 @@ export async function fetchAndSyncPrintTemplates(): Promise<PrintTemplateConfig[
               ...starter,
               ...raw,
               id,
+              da_bo_sung_cot_bao_gia: Boolean(raw.da_bo_sung_cot_bao_gia),
+              da_doi_nhan_noi_bo: Boolean(raw.da_doi_nhan_noi_bo),
               ten_mau: (raw.ten_mau && String(raw.ten_mau).trim()) ? String(raw.ten_mau).trim() : starter.ten_mau,
               ghi_chu: raw.ghi_chu !== undefined ? String(raw.ghi_chu) : starter.ghi_chu,
               cau_hinh_trang: { ...starter.cau_hinh_trang, ...(raw.cau_hinh_trang || {}) },
@@ -3222,6 +3456,9 @@ export async function fetchAndSyncPrintTemplates(): Promise<PrintTemplateConfig[
           }
         }
         if (ensureStandardTemplateGroupTokenRow(tpl)) {
+          needsTemplateResync = true
+        }
+        if (ensureTemplateQuoteColumns(tpl)) {
           needsTemplateResync = true
         }
         if (needsTemplateResync) {
@@ -3324,6 +3561,7 @@ export async function fetchAndSyncPrintTemplates(): Promise<PrintTemplateConfig[
 
         migratedTpl = ensureGridHeaderPopulated(migratedTpl)
         ensureStandardTemplateGroupTokenRow(migratedTpl)
+        ensureTemplateQuoteColumns(migratedTpl)
         templatesMap.set(newId, migratedTpl)
         newSyncUpdates[`mau_in_thiet_lap/${newId}`] = serializeTemplateForFirebase(migratedTpl)
       }
@@ -3880,8 +4118,10 @@ export function createMockQuoteContext(_tpl: PrintTemplateConfig): QuoteExportCo
           Ma_hang: 'XGS-88',
           sku_code: 'XGS88S12-ZZ01',
           Ten_hang: 'Thiết bị tường lửa Sophos XGS 88 kèm bản quyền 12 tháng Standard Protection.',
+          Ten_hang_bao_gia: 'Thiết bị tường lửa Sophos XGS 88 (Kèm bản quyền 12 tháng)',
           Description: 'Sophos XGS 88 Standard Protection - 12 MOS',
           Features: 'Thiết bị tường lửa Sophos XGS 88 kèm bản quyền 12 tháng Standard Protection.\n- Firewall throughput: 9,900 Mbps\n- Firewall IMIX: 6,000 Mbps\n- Bảo hành: 12 tháng theo tiêu chuẩn của nhà sản xuất',
+          Dien_giai_bao_gia: '- Thông lượng tường lửa: 9,900 Mbps\n- Bảo hành chính hãng 12 tháng',
           Ten_nha_cung_cap: 'Sophos',
           Danh_muc: 'FIREWALL SOPHOS XGS 88 / XGS 118',
           DVT: 'Thiết bị',
@@ -3914,8 +4154,10 @@ export function createMockQuoteContext(_tpl: PrintTemplateConfig): QuoteExportCo
           Ma_hang: 'XGS-118',
           sku_code: 'XGS118S12-ZZ01',
           Ten_hang: 'Thiết bị tường lửa Sophos XGS 118 kèm bản quyền 12 tháng Standard Protection.',
+          Ten_hang_bao_gia: 'Thiết bị tường lửa Sophos XGS 118 (Kèm bản quyền 12 tháng)',
           Description: 'Sophos XGS 118 Standard Protection - 12 MOS',
           Features: 'Thiết bị tường lửa Sophos XGS 118 kèm bản quyền 12 tháng Standard Protection.\n- Firewall throughput: 15,500 Mbps\n- Firewall IMIX: 8,500 Mbps\n- Bảo hành: 12 tháng theo tiêu chuẩn của nhà sản xuất',
+          Dien_giai_bao_gia: '- Thông lượng tường lửa: 15,500 Mbps\n- Bảo hành chính hãng 12 tháng',
           Ten_nha_cung_cap: 'Sophos',
           Danh_muc: 'FIREWALL SOPHOS XGS 88 / XGS 118',
           DVT: 'Thiết bị',
@@ -4423,8 +4665,10 @@ export function buildRowTokenMap(
       '{{SKU}}': String(it.sku_code || it.SKU || it.sku || it.ma_sku || it.Ma_hang || ''),
       '{{SKU_CODE}}': String(it.sku_code || it.SKU || it.sku || it.ma_sku || it.Ma_hang || ''),
       '{{TEN_HANG}}': String(it.Ten_hang || ''),
+      '{{TEN_HANG_BAO_GIA}}': String(it.Ten_hang_bao_gia ?? it.ten_hang_bao_gia ?? ''),
       '{{DESCRIPTION}}': String(it.Description || ''),
       '{{DIEN_GIAI}}': String(desc || ''),
+      '{{DIEN_GIAI_BAO_GIA}}': String(it.Dien_giai_bao_gia ?? it.dien_giai_bao_gia ?? ''),
       '{{MO_TA_CHUNG}}': String(it.Mo_ta_chung || ''),
       '{{MO_TA_CHI_TIET}}': String(it.Mo_ta_chi_tiet || ''),
       '{{MA_NCC}}': String(it.Ma_nha_cung_cap || ''),
@@ -5048,7 +5292,7 @@ export function renderTemplateToHtml(tpl: PrintTemplateConfig, rawCtx: QuoteExpo
           ...htmlTokenMap,
           '{{DIEU_KHOAN}}': formattedTerms
         })
-      } else if (rawVal.includes('{{DIEN_GIAI}}') || rawVal.includes('{{DESCRIPTION}}')) {
+      } else if (rawVal.includes('{{DIEN_GIAI}}') || rawVal.includes('{{DIEN_GIAI_BAO_GIA}}') || rawVal.includes('{{DESCRIPTION}}')) {
         const replacedDgOrDesc = replaceTokensInText(rawVal, htmlTokenMap)
         displayHtml = formatRichMultilineContent(replacedDgOrDesc, cellBaseFont, isNoWrap).html
       } else {
@@ -6687,7 +6931,7 @@ export async function generateExcelBlobFromTemplate(
                 vertical: vAlign,
                 wrapText: wrap
               }
-            } else if (rawText.includes('{{DIEN_GIAI}}') || rawText.includes('{{DESCRIPTION}}')) {
+            } else if (rawText.includes('{{DIEN_GIAI}}') || rawText.includes('{{DIEN_GIAI_BAO_GIA}}') || rawText.includes('{{DESCRIPTION}}')) {
               const dgStr = replaceTokensInText(rawText, textMap)
               const formattedRich = formatRichMultilineContent(dgStr, {
                 name: gStyle.fontFamily || defaultFontFamily,

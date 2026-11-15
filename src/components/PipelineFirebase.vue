@@ -60,7 +60,7 @@
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
             </span>
             <span class="pl-ws-lbl">Workflow</span>
-            <span class="pl-ws-count pl-tabular">{{ uniqueWorkflows.length + 1 }}</span>
+            <span class="pl-ws-count pl-tabular">{{ templateWorkflowOptions.length + 1 }}</span>
           </button>
         </div>
       </div>
@@ -174,7 +174,8 @@
         :ui-theme="uiTheme"
         :pipelines-external="items"
         :workflows-external="workflowsData"
-        @updated="fetchData"
+        :default-workflow-name-external="defaultWorkflowName"
+        @updated="handleWorkflowDesignerUpdated"
         @open-kanban-workflow="handleOpenKanbanFromWorkflow"
         @cycle-theme="cycleMobileTheme($event)"
       />
@@ -701,10 +702,6 @@
                     class="pl-proj-wf-card"
                     :class="{
                       'is-preferred': wf.isPreferred,
-                      'is-dup-hover':
-                        dragOverProjectId === proj.id_project &&
-                        !!draggingWorkflow &&
-                        draggingWorkflow.id_workflow === wf.id_workflow,
                       'is-dup-highlight': highlightedProjWfKey === proj.id_project + '::' + wf.id_workflow
                     }"
                     title="Nhấn để mở Workflow này trên bảng Công Việc Pipeline"
@@ -722,8 +719,8 @@
                         <button
                           type="button"
                           class="pl-wf-edit-btn"
-                          title="Mở modal sửa bước của Workflow này"
-                          @click.stop="openEditWorkflowStepsModal(wf.id_workflow)"
+                          title="Sửa tên & các bước riêng của Workflow trong dự án này"
+                          @click.stop="openEditProjectWorkflowSteps(proj, wf)"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                           <span>Sửa</span>
@@ -1418,7 +1415,7 @@
               <!-- 2. PIPELINE (WORKFLOW) -->
               <div
                 class="pl-fp-row"
-                :class="{ 'is-filtered': !!filterConfig.workflowId || selectedWorkflowId !== 'WF_DEFAULT' }"
+                :class="{ 'is-filtered': selectedWorkflowId !== defaultKanbanWfForCurrentContext }"
               >
                 <button
                   type="button"
@@ -1432,10 +1429,14 @@
 
                 <div class="pl-fp-row-acts">
                   <button
-                    v-if="selectedWorkflowId !== 'WF_DEFAULT'"
+                    v-if="selectedWorkflowId !== defaultKanbanWfForCurrentContext"
                     type="button"
                     class="pl-fp-clear-btn"
-                    title="Chuyển về Khung Chuẩn Hệ Thống"
+                    :title="
+                      filterConfig.projectId && filterConfig.projectId !== '__STANDALONE__'
+                        ? 'Chuyển về Pipeline mặc định của Dự án'
+                        : 'Chuyển về Khung Chuẩn Hệ Thống'
+                    "
                     @click.stop="clearKanbanWorkflowFilter"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -1444,7 +1445,11 @@
                   <button
                     type="button"
                     class="pl-fp-nav-btn is-ready"
-                    :title="'Điều hướng tới thẻ Workflow: ' + activeKanbanWorkflowFilterLabel"
+                    :title="
+                      filterConfig.projectId && filterConfig.projectId !== '__STANDALONE__'
+                        ? 'Điều hướng tới Pipeline trong Dự án: ' + activeKanbanWorkflowFilterLabel
+                        : 'Điều hướng tới thẻ Workflow: ' + activeKanbanWorkflowFilterLabel
+                    "
                     @click.stop="navigateToFilteredWorkflowCard"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
@@ -2917,8 +2922,8 @@
                       <button
                         type="button"
                         class="pl-wf-edit-btn"
-                        title="Mở modal sửa bước của Workflow này"
-                        @click.stop="openEditWorkflowStepsModal(wf.id_workflow)"
+                        title="Sửa tên & các bước riêng của Workflow trong dự án này"
+                        @click.stop="openEditProjectWorkflowSteps(activeProjectDetail, wf)"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                         <span>Sửa</span>
@@ -3178,7 +3183,7 @@
 
                       <div class="pl-pwc-meta pl-tabular">
                         <span v-if="pipe.ma_hop_dong" class="pl-mono">{{ pipe.ma_hop_dong }}</span>
-                        <span v-if="projectDetailWfFilter === 'ALL'">{{ getWorkflowShortLabel(pipe.id_workflow) }}</span>
+                        <span v-if="projectDetailWfFilter === 'ALL'">{{ getWorkflowShortLabel(pipe.id_workflow, activeProjectDetail) }}</span>
                         <span v-if="pipe.finish_time">Hạn {{ pipe.finish_time }}</span>
                         <span
                           v-if="getPipeReportIds(pipe).length > 0 || getParsedFiles(pipe).length > 0"
@@ -3510,36 +3515,33 @@
                 v-for="candWf in attachableWorkflowsForProject"
                 :key="'candwf-' + candWf.id_workflow"
                 class="pl-picker-row"
-                :class="{ 'is-selected': candWf.isLinkedToProject }"
               >
                 <div style="min-width: 0; flex: 1;">
                   <div class="pl-picker-row-title">{{ candWf.name_workflow }}</div>
                   <div class="pl-picker-row-sub pl-tabular">
-                    {{ candWf.stepCount }} bước tiến độ
+                    {{ candWf.stepCount }} bước tiến độ — tạo bản riêng cho Dự án
                   </div>
                 </div>
 
                 <div style="display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                  <span
+                    v-if="candWf.addedCount > 0"
+                    class="pl-status-pill is-xs-pill is-sky pl-tabular"
+                    title="Số bản riêng từ mẫu này đang có trong Dự án"
+                  >
+                    Đã có {{ candWf.addedCount }}
+                  </span>
                   <button
                     type="button"
                     class="pl-wf-edit-btn"
-                    title="Mở modal sửa bước của Workflow này"
+                    title="Sửa mẫu gốc trong Kho Workflow"
                     @click.stop="openEditWorkflowStepsModal(candWf.id_workflow)"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                    <span>Sửa</span>
+                    <span>Sửa mẫu</span>
                   </button>
 
                   <button
-                    v-if="candWf.isLinkedToProject"
-                    type="button"
-                    class="pl-btn pl-btn-danger-ghost pl-btn-xs"
-                    @click="detachWorkflowFromProject(activeProjectDetail, candWf.id_workflow)"
-                  >
-                    Gỡ khỏi DA
-                  </button>
-                  <button
-                    v-else
                     type="button"
                     class="pl-picker-select-btn"
                     @click="attachWorkflowToProject(activeProjectDetail, candWf.id_workflow)"
@@ -3727,7 +3729,6 @@
                   v-for="proj in filteredProjectsForWfAttach"
                   :key="'att-proj-' + proj.id_project"
                   class="pl-attach-proj-row"
-                  :class="{ 'is-already-linked': isWorkflowAlreadyInProject(proj, attachingWorkflowTarget.id_workflow) }"
                   @click="confirmAttachWfToSelectedProject(proj)"
                 >
                   <div class="pl-attach-proj-cell is-proj-col">
@@ -3754,20 +3755,20 @@
                     </span>
                   </div>
 
-                  <div class="pl-attach-proj-cell is-act-col" @click.stop>
+                  <div class="pl-attach-proj-cell is-act-col" @click.stop style="display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px;">
                     <span
-                      v-if="isWorkflowAlreadyInProject(proj, attachingWorkflowTarget.id_workflow)"
-                      class="pl-attach-proj-added-badge"
+                      v-if="getTemplateCopyCountInProject(proj, attachingWorkflowTarget.id_workflow) > 0"
+                      class="pl-status-pill is-xs-pill is-sky pl-tabular"
+                      title="Số bản riêng từ mẫu này đang có trong Dự án"
                     >
-                      Đã có trong DA
+                      Đã có {{ getTemplateCopyCountInProject(proj, attachingWorkflowTarget.id_workflow) }}
                     </span>
                     <button
-                      v-else
                       type="button"
                       class="pl-picker-select-btn"
                       @click="confirmAttachWfToSelectedProject(proj)"
                     >
-                      Chọn
+                      + Thêm
                     </button>
                   </div>
                 </div>
@@ -3953,8 +3954,12 @@
                   <button
                     type="button"
                     class="pl-fp-nav-btn is-ready"
-                    title="Điều hướng tới thẻ Workflow này"
-                    @click.stop="closeKanbanFilterPickerModal(); navigateToWorkflowCardById(opt.id_workflow)"
+                    :title="
+                      filterConfig.projectId && filterConfig.projectId !== '__STANDALONE__'
+                        ? 'Điều hướng tới Pipeline này trong Dự án'
+                        : 'Điều hướng tới thẻ Workflow này'
+                    "
+                    @click.stop="closeKanbanFilterPickerModal(); navigateToWorkflowCardById(opt.id_workflow, filterConfig.projectId)"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
                     <span>Điều hướng</span>
@@ -4264,8 +4269,8 @@
                   <button
                     type="button"
                     class="pl-fp-nav-btn is-ready"
-                    title="Điều hướng tới thẻ Workflow này"
-                    @click.stop="closeProjFilterPickerModal(); navigateToWorkflowCardById(opt.id_workflow)"
+                    title="Điều hướng tới Pipeline này"
+                    @click.stop="closeProjFilterPickerModal(); navigateToWorkflowCardById(opt.id_workflow, projectFilter.projectId)"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
                     <span>Điều hướng</span>
@@ -4402,7 +4407,7 @@
           'theme-custom-glass': uiTheme === 'custom'
         }"
         :style="uiTheme === 'custom' ? customGlassStyleVars : null"
-        @click.self="showProjectFormModal = false"
+        @click.self="closeProjectFormModal"
       >
         <div class="pl-modal-card pl-modal-fullscreen is-studio-modal pl-modal-proj-studio">
           <div class="pl-modal-grab" aria-hidden="true"></div>
@@ -4415,7 +4420,7 @@
               </div>
               <div>
                 <h3 class="pl-modal-title">{{ isEditingProject ? 'Cập Nhật Dự Án (Gốc)' : 'Khởi Tạo Dự Án Mới (Gốc)' }}</h3>
-                <p class="pl-modal-sub">Thông tin khách hàng chủ đầu tư &amp; chọn các Workflow áp dụng cho dự án</p>
+                <p class="pl-modal-sub">Thông tin khách hàng chủ đầu tư &amp; chọn các Workflow riêng áp dụng cho dự án</p>
               </div>
             </div>
 
@@ -4425,7 +4430,7 @@
                   {{ projectForm.trang_thai || 'Đang triển khai' }}
                 </span>
               </div>
-              <button type="button" class="pl-modal-close" @click="showProjectFormModal = false" aria-label="Đóng">
+              <button type="button" class="pl-modal-close" @click="closeProjectFormModal" aria-label="Đóng">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
               </button>
             </div>
@@ -4624,18 +4629,17 @@
                           <button
                             type="button"
                             class="pl-wf-edit-btn"
-                            title="Mở modal sửa bước của Workflow này"
-                            @click.stop="openEditWorkflowStepsModal(wf.id_workflow)"
+                            title="Sửa tên & các bước riêng của Workflow trong dự án này"
+                            @click.stop="openEditProjectFormWorkflowSteps(wf)"
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                             <span>Sửa</span>
                           </button>
                           <button
-                            v-if="wf.isExplicitlyLinked"
                             type="button"
                             class="pl-wf-detach-btn"
-                            title="Bỏ chọn Workflow này khỏi Dự án"
-                            @click.stop="toggleProjectFormWorkflow(wf.id_workflow)"
+                            title="Bỏ Workflow này khỏi Dự án"
+                            @click.stop="removeProjectFormWorkflow(wf.id_workflow)"
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                           </button>
@@ -4697,38 +4701,43 @@
                       v-for="wf in projectFormAllSelectableWorkflows"
                       :key="'pf-allwf-' + wf.id_workflow"
                       class="pl-proj-wf-card is-selectable-wf-option"
-                      :class="{ 'is-selected-wf': wf.isSelectedInForm }"
-                      @click="toggleProjectFormWorkflow(wf.id_workflow)"
+                      :class="{ 'is-selected-wf': wf.addedCount > 0 }"
+                      @click="addWorkflowToProjectForm(wf)"
                     >
                       <div class="pl-proj-wf-row-head">
                         <div class="pl-proj-wf-meta-inline">
-                          <span class="pl-wf-check-box" :class="{ 'is-checked': wf.isSelectedInForm }" aria-hidden="true">
-                            <svg v-if="wf.isSelectedInForm" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                          <span class="pl-wf-check-box" :class="{ 'is-checked': wf.addedCount > 0 }" aria-hidden="true">
+                            <svg v-if="wf.addedCount > 0" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                           </span>
                           <span class="pl-proj-wf-name">{{ wf.name_workflow }}</span>
                           <span class="pl-em-sep">—</span>
                           <span class="pl-proj-wf-party pl-tabular">
-                            {{ wf.id_workflow === 'WF_DEFAULT' ? 'Mặc định hệ thống' : wf.flowSteps.length + ' bước' }}
+                            {{ wf.id_workflow === 'WF_DEFAULT' ? 'Mẫu mặc định Kho' : wf.flowSteps.length + ' bước' }}
                           </span>
                         </div>
 
                         <div style="display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                          <span
+                            v-if="wf.addedCount > 0"
+                            class="pl-status-pill is-xs-pill is-sky pl-tabular"
+                          >
+                            Đã thêm {{ wf.addedCount }}
+                          </span>
                           <button
                             type="button"
                             class="pl-wf-edit-btn"
-                            title="Mở modal sửa bước của Workflow này"
+                            title="Sửa mẫu gốc trong Kho Workflow"
                             @click.stop="openEditWorkflowStepsModal(wf.id_workflow)"
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" width="11.5" height="11.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                            <span>Sửa</span>
+                            <span>Sửa mẫu</span>
                           </button>
                           <button
                             type="button"
                             class="pl-picker-select-btn"
-                            :class="{ 'is-selected': wf.isSelectedInForm }"
-                            @click.stop="toggleProjectFormWorkflow(wf.id_workflow)"
+                            @click.stop="addWorkflowToProjectForm(wf)"
                           >
-                            {{ wf.isSelectedInForm ? 'Đã chọn' : '+ Chọn' }}
+                            + Thêm
                           </button>
                         </div>
                       </div>
@@ -4775,7 +4784,7 @@
             </div>
 
             <div class="pl-studio-foot-right">
-              <button type="button" class="pl-btn pl-btn-slate" @click="showProjectFormModal = false">Hủy</button>
+              <button type="button" class="pl-btn pl-btn-slate" @click="closeProjectFormModal">Hủy</button>
               <button type="button" class="pl-btn pl-btn-primary" :disabled="savingProject" @click="saveProjectForm">
                 <span v-if="savingProject" class="pl-spinner-xs"></span>
                 <span>{{ isEditingProject ? 'Lưu Cập Nhật' : 'Tạo Dự Án' }}</span>
@@ -4825,7 +4834,7 @@
               <div class="pl-studio-head-pills">
                 <span class="pl-studio-ctx-pill is-sky" title="Khung Pipeline đang áp dụng">
                   <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-                  <span>{{ getWorkflowShortLabel(formData.id_workflow || 'WF_DEFAULT') }}</span>
+                  <span>{{ getWorkflowShortLabel(formData.id_workflow || 'WF_DEFAULT', formData.id_project) }}</span>
                 </span>
                 <span
                   class="pl-studio-ctx-pill pl-tabular"
@@ -4917,7 +4926,12 @@
                   <div class="pl-field">
                     <label class="bg-label">Workflow Áp Dụng</label>
                     <select v-model="formData.id_workflow" class="bg-input" @change="onModalWorkflowChange">
-                      <option value="WF_DEFAULT">Workflow Chuẩn Hệ Thống (5 bước)</option>
+                      <option
+                        v-if="!modalSelectedProject || modalProjectHasStandardWorkflow || formData.id_workflow === 'WF_DEFAULT'"
+                        value="WF_DEFAULT"
+                      >
+                        {{ getWorkflowDisplayNameForProject(modalSelectedProject, 'WF_DEFAULT') }} (5 bước)
+                      </option>
                       <optgroup
                         v-if="modalProjectLinkedWorkflows.length > 0"
                         :label="'Workflow Trong Dự Án: ' + (modalSelectedProject?.ten_du_an || '')"
@@ -4926,7 +4940,7 @@
                           {{ wf.name_workflow }}
                         </option>
                       </optgroup>
-                      <optgroup v-if="modalOtherWorkflows.length > 0" label="Danh Sách Workflow Khác">
+                      <optgroup v-if="!modalSelectedProject && modalOtherWorkflows.length > 0" label="Danh Sách Workflow Trong Kho">
                         <option v-for="wf in modalOtherWorkflows" :key="'mwft-' + wf.id_workflow" :value="wf.id_workflow">
                           {{ wf.name_workflow }}
                         </option>
@@ -4945,12 +4959,13 @@
                         {{ wf.name_workflow }}
                       </button>
                       <button
+                        v-if="!modalSelectedProject || modalProjectHasStandardWorkflow || formData.id_workflow === 'WF_DEFAULT'"
                         type="button"
                         class="pl-mcf-chip"
                         :class="{ 'is-active': !formData.id_workflow || formData.id_workflow === 'WF_DEFAULT' }"
                         @click="selectModalWorkflowQuick('WF_DEFAULT')"
                       >
-                        Workflow Chuẩn
+                        {{ getWorkflowDisplayNameForProject(modalSelectedProject, 'WF_DEFAULT') }}
                       </button>
                     </div>
                   </div>
@@ -5599,7 +5614,7 @@
                       type="button"
                       class="pl-inline-clear-btn"
                       title="Bỏ chọn toàn bộ Report"
-                      @click.stop="formData.report_id = ''"
+                      @click.stop="confirmClearAllLinkedReports"
                     >×</button>
                     <button
                       type="button"
@@ -5627,7 +5642,7 @@
                             class="pl-linked-rep-rm"
                             title="Gỡ Report này"
                             aria-label="Gỡ"
-                            @click.stop="selectReport(rep.id)"
+                            @click.stop="confirmRemoveLinkedReport(rep)"
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                           </button>
@@ -5964,7 +5979,7 @@
         class="bg-modal-overlay pl-modal-overlay pl-cus-suite-overlay"
         :class="{ 'theme-light-blue': uiTheme === 'light', 'theme-custom-glass': uiTheme === 'custom' }"
         :style="[{ zIndex: 100065 }, uiTheme === 'custom' ? customGlassStyleVars : null]"
-        @click.self="showAddCustomerModal = false"
+        @click.self="requestCloseAddCustomerModal"
       >
         <div class="bg-modal-card is-lg is-mobile-sheet cus-modal-with-import" role="dialog" aria-modal="true">
           <div class="bg-modal-head dt-only-head">
@@ -5982,14 +5997,14 @@
                 <p class="bg-modal-sub">Đồng bộ trực tiếp với danh bạ Khách Hàng hệ thống • Hỗ trợ quét nhanh ĐXMH, Báo Giá &amp; Thuế / ĐKKD</p>
               </div>
             </div>
-            <button type="button" class="bg-modal-close" @click="showAddCustomerModal = false">✕</button>
+            <button type="button" class="bg-modal-close" @click="requestCloseAddCustomerModal">✕</button>
           </div>
 
           <div class="m-grab-head-stack">
             <div class="m-grab-pill"></div>
             <div class="m-grab-bar">
               <h2 class="m-grab-title">{{ customerFormData.id ? 'Cập Nhật Khách Hàng' : 'Tạo Khách Hàng Mới' }}</h2>
-              <button type="button" class="bg-modal-close" @click="showAddCustomerModal = false">✕</button>
+              <button type="button" class="bg-modal-close" @click="requestCloseAddCustomerModal">✕</button>
             </div>
           </div>
 
@@ -6215,7 +6230,7 @@
           </div>
 
           <div class="bg-modal-foot">
-            <button type="button" class="bg-btn bg-btn-slate" @click="showAddCustomerModal = false">Huỷ bỏ</button>
+            <button type="button" class="bg-btn bg-btn-slate" @click="requestCloseAddCustomerModal">Huỷ bỏ</button>
             <div class="bg-foot-right">
               <button
                 v-if="!customerFormData.id"
@@ -7792,7 +7807,7 @@
       >
         <div class="pl-dock-icon-wrap">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
-          <span class="pl-dock-badge is-orange">{{ uniqueWorkflows.length + 1 }}</span>
+          <span class="pl-dock-badge is-orange">{{ templateWorkflowOptions.length + 1 }}</span>
         </div>
         <span>Workflow</span>
       </button>
@@ -7850,7 +7865,7 @@
 <script setup>
 defineOptions({ name: 'PipelineFirebase' })
 import { ref, computed, nextTick, onMounted, onUnmounted, onActivated, onDeactivated, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import draggable from 'vuedraggable'
 import NumberInput from './NumberInput.vue'
 import ExcelJS from 'exceljs'
@@ -8260,6 +8275,7 @@ const normalizeWorkflowRecord = (raw, key) => {
       status_index: raw[5] ?? '',
       status_color: raw[6] || '#3b82f6',
       workflow_scope: 'template',
+      id_project: '',
       ma_khach_hang: '',
       ma_cong_ty: '',
       ten_khach_hang: '',
@@ -8278,7 +8294,8 @@ const normalizeWorkflowRecord = (raw, key) => {
       status_name: String(raw.status_name ?? ''),
       status_index: raw.status_index ?? '',
       status_color: raw.status_color || '#3b82f6',
-      workflow_scope: 'template',
+      workflow_scope: raw.workflow_scope === 'project' ? 'project' : 'template',
+      id_project: String(raw.id_project ?? ''),
       ma_khach_hang: '',
       ma_cong_ty: '',
       ten_khach_hang: '',
@@ -8291,6 +8308,25 @@ const normalizeWorkflowRecord = (raw, key) => {
   if (!item || !item.id_workflow || !item.status_name) return null
   return item
 }
+
+const toCleanWorkflowStepRecord = (rec) => ({
+  id_workflow: String(rec.id_workflow ?? ''),
+  id_status_workflow: String(rec.id_status_workflow ?? ''),
+  name_workflow: String(rec.name_workflow ?? ''),
+  '%status': String(rec['%status'] ?? '0%'),
+  status_name: String(rec.status_name ?? ''),
+  status_index: parseInt(rec.status_index ?? 0, 10) || 0,
+  status_color: String(rec.status_color || '#3b82f6'),
+  workflow_scope: rec.workflow_scope === 'project' ? 'project' : 'template',
+  id_project: String(rec.id_project ?? ''),
+  ma_khach_hang: '',
+  ma_cong_ty: '',
+  ten_khach_hang: '',
+  ten_cong_ty: '',
+  is_company_default: false,
+  source_template_id: String(rec.source_template_id ?? ''),
+  source_template_name: String(rec.source_template_name ?? '')
+})
 
 const normalizeLinkedWorkflowIds = (rawVal) => {
   if (!rawVal) return []
@@ -8314,6 +8350,19 @@ const normalizeLinkedWorkflowIds = (rawVal) => {
   return out
 }
 
+const normalizeWorkflowCustomNames = (rawVal) => {
+  if (!rawVal || typeof rawVal !== 'object' || Array.isArray(rawVal)) return {}
+  const out = {}
+  Object.entries(rawVal).forEach(([k, v]) => {
+    const cleanKey = String(k || '').trim()
+    const cleanVal = String(v || '').trim()
+    if (cleanKey && cleanVal) {
+      out[cleanKey] = cleanVal
+    }
+  })
+  return out
+}
+
 const normalizeProjectRecord = (raw, key) => {
   if (!raw || typeof raw !== 'object') return null
   const id_project = String(raw.id_project || key || '')
@@ -8329,6 +8378,7 @@ const normalizeProjectRecord = (raw, key) => {
     default_workflow_id: String(raw.default_workflow_id || ''),
     linked_workflow_ids: normalizeLinkedWorkflowIds(raw.linked_workflow_ids),
     excluded_workflow_ids: normalizeLinkedWorkflowIds(raw.excluded_workflow_ids),
+    workflow_custom_names: normalizeWorkflowCustomNames(raw.workflow_custom_names),
     AM: String(raw.AM || 'Sơn'),
     ngan_sach_du_kien: raw.ngan_sach_du_kien ?? '',
     deadline: String(raw.deadline || ''),
@@ -8425,7 +8475,8 @@ const uniqueWorkflows = computed(() => {
       map.set(wf.id_workflow, {
         id_workflow: wf.id_workflow,
         name_workflow: wf.name_workflow || wf.id_workflow,
-        workflow_scope: 'template',
+        workflow_scope: wf.workflow_scope === 'project' ? 'project' : 'template',
+        id_project: wf.id_project || '',
         ma_khach_hang: '',
         ma_cong_ty: '',
         ten_khach_hang: '',
@@ -8437,6 +8488,8 @@ const uniqueWorkflows = computed(() => {
     } else if (wf.id_workflow && map.has(wf.id_workflow)) {
       const ex = map.get(wf.id_workflow)
       if (!ex.name_workflow && wf.name_workflow) ex.name_workflow = wf.name_workflow
+      if (wf.workflow_scope === 'project') ex.workflow_scope = 'project'
+      if (!ex.id_project && wf.id_project) ex.id_project = wf.id_project
       if (!ex.source_template_id && wf.source_template_id) ex.source_template_id = wf.source_template_id
       if (!ex.source_template_name && wf.source_template_name) ex.source_template_name = wf.source_template_name
     }
@@ -8450,6 +8503,20 @@ const customWorkflowOptions = computed(() =>
     .sort((a, b) => (a.name_workflow || '').localeCompare(b.name_workflow || '', 'vi'))
 )
 
+const templateWorkflowOptions = computed(() =>
+  uniqueWorkflows.value
+    .filter((w) => w.id_workflow && w.id_workflow !== 'WF_DEFAULT' && w.workflow_scope !== 'project')
+    .sort((a, b) => (a.name_workflow || '').localeCompare(b.name_workflow || '', 'vi'))
+)
+
+const buildStepShortLabel = (statusName) => {
+  const s = String(statusName || '').trim()
+  if (s.length <= 22) return s
+  const parenIdx = s.indexOf(' (')
+  if (parenIdx > 1 && parenIdx <= 22) return s.substring(0, parenIdx).trim()
+  return s.substring(0, 22) + '...'
+}
+
 const getColumnsForWorkflow = (wfId) => {
   const normWf = !wfId || wfId === 'WF_DEFAULT' ? 'WF_DEFAULT' : wfId
   if (normWf === 'WF_DEFAULT') return defaultColumns
@@ -8460,7 +8527,7 @@ const getColumnsForWorkflow = (wfId) => {
       id: `wf_${wf.id_status_workflow}`,
       rawStatusId: wf.id_status_workflow,
       label: wf.status_name,
-      shortLabel: wf.status_name.length > 22 ? wf.status_name.substring(0, 22) + '...' : wf.status_name,
+      shortLabel: buildStepShortLabel(wf.status_name),
       value: wf.status_name,
       percent: wf['%status'] || '0%',
       color: wf.status_color || '#3b82f6'
@@ -8478,15 +8545,49 @@ const getColumnsForWorkflow = (wfId) => {
 const COLUMNS = computed(() => getColumnsForWorkflow(selectedWorkflowId.value))
 const MODAL_COLUMNS = computed(() => getColumnsForWorkflow(formData.value.id_workflow || 'WF_DEFAULT'))
 
-const getWorkflowShortLabel = (wfId) => {
-  if (!wfId || wfId === 'WF_DEFAULT') return 'Workflow Chuẩn'
+const DEFAULT_SYSTEM_WORKFLOW_NAME = 'Workflow Chuẩn Hệ Thống'
+const defaultWorkflowName = ref(DEFAULT_SYSTEM_WORKFLOW_NAME)
+
+const getWorkflowDisplayNameForProject = (projOrId = null, wfId = 'WF_DEFAULT') => {
+  const normWf = !wfId || wfId === 'WF_DEFAULT' ? 'WF_DEFAULT' : wfId
+  if (normWf === 'WF_DEFAULT') {
+    let proj = null
+    let isProjectScope = false
+    if (projOrId && typeof projOrId === 'object') {
+      proj = projOrId
+      isProjectScope = true
+    } else if (typeof projOrId === 'string' && projOrId && projOrId !== '__STANDALONE__') {
+      proj = projectsList.value.find((p) => p.id_project === projOrId) || null
+      isProjectScope = true
+    }
+    if (isProjectScope) {
+      const customName = String(proj?.workflow_custom_names?.WF_DEFAULT || '').trim()
+      return customName || DEFAULT_SYSTEM_WORKFLOW_NAME
+    }
+    return defaultWorkflowName.value || DEFAULT_SYSTEM_WORKFLOW_NAME
+  }
+  const found = uniqueWorkflows.value.find((w) => w.id_workflow === normWf)
+  return found ? found.name_workflow : normWf
+}
+
+const getWorkflowShortLabel = (wfId, projOrId = null) => {
+  if (!wfId || wfId === 'WF_DEFAULT') {
+    return getWorkflowDisplayNameForProject(projOrId, 'WF_DEFAULT')
+  }
   const found = uniqueWorkflows.value.find((w) => w.id_workflow === wfId)
   return found ? found.name_workflow : wfId
 }
 
 const activeWorkflowMeta = computed(() => {
+  const activeProjId =
+    filterConfig.value.projectId && filterConfig.value.projectId !== '__STANDALONE__'
+      ? filterConfig.value.projectId
+      : null
   if (!selectedWorkflowId.value || selectedWorkflowId.value === 'WF_DEFAULT') {
-    return { id: 'WF_DEFAULT', label: 'Workflow Chuẩn Hệ Thống (5 bước)' }
+    return {
+      id: 'WF_DEFAULT',
+      label: `${getWorkflowDisplayNameForProject(activeProjId, 'WF_DEFAULT')} (5 bước)`
+    }
   }
   const found = uniqueWorkflows.value.find((w) => w.id_workflow === selectedWorkflowId.value)
   return {
@@ -8673,16 +8774,25 @@ const closeKanbanFilterPickerModal = () => {
   openKanbanFilterMenu.value = ''
 }
 
-const navigateToProjectCardById = (projId) => {
+const navigateToProjectCardById = (projId, targetWfId = '', targetWfName = '') => {
   const cleanId = String(projId || '').trim()
+  const rawWfId = String(targetWfId || '').trim()
+  const rawWfName = String(targetWfName || '').trim().toLowerCase()
+
   if (!cleanId || cleanId === '__STANDALONE__') {
+    if (rawWfId) {
+      navigateToWorkflowCardById(rawWfId)
+      return
+    }
     activeTab.value = 'projects'
+    mobileProjSubView.value = 'projects'
     showToast('Đã chuyển tới danh sách thẻ Dự án — hãy chọn 1 Dự án cụ thể để định vị thẳng tới thẻ', 'info', 2600)
     return
   }
 
   const targetProj = allEnrichedProjects.value.find((p) => p.id_project === cleanId)
   activeTab.value = 'projects'
+  mobileProjSubView.value = 'projects'
 
   if (!enrichedProjects.value.some((p) => p.id_project === cleanId)) {
     projectSearchQuery.value = ''
@@ -8701,26 +8811,61 @@ const navigateToProjectCardById = (projId) => {
     clearTimeout(highlightedProjectCardTimer)
     highlightedProjectCardTimer = null
   }
+  if (highlightedProjWfTimer) {
+    clearTimeout(highlightedProjWfTimer)
+    highlightedProjWfTimer = null
+  }
   highlightedProjectCardId.value = ''
+  highlightedProjWfKey.value = ''
+
+  let resolvedWf = null
+  if (rawWfId && targetProj) {
+    const corr = targetProj.correspondingWorkflows || []
+    resolvedWf =
+      corr.find((w) => String(w.id_workflow) === rawWfId) ||
+      (rawWfName ? corr.find((w) => String(w.name_workflow || '').trim().toLowerCase() === rawWfName) : null) ||
+      null
+  }
+  const effectiveWfId = resolvedWf ? String(resolvedWf.id_workflow) : rawWfId
+  const wfKey = effectiveWfId ? `${cleanId}::${effectiveWfId}` : ''
 
   nextTick(() => {
     setTimeout(() => {
       highlightedProjectCardId.value = cleanId
+      if (wfKey) {
+        highlightedProjWfKey.value = wfKey
+      }
       if (typeof document !== 'undefined') {
-        const el = document.getElementById(`project-card-${cleanId}`)
-        if (el && typeof el.scrollIntoView === 'function') {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        const wfEl = effectiveWfId ? document.getElementById(`proj-wf-card-${cleanId}-${effectiveWfId}`) : null
+        const projEl = document.getElementById(`project-card-${cleanId}`)
+        const scrollTarget = wfEl || projEl
+        if (scrollTarget && typeof scrollTarget.scrollIntoView === 'function') {
+          scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'center' })
         }
       }
       if (targetProj) {
-        showToast(`Đã điều hướng tới thẻ Dự án "${targetProj.ten_du_an}"`, 'info', 2200)
+        if (effectiveWfId) {
+          const wfLabel =
+            resolvedWf?.name_workflow ||
+            getWorkflowShortLabel(effectiveWfId, targetProj)
+          showToast(`Đã điều hướng tới Pipeline "${wfLabel}" trong Dự án "${targetProj.ten_du_an}"`, 'info', 2500)
+        } else {
+          showToast(`Đã điều hướng tới thẻ Dự án "${targetProj.ten_du_an}"`, 'info', 2200)
+        }
       }
       highlightedProjectCardTimer = setTimeout(() => {
         if (highlightedProjectCardId.value === cleanId) {
           highlightedProjectCardId.value = ''
         }
       }, 3200)
-    }, 45)
+      if (wfKey) {
+        highlightedProjWfTimer = setTimeout(() => {
+          if (highlightedProjWfKey.value === wfKey) {
+            highlightedProjWfKey.value = ''
+          }
+        }, 3200)
+      }
+    }, 75)
   })
 }
 
@@ -8728,20 +8873,116 @@ const navigateToFilteredProjectCard = () => {
   navigateToProjectCardById(filterConfig.value.projectId)
 }
 
-const navigateToWorkflowCardById = (wfId) => {
+const navigateToWorkflowCardById = (wfId, explicitProjectId = '') => {
   const targetWf = String(wfId || 'WF_DEFAULT').trim() || 'WF_DEFAULT'
+
+  let targetProjId =
+    explicitProjectId && explicitProjectId !== '__STANDALONE__'
+      ? String(explicitProjectId).trim()
+      : ''
+
+  if (!targetProjId && targetWf !== 'WF_DEFAULT') {
+    const wfMeta = uniqueWorkflows.value.find((w) => w.id_workflow === targetWf)
+    if (wfMeta?.workflow_scope === 'project') {
+      if (wfMeta.id_project && projectsList.value.some((p) => p.id_project === wfMeta.id_project)) {
+        targetProjId = wfMeta.id_project
+      } else {
+        const ownerProj = allEnrichedProjects.value.find((p) =>
+          (p.correspondingWorkflows || []).some((w) => w.id_workflow === targetWf)
+        )
+        if (ownerProj) targetProjId = ownerProj.id_project
+      }
+    } else if (activeTab.value === 'projects') {
+      const matchedVisible = enrichedProjects.value.filter((p) =>
+        (p.correspondingWorkflows || []).some((w) => w.id_workflow === targetWf)
+      )
+      if (matchedVisible.length === 1) {
+        targetProjId = matchedVisible[0].id_project
+      }
+    }
+  }
+
+  if (targetProjId) {
+    const targetProj = allEnrichedProjects.value.find((p) => p.id_project === targetProjId)
+    activeTab.value = 'projects'
+
+    if (!enrichedProjects.value.some((p) => p.id_project === targetProjId)) {
+      projectSearchQuery.value = ''
+      projectStatusFilter.value = 'Tất cả'
+      projectFilter.value = {
+        customerName: '',
+        companyName: '',
+        projectId: '',
+        workflowId: ''
+      }
+    }
+
+    ensureProjectCardExpanded(targetProjId)
+
+    if (highlightedProjectCardTimer) {
+      clearTimeout(highlightedProjectCardTimer)
+      highlightedProjectCardTimer = null
+    }
+    if (highlightedProjWfTimer) {
+      clearTimeout(highlightedProjWfTimer)
+      highlightedProjWfTimer = null
+    }
+    highlightedProjectCardId.value = ''
+    highlightedProjWfKey.value = ''
+
+    const resolvedWfId =
+      targetProj?.correspondingWorkflows?.some((w) => w.id_workflow === targetWf)
+        ? targetWf
+        : targetProj?.correspondingWorkflows?.[0]?.id_workflow || targetWf
+    const wfKey = `${targetProjId}::${resolvedWfId}`
+
+    nextTick(() => {
+      setTimeout(() => {
+        highlightedProjectCardId.value = targetProjId
+        highlightedProjWfKey.value = wfKey
+        if (typeof document !== 'undefined') {
+          const wfEl = document.getElementById(`proj-wf-card-${targetProjId}-${resolvedWfId}`)
+          const projEl = document.getElementById(`project-card-${targetProjId}`)
+          const scrollTarget = wfEl || projEl
+          if (scrollTarget && typeof scrollTarget.scrollIntoView === 'function') {
+            scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }
+        }
+        const wfLabel = getWorkflowShortLabel(resolvedWfId, targetProj)
+        showToast(
+          targetProj
+            ? `Đã điều hướng tới Pipeline "${wfLabel}" trong Dự án "${targetProj.ten_du_an}"`
+            : `Đã điều hướng tới Pipeline "${wfLabel}"`,
+          'info',
+          2400
+        )
+        highlightedProjectCardTimer = setTimeout(() => {
+          if (highlightedProjectCardId.value === targetProjId) {
+            highlightedProjectCardId.value = ''
+          }
+        }, 3200)
+        highlightedProjWfTimer = setTimeout(() => {
+          if (highlightedProjWfKey.value === wfKey) {
+            highlightedProjWfKey.value = ''
+          }
+        }, 3200)
+      }, 50)
+    })
+    return
+  }
+
   activeTab.value = 'workflow'
   nextTick(() => {
     if (workflowDesignerRef.value && typeof workflowDesignerRef.value.locateWorkflowCard === 'function') {
       workflowDesignerRef.value.locateWorkflowCard(targetWf)
     }
-    showToast(`Đã điều hướng tới thẻ Workflow "${getWorkflowShortLabel(targetWf)}"`, 'info', 2200)
+    showToast(`Đã điều hướng tới thẻ Workflow "${getWorkflowShortLabel(targetWf)}" trong Kho`, 'info', 2200)
   })
 }
 
 const navigateToFilteredWorkflowCard = () => {
   const curWf = filterConfig.value.workflowId || selectedWorkflowId.value || 'WF_DEFAULT'
-  navigateToWorkflowCardById(curWf)
+  navigateToWorkflowCardById(curWf, filterConfig.value.projectId)
 }
 
 const kanbanEntityRelations = computed(() => {
@@ -8951,19 +9192,22 @@ const kanbanWorkflowFilterOptions = computed(() => {
     })
   })
 
-  matchedWfIds.add('WF_DEFAULT')
+  if (!hasSpecificProj) {
+    matchedWfIds.add('WF_DEFAULT')
+  }
   if (!hasEntityFilter) {
-    uniqueWorkflows.value.forEach((w) => {
+    templateWorkflowOptions.value.forEach((w) => {
       if (w.id_workflow) matchedWfIds.add(w.id_workflow)
     })
   }
 
   const out = []
   if (matchedWfIds.has('WF_DEFAULT')) {
+    const wfDefaultLabel = getWorkflowDisplayNameForProject(hasSpecificProj ? f.projectId : null, 'WF_DEFAULT')
     out.push({
       id_workflow: 'WF_DEFAULT',
-      label: 'Workflow Chuẩn Hệ Thống (5 bước)',
-      sub: 'Mặc định hệ thống',
+      label: `${wfDefaultLabel} (5 bước)`,
+      sub: hasSpecificProj ? 'Workflow trong Dự án' : 'Mặc định hệ thống',
       count: countMap.get('WF_DEFAULT') || 0,
       orderGroup: 0
     })
@@ -8971,6 +9215,7 @@ const kanbanWorkflowFilterOptions = computed(() => {
 
   customWorkflowOptions.value.forEach((wf) => {
     if (!matchedWfIds.has(wf.id_workflow)) return
+    if (!hasSpecificProj && wf.workflow_scope === 'project' && !(countMap.get(wf.id_workflow) > 0)) return
     const stepCount = workflowsData.value.filter((r) => r.id_workflow === wf.id_workflow).length
     out.push({
       id_workflow: wf.id_workflow,
@@ -8986,6 +9231,21 @@ const kanbanWorkflowFilterOptions = computed(() => {
     if (a.orderGroup !== b.orderGroup) return a.orderGroup - b.orderGroup
     return a.label.localeCompare(b.label, 'vi')
   })
+})
+
+const defaultKanbanWfForCurrentContext = computed(() => {
+  const pid = filterConfig.value.projectId
+  if (pid && pid !== '__STANDALONE__') {
+    const proj = allEnrichedProjects.value.find((p) => p.id_project === pid)
+    if (proj) {
+      return (
+        proj.default_workflow_id ||
+        proj.correspondingWorkflows?.[0]?.id_workflow ||
+        'WF_DEFAULT'
+      )
+    }
+  }
+  return 'WF_DEFAULT'
 })
 
 const filteredKanbanWorkflowOptions = computed(() => {
@@ -9021,7 +9281,13 @@ const activeKanbanProjectFilterLabel = computed(() => {
 
 const activeKanbanWorkflowFilterLabel = computed(() => {
   const curWf = filterConfig.value.workflowId || selectedWorkflowId.value || 'WF_DEFAULT'
-  if (curWf === 'WF_DEFAULT') return 'Khung Chuẩn Hệ Thống'
+  if (curWf === 'WF_DEFAULT') {
+    const activeProjId =
+      filterConfig.value.projectId && filterConfig.value.projectId !== '__STANDALONE__'
+        ? filterConfig.value.projectId
+        : null
+    return getWorkflowDisplayNameForProject(activeProjId, 'WF_DEFAULT')
+  }
   const found = uniqueWorkflows.value.find((w) => w.id_workflow === curWf)
   return found ? found.name_workflow : curWf
 })
@@ -9080,6 +9346,11 @@ const reconcileKanbanCascadingFilters = (changedField) => {
       const bestWithItems = wfOpts.find((o) => o.count > 0)
       selectedWorkflowId.value = bestWithItems?.id_workflow || wfOpts[0]?.id_workflow || 'WF_DEFAULT'
     }
+    return
+  }
+
+  if (!wfOpts.some((o) => o.id_workflow === selectedWorkflowId.value)) {
+    selectedWorkflowId.value = wfOpts[0]?.id_workflow || 'WF_DEFAULT'
   }
 }
 
@@ -9121,13 +9392,21 @@ const selectKanbanWorkflowFilter = (wfId) => {
 
 const clearKanbanWorkflowFilter = () => {
   const hasSpecificProj = Boolean(filterConfig.value.projectId && filterConfig.value.projectId !== '__STANDALONE__')
-  filterConfig.value.workflowId = hasSpecificProj ? 'WF_DEFAULT' : ''
-  selectedWorkflowId.value = 'WF_DEFAULT'
+  const fallbackWf = defaultKanbanWfForCurrentContext.value || 'WF_DEFAULT'
+  filterConfig.value.workflowId = hasSpecificProj ? fallbackWf : ''
+  selectedWorkflowId.value = fallbackWf
   openKanbanFilterMenu.value = ''
   kanbanFilterSearch.value.workflow = ''
 }
 
 const workflowDesignerRef = ref(null)
+
+const handleWorkflowDesignerUpdated = (payload = null) => {
+  if (payload && typeof payload === 'object' && payload.defaultWorkflowName) {
+    defaultWorkflowName.value = String(payload.defaultWorkflowName).trim() || DEFAULT_SYSTEM_WORKFLOW_NAME
+  }
+  fetchData()
+}
 
 const openEditWorkflowStepsModal = (wfId) => {
   if (workflowDesignerRef.value && typeof workflowDesignerRef.value.openWorkflowById === 'function') {
@@ -9135,29 +9414,41 @@ const openEditWorkflowStepsModal = (wfId) => {
   }
 }
 
-const handleOpenKanbanFromWorkflow = (payload) => {
+const handleOpenKanbanFromWorkflow = async (payload) => {
   if (!payload) return
+  if (showProjectFormModal.value) {
+    const closed = await closeProjectFormModal()
+    if (!closed) return
+  }
   const targetWf = payload.id_workflow || 'WF_DEFAULT'
   showProjectDetailModal.value = false
-  showProjectFormModal.value = false
   showManageProjectWfDrawer.value = false
   showAttachWfToProjectModal.value = false
 
-  const hasStandaloneTasks = items.value.some(
-    (it) => !it.id_project && getEffectiveItemWorkflowId(it) === targetWf
-  )
   let nextProjId = '__STANDALONE__'
-  if (!hasStandaloneTasks) {
-    const projWithTasks = allEnrichedProjects.value.find((p) =>
-      (p.pipelines || []).some((it) => getEffectiveItemWorkflowId(it) === targetWf)
-    )
-    const projLinked = allEnrichedProjects.value.find((p) =>
-      (p.correspondingWorkflows || []).some((w) => w.id_workflow === targetWf)
-    )
-    if (projWithTasks) {
-      nextProjId = projWithTasks.id_project
-    } else if (projLinked && targetWf !== 'WF_DEFAULT') {
-      nextProjId = projLinked.id_project
+  if (payload.id_project && projectsList.value.some((p) => p.id_project === payload.id_project)) {
+    nextProjId = payload.id_project
+  } else {
+    const wfMeta = uniqueWorkflows.value.find((w) => w.id_workflow === targetWf)
+    if (wfMeta?.workflow_scope === 'project' && wfMeta.id_project) {
+      nextProjId = wfMeta.id_project
+    } else {
+      const hasStandaloneTasks = items.value.some(
+        (it) => !it.id_project && getEffectiveItemWorkflowId(it) === targetWf
+      )
+      if (!hasStandaloneTasks) {
+        const projWithTasks = allEnrichedProjects.value.find((p) =>
+          (p.pipelines || []).some((it) => getEffectiveItemWorkflowId(it) === targetWf)
+        )
+        const projLinked = allEnrichedProjects.value.find((p) =>
+          (p.correspondingWorkflows || []).some((w) => w.id_workflow === targetWf)
+        )
+        if (projWithTasks) {
+          nextProjId = projWithTasks.id_project
+        } else if (projLinked && targetWf !== 'WF_DEFAULT') {
+          nextProjId = projLinked.id_project
+        }
+      }
     }
   }
 
@@ -9779,7 +10070,7 @@ const navigateToFilteredProjTabWorkflow = () => {
     showToast('Đã chuyển tới trang Workflow — chọn 1 Pipeline cụ thể để định vị thẳng tới thẻ', 'info', 2400)
     return
   }
-  navigateToWorkflowCardById(projectFilter.value.workflowId)
+  navigateToWorkflowCardById(projectFilter.value.workflowId, projectFilter.value.projectId)
 }
 const expandedProjectCardIds = ref(new Set())
 const isProjectCardExpanded = (projId) => {
@@ -9819,6 +10110,9 @@ const defaultProjectForm = {
   default_workflow_id: '',
   linked_workflow_ids: [],
   excluded_workflow_ids: [],
+  workflow_custom_names: {},
+  draft_workflows: [],
+  temp_materialized_wf_ids: [],
   AM: 'Sơn',
   ngan_sach_du_kien: '',
   deadline: '',
@@ -9828,8 +10122,548 @@ const defaultProjectForm = {
 const projectForm = ref({
   ...defaultProjectForm,
   linked_workflow_ids: [],
-  excluded_workflow_ids: []
+  excluded_workflow_ids: [],
+  workflow_custom_names: {},
+  draft_workflows: [],
+  temp_materialized_wf_ids: []
 })
+
+const STANDARD_PROJECT_CLONE_STEPS = [
+  { legacyColId: 'nhap', status_name: 'TẠM', '%status': '0%', status_color: '#3b82f6' },
+  { legacyColId: 'col_30', status_name: 'Pipeline (khảo sát nhu cầu khách hàng)', '%status': '30%', status_color: '#ef4444' },
+  { legacyColId: 'col_50', status_name: 'Forecast (đã lên báo giá gởi khách hàng)', '%status': '50%', status_color: '#f97316' },
+  { legacyColId: 'col_70', status_name: 'Commit (EU đồng ý giải pháp, chờ ngân sách đầu tư)', '%status': '70%', status_color: '#eab308' },
+  { legacyColId: 'col_90', status_name: 'Closed Won (đã ký xác nhận đặt hàng)', '%status': '90%', status_color: '#22c55e' }
+]
+
+let projectWfCloneSeq = 0
+const genProjectWfId = () => {
+  projectWfCloneSeq += 1
+  return `WFP_${Date.now().toString(36)}_${projectWfCloneSeq}_${Math.random().toString(36).slice(2, 6)}`
+}
+const genProjectStepId = (idx) => {
+  projectWfCloneSeq += 1
+  return `STP_${Date.now().toString(36)}_${idx}_${projectWfCloneSeq}_${Math.random().toString(36).slice(2, 5)}`
+}
+
+const disambiguateWorkflowName = (baseName, existingNames = []) => {
+  const cleanBase = String(baseName || DEFAULT_SYSTEM_WORKFLOW_NAME).trim() || DEFAULT_SYSTEM_WORKFLOW_NAME
+  const taken = new Set(
+    (existingNames || [])
+      .map((n) => String(n || '').trim().toLowerCase())
+      .filter(Boolean)
+  )
+  if (!taken.has(cleanBase.toLowerCase())) return cleanBase
+  let idx = 2
+  while (taken.has(`${cleanBase} (${idx})`.toLowerCase())) {
+    idx += 1
+  }
+  return `${cleanBase} (${idx})`
+}
+
+const isProjectPrivateWorkflow = (wfId, projId = '') => {
+  if (!wfId || wfId === 'WF_DEFAULT' || String(wfId).startsWith('DRAFT_')) return false
+  const meta = uniqueWorkflows.value.find((w) => w.id_workflow === wfId)
+  if (!meta || meta.workflow_scope !== 'project') return false
+  if (projId && meta.id_project && meta.id_project !== projId) return false
+  return true
+}
+
+const createProjectWorkflowRecordsFromSource = ({
+  sourceWfId = 'WF_DEFAULT',
+  projId = '',
+  exactName = '',
+  existingNames = [],
+  fallbackLegacyProj = null
+} = {}) => {
+  const normSource = !sourceWfId || sourceWfId === 'WF_DEFAULT' ? 'WF_DEFAULT' : sourceWfId
+  const newWfId = genProjectWfId()
+  const stepIdMap = new Map()
+
+  let sourceTemplateName = ''
+  let rawStepTemplates = []
+
+  if (normSource === 'WF_DEFAULT') {
+    sourceTemplateName = fallbackLegacyProj
+      ? getWorkflowDisplayNameForProject(fallbackLegacyProj, 'WF_DEFAULT')
+      : defaultWorkflowName.value || DEFAULT_SYSTEM_WORKFLOW_NAME
+    rawStepTemplates = STANDARD_PROJECT_CLONE_STEPS.map((st, idx) => ({
+      legacyKey: st.legacyColId,
+      status_name: st.status_name,
+      '%status': st['%status'],
+      status_index: idx + 1,
+      status_color: st.status_color
+    }))
+  } else {
+    const sourceRows = workflowsData.value
+      .filter((r) => r.id_workflow === normSource)
+      .sort((a, b) => (parseInt(a.status_index, 10) || 0) - (parseInt(b.status_index, 10) || 0))
+    const meta = uniqueWorkflows.value.find((w) => w.id_workflow === normSource)
+    sourceTemplateName = sourceRows[0]?.name_workflow || meta?.name_workflow || normSource
+    if (sourceRows.length > 0) {
+      rawStepTemplates = sourceRows.map((row, idx) => ({
+        legacyKey: row.id_status_workflow,
+        status_name: row.status_name,
+        '%status': row['%status'] || '0%',
+        status_index: idx + 1,
+        status_color: row.status_color || '#3b82f6'
+      }))
+    } else {
+      rawStepTemplates = STANDARD_PROJECT_CLONE_STEPS.map((st, idx) => ({
+        legacyKey: st.legacyColId,
+        status_name: st.status_name,
+        '%status': st['%status'],
+        status_index: idx + 1,
+        status_color: st.status_color
+      }))
+    }
+  }
+
+  const finalName = String(exactName || '').trim()
+    ? String(exactName).trim()
+    : disambiguateWorkflowName(sourceTemplateName, existingNames)
+
+  const records = rawStepTemplates.map((tpl, idx) => {
+    const stepId = genProjectStepId(idx + 1)
+    const cleanRec = toCleanWorkflowStepRecord({
+      id_workflow: newWfId,
+      id_status_workflow: stepId,
+      name_workflow: finalName,
+      '%status': tpl['%status'] || '0%',
+      status_name: tpl.status_name,
+      status_index: idx + 1,
+      status_color: tpl.status_color || '#3b82f6',
+      workflow_scope: 'project',
+      id_project: projId || '',
+      source_template_id: normSource,
+      source_template_name: sourceTemplateName
+    })
+    if (tpl.legacyKey) {
+      stepIdMap.set(String(tpl.legacyKey), cleanRec)
+      stepIdMap.set(`wf_${tpl.legacyKey}`, cleanRec)
+    }
+    if (tpl.status_name) {
+      stepIdMap.set(String(tpl.status_name), cleanRec)
+    }
+    return cleanRec
+  })
+
+  return {
+    newWfId,
+    finalName,
+    sourceTemplateId: normSource,
+    sourceTemplateName,
+    records,
+    stepIdMap
+  }
+}
+
+const remapTaskToWorkflowSteps = (pipe, newWfId, targetRecords = [], stepIdMap = null) => {
+  const isWon =
+    pipe.status_name === 'THÀNH CÔNG' ||
+    pipe.id_status_workflow === 'hoan_thanh' ||
+    pipe.isSuccess === true
+  const isLost =
+    pipe.status_name === 'THẤT BẠI' ||
+    pipe.id_status_workflow === 'that_bai'
+
+  if (isWon) {
+    pipe.id_workflow = newWfId
+    pipe.id_status_workflow = 'hoan_thanh'
+    pipe.status_name = 'THÀNH CÔNG'
+    pipe['%status'] = '100%'
+    return {
+      id_workflow: newWfId,
+      id_status_workflow: 'hoan_thanh',
+      status_name: 'THÀNH CÔNG',
+      '%status': '100%'
+    }
+  }
+
+  if (isLost) {
+    pipe.id_workflow = newWfId
+    pipe.id_status_workflow = 'that_bai'
+    pipe.status_name = 'THẤT BẠI'
+    pipe['%status'] = '0%'
+    return {
+      id_workflow: newWfId,
+      id_status_workflow: 'that_bai',
+      status_name: 'THẤT BẠI',
+      '%status': '0%'
+    }
+  }
+
+  const ordered = [...targetRecords].sort(
+    (a, b) => (parseInt(a.status_index, 10) || 0) - (parseInt(b.status_index, 10) || 0)
+  )
+  let matched = null
+  if (stepIdMap) {
+    matched =
+      stepIdMap.get(String(pipe.id_status_workflow || '')) ||
+      stepIdMap.get(String(pipe.status_name || '')) ||
+      null
+  }
+  if (!matched && ordered.length > 0) {
+    matched = ordered.find((r) => r.status_name === pipe.status_name) || null
+  }
+  if (!matched && ordered.length > 0) {
+    const curPct = parseFloat(String(pipe['%status'] || '0').replace('%', '')) || 0
+    let bestDiff = Infinity
+    ordered.forEach((r) => {
+      const rPct = parseFloat(String(r['%status'] || '0').replace('%', '')) || 0
+      const diff = Math.abs(rPct - curPct)
+      if (diff < bestDiff) {
+        bestDiff = diff
+        matched = r
+      }
+    })
+  }
+
+  if (matched) {
+    pipe.id_workflow = newWfId
+    pipe.id_status_workflow = matched.id_status_workflow
+    pipe.status_name = matched.status_name
+    pipe['%status'] = matched['%status'] || '0%'
+    return {
+      id_workflow: newWfId,
+      id_status_workflow: matched.id_status_workflow,
+      status_name: matched.status_name,
+      '%status': matched['%status'] || '0%'
+    }
+  }
+
+  pipe.id_workflow = newWfId
+  return { id_workflow: newWfId }
+}
+
+const remapTaskToStandardFallback = (pipe) => {
+  const isWon =
+    pipe.status_name === 'THÀNH CÔNG' ||
+    pipe.id_status_workflow === 'hoan_thanh' ||
+    pipe.isSuccess === true
+  const isLost =
+    pipe.status_name === 'THẤT BẠI' ||
+    pipe.id_status_workflow === 'that_bai'
+
+  if (isWon) {
+    pipe.id_workflow = 'WF_DEFAULT'
+    pipe.id_status_workflow = 'hoan_thanh'
+    pipe.status_name = 'THÀNH CÔNG'
+    pipe['%status'] = '100%'
+    return {
+      id_workflow: 'WF_DEFAULT',
+      id_status_workflow: 'hoan_thanh',
+      status_name: 'THÀNH CÔNG',
+      '%status': '100%'
+    }
+  }
+  if (isLost) {
+    pipe.id_workflow = 'WF_DEFAULT'
+    pipe.id_status_workflow = 'that_bai'
+    pipe.status_name = 'THẤT BẠI'
+    pipe['%status'] = '0%'
+    return {
+      id_workflow: 'WF_DEFAULT',
+      id_status_workflow: 'that_bai',
+      status_name: 'THẤT BẠI',
+      '%status': '0%'
+    }
+  }
+
+  const coreCols = defaultColumns.filter((c) => c.id !== 'hoan_thanh' && c.id !== 'that_bai')
+  const curPct = parseFloat(String(pipe['%status'] || '0').replace('%', '')) || 0
+  let bestCol = coreCols[0]
+  let bestDiff = Infinity
+  coreCols.forEach((col) => {
+    const cPct = parseFloat(String(col.percent || '0').replace('%', '')) || 0
+    const diff = Math.abs(cPct - curPct)
+    if (diff < bestDiff) {
+      bestDiff = diff
+      bestCol = col
+    }
+  })
+
+  pipe.id_workflow = 'WF_DEFAULT'
+  pipe.id_status_workflow = bestCol.id
+  pipe.status_name = bestCol.value
+  pipe['%status'] = bestCol.percent
+  return {
+    id_workflow: 'WF_DEFAULT',
+    id_status_workflow: bestCol.id,
+    status_name: bestCol.value,
+    '%status': bestCol.percent
+  }
+}
+
+const ensureProjectPrivateWorkflow = async (proj, wfId = 'WF_DEFAULT', customNameOverride = '') => {
+  if (!proj || !wfId) return wfId
+  const targetIdx = projectsList.value.findIndex((p) => p.id_project === proj.id_project)
+  if (targetIdx === -1) return wfId
+  const curProj = projectsList.value[targetIdx]
+
+  // Case A: Already a project-private workflow belonging to this project
+  if (isProjectPrivateWorkflow(wfId, curProj.id_project)) {
+    const cleanRename = String(customNameOverride || '').trim()
+    if (!cleanRename) return wfId
+
+    const wfUpdates = {}
+    workflowsData.value = workflowsData.value.map((row) => {
+      if (row.id_workflow !== wfId) return row
+      const updated = { ...row, name_workflow: cleanRename }
+      wfUpdates[sanitizeFirebaseKey(row.id_status_workflow)] = toCleanWorkflowStepRecord(updated)
+      return updated
+    })
+    if (Object.keys(wfUpdates).length > 0) {
+      await update(dbRef(database, 'pipeline_workflow'), wfUpdates)
+    }
+    return wfId
+  }
+
+  // Case B: Legacy WF_DEFAULT or shared template ID -> materialize into a private WFP_... copy for this project
+  const enrichedCur = buildEnrichedProject(curProj)
+  const otherNames = (enrichedCur.correspondingWorkflows || [])
+    .filter((w) => w.id_workflow !== wfId)
+    .map((w) => w.name_workflow)
+
+  const { newWfId, records, stepIdMap } = createProjectWorkflowRecordsFromSource({
+    sourceWfId: wfId,
+    projId: curProj.id_project,
+    exactName: customNameOverride,
+    existingNames: otherNames,
+    fallbackLegacyProj: curProj
+  })
+
+  workflowsData.value = [...workflowsData.value, ...records]
+
+  const currentWfOrder = (enrichedCur.correspondingWorkflows || []).map((w) =>
+    w.id_workflow === wfId ? newWfId : w.id_workflow
+  )
+  if (!currentWfOrder.includes(newWfId)) currentWfOrder.push(newWfId)
+  const nextLinkedIds = Array.from(new Set(currentWfOrder.filter((id) => id && id !== 'WF_DEFAULT')))
+
+  const prevExcluded = normalizeLinkedWorkflowIds(curProj.excluded_workflow_ids)
+  const nextExcluded =
+    wfId === 'WF_DEFAULT' && !prevExcluded.includes('WF_DEFAULT')
+      ? [...prevExcluded, 'WF_DEFAULT']
+      : prevExcluded
+
+  const nextCustomNames = normalizeWorkflowCustomNames(curProj.workflow_custom_names)
+  delete nextCustomNames[wfId]
+
+  const nextDefaultWf =
+    curProj.default_workflow_id === wfId || (!curProj.default_workflow_id && nextLinkedIds.length > 0)
+      ? newWfId
+      : curProj.default_workflow_id
+
+  const nowStr = getCurrentFormattedTime()
+  projectsList.value[targetIdx] = {
+    ...curProj,
+    linked_workflow_ids: nextLinkedIds,
+    excluded_workflow_ids: nextExcluded,
+    workflow_custom_names: nextCustomNames,
+    default_workflow_id: nextDefaultWf,
+    last_updated: nowStr
+  }
+
+  const pipeUpdates = {}
+  items.value.forEach((it) => {
+    if (it.id_project !== curProj.id_project) return
+    const effWf =
+      String(it.id_workflow || '').trim() ||
+      (defaultCoreStageIdSet.has(String(it.id_status_workflow || '').trim()) ? 'WF_DEFAULT' : '')
+    const matchesTarget = effWf === wfId || (!effWf && wfId === 'WF_DEFAULT')
+    if (!matchesTarget) return
+
+    const patch = remapTaskToWorkflowSteps(it, newWfId, records, stepIdMap)
+    const pk = sanitizeFirebaseKey(it.Id_pipeline)
+    Object.entries(patch).forEach(([field, val]) => {
+      pipeUpdates[`${pk}/${field}`] = val
+    })
+  })
+
+  if (projectDetailWfFilter.value === wfId && activeProjectId.value === curProj.id_project) {
+    projectDetailWfFilter.value = newWfId
+  }
+  if (filterConfig.value.projectId === curProj.id_project) {
+    if (filterConfig.value.workflowId === wfId) filterConfig.value.workflowId = newWfId
+    if (selectedWorkflowId.value === wfId) selectedWorkflowId.value = newWfId
+  }
+
+  distributeItems()
+
+  const wfUpdates = {}
+  records.forEach((rec) => {
+    wfUpdates[sanitizeFirebaseKey(rec.id_status_workflow)] = rec
+  })
+  await update(dbRef(database, 'pipeline_workflow'), wfUpdates)
+  await update(dbRef(database, `pipeline_projects/${sanitizeFirebaseKey(curProj.id_project)}`), {
+    linked_workflow_ids: nextLinkedIds,
+    excluded_workflow_ids: nextExcluded,
+    workflow_custom_names: nextCustomNames,
+    default_workflow_id: nextDefaultWf,
+    last_updated: nowStr
+  })
+  if (Object.keys(pipeUpdates).length > 0) {
+    await update(dbRef(database, 'pipeline'), pipeUpdates)
+  }
+
+  return newWfId
+}
+
+const openEditProjectWorkflowSteps = async (proj, wf) => {
+  if (!proj || !wf) return
+  try {
+    const privateWfId = await ensureProjectPrivateWorkflow(proj, wf.id_workflow)
+    await nextTick()
+    openEditWorkflowStepsModal(privateWfId)
+  } catch (err) {
+    console.error('Lỗi khởi tạo Workflow riêng của dự án để chỉnh sửa:', err)
+    showToast('Lỗi mạng khi mở chỉnh sửa Workflow dự án', 'error')
+  }
+}
+
+const initialProjectFormSnapshot = ref('')
+
+const serializeProjectFormSnapshot = (pf) => {
+  if (!pf) return ''
+  return JSON.stringify({
+    ten_du_an: String(pf.ten_du_an || '').trim(),
+    ten_khach_hang: String(pf.ten_khach_hang || '').trim(),
+    ten_cong_ty: String(pf.ten_cong_ty || '').trim(),
+    default_workflow_id: String(pf.default_workflow_id || ''),
+    AM: String(pf.AM || '').trim(),
+    ngan_sach_du_kien: String(pf.ngan_sach_du_kien ?? '').trim(),
+    deadline: String(pf.deadline || '').trim(),
+    trang_thai: String(pf.trang_thai || 'Đang triển khai'),
+    ghi_chu: String(pf.ghi_chu || '').trim(),
+    workflows: Array.isArray(pf.draft_workflows)
+      ? pf.draft_workflows.map((w) => ({
+          id: String(w.id_workflow || ''),
+          name: String(w.name_workflow || '').trim(),
+          src: String(w.source_template_id || '')
+        }))
+      : []
+  })
+}
+
+const isProjectFormDirty = computed(() => {
+  if (!showProjectFormModal.value) return false
+  if ((projectForm.value.temp_materialized_wf_ids || []).length > 0) return true
+  return serializeProjectFormSnapshot(projectForm.value) !== initialProjectFormSnapshot.value
+})
+
+const openEditProjectFormWorkflowSteps = async (wf) => {
+  if (!wf) return
+  if (!projectForm.value.id_project) {
+    projectForm.value.id_project = `PRJ_${Date.now()}`
+  }
+  const projId = projectForm.value.id_project
+  const list = Array.isArray(projectForm.value.draft_workflows) ? [...projectForm.value.draft_workflows] : []
+  const idx = list.findIndex((d) => d.id_workflow === wf.id_workflow)
+  if (idx === -1) return
+
+  const curDraft = list[idx]
+  let realWfId = curDraft.id_workflow
+
+  try {
+    if (
+      curDraft.isPendingClone ||
+      String(curDraft.id_workflow).startsWith('DRAFT_') ||
+      !isProjectPrivateWorkflow(curDraft.id_workflow, projId)
+    ) {
+      const existingNames = list
+        .filter((_, i) => i !== idx)
+        .map((d) => d.name_workflow)
+      const sourceId = curDraft.source_template_id || curDraft.replacedLegacyWfId || curDraft.id_workflow || 'WF_DEFAULT'
+      const { newWfId, finalName, records } = createProjectWorkflowRecordsFromSource({
+        sourceWfId: sourceId,
+        projId,
+        exactName: curDraft.name_workflow,
+        existingNames
+      })
+
+      workflowsData.value = [...workflowsData.value, ...records]
+      const wfUpdates = {}
+      records.forEach((rec) => {
+        wfUpdates[sanitizeFirebaseKey(rec.id_status_workflow)] = rec
+      })
+      await update(dbRef(database, 'pipeline_workflow'), wfUpdates)
+
+      const prevId = curDraft.id_workflow
+      realWfId = newWfId
+      list[idx] = {
+        ...curDraft,
+        id_workflow: newWfId,
+        name_workflow: finalName,
+        isPendingClone: false,
+        _hasLocalRename: false
+      }
+      projectForm.value.draft_workflows = list
+      if (projectForm.value.default_workflow_id === prevId) {
+        projectForm.value.default_workflow_id = newWfId
+      }
+      const tempIds = Array.isArray(projectForm.value.temp_materialized_wf_ids)
+        ? projectForm.value.temp_materialized_wf_ids
+        : []
+      if (!tempIds.includes(newWfId)) {
+        projectForm.value.temp_materialized_wf_ids = [...tempIds, newWfId]
+      }
+    }
+
+    await nextTick()
+    openEditWorkflowStepsModal(realWfId)
+  } catch (err) {
+    console.error('Lỗi khởi tạo Workflow nháp của dự án:', err)
+    showToast('Lỗi mạng khi mở chỉnh sửa các bước Workflow', 'error')
+  }
+}
+
+const forceCloseProjectFormModal = async () => {
+  const tempIds = Array.isArray(projectForm.value.temp_materialized_wf_ids)
+    ? [...projectForm.value.temp_materialized_wf_ids]
+    : []
+  projectForm.value.temp_materialized_wf_ids = []
+  initialProjectFormSnapshot.value = ''
+  showProjectFormModal.value = false
+
+  if (tempIds.length > 0) {
+    const tempSet = new Set(tempIds)
+    const wfCleanup = {}
+    workflowsData.value.forEach((row) => {
+      if (tempSet.has(row.id_workflow)) {
+        wfCleanup[sanitizeFirebaseKey(row.id_status_workflow)] = null
+      }
+    })
+    workflowsData.value = workflowsData.value.filter((row) => !tempSet.has(row.id_workflow))
+    if (Object.keys(wfCleanup).length > 0) {
+      try {
+        await update(dbRef(database, 'pipeline_workflow'), wfCleanup)
+      } catch (err) {
+        console.error('Lỗi dọn Workflow nháp khi đóng form Dự án:', err)
+      }
+    }
+  }
+  return true
+}
+
+const closeProjectFormModal = async () => {
+  if (isProjectFormDirty.value) {
+    const targetLabel =
+      String(projectForm.value.ten_du_an || '').trim() ||
+      (isEditingProject.value ? 'Cập nhật Dự án' : 'Dự án mới chưa lưu')
+    const ok = await askConfirm({
+      title: 'Thoát khi chưa lưu Dự Án?',
+      targetTag: 'THAY ĐỔI CHƯA LƯU',
+      targetValue: targetLabel,
+      message: 'Bạn đang có các thay đổi thông tin hoặc danh sách Workflow của Dự án chưa được lưu. Nếu thoát bây giờ, các thay đổi vừa thực hiện sẽ bị hủy bỏ.',
+      tone: 'warning',
+      confirmText: 'Bỏ thay đổi & Thoát',
+      cancelText: 'Ở lại tiếp tục'
+    })
+    if (!ok) return false
+  }
+  return await forceCloseProjectFormModal()
+}
 
 watch(
   () => [projectForm.value.ten_khach_hang, projectForm.value.ten_cong_ty],
@@ -9977,11 +10811,14 @@ const buildCorrespondingWorkflowsForEntity = (entity = {}, childPipes = [], opti
     if (!seenIds.has(wfId) && wfId !== 'WF_DEFAULT' && !excludedSet.has(wfId)) {
       seenIds.add(wfId)
       const meta = uniqueWorkflows.value.find((w) => w.id_workflow === wfId)
+      const isPrivate = meta?.workflow_scope === 'project'
       rawEntries.push({
         id_workflow: wfId,
         name_workflow: meta?.name_workflow || wfId,
-        scopeType: 'blueprint',
-        scopeLabel: 'Workflow',
+        source_template_id: meta?.source_template_id || '',
+        source_template_name: meta?.source_template_name || '',
+        scopeType: isPrivate ? 'project_private' : 'blueprint',
+        scopeLabel: isPrivate ? 'Workflow dự án' : 'Workflow',
         tone: 'sky',
         isExplicitlyLinked: true,
         ten_cong_ty: '',
@@ -9996,11 +10833,14 @@ const buildCorrespondingWorkflowsForEntity = (entity = {}, childPipes = [], opti
     if (!seenIds.has(wfId) && wfId !== 'WF_DEFAULT') {
       seenIds.add(wfId)
       const meta = uniqueWorkflows.value.find((w) => w.id_workflow === wfId)
+      const isPrivate = meta?.workflow_scope === 'project'
       rawEntries.push({
         id_workflow: wfId,
         name_workflow: meta?.name_workflow || wfId,
-        scopeType: 'blueprint',
-        scopeLabel: 'Đang có công việc',
+        source_template_id: meta?.source_template_id || '',
+        source_template_name: meta?.source_template_name || '',
+        scopeType: isPrivate ? 'project_private' : 'blueprint',
+        scopeLabel: isPrivate ? 'Workflow dự án' : 'Đang có công việc',
         tone: 'sky',
         isExplicitlyLinked: false,
         ten_cong_ty: '',
@@ -10010,7 +10850,7 @@ const buildCorrespondingWorkflowsForEntity = (entity = {}, childPipes = [], opti
     }
   })
 
-  // 3. System Standard Workflow
+  // 3. System Standard Workflow (Legacy untouched DB projects — isolated from Kho renames)
   const isDefaultExplicitlyLinked = effectiveExplicitIds.includes('WF_DEFAULT')
   const isDefaultExcluded = excludedSet.has('WF_DEFAULT')
   const shouldIncludeStandard =
@@ -10023,9 +10863,13 @@ const buildCorrespondingWorkflowsForEntity = (entity = {}, childPipes = [], opti
 
   if (shouldIncludeStandard) {
     seenIds.add('WF_DEFAULT')
+    const customDefaultName = String(entity?.workflow_custom_names?.WF_DEFAULT || '').trim()
     rawEntries.push({
       id_workflow: 'WF_DEFAULT',
-      name_workflow: 'Workflow Chuẩn Hệ Thống',
+      name_workflow: customDefaultName || DEFAULT_SYSTEM_WORKFLOW_NAME,
+      source_template_id: 'WF_DEFAULT',
+      source_template_name: DEFAULT_SYSTEM_WORKFLOW_NAME,
+      hasCustomProjectName: Boolean(customDefaultName),
       scopeType: 'standard',
       scopeLabel: 'Workflow chuẩn',
       tone: 'sky',
@@ -10088,21 +10932,40 @@ const hasProjectModalCustomer = computed(() =>
 )
 
 const projectModalSelectedWorkflows = computed(() => {
-  const existingChildPipes =
-    isEditingProject.value && projectForm.value.id_project
-      ? items.value.filter((i) => i.id_project === projectForm.value.id_project)
-      : []
-  const explicitIds = normalizeLinkedWorkflowIds(projectForm.value.linked_workflow_ids)
-  return buildCorrespondingWorkflowsForEntity(projectForm.value, existingChildPipes, {
-    skipAutoStandardFallback:
-      !isEditingProject.value &&
-      explicitIds.length === 0 &&
-      !projectForm.value.default_workflow_id
+  const drafts = Array.isArray(projectForm.value.draft_workflows) ? projectForm.value.draft_workflows : []
+  const visibleDrafts = drafts.filter((d) => {
+    if (d.isPendingClone || String(d.id_workflow).startsWith('DRAFT_') || d.id_workflow === 'WF_DEFAULT') return true
+    if (loading.value) return true
+    return uniqueWorkflows.value.some((u) => u.id_workflow === d.id_workflow)
+  })
+  const prefId =
+    projectForm.value.default_workflow_id && visibleDrafts.some((d) => d.id_workflow === projectForm.value.default_workflow_id)
+      ? projectForm.value.default_workflow_id
+      : visibleDrafts[0]?.id_workflow || ''
+
+  return visibleDrafts.map((d) => {
+    const isMaterialized = !d.isPendingClone && !String(d.id_workflow).startsWith('DRAFT_')
+    const liveMeta = isMaterialized ? uniqueWorkflows.value.find((u) => u.id_workflow === d.id_workflow) : null
+    const sourceForSteps = isMaterialized ? d.id_workflow : d.source_template_id || 'WF_DEFAULT'
+    const cols = getColumnsForWorkflow(sourceForSteps).filter(
+      (c) => c.id !== 'hoan_thanh' && c.id !== 'that_bai'
+    )
+    const resolvedName =
+      isMaterialized && !d._hasLocalRename && liveMeta?.name_workflow
+        ? liveMeta.name_workflow
+        : d.name_workflow || DEFAULT_SYSTEM_WORKFLOW_NAME
+
+    return {
+      ...d,
+      name_workflow: resolvedName,
+      isPreferred: d.id_workflow === prefId,
+      flowSteps: cols.length > 0 ? cols : d.flowSteps || []
+    }
   })
 })
 
 const projectFormAllSelectableWorkflows = computed(() => {
-  const selectedSet = new Set(projectModalSelectedWorkflows.value.map((w) => w.id_workflow))
+  const drafts = projectModalSelectedWorkflows.value
   const kwRaw = projectFormWfSearch.value.trim().toLowerCase()
   const kwNorm = normFilterKey(projectFormWfSearch.value)
 
@@ -10119,37 +10982,76 @@ const projectFormAllSelectableWorkflows = computed(() => {
           (kwNorm && normFilterKey(txt).includes(kwNorm))
       )
     })
-    .map((wf) => ({
-      ...wf,
-      isSelectedInForm: selectedSet.has(wf.id_workflow)
-    }))
+    .map((wf) => {
+      const addedCount = drafts.filter((d) => {
+        if (d.source_template_id === wf.id_workflow || d.id_workflow === wf.id_workflow) return true
+        const meta = uniqueWorkflows.value.find((u) => u.id_workflow === d.id_workflow)
+        return meta?.source_template_id === wf.id_workflow
+      }).length
+      return {
+        ...wf,
+        addedCount,
+        isSelectedInForm: addedCount > 0
+      }
+    })
 })
 
-const toggleProjectFormWorkflow = (wfId) => {
-  if (!wfId) return
-  const selectedSet = new Set(projectModalSelectedWorkflows.value.map((w) => w.id_workflow))
-  const curLinked = normalizeLinkedWorkflowIds(projectForm.value.linked_workflow_ids)
-  const curExcluded = normalizeLinkedWorkflowIds(projectForm.value.excluded_workflow_ids)
+let projectDraftWfSeq = 0
+const addWorkflowToProjectForm = (wf) => {
+  if (!wf || !wf.id_workflow) return
+  projectDraftWfSeq += 1
+  const curList = Array.isArray(projectForm.value.draft_workflows) ? [...projectForm.value.draft_workflows] : []
+  const existingNames = projectModalSelectedWorkflows.value.map((d) => d.name_workflow)
+  const baseName =
+    wf.id_workflow === 'WF_DEFAULT'
+      ? defaultWorkflowName.value || DEFAULT_SYSTEM_WORKFLOW_NAME
+      : wf.name_workflow || wf.id_workflow
+  const disambiguatedName = disambiguateWorkflowName(baseName, existingNames)
+  const draftId = `DRAFT_${Date.now().toString(36)}_${projectDraftWfSeq}`
 
-  if (selectedSet.has(wfId)) {
-    projectForm.value.linked_workflow_ids = curLinked.filter((id) => id !== wfId)
-    if (wfId === 'WF_DEFAULT' && !curExcluded.includes('WF_DEFAULT')) {
-      projectForm.value.excluded_workflow_ids = [...curExcluded, 'WF_DEFAULT']
-    }
-    if (projectForm.value.default_workflow_id === wfId) {
-      const remaining = projectModalSelectedWorkflows.value
-        .filter((w) => w.id_workflow !== wfId)
-        .map((w) => w.id_workflow)
-      projectForm.value.default_workflow_id = remaining[0] || ''
-    }
-  } else {
-    projectForm.value.excluded_workflow_ids = curExcluded.filter((id) => id !== wfId)
-    if (!curLinked.includes(wfId)) {
-      projectForm.value.linked_workflow_ids = [...curLinked, wfId]
-    }
-    if (!projectForm.value.default_workflow_id) {
-      projectForm.value.default_workflow_id = wfId
-    }
+  curList.push({
+    id_workflow: draftId,
+    isPendingClone: true,
+    replacedLegacyWfId: '',
+    source_template_id: wf.id_workflow,
+    name_workflow: disambiguatedName,
+    _hasLocalRename: false,
+    pipeCount: 0,
+    flowSteps: wf.flowSteps || []
+  })
+  projectForm.value.draft_workflows = curList
+  if (!projectForm.value.default_workflow_id) {
+    projectForm.value.default_workflow_id = draftId
+  }
+}
+
+const removeProjectFormWorkflow = async (wfId) => {
+  if (!wfId) return
+  const curList = Array.isArray(projectForm.value.draft_workflows) ? projectForm.value.draft_workflows : []
+  const targetWf =
+    projectModalSelectedWorkflows.value.find((w) => w.id_workflow === wfId) ||
+    curList.find((d) => d.id_workflow === wfId)
+  if (!targetWf) return
+
+  const pipeCnt = Number(targetWf.pipeCount || 0)
+  const ok = await askConfirm({
+    title: 'Bỏ Workflow khỏi Dự án?',
+    targetTag: 'WORKFLOW TRONG DỰ ÁN',
+    targetValue: targetWf.name_workflow || DEFAULT_SYSTEM_WORKFLOW_NAME,
+    message:
+      pipeCnt > 0
+        ? `Workflow này đang có ${pipeCnt} công việc trong dự án. Nếu bỏ Workflow này và nhấn Lưu Cập Nhật, toàn bộ ${pipeCnt} công việc bên trong cũng sẽ bị xóa vĩnh viễn (không chuyển sang Workflow khác).`
+        : 'Bạn có chắc chắn muốn bỏ Workflow này khỏi danh sách chọn của dự án không?',
+    tone: 'danger',
+    confirmText: pipeCnt > 0 ? `Bỏ & xóa ${pipeCnt} việc khi lưu` : 'Bỏ khỏi Dự án',
+    cancelText: 'Hủy'
+  })
+  if (!ok) return
+
+  const nextList = curList.filter((d) => d.id_workflow !== wfId)
+  projectForm.value.draft_workflows = nextList
+  if (projectForm.value.default_workflow_id === wfId) {
+    projectForm.value.default_workflow_id = nextList[0]?.id_workflow || ''
   }
 }
 
@@ -10396,7 +11298,9 @@ const activeProjProjectFilterLabel = computed(() => {
 
 const activeProjWorkflowFilterLabel = computed(() => {
   if (!projectFilter.value.workflowId) return 'Tất cả Khung'
-  if (projectFilter.value.workflowId === 'WF_DEFAULT') return 'Workflow Chuẩn Hệ Thống'
+  if (projectFilter.value.workflowId === 'WF_DEFAULT') {
+    return getWorkflowDisplayNameForProject(projectFilter.value.projectId || null, 'WF_DEFAULT')
+  }
   const found = uniqueWorkflows.value.find((w) => w.id_workflow === projectFilter.value.workflowId)
   return found ? found.name_workflow : projectFilter.value.workflowId
 })
@@ -10621,6 +11525,7 @@ const isProjectOverdue = (proj) => {
 
 const getProjWfScopeBadge = (wf) => {
   if (!wf) return { label: 'Chuẩn', cls: 'is-slate' }
+  if (wf.scopeType === 'project_private') return { label: 'Riêng DA', cls: 'is-sky' }
   if (wf.scopeType === 'company_custom') return { label: 'KH Gốc', cls: 'is-emerald' }
   if (wf.scopeType === 'partner_custom') return { label: 'Đối tác', cls: 'is-amber' }
   if (wf.scopeType === 'blueprint') return { label: 'Mẫu', cls: 'is-sky' }
@@ -10806,27 +11711,57 @@ const scopedProjectHub = computed(() => {
   return buildHubFromPipes(filteredProjectDetailPipelines.value)
 })
 
+const getTemplateCopyCountInProject = (proj, templateWfId) => {
+  if (!proj || !templateWfId) return 0
+  const enriched = proj.correspondingWorkflows ? proj : buildEnrichedProject(proj)
+  return (enriched.correspondingWorkflows || []).filter((w) => {
+    if (w.id_workflow === templateWfId) return true
+    if (w.source_template_id === templateWfId) return true
+    const meta = uniqueWorkflows.value.find((u) => u.id_workflow === w.id_workflow)
+    return meta?.source_template_id === templateWfId
+  }).length
+}
+
+const highlightProjectWorkflowCard = (projId, wfId) => {
+  if (!projId || !wfId) return
+  if (highlightedProjWfTimer) {
+    clearTimeout(highlightedProjWfTimer)
+    highlightedProjWfTimer = null
+  }
+  highlightedProjWfKey.value = ''
+  nextTick(() => {
+    const key = `${projId}::${wfId}`
+    highlightedProjWfKey.value = key
+    if (typeof document !== 'undefined') {
+      const domEl = document.getElementById(`proj-wf-card-${projId}-${wfId}`)
+      if (domEl && typeof domEl.scrollIntoView === 'function') {
+        domEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      }
+    }
+    highlightedProjWfTimer = setTimeout(() => {
+      if (highlightedProjWfKey.value === key) {
+        highlightedProjWfKey.value = ''
+      }
+    }, 2800)
+  })
+}
+
 const attachableWorkflowsForProject = computed(() => {
   const detail = activeProjectDetail.value
   if (!detail) return []
-  const explicitSet = new Set(
-    (detail.correspondingWorkflows || [])
-      .filter((w) => w.isExplicitlyLinked)
-      .map((w) => w.id_workflow)
-  )
   const kw = manageWfSearch.value.trim().toLowerCase()
 
   const baseCandidates = [
     {
       id_workflow: 'WF_DEFAULT',
-      name_workflow: 'Workflow Chuẩn Hệ Thống',
+      name_workflow: defaultWorkflowName.value || DEFAULT_SYSTEM_WORKFLOW_NAME,
       stepCount: 5,
-      isLinkedToProject: explicitSet.has('WF_DEFAULT')
+      addedCount: getTemplateCopyCountInProject(detail, 'WF_DEFAULT')
     },
-    ...customWorkflowOptions.value.map((wf) => ({
+    ...templateWorkflowOptions.value.map((wf) => ({
       ...wf,
       stepCount: workflowsData.value.filter((r) => r.id_workflow === wf.id_workflow).length,
-      isLinkedToProject: explicitSet.has(wf.id_workflow)
+      addedCount: getTemplateCopyCountInProject(detail, wf.id_workflow)
     }))
   ]
 
@@ -10843,36 +11778,60 @@ const attachWorkflowToProject = async (proj, wfId) => {
   const targetIdx = projectsList.value.findIndex((p) => p.id_project === proj.id_project)
   if (targetIdx === -1) return
 
-  const curProj = projectsList.value[targetIdx]
-  const curLinked = normalizeLinkedWorkflowIds(curProj.linked_workflow_ids)
-  const curExcluded = normalizeLinkedWorkflowIds(curProj.excluded_workflow_ids)
-  const nextExcluded = curExcluded.filter((id) => id !== wfId)
-  const nextIds = curLinked.includes(wfId) ? curLinked : [...curLinked, wfId]
-
-  if (nextIds.length === curLinked.length && nextExcluded.length === curExcluded.length) {
-    ensureProjectCardExpanded(proj.id_project)
-    return
-  }
-
-  const nowStr = getCurrentFormattedTime()
-  projectsList.value[targetIdx] = {
-    ...curProj,
-    linked_workflow_ids: nextIds,
-    excluded_workflow_ids: nextExcluded,
-    last_updated: nowStr
-  }
-  ensureProjectCardExpanded(proj.id_project)
-
   try {
-    await update(dbRef(database, `pipeline_projects/${sanitizeFirebaseKey(proj.id_project)}`), {
+    // Materialize any implicit/legacy workflows on this project first so existing flows never disappear or get renamed by Kho
+    const preEnriched = buildEnrichedProject(projectsList.value[targetIdx])
+    const legacyList = (preEnriched.correspondingWorkflows || []).filter(
+      (w) => !isProjectPrivateWorkflow(w.id_workflow, proj.id_project)
+    )
+    for (const legWf of legacyList) {
+      await ensureProjectPrivateWorkflow(projectsList.value[targetIdx], legWf.id_workflow)
+    }
+
+    const curProj = projectsList.value[targetIdx]
+    const curEnriched = buildEnrichedProject(curProj)
+    const existingNames = (curEnriched.correspondingWorkflows || []).map((w) => w.name_workflow)
+
+    const { newWfId, finalName, records } = createProjectWorkflowRecordsFromSource({
+      sourceWfId: wfId,
+      projId: curProj.id_project,
+      existingNames
+    })
+
+    workflowsData.value = [...workflowsData.value, ...records]
+
+    const curLinked = normalizeLinkedWorkflowIds(curProj.linked_workflow_ids)
+    const nextIds = [...curLinked, newWfId]
+    const curExcluded = normalizeLinkedWorkflowIds(curProj.excluded_workflow_ids)
+    const nextExcluded = curExcluded.includes('WF_DEFAULT') ? curExcluded : [...curExcluded, 'WF_DEFAULT']
+    const nextDefault = curProj.default_workflow_id || newWfId
+    const nowStr = getCurrentFormattedTime()
+
+    projectsList.value[targetIdx] = {
+      ...curProj,
       linked_workflow_ids: nextIds,
       excluded_workflow_ids: nextExcluded,
+      default_workflow_id: nextDefault,
+      last_updated: nowStr
+    }
+    ensureProjectCardExpanded(curProj.id_project)
+    highlightProjectWorkflowCard(curProj.id_project, newWfId)
+
+    const wfUpdates = {}
+    records.forEach((rec) => {
+      wfUpdates[sanitizeFirebaseKey(rec.id_status_workflow)] = rec
+    })
+    await update(dbRef(database, 'pipeline_workflow'), wfUpdates)
+    await update(dbRef(database, `pipeline_projects/${sanitizeFirebaseKey(curProj.id_project)}`), {
+      linked_workflow_ids: nextIds,
+      excluded_workflow_ids: nextExcluded,
+      default_workflow_id: nextDefault,
       last_updated: nowStr
     })
-    showToast('Đã thêm Workflow vào Dự án!', 'success')
+    showToast(`Đã tạo bản riêng "${finalName}" trong dự án "${curProj.ten_du_an}"!`, 'success')
   } catch (err) {
     console.error('Lỗi gắn workflow vào dự án:', err)
-    showToast('Lỗi mạng khi gắn Workflow', 'error')
+    showToast('Lỗi mạng khi gắn Workflow vào Dự án', 'error')
     fetchData()
   }
 }
@@ -10886,12 +11845,45 @@ const detachWorkflowFromProject = async (proj, wfId) => {
   const curLinked = normalizeLinkedWorkflowIds(curProj.linked_workflow_ids)
   const curExcluded = normalizeLinkedWorkflowIds(curProj.excluded_workflow_ids)
   const nextIds = curLinked.filter((id) => id !== wfId)
-  const nextExcluded =
-    wfId === 'WF_DEFAULT' && !curExcluded.includes('WF_DEFAULT')
-      ? [...curExcluded, 'WF_DEFAULT']
-      : curExcluded
+  const nextExcluded = curExcluded.includes('WF_DEFAULT') ? curExcluded : [...curExcluded, 'WF_DEFAULT']
   const nowStr = getCurrentFormattedTime()
-  const nextDefault = curProj.default_workflow_id === wfId ? '' : curProj.default_workflow_id
+  const nextDefault = curProj.default_workflow_id === wfId ? nextIds[0] || '' : curProj.default_workflow_id
+
+  const wasPrivate = isProjectPrivateWorkflow(wfId, curProj.id_project)
+  const wfDeletes = {}
+  if (wasPrivate) {
+    workflowsData.value.forEach((row) => {
+      if (row.id_workflow === wfId) {
+        wfDeletes[sanitizeFirebaseKey(row.id_status_workflow)] = null
+      }
+    })
+    workflowsData.value = workflowsData.value.filter((row) => row.id_workflow !== wfId)
+  }
+
+  const fallbackWfId = nextDefault || nextIds[0] || ''
+
+  const pipeDeletes = {}
+  const deletedPipeEntries = []
+  const deletedPipeIdSet = new Set()
+  items.value.forEach((it) => {
+    if (it.id_project !== curProj.id_project) return
+    const effWf =
+      String(it.id_workflow || '').trim() ||
+      (defaultCoreStageIdSet.has(String(it.id_status_workflow || '').trim()) ? 'WF_DEFAULT' : '')
+    if (effWf !== wfId && !(wfId === 'WF_DEFAULT' && !effWf)) return
+
+    const pk = sanitizeFirebaseKey(it.Id_pipeline)
+    pipeDeletes[pk] = null
+    deletedPipeIdSet.add(it.Id_pipeline)
+    deletedPipeEntries.push({
+      pipeId: it.Id_pipeline,
+      reportId: String(it.report_id || ''),
+      qlfId: String(it.id_quanlyfile || '')
+    })
+  })
+  if (deletedPipeIdSet.size > 0) {
+    items.value = items.value.filter((it) => !deletedPipeIdSet.has(it.Id_pipeline))
+  }
 
   projectsList.value[targetIdx] = {
     ...curProj,
@@ -10904,6 +11896,13 @@ const detachWorkflowFromProject = async (proj, wfId) => {
   if (projectDetailWfFilter.value === wfId) {
     projectDetailWfFilter.value = 'ALL'
   }
+  if (filterConfig.value.projectId === curProj.id_project) {
+    const nextKanbanWf = fallbackWfId || 'WF_DEFAULT'
+    if (filterConfig.value.workflowId === wfId) filterConfig.value.workflowId = nextKanbanWf
+    if (selectedWorkflowId.value === wfId) selectedWorkflowId.value = nextKanbanWf
+  }
+
+  distributeItems()
 
   try {
     await update(dbRef(database, `pipeline_projects/${sanitizeFirebaseKey(proj.id_project)}`), {
@@ -10912,7 +11911,26 @@ const detachWorkflowFromProject = async (proj, wfId) => {
       default_workflow_id: nextDefault,
       last_updated: nowStr
     })
-    showToast('Đã gỡ Workflow khỏi Dự án', 'info')
+    if (Object.keys(wfDeletes).length > 0) {
+      await update(dbRef(database, 'pipeline_workflow'), wfDeletes)
+    }
+    if (Object.keys(pipeDeletes).length > 0) {
+      await update(dbRef(database, 'pipeline'), pipeDeletes)
+      await Promise.all(
+        deletedPipeEntries.map((d) =>
+          Promise.all([
+            syncLinkRefsFirebase(d.reportId, '', d.pipeId),
+            syncQuanLyFileRefsFirebase(d.qlfId, '', d.pipeId)
+          ])
+        )
+      )
+    }
+    showToast(
+      deletedPipeEntries.length > 0
+        ? `Đã xóa Workflow và ${deletedPipeEntries.length} công việc bên trong!`
+        : 'Đã xóa Workflow khỏi Dự án',
+      'info'
+    )
   } catch (err) {
     console.error('Lỗi gỡ workflow khỏi dự án:', err)
     showToast('Lỗi mạng khi gỡ Workflow', 'error')
@@ -10968,10 +11986,6 @@ const confirmAttachWfToSelectedProject = async (proj) => {
   if (!proj || !attachingWorkflowTarget.value) return
   const wfId = attachingWorkflowTarget.value.id_workflow
   closeAttachWfToProjectModal()
-  if (isWorkflowAlreadyInProject(proj, wfId)) {
-    triggerHighlightDuplicateProjWorkflow(proj, wfId)
-    return
-  }
   await attachWorkflowToProject(proj, wfId)
 }
 
@@ -10991,14 +12005,14 @@ const paletteWorkflowList = computed(() => {
   const defaultCoreSteps = defaultCols.filter((c) => c.id !== 'hoan_thanh' && c.id !== 'that_bai')
   const systemStandardEntry = {
     id_workflow: 'WF_DEFAULT',
-    name_workflow: 'Workflow Chuẩn Hệ Thống',
+    name_workflow: defaultWorkflowName.value || DEFAULT_SYSTEM_WORKFLOW_NAME,
     workflow_scope: 'template',
     displayCompanyName: '',
     displayCustomerName: '',
     flowSteps: defaultCoreSteps.length > 0 ? defaultCoreSteps : defaultCols
   }
 
-  return [systemStandardEntry, ...customWorkflowOptions.value.map(buildPaletteWfEntry)]
+  return [systemStandardEntry, ...templateWorkflowOptions.value.map(buildPaletteWfEntry)]
 })
 
 const paletteTotalCount = computed(() => paletteWorkflowList.value.length)
@@ -11012,46 +12026,6 @@ const filteredPaletteWorkflows = computed(() => {
       (w.flowSteps || []).some((st) => (st.value || st.label || '').toLowerCase().includes(kw))
   )
 })
-
-const isWorkflowAlreadyInProject = (proj, wfId) => {
-  if (!proj || !wfId) return false
-  return (proj.correspondingWorkflows || []).some((w) => w.id_workflow === wfId)
-}
-
-const triggerHighlightDuplicateProjWorkflow = (proj, wfId) => {
-  if (!proj || !wfId) return
-  ensureProjectCardExpanded(proj.id_project)
-  const matchedWf =
-    (proj.correspondingWorkflows || []).find((w) => w.id_workflow === wfId) ||
-    uniqueWorkflows.value.find((w) => w.id_workflow === wfId)
-  const wfLabel =
-    matchedWf?.name_workflow ||
-    (wfId === 'WF_DEFAULT' ? 'Workflow Chuẩn Hệ Thống' : wfId)
-
-  showToast(`Dự án "${proj.ten_du_an}" đã có sẵn Workflow "${wfLabel}"!`, 'warning', 3200)
-
-  if (highlightedProjWfTimer) {
-    clearTimeout(highlightedProjWfTimer)
-    highlightedProjWfTimer = null
-  }
-
-  highlightedProjWfKey.value = ''
-  nextTick(() => {
-    const key = `${proj.id_project}::${wfId}`
-    highlightedProjWfKey.value = key
-    if (typeof document !== 'undefined') {
-      const domEl = document.getElementById(`proj-wf-card-${proj.id_project}-${wfId}`)
-      if (domEl && typeof domEl.scrollIntoView === 'function') {
-        domEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-      }
-    }
-    highlightedProjWfTimer = setTimeout(() => {
-      if (highlightedProjWfKey.value === key) {
-        highlightedProjWfKey.value = ''
-      }
-    }, 2800)
-  })
-}
 
 const onPaletteWfDragStart = (event, wf) => {
   draggingWorkflow.value = wf
@@ -11102,27 +12076,24 @@ const onProjectDrop = async (event, proj) => {
   draggingWorkflow.value = null
   if (!wfId || !proj) return
 
-  if (isWorkflowAlreadyInProject(proj, wfId)) {
-    triggerHighlightDuplicateProjWorkflow(proj, wfId)
-    return
-  }
   await attachWorkflowToProject(proj, wfId)
 }
 
 const handleQuickDetachFlowFromCard = async (proj, wf) => {
   if (!proj || !wf) return
-  if (wf.pipeCount > 0) {
-    const ok = await askConfirm({
-      title: 'Gỡ Workflow khỏi Dự án?',
-      targetTag: 'WORKFLOW',
-      targetValue: wf.name_workflow,
-      message: `Workflow này đang có ${wf.pipeCount} công việc thuộc dự án "${proj.ten_du_an}". Nếu gỡ liên kết, Workflow vẫn còn hiển thị khi còn công việc gắn với dự án.`,
-      tone: 'warning',
-      confirmText: 'Vẫn gỡ liên kết',
-      cancelText: 'Hủy'
-    })
-    if (!ok) return
-  }
+  const ok = await askConfirm({
+    title: 'Xóa Workflow khỏi Dự án?',
+    targetTag: 'WORKFLOW DỰ ÁN',
+    targetValue: wf.name_workflow,
+    message:
+      wf.pipeCount > 0
+        ? `Workflow này đang có ${wf.pipeCount} công việc thuộc dự án "${proj.ten_du_an}". Nếu xóa Workflow này, toàn bộ ${wf.pipeCount} công việc bên trong cũng sẽ bị xóa vĩnh viễn (không chuyển sang Workflow khác).`
+        : `Bạn có chắc chắn muốn xóa vĩnh viễn Workflow riêng "${wf.name_workflow}" khỏi dự án "${proj.ten_du_an}" không?`,
+    tone: 'danger',
+    confirmText: wf.pipeCount > 0 ? `Xóa Workflow & ${wf.pipeCount} việc` : 'Xóa khỏi Dự án',
+    cancelText: 'Hủy'
+  })
+  if (!ok) return
   await detachWorkflowFromProject(proj, wf.id_workflow)
 }
 
@@ -11205,8 +12176,12 @@ const openAddProjectModal = (prefillCustomer = null) => {
     ten_cong_ty: initCustomer?.ten_cong_ty || '',
     default_workflow_id: '',
     linked_workflow_ids: [],
-    excluded_workflow_ids: []
+    excluded_workflow_ids: [],
+    workflow_custom_names: {},
+    draft_workflows: [],
+    temp_materialized_wf_ids: []
   }
+  initialProjectFormSnapshot.value = serializeProjectFormSnapshot(projectForm.value)
   showProjectFormModal.value = true
 }
 
@@ -11214,6 +12189,29 @@ const openEditProjectModal = (proj) => {
   isEditingProject.value = true
   projectFormWfSearch.value = ''
   const resolvedCus = resolveCompleteCustomerPair(proj)
+  const enrichedProj =
+    allEnrichedProjects.value.find((p) => p.id_project === proj.id_project) ||
+    buildEnrichedProject(proj)
+
+  const draftWfs = (enrichedProj.correspondingWorkflows || []).map((cw) => {
+    const alreadyPrivate = isProjectPrivateWorkflow(cw.id_workflow, proj.id_project)
+    return {
+      id_workflow: cw.id_workflow,
+      isPendingClone: !alreadyPrivate,
+      replacedLegacyWfId: !alreadyPrivate ? cw.id_workflow : '',
+      source_template_id: cw.source_template_id || (alreadyPrivate ? '' : cw.id_workflow),
+      name_workflow: cw.name_workflow || DEFAULT_SYSTEM_WORKFLOW_NAME,
+      _hasLocalRename: false,
+      pipeCount: cw.pipeCount || 0,
+      flowSteps: cw.flowSteps || []
+    }
+  })
+
+  const initDefWf =
+    proj.default_workflow_id && draftWfs.some((d) => d.id_workflow === proj.default_workflow_id)
+      ? proj.default_workflow_id
+      : draftWfs[0]?.id_workflow || ''
+
   projectForm.value = {
     id_project: proj.id_project,
     ma_du_an: proj.ma_du_an || '',
@@ -11222,9 +12220,12 @@ const openEditProjectModal = (proj) => {
     ten_khach_hang: resolvedCus.ten_khach_hang || proj.ten_khach_hang || '',
     ma_cong_ty: proj.ma_cong_ty || '',
     ten_cong_ty: resolvedCus.ten_cong_ty || proj.ten_cong_ty || '',
-    default_workflow_id: proj.default_workflow_id || '',
+    default_workflow_id: initDefWf,
     linked_workflow_ids: normalizeLinkedWorkflowIds(proj.linked_workflow_ids),
     excluded_workflow_ids: normalizeLinkedWorkflowIds(proj.excluded_workflow_ids),
+    workflow_custom_names: normalizeWorkflowCustomNames(proj.workflow_custom_names),
+    draft_workflows: draftWfs,
+    temp_materialized_wf_ids: [],
     AM: proj.AM || 'Sơn',
     ngan_sach_du_kien: proj.ngan_sach_du_kien ?? '',
     deadline: proj.deadline || '',
@@ -11232,6 +12233,7 @@ const openEditProjectModal = (proj) => {
     ghi_chu: proj.ghi_chu || '',
     created_time: proj.created_time || ''
   }
+  initialProjectFormSnapshot.value = serializeProjectFormSnapshot(projectForm.value)
   showProjectFormModal.value = true
 }
 
@@ -11260,11 +12262,126 @@ const saveProjectForm = async () => {
 
   const nowStr = getCurrentFormattedTime()
   const isEdit = isEditingProject.value
-  const idProj = isEdit ? projectForm.value.id_project : `PRJ_${Date.now()}`
+  const idProj = projectForm.value.id_project || `PRJ_${Date.now()}`
+  const existingProjObj = isEdit ? projectsList.value.find((p) => p.id_project === idProj) || null : null
   const autoCode = `DA-${new Date().getFullYear()}-${String(projectsList.value.length + 1).padStart(3, '0')}`
 
   const maCT = genMaCT(tenCongTy)
   const maKH = projectForm.value.ma_khach_hang || genMaKH(tenKhachHang, tenCongTy)
+
+  let drafts = Array.isArray(projectForm.value.draft_workflows) ? [...projectForm.value.draft_workflows] : []
+  if (!isEdit && drafts.length === 0) {
+    drafts = [
+      {
+        id_workflow: `DRAFT_AUTO_${Date.now()}`,
+        isPendingClone: true,
+        replacedLegacyWfId: '',
+        source_template_id: 'WF_DEFAULT',
+        name_workflow: defaultWorkflowName.value || DEFAULT_SYSTEM_WORKFLOW_NAME,
+        _hasLocalRename: false,
+        pipeCount: 0,
+        flowSteps: []
+      }
+    ]
+  }
+
+  const usedNames = []
+  const finalLinkedIds = []
+  const newWorkflowRecords = []
+  const wfUpdates = {}
+  const legacyReplacements = []
+  const draftIdToFinalId = new Map()
+
+  drafts.forEach((d) => {
+    const isMaterialized =
+      !d.isPendingClone &&
+      !String(d.id_workflow).startsWith('DRAFT_') &&
+      isProjectPrivateWorkflow(d.id_workflow, idProj)
+
+    if (!isMaterialized) {
+      const sourceId = d.source_template_id || d.replacedLegacyWfId || d.id_workflow || 'WF_DEFAULT'
+      const desiredName = d.name_workflow ? disambiguateWorkflowName(d.name_workflow, usedNames) : ''
+      const { newWfId, finalName, records, stepIdMap } = createProjectWorkflowRecordsFromSource({
+        sourceWfId: sourceId,
+        projId: idProj,
+        exactName: desiredName,
+        existingNames: usedNames,
+        fallbackLegacyProj: d.replacedLegacyWfId ? existingProjObj : null
+      })
+      usedNames.push(finalName)
+      finalLinkedIds.push(newWfId)
+      draftIdToFinalId.set(d.id_workflow, newWfId)
+      records.forEach((rec) => {
+        newWorkflowRecords.push(rec)
+        wfUpdates[sanitizeFirebaseKey(rec.id_status_workflow)] = rec
+      })
+      if (d.replacedLegacyWfId) {
+        legacyReplacements.push({
+          oldWfId: d.replacedLegacyWfId,
+          newWfId,
+          records,
+          stepIdMap
+        })
+      }
+    } else {
+      const liveMeta = uniqueWorkflows.value.find((u) => u.id_workflow === d.id_workflow)
+      if (!liveMeta) return
+      const resolvedName = d._hasLocalRename && d.name_workflow ? d.name_workflow : liveMeta.name_workflow
+      usedNames.push(resolvedName)
+      finalLinkedIds.push(d.id_workflow)
+      draftIdToFinalId.set(d.id_workflow, d.id_workflow)
+
+      if (d._hasLocalRename && d.name_workflow) {
+        workflowsData.value = workflowsData.value.map((row) => {
+          if (row.id_workflow !== d.id_workflow) return row
+          const updated = { ...row, name_workflow: d.name_workflow }
+          wfUpdates[sanitizeFirebaseKey(row.id_status_workflow)] = toCleanWorkflowStepRecord(updated)
+          return updated
+        })
+      }
+      if (d.replacedLegacyWfId && d.replacedLegacyWfId !== d.id_workflow) {
+        legacyReplacements.push({
+          oldWfId: d.replacedLegacyWfId,
+          newWfId: d.id_workflow,
+          records: workflowsData.value.filter((r) => r.id_workflow === d.id_workflow),
+          stepIdMap: null
+        })
+      }
+    }
+  })
+
+  if (newWorkflowRecords.length > 0) {
+    workflowsData.value = [...workflowsData.value, ...newWorkflowRecords]
+  }
+
+  // Clean up any removed private workflows (unsaved temp drafts OR deleted existing private flows)
+  const finalLinkedSet = new Set(finalLinkedIds)
+  const removedPrivateIds = new Set()
+  const tempIds = Array.isArray(projectForm.value.temp_materialized_wf_ids)
+    ? projectForm.value.temp_materialized_wf_ids
+    : []
+  tempIds.forEach((tid) => {
+    if (tid && !finalLinkedSet.has(tid)) removedPrivateIds.add(tid)
+  })
+  if (isEdit && existingProjObj) {
+    normalizeLinkedWorkflowIds(existingProjObj.linked_workflow_ids).forEach((oldId) => {
+      if (oldId && !finalLinkedSet.has(oldId) && isProjectPrivateWorkflow(oldId, idProj)) {
+        removedPrivateIds.add(oldId)
+      }
+    })
+  }
+  if (removedPrivateIds.size > 0) {
+    workflowsData.value.forEach((row) => {
+      if (removedPrivateIds.has(row.id_workflow)) {
+        wfUpdates[sanitizeFirebaseKey(row.id_status_workflow)] = null
+      }
+    })
+    workflowsData.value = workflowsData.value.filter((row) => !removedPrivateIds.has(row.id_workflow))
+  }
+
+  const rawPref = String(projectForm.value.default_workflow_id || '')
+  const mappedPref = draftIdToFinalId.get(rawPref) || rawPref
+  const finalDefaultWfId = finalLinkedSet.has(mappedPref) ? mappedPref : finalLinkedIds[0] || ''
 
   const record = {
     id_project: idProj,
@@ -11274,9 +12391,10 @@ const saveProjectForm = async () => {
     ten_khach_hang: tenKhachHang,
     ma_cong_ty: maCT,
     ten_cong_ty: tenCongTy,
-    default_workflow_id: String(projectForm.value.default_workflow_id || ''),
-    linked_workflow_ids: normalizeLinkedWorkflowIds(projectForm.value.linked_workflow_ids),
-    excluded_workflow_ids: normalizeLinkedWorkflowIds(projectForm.value.excluded_workflow_ids),
+    default_workflow_id: finalDefaultWfId,
+    linked_workflow_ids: finalLinkedIds,
+    excluded_workflow_ids: ['WF_DEFAULT'],
+    workflow_custom_names: {},
     AM: String(projectForm.value.AM || 'Sơn').trim(),
     ngan_sach_du_kien: projectForm.value.ngan_sach_du_kien ?? '',
     deadline: String(projectForm.value.deadline || '').trim(),
@@ -11291,6 +12409,7 @@ const saveProjectForm = async () => {
     if (idx !== -1) projectsList.value[idx] = record
   } else {
     projectsList.value.unshift(record)
+    ensureProjectCardExpanded(idProj)
     if (showModal.value) {
       formData.value.id_project = idProj
       formData.value.ten_du_an = record.ten_du_an
@@ -11300,18 +12419,16 @@ const saveProjectForm = async () => {
         formData.value.ma_cong_ty = record.ma_cong_ty
         formData.value.ma_khach_hang = record.ma_khach_hang
       }
-      if (!formData.value.id_workflow || formData.value.id_workflow === 'WF_DEFAULT') {
-        if (record.default_workflow_id) {
-          formData.value.id_workflow = record.default_workflow_id
-          onModalWorkflowChange()
-        } else if (record.linked_workflow_ids?.length > 0) {
-          formData.value.id_workflow = record.linked_workflow_ids[0]
-          onModalWorkflowChange()
-        }
+      const nextModalWf = record.default_workflow_id || record.linked_workflow_ids?.[0] || ''
+      if (nextModalWf) {
+        formData.value.id_workflow = nextModalWf
+        onModalWorkflowChange()
       }
     }
   }
 
+  projectForm.value.temp_materialized_wf_ids = []
+  initialProjectFormSnapshot.value = ''
   showProjectFormModal.value = false
   if (!isEdit && showModal.value) {
     formData.value.id_project = idProj
@@ -11320,35 +12437,97 @@ const saveProjectForm = async () => {
   savingProject.value = true
 
   try {
+    if (Object.keys(wfUpdates).length > 0) {
+      await update(dbRef(database, 'pipeline_workflow'), wfUpdates)
+    }
     await set(dbRef(database, `pipeline_projects/${sanitizeFirebaseKey(idProj)}`), record)
 
     if (isEdit) {
       const pipeUpdates = {}
+      const deletedPipeEntries = []
+      const deletedPipeIdSet = new Set()
+
       items.value.forEach((it) => {
-        if (it.id_project === idProj) {
-          const k = sanitizeFirebaseKey(it.Id_pipeline)
-          if (it.ten_du_an !== record.ten_du_an) {
-            it.ten_du_an = record.ten_du_an
-            pipeUpdates[`${k}/ten_du_an`] = record.ten_du_an
-          }
-          if (!it.ten_cong_ty && !it.ten_khach_hang && (record.ten_cong_ty || record.ten_khach_hang)) {
-            it.ten_cong_ty = record.ten_cong_ty
-            it.ma_cong_ty = record.ma_cong_ty
-            it.ten_khach_hang = record.ten_khach_hang
-            it.ma_khach_hang = record.ma_khach_hang
-            pipeUpdates[`${k}/ten_cong_ty`] = record.ten_cong_ty
-            pipeUpdates[`${k}/ma_cong_ty`] = record.ma_cong_ty
-            pipeUpdates[`${k}/ten_khach_hang`] = record.ten_khach_hang
-            pipeUpdates[`${k}/ma_khach_hang`] = record.ma_khach_hang
-          }
+        if (it.id_project !== idProj) return
+        const k = sanitizeFirebaseKey(it.Id_pipeline)
+        const effWf =
+          String(it.id_workflow || '').trim() ||
+          (defaultCoreStageIdSet.has(String(it.id_status_workflow || '').trim()) ? 'WF_DEFAULT' : '')
+
+        const matchedReplacement = legacyReplacements.find(
+          (rep) => rep.oldWfId === effWf || (!effWf && rep.oldWfId === 'WF_DEFAULT')
+        )
+        const isKeptWorkflow = Boolean(matchedReplacement || (effWf && finalLinkedSet.has(effWf)))
+
+        if (!isKeptWorkflow) {
+          pipeUpdates[k] = null
+          deletedPipeIdSet.add(it.Id_pipeline)
+          deletedPipeEntries.push({
+            pipeId: it.Id_pipeline,
+            reportId: String(it.report_id || ''),
+            qlfId: String(it.id_quanlyfile || '')
+          })
+          return
+        }
+
+        if (it.ten_du_an !== record.ten_du_an) {
+          it.ten_du_an = record.ten_du_an
+          pipeUpdates[`${k}/ten_du_an`] = record.ten_du_an
+        }
+        if (!it.ten_cong_ty && !it.ten_khach_hang && (record.ten_cong_ty || record.ten_khach_hang)) {
+          it.ten_cong_ty = record.ten_cong_ty
+          it.ma_cong_ty = record.ma_cong_ty
+          it.ten_khach_hang = record.ten_khach_hang
+          it.ma_khach_hang = record.ma_khach_hang
+          pipeUpdates[`${k}/ten_cong_ty`] = record.ten_cong_ty
+          pipeUpdates[`${k}/ma_cong_ty`] = record.ma_cong_ty
+          pipeUpdates[`${k}/ten_khach_hang`] = record.ten_khach_hang
+          pipeUpdates[`${k}/ma_khach_hang`] = record.ma_khach_hang
+        }
+
+        if (matchedReplacement) {
+          const patch = remapTaskToWorkflowSteps(
+            it,
+            matchedReplacement.newWfId,
+            matchedReplacement.records,
+            matchedReplacement.stepIdMap
+          )
+          Object.entries(patch).forEach(([field, val]) => {
+            pipeUpdates[`${k}/${field}`] = val
+          })
         }
       })
+
+      if (deletedPipeIdSet.size > 0) {
+        items.value = items.value.filter((it) => !deletedPipeIdSet.has(it.Id_pipeline))
+      }
+      if (
+        filterConfig.value.projectId === idProj &&
+        selectedWorkflowId.value &&
+        !finalLinkedSet.has(selectedWorkflowId.value)
+      ) {
+        const nextWf = finalDefaultWfId || 'WF_DEFAULT'
+        selectedWorkflowId.value = nextWf
+        filterConfig.value.workflowId = nextWf
+      }
+
+      distributeItems()
       if (Object.keys(pipeUpdates).length > 0) {
         await update(dbRef(database, 'pipeline'), pipeUpdates)
       }
+      if (deletedPipeEntries.length > 0) {
+        await Promise.all(
+          deletedPipeEntries.map((d) =>
+            Promise.all([
+              syncLinkRefsFirebase(d.reportId, '', d.pipeId),
+              syncQuanLyFileRefsFirebase(d.qlfId, '', d.pipeId)
+            ])
+          )
+        )
+      }
     }
 
-    showToast(isEdit ? 'Đã cập nhật Dự án & danh sách Khung Pipeline!' : 'Đã khởi tạo Dự án mới!', 'success')
+    showToast(isEdit ? 'Đã cập nhật Dự án & danh sách Khung Pipeline riêng!' : 'Đã khởi tạo Dự án mới!', 'success')
   } catch (err) {
     console.error('Lỗi lưu dự án:', err)
     showToast('Lỗi mạng khi lưu Dự án', 'error')
@@ -11374,12 +12553,39 @@ const confirmDeleteProject = async (proj) => {
   })
   if (!ok) return
 
+  const privateWfIds = new Set(
+    uniqueWorkflows.value
+      .filter((w) => w.workflow_scope === 'project' && w.id_project === proj.id_project)
+      .map((w) => w.id_workflow)
+  )
+  normalizeLinkedWorkflowIds(proj.linked_workflow_ids).forEach((id) => {
+    if (isProjectPrivateWorkflow(id, proj.id_project)) privateWfIds.add(id)
+  })
+
+  const wfDeletes = {}
+  if (privateWfIds.size > 0) {
+    workflowsData.value.forEach((row) => {
+      if (privateWfIds.has(row.id_workflow)) {
+        wfDeletes[sanitizeFirebaseKey(row.id_status_workflow)] = null
+      }
+    })
+    workflowsData.value = workflowsData.value.filter((row) => !privateWfIds.has(row.id_workflow))
+  }
+
   projectsList.value = projectsList.value.filter((p) => p.id_project !== proj.id_project)
   if (activeProjectId.value === proj.id_project) showProjectDetailModal.value = false
+  if (filterConfig.value.projectId === proj.id_project) {
+    filterConfig.value.projectId = '__STANDALONE__'
+    filterConfig.value.workflowId = ''
+    selectedWorkflowId.value = 'WF_DEFAULT'
+  }
 
   backgroundSyncing.value = true
   try {
     await remove(dbRef(database, `pipeline_projects/${sanitizeFirebaseKey(proj.id_project)}`))
+    if (Object.keys(wfDeletes).length > 0) {
+      await update(dbRef(database, 'pipeline_workflow'), wfDeletes)
+    }
     const pipeUpdates = {}
     items.value.forEach((it) => {
       if (it.id_project === proj.id_project) {
@@ -11388,8 +12594,15 @@ const confirmDeleteProject = async (proj) => {
         const k = sanitizeFirebaseKey(it.Id_pipeline)
         pipeUpdates[`${k}/id_project`] = ''
         pipeUpdates[`${k}/ten_du_an`] = ''
+        if (privateWfIds.has(it.id_workflow) || isProjectPrivateWorkflow(it.id_workflow)) {
+          const patch = remapTaskToStandardFallback(it)
+          Object.entries(patch).forEach(([field, val]) => {
+            pipeUpdates[`${k}/${field}`] = val
+          })
+        }
       }
     })
+    distributeItems()
     if (Object.keys(pipeUpdates).length > 0) {
       await update(dbRef(database, 'pipeline'), pipeUpdates)
     }
@@ -11429,8 +12642,10 @@ const confirmDeleteProjectFromForm = async () => {
   if (!isEditingProject.value || !projectForm.value.id_project) return
   const found = projectsList.value.find((p) => p.id_project === projectForm.value.id_project)
   if (!found) return
-  showProjectFormModal.value = false
   await confirmDeleteProject(found)
+  if (!projectsList.value.some((p) => p.id_project === found.id_project)) {
+    await forceCloseProjectFormModal()
+  }
 }
 
 const openProjectById = (projId) => {
@@ -11463,6 +12678,7 @@ const openAddPipelineForProject = (proj, specificWorkflowId = '') => {
 
   formData.value.id_workflow = targetWfId
   onModalWorkflowChange()
+  captureTaskModalSnapshot()
 }
 
 const openProjectWorkflowOnKanban = (proj, wfId = '') => {
@@ -11479,7 +12695,7 @@ const openProjectWorkflowOnKanban = (proj, wfId = '') => {
   selectedWorkflowId.value = targetWf
   activeTab.value = 'kanban'
   kanbanViewMode.value = 'standard'
-  showToast(`Đang mở Kanban Dự án "${proj.ten_du_an}" — ${getWorkflowShortLabel(targetWf)}`, 'info', 2200)
+  showToast(`Đang mở Kanban Dự án "${proj.ten_du_an}" — ${getWorkflowShortLabel(targetWf, proj)}`, 'info', 2200)
 }
 
 const jumpToWorkflowDesignerFromProject = () => {
@@ -11488,18 +12704,22 @@ const jumpToWorkflowDesignerFromProject = () => {
   activeTab.value = 'workflow'
 }
 
-const jumpToWorkflowDesignerFromModal = () => {
-  showProjectFormModal.value = false
+const jumpToWorkflowDesignerFromModal = async () => {
+  const closed = await closeProjectFormModal()
+  if (!closed) return
   activeTab.value = 'workflow'
 }
 
 const attachExistingPipelineToProject = async (pipe, proj) => {
   pipe.id_project = proj.id_project
   pipe.ten_du_an = proj.ten_du_an
+  const projWfIds = new Set((proj.correspondingWorkflows || []).map((w) => w.id_workflow))
   const targetWf =
     projectDetailWfFilter.value && projectDetailWfFilter.value !== 'ALL'
       ? projectDetailWfFilter.value
-      : pipe.id_workflow || proj.default_workflow_id || proj.correspondingWorkflows?.[0]?.id_workflow || 'WF_DEFAULT'
+      : projWfIds.has(pipe.id_workflow)
+        ? pipe.id_workflow
+        : proj.default_workflow_id || proj.correspondingWorkflows?.[0]?.id_workflow || 'WF_DEFAULT'
 
   const patchPayload = {
     id_project: proj.id_project,
@@ -11508,16 +12728,22 @@ const attachExistingPipelineToProject = async (pipe, proj) => {
   }
 
   if (pipe.id_workflow !== targetWf) {
-    pipe.id_workflow = targetWf
-    const cols = getColumnsForWorkflow(targetWf)
-    if (!resolveColumnForItem(pipe, cols) && cols.length > 0) {
-      const first = cols[0]
-      pipe.status_name = first.value
-      pipe['%status'] = first.percent
-      pipe.id_status_workflow = first.rawStatusId || first.id
-      patchPayload.status_name = pipe.status_name
-      patchPayload['%status'] = pipe['%status']
-      patchPayload.id_status_workflow = pipe.id_status_workflow
+    const targetRows = workflowsData.value.filter((r) => r.id_workflow === targetWf)
+    if (targetWf !== 'WF_DEFAULT' && targetRows.length > 0) {
+      const stepPatch = remapTaskToWorkflowSteps(pipe, targetWf, targetRows)
+      Object.assign(patchPayload, stepPatch)
+    } else {
+      pipe.id_workflow = targetWf
+      const cols = getColumnsForWorkflow(targetWf)
+      if (!resolveColumnForItem(pipe, cols) && cols.length > 0) {
+        const first = cols[0]
+        pipe.status_name = first.value
+        pipe['%status'] = first.percent
+        pipe.id_status_workflow = first.rawStatusId || first.id
+        patchPayload.status_name = pipe.status_name
+        patchPayload['%status'] = pipe['%status']
+        patchPayload.id_status_workflow = pipe.id_status_workflow
+      }
     }
   }
   distributeItems()
@@ -11533,14 +12759,34 @@ const attachExistingPipelineToProject = async (pipe, proj) => {
 }
 
 const detachPipelineFromProject = async (pipe) => {
+  if (!pipe) return
+  const pipeLabel =
+    pipe.content_of_contract_po || pipe.ma_hop_dong || pipe.ten_cong_ty || pipe.ten_khach_hang || pipe.Id_pipeline
+  const ok = await askConfirm({
+    title: 'Gỡ Công Việc Khỏi Dự Án?',
+    targetTag: 'CÔNG VIỆC PIPELINE',
+    targetValue: pipeLabel,
+    message: 'Công việc sẽ không bị xóa khỏi hệ thống mà chuyển thành Công việc độc lập.',
+    tone: 'warning',
+    confirmText: 'Gỡ khỏi Dự án',
+    cancelText: 'Hủy'
+  })
+  if (!ok) return
+
   pipe.id_project = ''
   pipe.ten_du_an = ''
+  const patchPayload = {
+    id_project: '',
+    ten_du_an: ''
+  }
+  if (isProjectPrivateWorkflow(pipe.id_workflow)) {
+    const stepPatch = remapTaskToStandardFallback(pipe)
+    Object.assign(patchPayload, stepPatch)
+  }
+  distributeItems()
   try {
     const k = sanitizeFirebaseKey(pipe.Id_pipeline)
-    await update(dbRef(database, 'pipeline/' + k), {
-      id_project: '',
-      ten_du_an: ''
-    })
+    await update(dbRef(database, 'pipeline/' + k), patchPayload)
     showToast('Đã gỡ Công việc khỏi Dự án', 'info')
   } catch (err) {
     console.error('Lỗi gỡ pipeline:', err)
@@ -11687,10 +12933,20 @@ const defaultFormData = {
 
 const formData = ref({ ...defaultFormData })
 const originalFormData = ref('')
+const initialTaskModalSnapshot = ref('')
+
+const captureTaskModalSnapshot = () => {
+  initialTaskModalSnapshot.value = JSON.stringify(formData.value)
+}
 
 const isFormChanged = computed(() => {
   if (!isEditing.value) return true
   return JSON.stringify(formData.value) !== originalFormData.value
+})
+
+const isTaskModalDirty = computed(() => {
+  if (!showModal.value) return false
+  return JSON.stringify(formData.value) !== initialTaskModalSnapshot.value
 })
 
 const projectsListForModal = computed(() => projectsList.value)
@@ -11698,6 +12954,12 @@ const projectsListForModal = computed(() => projectsList.value)
 const modalSelectedProject = computed(() => {
   if (!formData.value.id_project) return null
   return allEnrichedProjects.value.find((p) => p.id_project === formData.value.id_project) || null
+})
+
+const modalProjectHasStandardWorkflow = computed(() => {
+  const proj = modalSelectedProject.value
+  if (!proj) return true
+  return (proj.correspondingWorkflows || []).some((w) => w.id_workflow === 'WF_DEFAULT')
 })
 
 const modalProjectLinkedWorkflows = computed(() => {
@@ -11708,7 +12970,18 @@ const modalProjectLinkedWorkflows = computed(() => {
 
 const modalOtherWorkflows = computed(() => {
   const projSet = new Set(modalProjectLinkedWorkflows.value.map((w) => w.id_workflow))
-  return customWorkflowOptions.value.filter((w) => !projSet.has(w.id_workflow))
+  const list = templateWorkflowOptions.value.filter((w) => !projSet.has(w.id_workflow))
+  const curId = formData.value.id_workflow
+  if (
+    curId &&
+    curId !== 'WF_DEFAULT' &&
+    !projSet.has(curId) &&
+    !list.some((w) => w.id_workflow === curId)
+  ) {
+    const extra = uniqueWorkflows.value.find((w) => w.id_workflow === curId)
+    if (extra) return [extra, ...list]
+  }
+  return list
 })
 
 const modalSuggestedWorkflowChips = computed(() => modalProjectLinkedWorkflows.value)
@@ -11790,6 +13063,10 @@ const onSelectProjectInPipelineModal = () => {
   const pId = formData.value.id_project
   if (!pId) {
     formData.value.ten_du_an = ''
+    if (isProjectPrivateWorkflow(formData.value.id_workflow)) {
+      formData.value.id_workflow = 'WF_DEFAULT'
+      onModalWorkflowChange()
+    }
     return
   }
   const proj = projectsList.value.find((p) => p.id_project === pId)
@@ -11807,15 +13084,14 @@ const onSelectProjectInPipelineModal = () => {
     formData.value.ma_khach_hang = proj.ma_khach_hang || genMaKH(formData.value.ten_khach_hang, formData.value.ten_cong_ty)
   }
 
-  if (!isEditing.value && (!formData.value.id_workflow || formData.value.id_workflow === 'WF_DEFAULT') && pipelineModalSource.value !== 'kanban') {
-    const linked = normalizeLinkedWorkflowIds(proj.linked_workflow_ids)
-    if (proj.default_workflow_id) {
-      formData.value.id_workflow = proj.default_workflow_id
-      onModalWorkflowChange()
-    } else if (linked.length > 0) {
-      formData.value.id_workflow = linked[0]
-      onModalWorkflowChange()
-    }
+  const enrichedProj =
+    allEnrichedProjects.value.find((p) => p.id_project === pId) || buildEnrichedProject(proj)
+  const projFlows = enrichedProj.correspondingWorkflows || []
+  const curWfInProj = projFlows.some((w) => w.id_workflow === formData.value.id_workflow)
+  if (!curWfInProj && projFlows.length > 0) {
+    formData.value.id_workflow =
+      enrichedProj.default_workflow_id || projFlows[0]?.id_workflow || 'WF_DEFAULT'
+    onModalWorkflowChange()
   }
 }
 
@@ -12099,6 +13375,7 @@ const openAddModal = () => {
   formData.value.created_time = getCurrentFormattedTime()
   tempStartDate.value = ''
   tempEndDate.value = ''
+  captureTaskModalSnapshot()
   showModal.value = true
 }
 
@@ -12106,6 +13383,7 @@ const openAddModalForColumn = (col) => {
   openAddModal()
   if (col) {
     selectModalStage(col)
+    captureTaskModalSnapshot()
   }
 }
 
@@ -12117,6 +13395,7 @@ const openAddModalForSwimlaneCell = (lane, col) => {
   }
   if (col) {
     selectModalStage(col)
+    captureTaskModalSnapshot()
   }
 }
 
@@ -12132,14 +13411,38 @@ const openEditModal = (item) => {
     id_workflow: getEffectiveItemWorkflowId(item)
   }
   originalFormData.value = JSON.stringify(formData.value)
+  captureTaskModalSnapshot()
   parseFinishTime(item.finish_time)
   showModal.value = true
 }
 
-const closeModal = () => {
+const forceCloseModal = () => {
   showModal.value = false
+  initialTaskModalSnapshot.value = ''
   openTlSelectKey.value = null
   isDraggingUpload.value = false
+}
+
+const closeModal = async () => {
+  if (isTaskModalDirty.value) {
+    const targetLabel =
+      String(formData.value.content_of_contract_po || '').trim() ||
+      String(formData.value.ten_cong_ty || '').trim() ||
+      String(formData.value.ten_khach_hang || '').trim() ||
+      (isEditing.value ? formData.value.Id_pipeline : 'Công việc Pipeline mới')
+    const ok = await askConfirm({
+      title: 'Thoát khi chưa lưu Công Việc?',
+      targetTag: 'THAY ĐỔI CHƯA LƯU',
+      targetValue: targetLabel,
+      message: 'Bạn đang có các thay đổi thông tin công việc chưa được lưu. Nếu thoát bây giờ, toàn bộ thay đổi vừa nhập sẽ bị hủy bỏ.',
+      tone: 'warning',
+      confirmText: 'Bỏ thay đổi & Thoát',
+      cancelText: 'Ở lại tiếp tục'
+    })
+    if (!ok) return false
+  }
+  forceCloseModal()
+  return true
 }
 
 const duplicateItem = (item) => {
@@ -12159,6 +13462,7 @@ const duplicateItem = (item) => {
   formData.value = copy
   onModalWorkflowChange()
   parseFinishTime(copy.finish_time || '')
+  captureTaskModalSnapshot()
   showModal.value = true
 }
 
@@ -12248,7 +13552,7 @@ const onStudioModalKeydown = (e) => {
     }
     if (showAddCustomerModal.value) {
       e.preventDefault()
-      showAddCustomerModal.value = false
+      requestCloseAddCustomerModal()
       return
     }
     if (showCustomerModal.value) {
@@ -12313,7 +13617,7 @@ const onStudioModalKeydown = (e) => {
     }
     if (showProjectFormModal.value) {
       e.preventDefault()
-      showProjectFormModal.value = false
+      closeProjectFormModal()
       return
     }
     if (showModal.value) {
@@ -12361,7 +13665,7 @@ const saveItem = async () => {
   }
 
   distributeItems()
-  closeModal()
+  forceCloseModal()
 
   saving.value = true
   try {
@@ -12394,7 +13698,7 @@ const requestAction = async (item, actionType) => {
       cancelText: 'Hủy'
     })
     if (!ok) return
-    if (showModal.value) closeModal()
+    if (showModal.value) forceCloseModal()
 
     const oldReportId = String(item.report_id || '')
     const oldQuanLyFile = String(item.id_quanlyfile || '')
@@ -12450,6 +13754,7 @@ const customerPickerFocus = ref('company') // 'company' | 'contact'
 const showAddCustomerModal = ref(false)
 const isSavingCustomer = ref(false)
 const originalCustomerFormDataStr = ref('')
+const initialCustomerModalSnapshot = ref('')
 const extraCreatedCustomerTags = ref([])
 
 const defaultCustomerForm = {
@@ -12490,6 +13795,37 @@ const customerFormData = ref(cloneCustomerFormState())
 const isCustomerDataChanged = computed(() => {
   return JSON.stringify(customerFormData.value) !== originalCustomerFormDataStr.value
 })
+
+const isCustomerModalDirty = computed(() => {
+  if (!showAddCustomerModal.value) return false
+  return JSON.stringify(customerFormData.value) !== initialCustomerModalSnapshot.value
+})
+
+const forceCloseAddCustomerModal = () => {
+  showAddCustomerModal.value = false
+  initialCustomerModalSnapshot.value = ''
+}
+
+const requestCloseAddCustomerModal = async () => {
+  if (isCustomerModalDirty.value) {
+    const targetLabel =
+      String(customerFormData.value.ten_khach_hang || '').trim() ||
+      String(customerFormData.value.ten_cong_ty || '').trim() ||
+      (customerFormData.value.id ? 'Cập nhật Khách hàng' : 'Khách hàng mới')
+    const ok = await askConfirm({
+      title: 'Thoát khi chưa lưu Khách Hàng?',
+      targetTag: 'THAY ĐỔI CHƯA LƯU',
+      targetValue: targetLabel,
+      message: 'Bạn đang có thông tin khách hàng chưa được lưu. Nếu thoát bây giờ, toàn bộ thay đổi vừa nhập sẽ bị hủy bỏ.',
+      tone: 'warning',
+      confirmText: 'Bỏ thay đổi & Thoát',
+      cancelText: 'Ở lại tiếp tục'
+    })
+    if (!ok) return false
+  }
+  forceCloseAddCustomerModal()
+  return true
+}
 
 const formatCustomerLastUpdated = (val) => {
   if (!val && val !== 0) return 'Chưa ghi nhận'
@@ -12956,6 +14292,7 @@ const openAddCustomerModal = (mode = 'pipeline') => {
     ma_khach_hang: seedCus || seedComp ? genMaKH(seedCus, seedComp) : ''
   })
   originalCustomerFormDataStr.value = ''
+  initialCustomerModalSnapshot.value = JSON.stringify(customerFormData.value)
   showAddCustomerModal.value = true
   if (customersList.value.length === 0) fetchCustomersData()
 }
@@ -12965,20 +14302,36 @@ const editCustomerFromPicker = (cus) => {
   const normalized = normalizeCustomerRow(cus.id || cus.ma_khach_hang || cus.Ma_khach_hang, cus)
   customerFormData.value = cloneCustomerFormState(normalized)
   originalCustomerFormDataStr.value = JSON.stringify(customerFormData.value)
+  initialCustomerModalSnapshot.value = JSON.stringify(customerFormData.value)
   showCustomerModal.value = false
   showAddCustomerModal.value = true
 }
 
-const resetCustomerModalForm = () => {
+const resetCustomerModalForm = async () => {
+  if (isCustomerModalDirty.value || customerFormData.value.id) {
+    const ok = await askConfirm({
+      title: 'Làm mới trắng biểu mẫu khách hàng?',
+      targetTag: 'KHÁCH HÀNG',
+      targetValue:
+        String(customerFormData.value.ten_khach_hang || customerFormData.value.ten_cong_ty || '').trim() ||
+        'Biểu mẫu hiện tại',
+      message: 'Toàn bộ thông tin đang nhập trên biểu mẫu này sẽ được xóa trắng để tạo khách hàng mới.',
+      tone: 'warning',
+      confirmText: 'Làm mới biểu mẫu',
+      cancelText: 'Hủy'
+    })
+    if (!ok) return
+  }
   customerFormData.value = cloneCustomerFormState()
   originalCustomerFormDataStr.value = ''
+  initialCustomerModalSnapshot.value = JSON.stringify(customerFormData.value)
   showToast('Đã làm mới trắng biểu mẫu khách hàng', 'info')
 }
 
 const applyExistingCustomerFromModal = () => {
   const code = String(customerFormData.value.ma_khach_hang || '').trim()
   applyCustomerRecordToActiveTarget(customerFormData.value)
-  showAddCustomerModal.value = false
+  forceCloseAddCustomerModal()
   showToast(
     `Đã chọn khách hàng ${customerFormData.value.ten_khach_hang || customerFormData.value.ten_cong_ty || code}`,
     'success'
@@ -13083,7 +14436,7 @@ const saveNewCustomer = async () => {
     }
 
     applyCustomerRecordToActiveTarget(customerFormData.value)
-    showAddCustomerModal.value = false
+    forceCloseAddCustomerModal()
   } catch (error) {
     console.error('Lỗi khi thêm/sửa KH:', error)
     await showAlert({
@@ -13370,8 +14723,22 @@ const addFilesToCusSmartImportModal = (rawFiles, fromClipboard = false) => {
   cusSmartImportModal.value.activeIdx = 0
 }
 
-const removeCusSmartImportPendingItem = (idx) => {
+const removeCusSmartImportPendingItem = async (idx) => {
   if (idx < 0 || idx >= cusSmartImportModal.value.files.length) return
+  const targetItem = cusSmartImportModal.value.files[idx]
+  const fileLabel = targetItem
+    ? `${targetItem.baseName || 'Tai_lieu'}${targetItem.ext || ''}`
+    : `Tệp #${idx + 1}`
+  const ok = await askConfirm({
+    title: 'Bỏ tệp đã chọn?',
+    targetTag: 'TỆP TẢI LÊN',
+    targetValue: fileLabel,
+    message: 'Bạn có chắc chắn muốn bỏ tệp này khỏi danh sách chờ quét thông tin khách hàng không?',
+    tone: 'danger',
+    confirmText: 'Bỏ tệp',
+    cancelText: 'Hủy'
+  })
+  if (!ok) return
   const removed = cusSmartImportModal.value.files.splice(idx, 1)
   revokeCusPendingPreviews(removed)
   cusSmartImportModal.value.activeIdx = 0
@@ -14384,6 +15751,37 @@ const selectReport = (id) => {
   formData.value.report_id = ids.join(', ')
 }
 
+const confirmRemoveLinkedReport = async (rep) => {
+  if (!rep || !rep.id) return
+  const ok = await askConfirm({
+    title: 'Gỡ Report liên kết?',
+    targetTag: 'REPORT CON LIÊN KẾT',
+    targetValue: rep.noi_dung || rep.id,
+    message: 'Report này sẽ được gỡ liên kết khỏi công việc Pipeline hiện tại (Report gốc vẫn được giữ nguyên trên trang Report).',
+    tone: 'danger',
+    confirmText: 'Gỡ Report',
+    cancelText: 'Hủy'
+  })
+  if (!ok) return
+  selectReport(rep.id)
+}
+
+const confirmClearAllLinkedReports = async () => {
+  const count = selectedReports.value.length
+  if (count === 0) return
+  const ok = await askConfirm({
+    title: 'Gỡ toàn bộ Report liên kết?',
+    targetTag: 'REPORT CON LIÊN KẾT',
+    targetValue: `${count} Report đang gắn`,
+    message: `Bạn có chắc chắn muốn bỏ chọn toàn bộ ${count} Report đang liên kết với công việc này không?`,
+    tone: 'danger',
+    confirmText: 'Gỡ tất cả',
+    cancelText: 'Hủy'
+  })
+  if (!ok) return
+  formData.value.report_id = ''
+}
+
 const getReportDetails = (id) => {
   const rep = reports.value.find((r) => r.id === id)
   return rep ? { noi_dung: rep.noi_dung || rep.id, ghi_chu: rep.ghi_chu || '' } : { noi_dung: id, ghi_chu: '' }
@@ -15036,9 +16434,21 @@ const getFileExtBadge = (nameOrUrl) => {
   return { ext: 'FILE', tone: 'slate' }
 }
 
-const removeFile = (index) => {
+const removeFile = async (index) => {
   const names = (formData.value.ten_file || '').split(',').map((s) => s.trim()).filter(Boolean)
   const links = (formData.value.link_file || '').split(',').map((s) => s.trim()).filter(Boolean)
+  if (index < 0 || index >= Math.max(names.length, links.length)) return
+  const targetName = names[index] || fileList.value[index]?.name || `Tệp đính kèm #${index + 1}`
+  const ok = await askConfirm({
+    title: 'Xóa tệp đính kèm?',
+    targetTag: 'TỆP ĐÍNH KÈM TRỰC TIẾP',
+    targetValue: targetName,
+    message: 'Bạn có chắc chắn muốn xóa tệp chứng từ này khỏi danh sách đính kèm của công việc không?',
+    tone: 'danger',
+    confirmText: 'Xóa tệp',
+    cancelText: 'Hủy'
+  })
+  if (!ok) return
   names.splice(index, 1)
   links.splice(index, 1)
   formData.value.ten_file = names.join(', ')
@@ -15726,24 +17136,39 @@ const getColTitleColor = (colId) => {
   return '#3b82f6'
 }
 
-const getPendingPipelineOpenId = () => {
-  if (typeof window !== 'undefined') {
-    try {
-      const params = new URLSearchParams(window.location.search)
-      const fromUrl = params.get('openId')
-      if (fromUrl && String(fromUrl).trim()) return String(fromUrl).trim()
-    } catch (_) {}
-    return ''
+const getPendingPipelineQueryParams = () => {
+  const readParam = (key) => {
+    if (typeof window !== 'undefined') {
+      try {
+        const params = new URLSearchParams(window.location.search)
+        const val = params.get(key)
+        if (val && String(val).trim()) return String(val).trim()
+      } catch (_) {}
+    }
+    return route.query[key] ? String(route.query[key]).trim() : ''
   }
-  return route.query.openId ? String(route.query.openId).trim() : ''
+  return {
+    openId: readParam('openId'),
+    projectId: readParam('projectId'),
+    projectName: readParam('projectName'),
+    workflowId: readParam('workflowId'),
+    workflowName: readParam('workflowName')
+  }
 }
 
 const clearPipelineOpenIdUrlQuery = () => {
   if (typeof window === 'undefined') return
   try {
     const url = new URL(window.location.href)
-    if (!url.searchParams.has('openId')) return
-    url.searchParams.delete('openId')
+    const keys = ['openId', 'projectId', 'projectName', 'workflowId', 'workflowName']
+    let changed = false
+    keys.forEach((k) => {
+      if (url.searchParams.has(k)) {
+        url.searchParams.delete(k)
+        changed = true
+      }
+    })
+    if (!changed) return
     const cleanSearch = url.searchParams.toString()
     const cleanUrl = url.pathname + (cleanSearch ? `?${cleanSearch}` : '') + url.hash
     window.history.replaceState(window.history.state, '', cleanUrl)
@@ -15751,13 +17176,43 @@ const clearPipelineOpenIdUrlQuery = () => {
 }
 
 const handleOpenIdDeepLink = (explicitId = '') => {
-  const targetOpenId = String(explicitId || getPendingPipelineOpenId()).trim()
-  if (!targetOpenId || !items.value.length) return
-  const targetItem = items.value.find((i) => String(i.Id_pipeline) === targetOpenId)
-  // Xóa ?openId khỏi URL bằng history.replaceState để không làm <keep-alive :key="route.fullPath"> remount mất highlight
+  const pending = getPendingPipelineQueryParams()
+  const targetOpenId = String(explicitId || pending.openId || '').trim()
+  const targetProjId = pending.projectId
+  const targetProjName = pending.projectName
+  const targetWfId = pending.workflowId
+  const targetWfName = pending.workflowName
+
+  if (!targetOpenId && !targetProjId && !targetProjName && !targetWfId) return
+  if (!items.value.length && !projectsList.value.length && !workflowsData.value.length) return
+
+  if (targetOpenId) {
+    if (!items.value.length) return
+    const targetItem = items.value.find((i) => String(i.Id_pipeline) === targetOpenId)
+    // Xóa ?openId khỏi URL bằng history.replaceState để không làm <keep-alive :key="route.fullPath"> remount mất highlight
+    clearPipelineOpenIdUrlQuery()
+    if (targetItem) {
+      focusCardOnKanban(targetItem)
+    }
+    return
+  }
+
   clearPipelineOpenIdUrlQuery()
-  if (targetItem) {
-    focusCardOnKanban(targetItem)
+
+  const matchedProj =
+    (targetProjId && allEnrichedProjects.value.find((p) => p.id_project === targetProjId)) ||
+    (targetProjName &&
+      allEnrichedProjects.value.find(
+        (p) => String(p.ten_du_an || '').trim().toLowerCase() === targetProjName.toLowerCase()
+      )) ||
+    null
+
+  if (matchedProj) {
+    navigateToProjectCardById(matchedProj.id_project, targetWfId, targetWfName)
+  } else if (targetWfId) {
+    navigateToWorkflowCardById(targetWfId)
+  } else if (targetProjId) {
+    navigateToProjectCardById(targetProjId)
   }
 }
 
@@ -15779,11 +17234,19 @@ const checkPendingPipelineCreate = () => {
 const fetchData = async () => {
   loading.value = true
   try {
-    const [snapPipeline, snapWorkflow, snapProjects] = await Promise.all([
+    const [snapPipeline, snapWorkflow, snapProjects, snapDefaultWfMeta] = await Promise.all([
       get(dbRef(database, 'pipeline')),
       get(dbRef(database, 'pipeline_workflow')),
-      get(dbRef(database, 'pipeline_projects'))
+      get(dbRef(database, 'pipeline_projects')),
+      get(dbRef(database, 'pipeline_workflow_meta/WF_DEFAULT'))
     ])
+
+    if (snapDefaultWfMeta.exists()) {
+      const metaVal = snapDefaultWfMeta.val()
+      defaultWorkflowName.value = String(metaVal?.name_workflow || '').trim() || DEFAULT_SYSTEM_WORKFLOW_NAME
+    } else {
+      defaultWorkflowName.value = DEFAULT_SYSTEM_WORKFLOW_NAME
+    }
 
     if (snapWorkflow.exists()) {
       const wfRaw = snapWorkflow.val()
@@ -15813,6 +17276,23 @@ const fetchData = async () => {
       items.value = pipeEntries.map(([k, v]) => normalizePipelineRecord(v, k)).filter(Boolean)
     } else {
       items.value = []
+    }
+
+    if (
+      selectedWorkflowId.value &&
+      selectedWorkflowId.value !== 'WF_DEFAULT' &&
+      !uniqueWorkflows.value.some((w) => w.id_workflow === selectedWorkflowId.value)
+    ) {
+      if (filterConfig.value.projectId && filterConfig.value.projectId !== '__STANDALONE__') {
+        const curProj = allEnrichedProjects.value.find((p) => p.id_project === filterConfig.value.projectId)
+        const nextProjWf =
+          curProj?.default_workflow_id || curProj?.correspondingWorkflows?.[0]?.id_workflow || 'WF_DEFAULT'
+        selectedWorkflowId.value = nextProjWf
+        filterConfig.value.workflowId = nextProjWf
+      } else {
+        selectedWorkflowId.value = 'WF_DEFAULT'
+        filterConfig.value.workflowId = ''
+      }
     }
 
     distributeItems()
@@ -16014,8 +17494,54 @@ watch(
   }
 )
 
-watch(() => route.query.openId, (v) => {
-  if (v && items.value.length > 0) handleOpenIdDeepLink(String(v))
+watch(
+  [
+    () => route.query.openId,
+    () => route.query.projectId,
+    () => route.query.projectName,
+    () => route.query.workflowId
+  ],
+  ([openIdVal, projIdVal, projNameVal, wfIdVal]) => {
+    if (
+      (openIdVal || projIdVal || projNameVal || wfIdVal) &&
+      (items.value.length > 0 || projectsList.value.length > 0 || workflowsData.value.length > 0)
+    ) {
+      handleOpenIdDeepLink(openIdVal ? String(openIdVal) : '')
+    }
+  }
+)
+
+const hasAnyUnsavedModalChanges = computed(() =>
+  Boolean(
+    isTaskModalDirty.value ||
+      isProjectFormDirty.value ||
+      isCustomerModalDirty.value ||
+      workflowDesignerRef.value?.hasUnsavedChanges?.()
+  )
+)
+
+const handleBeforeUnload = (e) => {
+  if (!hasAnyUnsavedModalChanges.value) return
+  e.preventDefault()
+  e.returnValue = ''
+}
+
+onBeforeRouteLeave(async () => {
+  if (!hasAnyUnsavedModalChanges.value) return true
+  const ok = await askConfirm({
+    title: 'Rời trang khi chưa lưu thay đổi?',
+    targetTag: 'THAY ĐỔI CHƯA LƯU',
+    targetValue: 'Biểu mẫu đang chỉnh sửa',
+    message: 'Bạn đang có dữ liệu chỉnh sửa chưa được lưu. Nếu chuyển trang bây giờ, toàn bộ thay đổi sẽ bị hủy bỏ.',
+    tone: 'warning',
+    confirmText: 'Bỏ thay đổi & Rời trang',
+    cancelText: 'Ở lại trang'
+  })
+  if (!ok) return false
+  if (showProjectFormModal.value) {
+    await forceCloseProjectFormModal()
+  }
+  return true
 })
 
 onMounted(() => {
@@ -16026,6 +17552,7 @@ onMounted(() => {
   window.addEventListener('keydown', onGlobalDialogKeydown)
   window.addEventListener('keydown', onStudioModalKeydown)
   window.addEventListener('paste', onCusSmartImportPaste)
+  window.addEventListener('beforeunload', handleBeforeUnload)
   syncCustomGlassVarsToDocumentRoot()
   fetchData()
   fetchCustomersData()
@@ -16063,6 +17590,7 @@ onUnmounted(() => {
   window.removeEventListener('keydown', onGlobalDialogKeydown)
   window.removeEventListener('keydown', onStudioModalKeydown)
   window.removeEventListener('paste', onCusSmartImportPaste)
+  window.removeEventListener('beforeunload', handleBeforeUnload)
   if (highlightedCardTimer) {
     clearTimeout(highlightedCardTimer)
     highlightedCardTimer = null
@@ -19892,6 +21420,66 @@ onUnmounted(() => {
   border-color: #0284c7;
   filter: brightness(1.06);
   transform: translateY(-1px);
+}
+
+.pl-wf-edit-btn.is-rename-btn {
+  border-color: var(--sem-amber-bdr, rgba(245, 158, 11, 0.35));
+  background: var(--sem-amber-bg, rgba(245, 158, 11, 0.12));
+  color: var(--sem-amber-txt, #fbbf24);
+}
+
+.pl-wf-edit-btn.is-rename-btn:hover {
+  border-color: #f59e0b;
+}
+
+.pl-wf-inline-rename-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  min-width: 0;
+}
+
+.pl-wf-inline-rename-inp {
+  flex: 1;
+  min-width: 0;
+  height: 28px !important;
+  padding: 0 9px !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  border-radius: 7px !important;
+}
+
+.pl-wf-inline-rename-btn {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid var(--bg-border-strong);
+  background: var(--bg-input-well);
+  color: var(--bg-text-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: transform 0.12s ease, filter 0.12s ease, background-color 0.12s ease;
+}
+
+.pl-wf-inline-rename-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+}
+
+.pl-wf-inline-rename-btn.is-save {
+  border-color: #059669;
+  background: #10b981;
+  color: #ffffff;
+}
+
+.pl-wf-inline-rename-btn.is-cancel {
+  border-color: var(--bg-border-strong);
+  color: var(--bg-text-muted);
 }
 
 .pl-wf-detach-btn {

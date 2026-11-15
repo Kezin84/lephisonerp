@@ -2525,7 +2525,10 @@ function handleRestoreStandardHeader() {
     }
   }
   activeTpl.value.merges = [
-    ...starter.merges.filter(m => m.bottom <= 7),
+    ...starter.merges
+      .filter(m => m.bottom <= 7 && m.left <= activeTpl.value!.so_cot)
+      .map(m => ({ ...m, right: Math.min(m.right, activeTpl.value!.so_cot) }))
+      .filter(m => m.right > m.left),
     ...(activeTpl.value.merges || []).filter(m => m.top > 7)
   ]
   activeTpl.value.row_heights[1] = 28

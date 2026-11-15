@@ -185,8 +185,26 @@
           <div class="nav-section-divider hide-on-mobile" v-else></div>
           <div class="nav-group-items" :class="{ 'group-collapsed': !openGroups.catalog && isSidebarOpen }">
             <router-link to="/customerfirebase" class="nav-item hide-on-mobile" title="Khách hàng">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-              <span class="nav-text">Khách hàng</span>
+              <div style="position: relative; display: inline-flex;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                <div
+                  v-if="customerDuplicateCount > 0"
+                  class="task-badge"
+                  :title="`${customerDuplicateCount} nhóm khách hàng nghi trùng lặp`"
+                >
+                  {{ customerDuplicateCount > 99 ? '99+' : customerDuplicateCount }}
+                </div>
+              </div>
+              <div class="nav-text-container" style="flex: 1; display: flex; align-items: center; justify-content: space-between;">
+                <span class="nav-text" style="white-space: nowrap;">Khách hàng</span>
+                <div
+                  v-if="customerDuplicateCount > 0"
+                  class="task-badge-inline task-badge-dup-inline"
+                  :title="`${customerDuplicateCount} nhóm khách hàng nghi trùng lặp`"
+                >
+                  {{ customerDuplicateCount > 99 ? '99+' : customerDuplicateCount }}
+                </div>
+              </div>
             </router-link>
             <router-link to="/quanlyhanghoafirebase" class="nav-item hide-on-mobile" title="Quản lý hàng hóa">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
@@ -280,7 +298,7 @@
     <main class="main-content" ref="mainContentRef" @scroll="handleScroll">
       <router-view v-slot="{ Component, route }">
         <keep-alive include="BaoGia,BaoGiaFirebase,report,Report,ReportFIREBASE,Pipeline,PipelineFirebase,KhoLuuTru,KhoLuuTruFirebase">
-          <component :is="Component" :key="route.fullPath" />
+          <component :is="Component" :key="route.name === 'BaoGiaFirebase' ? route.path : route.fullPath" />
         </keep-alive>
       </router-view>
     </main>
@@ -413,7 +431,8 @@
         <div v-show="openGroups.catalog" class="drawer-group-items">
           <router-link to="/customerfirebase" class="drawer-item" @click="isMobileDrawerOpen = false">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-            <span>Khách hàng</span>
+            <span style="flex: 1;">Khách hàng</span>
+            <div v-if="customerDuplicateCount > 0" class="drawer-dup-badge">{{ customerDuplicateCount > 99 ? '99+' : customerDuplicateCount }}</div>
           </router-link>
           <router-link to="/quanlyhanghoafirebase" class="drawer-item" @click="isMobileDrawerOpen = false">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
@@ -529,7 +548,10 @@
 <script setup>
 import { ref, reactive, watch, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { initializeApp, getApps, getApp } from 'firebase/app'
+import { getDatabase, ref as dbRef, onValue } from 'firebase/database'
 import { initZaloBotBackgroundService, stopZaloBotBackgroundService } from './utils/zaloBotService'
+import { computeCustomerDuplicateGroups, extractCustomerListFromSnapshotVal } from './utils/customerDuplicateHelper'
 import {
   useSystemConfig,
   isLocalDevHost,
@@ -538,6 +560,25 @@ import {
   switchDbModeAndReload,
   syncSystemConfigWithCloud
 } from './services/systemConfig'
+
+const firebaseConfig = {
+  apiKey: "AIzaSyB3fHD_sOqyqVygCxP2gZtvaipr-35a1s8",
+  authDomain: "chusonproject.firebaseapp.com",
+  databaseURL: "https://chusonproject-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "chusonproject",
+  storageBucket: "chusonproject.firebasestorage.app",
+  messagingSenderId: "929199941311",
+  appId: "1:929199941311:web:ca8d86f9fd7f8dff61480a",
+  measurementId: "G-48VVPGFSFK"
+}
+
+const getAppDb = () => {
+  const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp()
+  if (app?.options && !app.options.databaseURL) {
+    Object.assign(app.options, firebaseConfig)
+  }
+  return getDatabase(app)
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -553,6 +594,7 @@ const handleQuickToggleDb = () => {
 
 const handleLogout = () => {
   stopZaloBotBackgroundService()
+  stopCustomerDuplicateListener()
   localStorage.removeItem('auth_token')
   sessionStorage.removeItem('auth_token')
   isMobileDrawerOpen.value = false
@@ -735,6 +777,37 @@ const openIosInstallGuide = () => {
 }
 
 const incompleteTasksCount = ref(0)
+const customerDuplicateCount = ref(0)
+let unsubscribeCustomerDup = null
+
+const initCustomerDuplicateListener = () => {
+  if (unsubscribeCustomerDup) return
+  try {
+    const db = getAppDb()
+    unsubscribeCustomerDup = onValue(
+      dbRef(db, 'khach_hang'),
+      (snap) => {
+        const val = snap.exists() ? snap.val() : {}
+        const list = extractCustomerListFromSnapshotVal(val)
+        customerDuplicateCount.value = computeCustomerDuplicateGroups(list).length
+      },
+      (err) => {
+        console.warn('Customer duplicate listener error:', err)
+      }
+    )
+  } catch (err) {
+    console.warn('Failed to init customer duplicate listener:', err)
+  }
+}
+
+const stopCustomerDuplicateListener = () => {
+  if (typeof unsubscribeCustomerDup === 'function') {
+    unsubscribeCustomerDup()
+    unsubscribeCustomerDup = null
+  }
+  customerDuplicateCount.value = 0
+}
+
 const API_URL = 'https://script.google.com/macros/s/AKfycbx1yDOQLxYgJb5w30KmxQHF8AYUZln_5q58HCKP4zlUmtJye6aJBiSt3oyT0j_3QaigdQ/exec'
 
 const fetchIncompleteTasks = async () => {
@@ -1003,6 +1076,7 @@ onMounted(() => {
     syncSystemConfigWithCloud()
     fetchIncompleteTasks()
     initZaloBotBackgroundService()
+    initCustomerDuplicateListener()
   }
 })
 
@@ -1018,11 +1092,13 @@ watch(
     if (hasAuthSession()) {
       syncSystemConfigWithCloud()
       initZaloBotBackgroundService()
+      initCustomerDuplicateListener()
     }
   }
 )
 
 onUnmounted(() => {
+  stopCustomerDuplicateListener()
   window.removeEventListener('focus', handleWindowFocusCloudSync)
   window.removeEventListener('scroll', handleGlobalScrollCapture, { capture: true })
   window.removeEventListener('touchstart', clearScrollingToTopGuard)
@@ -1141,7 +1217,7 @@ body.app-has-open-modal .app-layout .scroll-to-top,
     width: 38px;
     height: 38px;
   }
-  .app-layout.mobile-nav-hidden:has(.bg-mobile-dock, .sr-mobile-dock, .pl-mobile-dock) .scroll-to-top {
+  .app-layout.mobile-nav-hidden:has(.bg-mobile-dock, .sr-mobile-dock, .pl-mobile-dock, .cf-mobile-dock) .scroll-to-top {
     bottom: calc(78px + env(safe-area-inset-bottom, 0px));
   }
   .scroll-to-top svg {
@@ -1356,6 +1432,30 @@ body.app-has-open-modal .app-layout .scroll-to-top,
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
+}
+.task-badge-dup-inline {
+  min-width: 20px;
+  width: auto;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 11px;
+}
+.drawer-dup-badge {
+  margin-left: auto;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background-color: #ef4444;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
   box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
 }
 
@@ -1807,7 +1907,7 @@ body.app-has-open-modal .app-layout .scroll-to-top,
 }
 
 @media (min-width: 769px) and (max-width: 1100px) {
-  .app-layout:has(.bg-mobile-dock, .sr-mobile-dock, .pl-mobile-dock, .mobile-screen1-cart-bar, .mobile-screen2-action-bar) .sonai-quick-db-badge {
+  .app-layout:has(.bg-mobile-dock, .sr-mobile-dock, .pl-mobile-dock, .cf-mobile-dock, .mobile-screen1-cart-bar, .mobile-screen2-action-bar) .sonai-quick-db-badge {
     bottom: calc(78px + env(safe-area-inset-bottom, 0px));
   }
 }
@@ -1817,12 +1917,12 @@ body.app-has-open-modal .app-layout .scroll-to-top,
     bottom: calc(74px + env(safe-area-inset-bottom, 0px));
     right: 10px;
   }
-  .app-layout:has(.bg-mobile-dock, .sr-mobile-dock, .pl-mobile-dock, .mobile-screen1-cart-bar, .mobile-screen2-action-bar) .sonai-quick-db-badge {
+  .app-layout:has(.bg-mobile-dock, .sr-mobile-dock, .pl-mobile-dock, .cf-mobile-dock, .mobile-screen1-cart-bar, .mobile-screen2-action-bar) .sonai-quick-db-badge {
     bottom: calc(140px + env(safe-area-inset-bottom, 0px));
     left: 12px;
     right: auto;
   }
-  .app-layout.mobile-nav-hidden:has(.bg-mobile-dock, .sr-mobile-dock, .pl-mobile-dock, .mobile-screen1-cart-bar, .mobile-screen2-action-bar) .sonai-quick-db-badge {
+  .app-layout.mobile-nav-hidden:has(.bg-mobile-dock, .sr-mobile-dock, .pl-mobile-dock, .cf-mobile-dock, .mobile-screen1-cart-bar, .mobile-screen2-action-bar) .sonai-quick-db-badge {
     bottom: calc(76px + env(safe-area-inset-bottom, 0px));
   }
   .nav-section-title,

@@ -844,6 +844,233 @@ export const SOPHOS_TRUNG_GIAN_STANDARD_BOM_SHEETS = [
   'ZTNA - NDR - Central Reporting'
 ]
 
+export interface SophosTrungGianColMap {
+  headerRowIdx: number
+  sttIdx: number
+  skuIdx: number
+  modelIdx: number
+  tenHangBgIdx: number
+  descIdx: number
+  moTaIdx: number
+  dienGiaiBgIdx: number
+  giaIdx: number
+  nhapKhauIdx: number
+  siteIdx: number
+}
+
+function normalizeHeaderAsciiKey(val: any): string {
+  return String(val ?? '')
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/gi, 'd')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '')
+}
+
+/**
+ * Quét động dòng Header của sheet BOM trong file_trung_gian_SOPHOS.xlsx
+ * (Tương thích song song cả bản 8 cột cũ A..H lẫn bản 10 cột mới A..J có TÊN HÀNG BÁO GIÁ & DIỄN GIẢI BÁO GIÁ)
+ */
+export function resolveSophosTrungGianBomColumnMap(rows?: any[][]): SophosTrungGianColMap {
+  const fallback: SophosTrungGianColMap = {
+    headerRowIdx: 3,
+    sttIdx: 0,
+    skuIdx: 1,
+    modelIdx: 2,
+    tenHangBgIdx: -1,
+    descIdx: 3,
+    moTaIdx: 4,
+    dienGiaiBgIdx: -1,
+    giaIdx: 5,
+    nhapKhauIdx: 6,
+    siteIdx: 7
+  }
+  if (!Array.isArray(rows) || !rows.length) return fallback
+
+  const scanLimit = Math.min(rows.length, 10)
+  for (let rIdx = 0; rIdx < scanLimit; rIdx++) {
+    const r = rows[rIdx]
+    if (!Array.isArray(r) || !r.length) continue
+
+    let sttIdx = -1
+    let skuIdx = -1
+    let modelIdx = -1
+    let tenHangBgIdx = -1
+    let descIdx = -1
+    let moTaIdx = -1
+    let dienGiaiBgIdx = -1
+    let giaIdx = -1
+    let nhapKhauIdx = -1
+    let siteIdx = -1
+
+    for (let cIdx = 0; cIdx < r.length; cIdx++) {
+      const k = normalizeHeaderAsciiKey(r[cIdx])
+      if (!k) continue
+      if (k === 'STT' || k.startsWith('STT')) sttIdx = cIdx
+      else if (k === 'SKU' || k.includes('MASKU')) skuIdx = cIdx
+      else if (k.includes('TENHANGBAOGIA') || k.includes('TENHANGHOABAOGIA') || k === 'TENBAOGIA') tenHangBgIdx = cIdx
+      else if (k.includes('DIENGIAIBAOGIA') || k.includes('MOTABAOGIA')) dienGiaiBgIdx = cIdx
+      else if (k === 'MODEL' || k.includes('MASP') || k.includes('MODEL')) modelIdx = cIdx
+      else if (k === 'DESCRIPTION' || k.includes('DESCRIPTION')) descIdx = cIdx
+      else if (k.includes('MOTASANPHAM')) moTaIdx = cIdx
+      else if (k.includes('GIATHAMKHAO') || k === 'MSRP' || k.includes('MSRPUSD')) giaIdx = cIdx
+      else if (k.includes('NHAPKHAU') || k.includes('GIANHAP')) nhapKhauIdx = cIdx
+      else if (k === 'SITE') siteIdx = cIdx
+    }
+
+    if (skuIdx >= 0 && (moTaIdx >= 0 || giaIdx >= 0)) {
+      return {
+        headerRowIdx: rIdx,
+        sttIdx: sttIdx >= 0 ? sttIdx : 0,
+        skuIdx,
+        modelIdx: modelIdx >= 0 ? modelIdx : 2,
+        tenHangBgIdx,
+        descIdx,
+        moTaIdx,
+        dienGiaiBgIdx,
+        giaIdx: giaIdx >= 0 ? giaIdx : 5,
+        nhapKhauIdx,
+        siteIdx
+      }
+    }
+  }
+
+  return fallback
+}
+
+function decodeXmlEntitiesSimple(str: string): string {
+  return String(str || '')
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)))
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+}
+
+function escapeHtmlWithBrSimple(str: string): string {
+  return String(str || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br>')
+}
+
+function extractSheetCellRichHtml(ws: any, r: number, c: number): string {
+  if (!ws || r < 0 || c < 0) return ''
+  const addr = XLSX.utils.encode_cell({ r, c })
+  const cell = ws[addr]
+  if (!cell) return ''
+
+  const cellFont = cell.s && cell.s.font ? cell.s.font : {}
+  const xml = String(cell.r || '')
+
+  if (xml && /<r[\s>]/i.test(xml)) {
+    const defaultSzMatch = xml.match(/<sz\s+val="([\d.]+)"\s*\/>/i)
+    const defaultFontMatch = xml.match(/<(?:rFont|font)\s+val="([^"]+)"\s*\/>/i)
+    const fallbackSz = cellFont.sz || (defaultSzMatch ? defaultSzMatch[1] : '')
+    const fallbackFont = cellFont.name || (defaultFontMatch ? defaultFontMatch[1] : '')
+
+    const runRegex = /<r(?:\s[^>]*)?>([\s\S]*?)<\/r>/gi
+    let match: RegExpExecArray | null
+    let html = ''
+
+    while ((match = runRegex.exec(xml)) !== null) {
+      const runContent = match[1]
+      const rPrMatch = runContent.match(/<rPr>([\s\S]*?)<\/rPr>/i)
+      const tMatch = runContent.match(/<t[^>]*>([\s\S]*?)<\/t>/i)
+      if (!tMatch) continue
+
+      const rawText = decodeXmlEntitiesSimple(tMatch[1])
+      let text = escapeHtmlWithBrSimple(rawText)
+      if (!text) continue
+
+      const styles: string[] = []
+      let isBold = false
+      let isItalic = false
+      let isUnderline = false
+      let isStrike = false
+
+      if (rPrMatch) {
+        const rPr = rPrMatch[1]
+        isBold = /<b(?:\s+val="(?:1|true)")?\s*\/>/i.test(rPr)
+        isItalic = /<i(?:\s+val="(?:1|true)")?\s*\/>/i.test(rPr)
+        isUnderline = /<u(?:\s+val="[^"]*?")?\s*\/>/i.test(rPr) && !/<u\s+val="none"\s*\/>/i.test(rPr)
+        isStrike = /<strike(?:\s+val="(?:1|true)")?\s*\/>/i.test(rPr)
+
+        const szMatch = rPr.match(/<sz\s+val="([\d.]+)"\s*\/>/i)
+        const fontMatch = rPr.match(/<(?:rFont|font)\s+val="([^"]+)"\s*\/>/i)
+        const colorMatch = rPr.match(/<color\s+rgb="([0-9A-Fa-f]{6,8})"\s*\/>/i)
+
+        const szVal = szMatch ? szMatch[1] : fallbackSz
+        const fontVal = fontMatch ? fontMatch[1] : fallbackFont
+
+        if (fontVal) styles.push(`font-family:${fontVal}`)
+        if (szVal) styles.push(`font-size:${szVal}pt`)
+        if (colorMatch) {
+          const hex = colorMatch[1].length === 8 ? colorMatch[1].slice(2) : colorMatch[1]
+          if (hex.toUpperCase() !== '000000') {
+            styles.push(`color:#${hex}`)
+          }
+        }
+      } else {
+        isBold = Boolean(cellFont.bold)
+        isItalic = Boolean(cellFont.italic)
+        isUnderline = Boolean(cellFont.underline)
+        isStrike = Boolean(cellFont.strike)
+        if (fallbackFont) styles.push(`font-family:${fallbackFont}`)
+        if (fallbackSz) styles.push(`font-size:${fallbackSz}pt`)
+        if (cellFont.color && cellFont.color.rgb) {
+          const rgb = String(cellFont.color.rgb)
+          const hex = rgb.length === 8 ? rgb.slice(2) : rgb
+          if (hex.toUpperCase() !== '000000') {
+            styles.push(`color:#${hex}`)
+          }
+        }
+      }
+
+      if (isStrike) styles.push('text-decoration:line-through')
+      if (isUnderline) text = `<u>${text}</u>`
+      if (isItalic) text = `<i>${text}</i>`
+      if (isBold) text = `<b>${text}</b>`
+      if (styles.length > 0) {
+        text = `<span style="${styles.join(';')}">${text}</span>`
+      }
+      html += text
+    }
+
+    const plainCheck = html.replace(/<[^>]*>/g, '').replace(/&nbsp;/gi, ' ').trim()
+    if (plainCheck) return html.trim()
+  }
+
+  const plain = String(cell.v ?? '').trim()
+  if (!plain) return ''
+  let text = escapeHtmlWithBrSimple(plain)
+  const styles: string[] = []
+  if (cellFont.name) styles.push(`font-family:${cellFont.name}`)
+  if (cellFont.sz) styles.push(`font-size:${cellFont.sz}pt`)
+  if (cellFont.color && cellFont.color.rgb) {
+    const rgb = String(cellFont.color.rgb)
+    const hex = rgb.length === 8 ? rgb.slice(2) : rgb
+    if (hex.toUpperCase() !== '000000') {
+      styles.push(`color:#${hex}`)
+    }
+  }
+  if (cellFont.strike) styles.push('text-decoration:line-through')
+  if (cellFont.underline) text = `<u>${text}</u>`
+  if (cellFont.italic) text = `<i>${text}</i>`
+  if (cellFont.bold) text = `<b>${text}</b>`
+  if (styles.length > 0) {
+    text = `<span style="${styles.join(';')}">${text}</span>`
+  }
+  return text
+}
+
 /**
  * Nhận diện đúng 5 sheet BOM chuẩn của file_trung_gian_SOPHOS.xlsx
  * (bỏ qua LP Sophos và các sheet nháp/công thức như Rotto, Module 10G, XGS 2300/4300/4500)
@@ -854,12 +1081,12 @@ export function isSophosTrungGianBomSheet(sheetName: string, rows?: any[][]): bo
   if (/^(rotto|module\s*10g)/i.test(s) || /^XGS\s+\d{3,4}$/i.test(s)) return false
   if (SOPHOS_TRUNG_GIAN_STANDARD_BOM_SHEETS.includes(s)) return true
   if (Array.isArray(rows) && rows.length > 0) {
-    for (let i = 0; i < Math.min(rows.length, 6); i++) {
+    for (let i = 0; i < Math.min(rows.length, 8); i++) {
       const r = rows[i]
       if (!Array.isArray(r)) continue
-      const colB = String(r[1] ?? '').trim().toUpperCase()
-      const colF = String(r[5] ?? '').trim().toUpperCase()
-      if (colB === 'SKU' && /(GIÁ|GIA|MSRP|PRICE|USD)/i.test(colF)) {
+      const hasSku = r.some(c => normalizeHeaderAsciiKey(c) === 'SKU')
+      const hasPrice = r.some(c => /(GIATHAMKHAO|MSRP|PRICE|USD)/i.test(normalizeHeaderAsciiKey(c)))
+      if (hasSku && hasPrice) {
         return true
       }
     }
@@ -1013,28 +1240,60 @@ export function parseSophosWorkbookToRefUpdate(
   for (const s of wb.SheetNames) {
     const rows = newTgSheetsRaw[s] || []
     if (hasStandardBomSheets ? !isSophosTrungGianBomSheet(s, rows) : s === 'LP Sophos') continue
+    const ws = wb.Sheets[s]
+    const colMap = resolveSophosTrungGianBomColumnMap(rows)
+    const startRow = colMap.headerRowIdx >= 0 ? colMap.headerRowIdx + 1 : 4
     let currentGroup = ''
     let currentSite = ''
-    for (let i = 4; i < rows.length; i++) {
+    for (let i = startRow; i < rows.length; i++) {
       const r = rows[i]
-      if (!r || !r.some(x => x !== null)) continue
-      if (r[0] && !r[1] && r[5] === null) {
-        currentGroup = String(r[0]).trim()
-        currentSite = r[7] ? String(r[7]).trim() : ''
-      } else if (r[1] && r[5] !== null) {
+      if (!r || !r.some(x => x !== null && x !== '')) continue
+      const sttVal = colMap.sttIdx >= 0 ? r[colMap.sttIdx] : r[0]
+      const skuVal = colMap.skuIdx >= 0 ? r[colMap.skuIdx] : r[1]
+      const giaVal = colMap.giaIdx >= 0 ? r[colMap.giaIdx] : r[5]
+      const siteCellVal = colMap.siteIdx >= 0 ? r[colMap.siteIdx] : null
+
+      if (sttVal && !skuVal && (giaVal === null || giaVal === undefined || giaVal === '')) {
+        currentGroup = String(sttVal).trim()
+        currentSite = siteCellVal ? String(siteCellVal).trim() : ''
+      } else if (skuVal && giaVal !== null && giaVal !== undefined && giaVal !== '') {
+        if (siteCellVal && String(siteCellVal).trim()) {
+          currentSite = String(siteCellVal).trim()
+        }
+        const skuColIdx = colMap.skuIdx >= 0 ? colMap.skuIdx : 1
+        const skuColLetter = colIndexToLetter(skuColIdx)
+        const tenHangBg = colMap.tenHangBgIdx >= 0 && r[colMap.tenHangBgIdx] !== null && r[colMap.tenHangBgIdx] !== undefined
+          ? String(r[colMap.tenHangBgIdx]).trim()
+          : ''
+        const dienGiaiBg = colMap.dienGiaiBgIdx >= 0 && r[colMap.dienGiaiBgIdx] !== null && r[colMap.dienGiaiBgIdx] !== undefined
+          ? String(r[colMap.dienGiaiBgIdx]).trim()
+          : ''
+        const dienGiaiBgHtml = dienGiaiBg && colMap.dienGiaiBgIdx >= 0
+          ? extractSheetCellRichHtml(ws, i, colMap.dienGiaiBgIdx)
+          : ''
+        const moTaText = colMap.moTaIdx >= 0 ? String(r[colMap.moTaIdx] || '').trim() : ''
+        const moTaHtml = moTaText && colMap.moTaIdx >= 0
+          ? extractSheetCellRichHtml(ws, i, colMap.moTaIdx)
+          : ''
+        const nhapVal = colMap.nhapKhauIdx >= 0 ? r[colMap.nhapKhauIdx] : null
+
         newTgItems.push({
           sheet: s,
           rowNum: i + 1,
-          cell: `B${i + 1}`,
+          cell: `${skuColLetter}${i + 1}`,
           group: currentGroup,
           site: currentSite,
-          stt: r[0],
-          sku: String(r[1]).trim().toUpperCase(),
-          model: String(r[2] || '').trim(),
-          description: String(r[3] || '').trim(),
-          moTa: String(r[4] || '').trim(),
-          msrp: Number(r[5]) || 0,
-          nhapKhau: r[6] !== null && r[6] !== '' ? Number(r[6]) : 0
+          stt: sttVal,
+          sku: String(skuVal).trim().toUpperCase(),
+          model: colMap.modelIdx >= 0 ? String(r[colMap.modelIdx] || '').trim() : '',
+          tenHangBaoGia: tenHangBg,
+          description: colMap.descIdx >= 0 ? String(r[colMap.descIdx] || '').trim() : '',
+          moTa: moTaText,
+          moTaHtml,
+          dienGiaiBaoGia: dienGiaiBg,
+          dienGiaiBaoGiaHtml: dienGiaiBgHtml,
+          msrp: Number(giaVal) || 0,
+          nhapKhau: nhapVal !== null && nhapVal !== undefined && nhapVal !== '' ? Number(nhapVal) : 0
         })
       }
     }

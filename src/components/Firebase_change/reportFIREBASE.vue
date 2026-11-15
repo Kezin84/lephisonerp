@@ -641,6 +641,30 @@
           </div>
         </div>
 
+        <!-- Sub-row 4: Cascading Pipeline Hierarchy Pickers (Dự án -> Pipeline -> Công việc pipeline) -->
+        <div class="bg-filter-row-pl-pickers" data-guide="report-pl-pickers">
+          <div v-for="plPick in pipelineFilterPickers" :key="plPick.key" class="pl-picker-wrap">
+            <button
+              type="button"
+              class="pl-picker-trigger"
+              :class="{ 'is-custom': isPickerCustomActive(plPick.key), 'is-open': plFilterModalKey === plPick.key }"
+              @click="openPlFilterModal(plPick.key)"
+              :title="plPick.prefix + ' ' + getPlFilterTriggerLabel(plPick.key)"
+            >
+              <span class="pl-picker-prefix">{{ plPick.prefix }}</span>
+              <span class="pl-picker-val is-trunc">{{ getPlFilterTriggerLabel(plPick.key) }}</span>
+              <span
+                v-if="isPickerCustomActive(plPick.key)"
+                class="pl-picker-reset"
+                role="button"
+                :title="'Bỏ lọc ' + plPick.prefix.replace(':', '')"
+                @click.stop="resetSingleFilter(plPick.key)"
+              >×</span>
+              <svg v-else class="pl-picker-caret" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </button>
+          </div>
+        </div>
+
         <div v-if="isMobile && activeCustomFilterCount > 0" class="bg-m-filter-reset-bar">
           <button type="button" class="bg-m-reset-inline-btn bg-tabular" @click="resetAllFilters">
             <svg xmlns="http://www.w3.org/2000/svg" width="12.5" height="12.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
@@ -772,8 +796,8 @@
             <span>Chia việc</span>
           </button>
 
-          <button type="button" class="bg-btn bg-btn-sky-soft is-island-item" data-guide="btn-open-export" @click="exportExcel" title="Xuất báo cáo Excel">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          <button type="button" class="bg-btn bg-btn-excel-soft is-island-item" data-guide="btn-open-export" @click="exportExcel" title="Xuất báo cáo Excel">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="16" height="16" aria-hidden="true"><path fill="#4CAF50" d="M41,10H25v28h16c0.553,0,1-0.447,1-1V11C42,10.447,41.553,10,41,10z"/><path fill="#FFF" d="M32 15H39V18H32zM32 25H39V28H32zM32 30H39V33H32zM32 20H39V23H32zM25 15H30V18H25zM25 25H30V28H25zM25 30H30V33H25zM25 20H30V23H25z"/><path fill="#2E7D32" d="M27,42L6,38.746C5.416,38.655,5,38.146,5,37.555v-27.11c0-0.591,0.416-1.1,1-1.191L27,6V42z"/><path fill="#FFF" d="M19.129,31l-2.411-4.561c-0.092-0.171-0.186-0.483-0.284-0.938h-0.037c-0.046,0.215-0.154,0.541-0.324,0.979L13.652,31H9.895l4.462-7.001L10.274,17h3.837l2.001,4.196c0.156,0.331,0.296,0.725,0.42,1.179h0.04c0.078-0.271,0.224-0.68,0.439-1.22L19.237,17h3.515l-4.199,6.939l4.316,7.059h-3.74V31z"/></svg>
             <span>Xuất Excel</span>
           </button>
         </div>
@@ -1015,53 +1039,13 @@
                     @dragend="!isMobile && onDragEndReport($event)"
                     @click="openEditModal(report)"
                   >
-                    <!-- Top Meta (No STT), Pipeline Hierarchy Badges & Category/Customer Badges -->
+                    <!-- Top Meta (Time Left + Category/Priority Badges Right), Pipeline Tree & Customer/Company Stack -->
                     <div class="bg-dcard-top" :class="{ 'has-pl-hierarchy': getLinkedPipelines(report).length > 0 }">
                       <div class="bg-dcard-meta bg-tabular">
                         <span class="bg-dcard-time">{{ formatDisplayTime(report.thoi_gian).thu }} · {{ formatDisplayTime(report.thoi_gian).date }} · {{ formatDisplayTime(report.thoi_gian).time }}</span>
                       </div>
 
-                      <div
-                        v-if="getLinkedPipelines(report).length > 0"
-                        class="bg-dcard-pl-tree"
-                        @mousedown.stop
-                        @click.stop
-                      >
-                        <div
-                          v-for="(pl, pIdx) in getLinkedPipelines(report)"
-                          :key="'m-plb-' + report.id + '-' + pIdx"
-                          class="bg-dcard-tree-group"
-                        >
-                          <div v-if="pl.ten_du_an" class="bg-dcard-tree-row is-lv-0">
-                            <span class="bg-dcard-chip is-proj-chip">
-                              <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-                              <span class="bg-dcard-chip-full">{{ pl.ten_du_an }}</span>
-                            </span>
-                          </div>
-                          <div class="bg-dcard-tree-row" :class="pl.ten_du_an ? 'is-lv-1' : 'is-lv-0'">
-                            <span v-if="pl.ten_du_an" class="bg-dcard-tree-elbow" aria-hidden="true"></span>
-                            <span class="bg-dcard-chip is-wf-chip">
-                              <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
-                              <span class="bg-dcard-chip-full">{{ pl.name_workflow || 'Khung Chuẩn Hệ Thống' }}</span>
-                            </span>
-                          </div>
-                          <div class="bg-dcard-tree-row" :class="pl.ten_du_an ? 'is-lv-2' : 'is-lv-1'">
-                            <span class="bg-dcard-tree-elbow" aria-hidden="true"></span>
-                            <button
-                              type="button"
-                              class="bg-dcard-chip is-pipe-task-chip"
-                              title="Nhấn để mở xem Công việc bên trang Pipeline"
-                              @click.stop="goToPipeline(pl.Id_pipeline)"
-                            >
-                              <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
-                              <span class="bg-dcard-chip-full">{{ getPipelineTaskDisplayLabel(pl) }}</span>
-                              <span class="bg-dcard-chip-ext" aria-hidden="true">↗</span>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div class="bg-dcard-badges">
+                      <div class="bg-dcard-badges is-top-right">
                         <span class="bg-dcard-chip is-cat" :class="report.phan_loai === 'ĐỜI SỐNG' ? 'is-life' : 'is-work'">{{ report.phan_loai }}</span>
                         <span v-if="report.trang_thai !== 'Hoàn thành' && (report.isFailed === true || report.isFailed === 'TRUE')" class="bg-dcard-chip is-failed-chip">FAILED</span>
                         <template v-if="report.tag">
@@ -1072,9 +1056,64 @@
                             class="bg-dcard-chip is-prio-chip"
                           >{{ t }}</span>
                         </template>
-                        <span v-if="report.maKH" class="bg-dcard-chip is-cus-chip" :title="'Mã KH: ' + report.maKH">
+                      </div>
+
+                      <div
+                        v-if="getLinkedPipelines(report).length > 0"
+                        class="bg-dcard-pl-tree"
+                      >
+                        <div
+                          v-for="(pl, pIdx) in getLinkedPipelines(report)"
+                          :key="'m-plb-' + report.id + '-' + pIdx"
+                          class="bg-dcard-tree-group"
+                        >
+                          <div v-if="pl.ten_du_an" class="bg-dcard-tree-row">
+                            <button
+                              type="button"
+                              class="bg-dcard-chip is-proj-chip"
+                              title="Nhấn để mở xem Dự án bên trang Pipeline"
+                              @mousedown.stop
+                              @click.stop="goToPipelineProject(pl)"
+                            >
+                              <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                              <span class="bg-dcard-chip-full"><span class="bg-dcard-tree-lbl">Dự án :</span> <span class="bg-dcard-tree-val">{{ pl.ten_du_an }}</span> <span class="bg-dcard-chip-ext" aria-hidden="true">↗</span></span>
+                            </button>
+                          </div>
+                          <div class="bg-dcard-tree-row">
+                            <button
+                              type="button"
+                              class="bg-dcard-chip is-wf-chip"
+                              :title="pl.id_project || pl.ten_du_an ? 'Nhấn để mở xem Pipeline trong Dự án bên trang Pipeline' : 'Nhấn để mở xem Pipeline bên trang Workflow'"
+                              @mousedown.stop
+                              @click.stop="goToPipelineWorkflow(pl)"
+                            >
+                              <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+                              <span class="bg-dcard-chip-full"><span class="bg-dcard-tree-lbl">Pipeline :</span> <span class="bg-dcard-tree-val">{{ pl.name_workflow || 'Khung Chuẩn Hệ Thống' }}</span> <span class="bg-dcard-chip-ext" aria-hidden="true">↗</span></span>
+                            </button>
+                          </div>
+                          <div class="bg-dcard-tree-row">
+                            <button
+                              type="button"
+                              class="bg-dcard-chip is-pipe-task-chip"
+                              title="Nhấn để mở xem Công việc bên trang Pipeline"
+                              @mousedown.stop
+                              @click.stop="goToPipeline(pl.Id_pipeline)"
+                            >
+                              <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                              <span class="bg-dcard-chip-full"><span class="bg-dcard-tree-lbl">Công việc trong pipeline :</span> <span class="bg-dcard-tree-val">{{ getPipelineTaskDisplayLabel(pl) }}</span> <span class="bg-dcard-chip-ext" aria-hidden="true">↗</span></span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div v-if="getCustomerBadgeInfo(report).hasAny" class="bg-dcard-cus-stack">
+                        <span v-if="getCustomerBadgeInfo(report).customerName" class="bg-dcard-chip is-cus-chip" :title="'Mã KH: ' + report.maKH">
                           <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                          <span class="bg-dcard-cus-txt">{{ getCustomerDisplayName(report.maKH) }}</span>
+                          <span class="bg-dcard-cus-txt">{{ getCustomerBadgeInfo(report).customerName }}</span>
+                        </span>
+                        <span v-if="getCustomerBadgeInfo(report).companyName" class="bg-dcard-chip is-company-chip" :title="'Công ty: ' + getCustomerBadgeInfo(report).companyName">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"></path><path d="M5 21V7l8-4v18"></path><path d="M19 21V11l-6-4"></path><path d="M9 9v.01"></path><path d="M9 12v.01"></path><path d="M9 15v.01"></path><path d="M9 18v.01"></path></svg>
+                          <span class="bg-dcard-cus-txt">{{ getCustomerBadgeInfo(report).companyName }}</span>
                         </span>
                       </div>
                     </div>
@@ -1247,53 +1286,13 @@
                     @dragend="!isMobile && onDragEndReport($event)"
                     @click="openEditModal(report)"
                   >
-                    <!-- Top Meta (No STT), Pipeline Hierarchy Badges & Category/Customer Badges -->
+                    <!-- Top Meta (Time Left + Category/Priority Badges Right), Pipeline Tree & Customer/Company Stack -->
                     <div class="bg-dcard-top" :class="{ 'has-pl-hierarchy': getLinkedPipelines(report).length > 0 }">
                       <div class="bg-dcard-meta bg-tabular">
                         <span class="bg-dcard-time">{{ formatDisplayTime(report.thoi_gian).thu }} · {{ formatDisplayTime(report.thoi_gian).date }} · {{ formatDisplayTime(report.thoi_gian).time }}</span>
                       </div>
 
-                      <div
-                        v-if="getLinkedPipelines(report).length > 0"
-                        class="bg-dcard-pl-tree"
-                        @mousedown.stop
-                        @click.stop
-                      >
-                        <div
-                          v-for="(pl, pIdx) in getLinkedPipelines(report)"
-                          :key="'a-plb-' + report.id + '-' + pIdx"
-                          class="bg-dcard-tree-group"
-                        >
-                          <div v-if="pl.ten_du_an" class="bg-dcard-tree-row is-lv-0">
-                            <span class="bg-dcard-chip is-proj-chip">
-                              <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-                              <span class="bg-dcard-chip-full">{{ pl.ten_du_an }}</span>
-                            </span>
-                          </div>
-                          <div class="bg-dcard-tree-row" :class="pl.ten_du_an ? 'is-lv-1' : 'is-lv-0'">
-                            <span v-if="pl.ten_du_an" class="bg-dcard-tree-elbow" aria-hidden="true"></span>
-                            <span class="bg-dcard-chip is-wf-chip">
-                              <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
-                              <span class="bg-dcard-chip-full">{{ pl.name_workflow || 'Khung Chuẩn Hệ Thống' }}</span>
-                            </span>
-                          </div>
-                          <div class="bg-dcard-tree-row" :class="pl.ten_du_an ? 'is-lv-2' : 'is-lv-1'">
-                            <span class="bg-dcard-tree-elbow" aria-hidden="true"></span>
-                            <button
-                              type="button"
-                              class="bg-dcard-chip is-pipe-task-chip"
-                              title="Nhấn để mở xem Công việc bên trang Pipeline"
-                              @click.stop="goToPipeline(pl.Id_pipeline)"
-                            >
-                              <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
-                              <span class="bg-dcard-chip-full">{{ getPipelineTaskDisplayLabel(pl) }}</span>
-                              <span class="bg-dcard-chip-ext" aria-hidden="true">↗</span>
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div class="bg-dcard-badges">
+                      <div class="bg-dcard-badges is-top-right">
                         <span class="bg-dcard-chip is-cat" :class="report.phan_loai === 'ĐỜI SỐNG' ? 'is-life' : 'is-work'">{{ report.phan_loai }}</span>
                         <span v-if="report.trang_thai !== 'Hoàn thành' && (report.isFailed === true || report.isFailed === 'TRUE')" class="bg-dcard-chip is-failed-chip">FAILED</span>
                         <template v-if="report.tag">
@@ -1304,9 +1303,64 @@
                             class="bg-dcard-chip is-prio-chip"
                           >{{ t }}</span>
                         </template>
-                        <span v-if="report.maKH" class="bg-dcard-chip is-cus-chip" :title="'Mã KH: ' + report.maKH">
+                      </div>
+
+                      <div
+                        v-if="getLinkedPipelines(report).length > 0"
+                        class="bg-dcard-pl-tree"
+                      >
+                        <div
+                          v-for="(pl, pIdx) in getLinkedPipelines(report)"
+                          :key="'a-plb-' + report.id + '-' + pIdx"
+                          class="bg-dcard-tree-group"
+                        >
+                          <div v-if="pl.ten_du_an" class="bg-dcard-tree-row">
+                            <button
+                              type="button"
+                              class="bg-dcard-chip is-proj-chip"
+                              title="Nhấn để mở xem Dự án bên trang Pipeline"
+                              @mousedown.stop
+                              @click.stop="goToPipelineProject(pl)"
+                            >
+                              <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                              <span class="bg-dcard-chip-full"><span class="bg-dcard-tree-lbl">Dự án :</span> <span class="bg-dcard-tree-val">{{ pl.ten_du_an }}</span> <span class="bg-dcard-chip-ext" aria-hidden="true">↗</span></span>
+                            </button>
+                          </div>
+                          <div class="bg-dcard-tree-row">
+                            <button
+                              type="button"
+                              class="bg-dcard-chip is-wf-chip"
+                              :title="pl.id_project || pl.ten_du_an ? 'Nhấn để mở xem Pipeline trong Dự án bên trang Pipeline' : 'Nhấn để mở xem Pipeline bên trang Workflow'"
+                              @mousedown.stop
+                              @click.stop="goToPipelineWorkflow(pl)"
+                            >
+                              <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+                              <span class="bg-dcard-chip-full"><span class="bg-dcard-tree-lbl">Pipeline :</span> <span class="bg-dcard-tree-val">{{ pl.name_workflow || 'Khung Chuẩn Hệ Thống' }}</span> <span class="bg-dcard-chip-ext" aria-hidden="true">↗</span></span>
+                            </button>
+                          </div>
+                          <div class="bg-dcard-tree-row">
+                            <button
+                              type="button"
+                              class="bg-dcard-chip is-pipe-task-chip"
+                              title="Nhấn để mở xem Công việc bên trang Pipeline"
+                              @mousedown.stop
+                              @click.stop="goToPipeline(pl.Id_pipeline)"
+                            >
+                              <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                              <span class="bg-dcard-chip-full"><span class="bg-dcard-tree-lbl">Công việc trong pipeline :</span> <span class="bg-dcard-tree-val">{{ getPipelineTaskDisplayLabel(pl) }}</span> <span class="bg-dcard-chip-ext" aria-hidden="true">↗</span></span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div v-if="getCustomerBadgeInfo(report).hasAny" class="bg-dcard-cus-stack">
+                        <span v-if="getCustomerBadgeInfo(report).customerName" class="bg-dcard-chip is-cus-chip" :title="'Mã KH: ' + report.maKH">
                           <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                          <span class="bg-dcard-cus-txt">{{ getCustomerDisplayName(report.maKH) }}</span>
+                          <span class="bg-dcard-cus-txt">{{ getCustomerBadgeInfo(report).customerName }}</span>
+                        </span>
+                        <span v-if="getCustomerBadgeInfo(report).companyName" class="bg-dcard-chip is-company-chip" :title="'Công ty: ' + getCustomerBadgeInfo(report).companyName">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"></path><path d="M5 21V7l8-4v18"></path><path d="M19 21V11l-6-4"></path><path d="M9 9v.01"></path><path d="M9 12v.01"></path><path d="M9 15v.01"></path><path d="M9 18v.01"></path></svg>
+                          <span class="bg-dcard-cus-txt">{{ getCustomerBadgeInfo(report).companyName }}</span>
                         </span>
                       </div>
                     </div>
@@ -1451,7 +1505,7 @@
             }"
             @click="openEditModal(report)"
           >
-            <!-- Top Meta (Day · Date · Time + Sáng/Chiều Pill), Pipeline Hierarchy Badges & Category/Customer Badges -->
+            <!-- Top Meta (Day · Date · Time + Sáng/Chiều Pill Right-Aligned Category), Pipeline Tree & Customer/Company Stack -->
             <div class="bg-dcard-top" :class="{ 'has-pl-hierarchy': getLinkedPipelines(report).length > 0 }">
               <div class="bg-dcard-meta bg-tabular">
                 <span class="bg-dcard-time">{{ formatDisplayTime(report.thoi_gian).thu }} · {{ formatDisplayTime(report.thoi_gian).date }} · {{ formatDisplayTime(report.thoi_gian).time }}</span>
@@ -1461,47 +1515,7 @@
                 >{{ formatDisplayTime(report.thoi_gian).period === 'Sáng' ? 'SÁNG' : 'CHIỀU' }}</span>
               </div>
 
-              <div
-                v-if="getLinkedPipelines(report).length > 0"
-                class="bg-dcard-pl-tree"
-                @mousedown.stop
-                @click.stop
-              >
-                <div
-                  v-for="(pl, pIdx) in getLinkedPipelines(report)"
-                  :key="'mu-plb-' + report.id + '-' + pIdx"
-                  class="bg-dcard-tree-group"
-                >
-                  <div v-if="pl.ten_du_an" class="bg-dcard-tree-row is-lv-0">
-                    <span class="bg-dcard-chip is-proj-chip">
-                      <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-                      <span class="bg-dcard-chip-full">{{ pl.ten_du_an }}</span>
-                    </span>
-                  </div>
-                  <div class="bg-dcard-tree-row" :class="pl.ten_du_an ? 'is-lv-1' : 'is-lv-0'">
-                    <span v-if="pl.ten_du_an" class="bg-dcard-tree-elbow" aria-hidden="true"></span>
-                    <span class="bg-dcard-chip is-wf-chip">
-                      <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
-                      <span class="bg-dcard-chip-full">{{ pl.name_workflow || 'Khung Chuẩn Hệ Thống' }}</span>
-                    </span>
-                  </div>
-                  <div class="bg-dcard-tree-row" :class="pl.ten_du_an ? 'is-lv-2' : 'is-lv-1'">
-                    <span class="bg-dcard-tree-elbow" aria-hidden="true"></span>
-                    <button
-                      type="button"
-                      class="bg-dcard-chip is-pipe-task-chip"
-                      title="Nhấn để mở xem Công việc bên trang Pipeline"
-                      @click.stop="goToPipeline(pl.Id_pipeline)"
-                    >
-                      <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
-                      <span class="bg-dcard-chip-full">{{ getPipelineTaskDisplayLabel(pl) }}</span>
-                      <span class="bg-dcard-chip-ext" aria-hidden="true">↗</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div class="bg-dcard-badges">
+              <div class="bg-dcard-badges is-top-right">
                 <span class="bg-dcard-chip is-cat" :class="report.phan_loai === 'ĐỜI SỐNG' ? 'is-life' : 'is-work'">{{ report.phan_loai }}</span>
                 <span v-if="report.trang_thai !== 'Hoàn thành' && (report.isFailed === true || report.isFailed === 'TRUE')" class="bg-dcard-chip is-failed-chip">FAILED</span>
                 <template v-if="report.tag">
@@ -1512,9 +1526,64 @@
                     class="bg-dcard-chip is-prio-chip"
                   >{{ t }}</span>
                 </template>
-                <span v-if="report.maKH" class="bg-dcard-chip is-cus-chip" :title="'Mã KH: ' + report.maKH">
+              </div>
+
+              <div
+                v-if="getLinkedPipelines(report).length > 0"
+                class="bg-dcard-pl-tree"
+              >
+                <div
+                  v-for="(pl, pIdx) in getLinkedPipelines(report)"
+                  :key="'mu-plb-' + report.id + '-' + pIdx"
+                  class="bg-dcard-tree-group"
+                >
+                  <div v-if="pl.ten_du_an" class="bg-dcard-tree-row">
+                    <button
+                      type="button"
+                      class="bg-dcard-chip is-proj-chip"
+                      title="Nhấn để mở xem Dự án bên trang Pipeline"
+                      @mousedown.stop
+                      @click.stop="goToPipelineProject(pl)"
+                    >
+                      <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                      <span class="bg-dcard-chip-full"><span class="bg-dcard-tree-lbl">Dự án :</span> <span class="bg-dcard-tree-val">{{ pl.ten_du_an }}</span> <span class="bg-dcard-chip-ext" aria-hidden="true">↗</span></span>
+                    </button>
+                  </div>
+                  <div class="bg-dcard-tree-row">
+                    <button
+                      type="button"
+                      class="bg-dcard-chip is-wf-chip"
+                      :title="pl.id_project || pl.ten_du_an ? 'Nhấn để mở xem Pipeline trong Dự án bên trang Pipeline' : 'Nhấn để mở xem Pipeline bên trang Workflow'"
+                      @mousedown.stop
+                      @click.stop="goToPipelineWorkflow(pl)"
+                    >
+                      <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+                      <span class="bg-dcard-chip-full"><span class="bg-dcard-tree-lbl">Pipeline :</span> <span class="bg-dcard-tree-val">{{ pl.name_workflow || 'Khung Chuẩn Hệ Thống' }}</span> <span class="bg-dcard-chip-ext" aria-hidden="true">↗</span></span>
+                    </button>
+                  </div>
+                  <div class="bg-dcard-tree-row">
+                    <button
+                      type="button"
+                      class="bg-dcard-chip is-pipe-task-chip"
+                      title="Nhấn để mở xem Công việc bên trang Pipeline"
+                      @mousedown.stop
+                      @click.stop="goToPipeline(pl.Id_pipeline)"
+                    >
+                      <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                      <span class="bg-dcard-chip-full"><span class="bg-dcard-tree-lbl">Công việc trong pipeline :</span> <span class="bg-dcard-tree-val">{{ getPipelineTaskDisplayLabel(pl) }}</span> <span class="bg-dcard-chip-ext" aria-hidden="true">↗</span></span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="getCustomerBadgeInfo(report).hasAny" class="bg-dcard-cus-stack">
+                <span v-if="getCustomerBadgeInfo(report).customerName" class="bg-dcard-chip is-cus-chip" :title="'Mã KH: ' + report.maKH">
                   <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                  <span class="bg-dcard-cus-txt">{{ getCustomerDisplayName(report.maKH) }}</span>
+                  <span class="bg-dcard-cus-txt">{{ getCustomerBadgeInfo(report).customerName }}</span>
+                </span>
+                <span v-if="getCustomerBadgeInfo(report).companyName" class="bg-dcard-chip is-company-chip" :title="'Công ty: ' + getCustomerBadgeInfo(report).companyName">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"></path><path d="M5 21V7l8-4v18"></path><path d="M19 21V11l-6-4"></path><path d="M9 9v.01"></path><path d="M9 12v.01"></path><path d="M9 15v.01"></path><path d="M9 18v.01"></path></svg>
+                  <span class="bg-dcard-cus-txt">{{ getCustomerBadgeInfo(report).companyName }}</span>
                 </span>
               </div>
             </div>
@@ -1825,10 +1894,61 @@
                   }
                 ]"
               >
-                <div v-if="task.tag === 'ƯU TIÊN' || getCustomerShortName(task)" class="bg-gcal-event-top">
+                <div
+                  v-if="getLinkedPipelines(task).length > 0"
+                  class="bg-dcard-pl-tree is-gcal-tree"
+                >
+                  <div
+                    v-for="(pl, pIdx) in getLinkedPipelines(task)"
+                    :key="'wkam-plb-' + task.id + '-' + pIdx"
+                    class="bg-dcard-tree-group"
+                  >
+                    <div v-if="pl.ten_du_an" class="bg-dcard-tree-row">
+                      <button
+                        type="button"
+                        class="bg-dcard-chip is-proj-chip"
+                        title="Nhấn để mở xem Dự án bên trang Pipeline"
+                        @mousedown.stop
+                        @click.stop="goToPipelineProject(pl)"
+                      >
+                        <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                        <span class="bg-dcard-chip-full"><span class="bg-dcard-tree-lbl">Dự án :</span> <span class="bg-dcard-tree-val">{{ pl.ten_du_an }}</span> <span class="bg-dcard-chip-ext" aria-hidden="true">↗</span></span>
+                      </button>
+                    </div>
+                    <div class="bg-dcard-tree-row">
+                      <button
+                        type="button"
+                        class="bg-dcard-chip is-wf-chip"
+                        :title="pl.id_project || pl.ten_du_an ? 'Nhấn để mở xem Pipeline trong Dự án bên trang Pipeline' : 'Nhấn để mở xem Pipeline bên trang Workflow'"
+                        @mousedown.stop
+                        @click.stop="goToPipelineWorkflow(pl)"
+                      >
+                        <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+                        <span class="bg-dcard-chip-full"><span class="bg-dcard-tree-lbl">Pipeline :</span> <span class="bg-dcard-tree-val">{{ pl.name_workflow || 'Khung Chuẩn Hệ Thống' }}</span> <span class="bg-dcard-chip-ext" aria-hidden="true">↗</span></span>
+                      </button>
+                    </div>
+                    <div class="bg-dcard-tree-row">
+                      <button
+                        type="button"
+                        class="bg-dcard-chip is-pipe-task-chip"
+                        title="Nhấn để mở xem Công việc bên trang Pipeline"
+                        @mousedown.stop
+                        @click.stop="goToPipeline(pl.Id_pipeline)"
+                      >
+                        <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                        <span class="bg-dcard-chip-full"><span class="bg-dcard-tree-lbl">Công việc trong pipeline :</span> <span class="bg-dcard-tree-val">{{ getPipelineTaskDisplayLabel(pl) }}</span> <span class="bg-dcard-chip-ext" aria-hidden="true">↗</span></span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div v-if="task.tag === 'ƯU TIÊN' || getCustomerBadgeInfo(task).hasAny" class="bg-gcal-event-top">
                   <div class="bg-gcal-event-badges">
                     <span v-if="task.tag === 'ƯU TIÊN'" class="bg-gcal-prio-tag">ƯU TIÊN</span>
-                    <span v-if="getCustomerShortName(task)" class="bg-gcal-cus-tag">{{ getCustomerShortName(task) }}</span>
+                    <div v-if="getCustomerBadgeInfo(task).hasAny" class="bg-gcal-cus-stack">
+                      <span v-if="getCustomerBadgeInfo(task).customerName" class="bg-gcal-cus-tag">{{ getCustomerBadgeInfo(task).customerName }}</span>
+                      <span v-if="getCustomerBadgeInfo(task).companyName" class="bg-gcal-comp-tag">{{ getCustomerBadgeInfo(task).companyName }}</span>
+                    </div>
                   </div>
                 </div>
 
@@ -1981,10 +2101,61 @@
                   }
                 ]"
               >
-                <div v-if="task.tag === 'ƯU TIÊN' || getCustomerShortName(task)" class="bg-gcal-event-top">
+                <div
+                  v-if="getLinkedPipelines(task).length > 0"
+                  class="bg-dcard-pl-tree is-gcal-tree"
+                >
+                  <div
+                    v-for="(pl, pIdx) in getLinkedPipelines(task)"
+                    :key="'wkam-plb-' + task.id + '-' + pIdx"
+                    class="bg-dcard-tree-group"
+                  >
+                    <div v-if="pl.ten_du_an" class="bg-dcard-tree-row">
+                      <button
+                        type="button"
+                        class="bg-dcard-chip is-proj-chip"
+                        title="Nhấn để mở xem Dự án bên trang Pipeline"
+                        @mousedown.stop
+                        @click.stop="goToPipelineProject(pl)"
+                      >
+                        <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                        <span class="bg-dcard-chip-full"><span class="bg-dcard-tree-lbl">Dự án :</span> <span class="bg-dcard-tree-val">{{ pl.ten_du_an }}</span> <span class="bg-dcard-chip-ext" aria-hidden="true">↗</span></span>
+                      </button>
+                    </div>
+                    <div class="bg-dcard-tree-row">
+                      <button
+                        type="button"
+                        class="bg-dcard-chip is-wf-chip"
+                        :title="pl.id_project || pl.ten_du_an ? 'Nhấn để mở xem Pipeline trong Dự án bên trang Pipeline' : 'Nhấn để mở xem Pipeline bên trang Workflow'"
+                        @mousedown.stop
+                        @click.stop="goToPipelineWorkflow(pl)"
+                      >
+                        <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+                        <span class="bg-dcard-chip-full"><span class="bg-dcard-tree-lbl">Pipeline :</span> <span class="bg-dcard-tree-val">{{ pl.name_workflow || 'Khung Chuẩn Hệ Thống' }}</span> <span class="bg-dcard-chip-ext" aria-hidden="true">↗</span></span>
+                      </button>
+                    </div>
+                    <div class="bg-dcard-tree-row">
+                      <button
+                        type="button"
+                        class="bg-dcard-chip is-pipe-task-chip"
+                        title="Nhấn để mở xem Công việc bên trang Pipeline"
+                        @mousedown.stop
+                        @click.stop="goToPipeline(pl.Id_pipeline)"
+                      >
+                        <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                        <span class="bg-dcard-chip-full"><span class="bg-dcard-tree-lbl">Công việc trong pipeline :</span> <span class="bg-dcard-tree-val">{{ getPipelineTaskDisplayLabel(pl) }}</span> <span class="bg-dcard-chip-ext" aria-hidden="true">↗</span></span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div v-if="task.tag === 'ƯU TIÊN' || getCustomerBadgeInfo(task).hasAny" class="bg-gcal-event-top">
                   <div class="bg-gcal-event-badges">
                     <span v-if="task.tag === 'ƯU TIÊN'" class="bg-gcal-prio-tag">ƯU TIÊN</span>
-                    <span v-if="getCustomerShortName(task)" class="bg-gcal-cus-tag">{{ getCustomerShortName(task) }}</span>
+                    <div v-if="getCustomerBadgeInfo(task).hasAny" class="bg-gcal-cus-stack">
+                      <span v-if="getCustomerBadgeInfo(task).customerName" class="bg-gcal-cus-tag">{{ getCustomerBadgeInfo(task).customerName }}</span>
+                      <span v-if="getCustomerBadgeInfo(task).companyName" class="bg-gcal-comp-tag">{{ getCustomerBadgeInfo(task).companyName }}</span>
+                    </div>
                   </div>
                 </div>
 
@@ -2190,11 +2361,12 @@
                     }"
                     @click="openEditModal(report)"
                   >
-                    <div class="bg-dcard-top">
+                    <div class="bg-dcard-top" :class="{ 'has-pl-hierarchy': getLinkedPipelines(report).length > 0 }">
                       <div class="bg-dcard-meta bg-tabular">
                         <span class="bg-dcard-time">{{ formatDisplayTime(report.thoi_gian).time }}</span>
                       </div>
-                      <div class="bg-dcard-badges">
+
+                      <div class="bg-dcard-badges is-top-right">
                         <span class="bg-dcard-chip is-cat" :class="report.phan_loai === 'ĐỜI SỐNG' ? 'is-life' : 'is-work'">{{ report.phan_loai }}</span>
                         <span v-if="report.trang_thai !== 'Hoàn thành' && (report.isFailed === true || report.isFailed === 'TRUE')" class="bg-dcard-chip is-failed-chip">FAILED</span>
                         <template v-if="report.tag">
@@ -2205,9 +2377,64 @@
                             class="bg-dcard-chip is-prio-chip"
                           >{{ t }}</span>
                         </template>
-                        <span v-if="report.maKH" class="bg-dcard-chip is-cus-chip" :title="'Mã KH: ' + report.maKH">
+                      </div>
+
+                      <div
+                        v-if="getLinkedPipelines(report).length > 0"
+                        class="bg-dcard-pl-tree"
+                      >
+                        <div
+                          v-for="(pl, pIdx) in getLinkedPipelines(report)"
+                          :key="'mwk-plb-' + report.id + '-' + pIdx"
+                          class="bg-dcard-tree-group"
+                        >
+                          <div v-if="pl.ten_du_an" class="bg-dcard-tree-row">
+                            <button
+                              type="button"
+                              class="bg-dcard-chip is-proj-chip"
+                              title="Nhấn để mở xem Dự án bên trang Pipeline"
+                              @mousedown.stop
+                              @click.stop="goToPipelineProject(pl)"
+                            >
+                              <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                              <span class="bg-dcard-chip-full"><span class="bg-dcard-tree-lbl">Dự án :</span> <span class="bg-dcard-tree-val">{{ pl.ten_du_an }}</span> <span class="bg-dcard-chip-ext" aria-hidden="true">↗</span></span>
+                            </button>
+                          </div>
+                          <div class="bg-dcard-tree-row">
+                            <button
+                              type="button"
+                              class="bg-dcard-chip is-wf-chip"
+                              :title="pl.id_project || pl.ten_du_an ? 'Nhấn để mở xem Pipeline trong Dự án bên trang Pipeline' : 'Nhấn để mở xem Pipeline bên trang Workflow'"
+                              @mousedown.stop
+                              @click.stop="goToPipelineWorkflow(pl)"
+                            >
+                              <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+                              <span class="bg-dcard-chip-full"><span class="bg-dcard-tree-lbl">Pipeline :</span> <span class="bg-dcard-tree-val">{{ pl.name_workflow || 'Khung Chuẩn Hệ Thống' }}</span> <span class="bg-dcard-chip-ext" aria-hidden="true">↗</span></span>
+                            </button>
+                          </div>
+                          <div class="bg-dcard-tree-row">
+                            <button
+                              type="button"
+                              class="bg-dcard-chip is-pipe-task-chip"
+                              title="Nhấn để mở xem Công việc bên trang Pipeline"
+                              @mousedown.stop
+                              @click.stop="goToPipeline(pl.Id_pipeline)"
+                            >
+                              <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                              <span class="bg-dcard-chip-full"><span class="bg-dcard-tree-lbl">Công việc trong pipeline :</span> <span class="bg-dcard-tree-val">{{ getPipelineTaskDisplayLabel(pl) }}</span> <span class="bg-dcard-chip-ext" aria-hidden="true">↗</span></span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div v-if="getCustomerBadgeInfo(report).hasAny" class="bg-dcard-cus-stack">
+                        <span v-if="getCustomerBadgeInfo(report).customerName" class="bg-dcard-chip is-cus-chip" :title="'Mã KH: ' + report.maKH">
                           <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                          <span class="bg-dcard-cus-txt">{{ getCustomerDisplayName(report.maKH) }}</span>
+                          <span class="bg-dcard-cus-txt">{{ getCustomerBadgeInfo(report).customerName }}</span>
+                        </span>
+                        <span v-if="getCustomerBadgeInfo(report).companyName" class="bg-dcard-chip is-company-chip" :title="'Công ty: ' + getCustomerBadgeInfo(report).companyName">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"></path><path d="M5 21V7l8-4v18"></path><path d="M19 21V11l-6-4"></path><path d="M9 9v.01"></path><path d="M9 12v.01"></path><path d="M9 15v.01"></path><path d="M9 18v.01"></path></svg>
+                          <span class="bg-dcard-cus-txt">{{ getCustomerBadgeInfo(report).companyName }}</span>
                         </span>
                       </div>
                     </div>
@@ -2379,10 +2606,61 @@
                         }
                       ]"
                     >
-                      <div v-if="task.tag === 'ƯU TIÊN' || getCustomerShortName(task)" class="bg-gcal-event-top">
+                      <div
+                        v-if="getLinkedPipelines(task).length > 0"
+                        class="bg-dcard-pl-tree is-gcal-tree"
+                      >
+                        <div
+                          v-for="(pl, pIdx) in getLinkedPipelines(task)"
+                          :key="'mcal-plb-' + task.id + '-' + pIdx"
+                          class="bg-dcard-tree-group"
+                        >
+                          <div v-if="pl.ten_du_an" class="bg-dcard-tree-row">
+                            <button
+                              type="button"
+                              class="bg-dcard-chip is-proj-chip"
+                              title="Nhấn để mở xem Dự án bên trang Pipeline"
+                              @mousedown.stop
+                              @click.stop="goToPipelineProject(pl)"
+                            >
+                              <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="9.5" height="9.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                              <span class="bg-dcard-chip-full"><span class="bg-dcard-tree-lbl">Dự án :</span> <span class="bg-dcard-tree-val">{{ pl.ten_du_an }}</span> <span class="bg-dcard-chip-ext" aria-hidden="true">↗</span></span>
+                            </button>
+                          </div>
+                          <div class="bg-dcard-tree-row">
+                            <button
+                              type="button"
+                              class="bg-dcard-chip is-wf-chip"
+                              :title="pl.id_project || pl.ten_du_an ? 'Nhấn để mở xem Pipeline trong Dự án bên trang Pipeline' : 'Nhấn để mở xem Pipeline bên trang Workflow'"
+                              @mousedown.stop
+                              @click.stop="goToPipelineWorkflow(pl)"
+                            >
+                              <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="9.5" height="9.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+                              <span class="bg-dcard-chip-full"><span class="bg-dcard-tree-lbl">Pipeline :</span> <span class="bg-dcard-tree-val">{{ pl.name_workflow || 'Khung Chuẩn Hệ Thống' }}</span> <span class="bg-dcard-chip-ext" aria-hidden="true">↗</span></span>
+                            </button>
+                          </div>
+                          <div class="bg-dcard-tree-row">
+                            <button
+                              type="button"
+                              class="bg-dcard-chip is-pipe-task-chip"
+                              title="Nhấn để mở xem Công việc bên trang Pipeline"
+                              @mousedown.stop
+                              @click.stop="goToPipeline(pl.Id_pipeline)"
+                            >
+                              <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="9.5" height="9.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                              <span class="bg-dcard-chip-full"><span class="bg-dcard-tree-lbl">Công việc trong pipeline :</span> <span class="bg-dcard-tree-val">{{ getPipelineTaskDisplayLabel(pl) }}</span> <span class="bg-dcard-chip-ext" aria-hidden="true">↗</span></span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div v-if="task.tag === 'ƯU TIÊN' || getCustomerBadgeInfo(task).hasAny" class="bg-gcal-event-top">
                         <div class="bg-gcal-event-badges">
                           <span v-if="task.tag === 'ƯU TIÊN'" class="bg-gcal-prio-tag">ƯU TIÊN</span>
-                          <span v-if="getCustomerShortName(task)" class="bg-gcal-cus-tag">{{ getCustomerShortName(task) }}</span>
+                          <div v-if="getCustomerBadgeInfo(task).hasAny" class="bg-gcal-cus-stack">
+                            <span v-if="getCustomerBadgeInfo(task).customerName" class="bg-gcal-cus-tag">{{ getCustomerBadgeInfo(task).customerName }}</span>
+                            <span v-if="getCustomerBadgeInfo(task).companyName" class="bg-gcal-comp-tag">{{ getCustomerBadgeInfo(task).companyName }}</span>
+                          </div>
                         </div>
                       </div>
                       <div class="bg-gcal-title-row">
@@ -2516,10 +2794,61 @@
                         }
                       ]"
                     >
-                      <div v-if="task.tag === 'ƯU TIÊN' || getCustomerShortName(task)" class="bg-gcal-event-top">
+                      <div
+                        v-if="getLinkedPipelines(task).length > 0"
+                        class="bg-dcard-pl-tree is-gcal-tree"
+                      >
+                        <div
+                          v-for="(pl, pIdx) in getLinkedPipelines(task)"
+                          :key="'mcal-plb-' + task.id + '-' + pIdx"
+                          class="bg-dcard-tree-group"
+                        >
+                          <div v-if="pl.ten_du_an" class="bg-dcard-tree-row">
+                            <button
+                              type="button"
+                              class="bg-dcard-chip is-proj-chip"
+                              title="Nhấn để mở xem Dự án bên trang Pipeline"
+                              @mousedown.stop
+                              @click.stop="goToPipelineProject(pl)"
+                            >
+                              <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="9.5" height="9.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                              <span class="bg-dcard-chip-full"><span class="bg-dcard-tree-lbl">Dự án :</span> <span class="bg-dcard-tree-val">{{ pl.ten_du_an }}</span> <span class="bg-dcard-chip-ext" aria-hidden="true">↗</span></span>
+                            </button>
+                          </div>
+                          <div class="bg-dcard-tree-row">
+                            <button
+                              type="button"
+                              class="bg-dcard-chip is-wf-chip"
+                              :title="pl.id_project || pl.ten_du_an ? 'Nhấn để mở xem Pipeline trong Dự án bên trang Pipeline' : 'Nhấn để mở xem Pipeline bên trang Workflow'"
+                              @mousedown.stop
+                              @click.stop="goToPipelineWorkflow(pl)"
+                            >
+                              <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="9.5" height="9.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+                              <span class="bg-dcard-chip-full"><span class="bg-dcard-tree-lbl">Pipeline :</span> <span class="bg-dcard-tree-val">{{ pl.name_workflow || 'Khung Chuẩn Hệ Thống' }}</span> <span class="bg-dcard-chip-ext" aria-hidden="true">↗</span></span>
+                            </button>
+                          </div>
+                          <div class="bg-dcard-tree-row">
+                            <button
+                              type="button"
+                              class="bg-dcard-chip is-pipe-task-chip"
+                              title="Nhấn để mở xem Công việc bên trang Pipeline"
+                              @mousedown.stop
+                              @click.stop="goToPipeline(pl.Id_pipeline)"
+                            >
+                              <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="9.5" height="9.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                              <span class="bg-dcard-chip-full"><span class="bg-dcard-tree-lbl">Công việc trong pipeline :</span> <span class="bg-dcard-tree-val">{{ getPipelineTaskDisplayLabel(pl) }}</span> <span class="bg-dcard-chip-ext" aria-hidden="true">↗</span></span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div v-if="task.tag === 'ƯU TIÊN' || getCustomerBadgeInfo(task).hasAny" class="bg-gcal-event-top">
                         <div class="bg-gcal-event-badges">
                           <span v-if="task.tag === 'ƯU TIÊN'" class="bg-gcal-prio-tag">ƯU TIÊN</span>
-                          <span v-if="getCustomerShortName(task)" class="bg-gcal-cus-tag">{{ getCustomerShortName(task) }}</span>
+                          <div v-if="getCustomerBadgeInfo(task).hasAny" class="bg-gcal-cus-stack">
+                            <span v-if="getCustomerBadgeInfo(task).customerName" class="bg-gcal-cus-tag">{{ getCustomerBadgeInfo(task).customerName }}</span>
+                            <span v-if="getCustomerBadgeInfo(task).companyName" class="bg-gcal-comp-tag">{{ getCustomerBadgeInfo(task).companyName }}</span>
+                          </div>
                         </div>
                       </div>
                       <div class="bg-gcal-title-row">
@@ -2709,7 +3038,7 @@
                 }"
                 @click="openEditModal(report)"
               >
-                <div class="bg-dcard-top">
+                <div class="bg-dcard-top" :class="{ 'has-pl-hierarchy': getLinkedPipelines(report).length > 0 }">
                   <div class="bg-dcard-meta bg-tabular">
                     <span class="bg-dcard-time">{{ formatDisplayTime(report.thoi_gian).time }}</span>
                     <span
@@ -2717,7 +3046,8 @@
                       :class="formatDisplayTime(report.thoi_gian).period === 'Sáng' ? 'is-am' : 'is-pm'"
                     >{{ formatDisplayTime(report.thoi_gian).period === 'Sáng' ? 'SÁNG' : 'CHIỀU' }}</span>
                   </div>
-                  <div class="bg-dcard-badges">
+
+                  <div class="bg-dcard-badges is-top-right">
                     <span class="bg-dcard-chip is-cat" :class="report.phan_loai === 'ĐỜI SỐNG' ? 'is-life' : 'is-work'">{{ report.phan_loai }}</span>
                     <span v-if="report.trang_thai !== 'Hoàn thành' && (report.isFailed === true || report.isFailed === 'TRUE')" class="bg-dcard-chip is-failed-chip">FAILED</span>
                     <template v-if="report.tag">
@@ -2728,9 +3058,64 @@
                         class="bg-dcard-chip is-prio-chip"
                       >{{ t }}</span>
                     </template>
-                    <span v-if="report.maKH" class="bg-dcard-chip is-cus-chip" :title="'Mã KH: ' + report.maKH">
+                  </div>
+
+                  <div
+                    v-if="getLinkedPipelines(report).length > 0"
+                    class="bg-dcard-pl-tree"
+                  >
+                    <div
+                      v-for="(pl, pIdx) in getLinkedPipelines(report)"
+                      :key="'mmm-plb-' + report.id + '-' + pIdx"
+                      class="bg-dcard-tree-group"
+                    >
+                      <div v-if="pl.ten_du_an" class="bg-dcard-tree-row">
+                        <button
+                          type="button"
+                          class="bg-dcard-chip is-proj-chip"
+                          title="Nhấn để mở xem Dự án bên trang Pipeline"
+                          @mousedown.stop
+                          @click.stop="goToPipelineProject(pl)"
+                        >
+                          <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                          <span class="bg-dcard-chip-full"><span class="bg-dcard-tree-lbl">Dự án :</span> <span class="bg-dcard-tree-val">{{ pl.ten_du_an }}</span> <span class="bg-dcard-chip-ext" aria-hidden="true">↗</span></span>
+                        </button>
+                      </div>
+                      <div class="bg-dcard-tree-row">
+                        <button
+                          type="button"
+                          class="bg-dcard-chip is-wf-chip"
+                          :title="pl.id_project || pl.ten_du_an ? 'Nhấn để mở xem Pipeline trong Dự án bên trang Pipeline' : 'Nhấn để mở xem Pipeline bên trang Workflow'"
+                          @mousedown.stop
+                          @click.stop="goToPipelineWorkflow(pl)"
+                        >
+                          <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+                          <span class="bg-dcard-chip-full"><span class="bg-dcard-tree-lbl">Pipeline :</span> <span class="bg-dcard-tree-val">{{ pl.name_workflow || 'Khung Chuẩn Hệ Thống' }}</span> <span class="bg-dcard-chip-ext" aria-hidden="true">↗</span></span>
+                        </button>
+                      </div>
+                      <div class="bg-dcard-tree-row">
+                        <button
+                          type="button"
+                          class="bg-dcard-chip is-pipe-task-chip"
+                          title="Nhấn để mở xem Công việc bên trang Pipeline"
+                          @mousedown.stop
+                          @click.stop="goToPipeline(pl.Id_pipeline)"
+                        >
+                          <svg class="bg-dcard-chip-ic" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                          <span class="bg-dcard-chip-full"><span class="bg-dcard-tree-lbl">Công việc trong pipeline :</span> <span class="bg-dcard-tree-val">{{ getPipelineTaskDisplayLabel(pl) }}</span> <span class="bg-dcard-chip-ext" aria-hidden="true">↗</span></span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div v-if="getCustomerBadgeInfo(report).hasAny" class="bg-dcard-cus-stack">
+                    <span v-if="getCustomerBadgeInfo(report).customerName" class="bg-dcard-chip is-cus-chip" :title="'Mã KH: ' + report.maKH">
                       <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                      <span class="bg-dcard-cus-txt">{{ getCustomerDisplayName(report.maKH) }}</span>
+                      <span class="bg-dcard-cus-txt">{{ getCustomerBadgeInfo(report).customerName }}</span>
+                    </span>
+                    <span v-if="getCustomerBadgeInfo(report).companyName" class="bg-dcard-chip is-company-chip" :title="'Công ty: ' + getCustomerBadgeInfo(report).companyName">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"></path><path d="M5 21V7l8-4v18"></path><path d="M19 21V11l-6-4"></path><path d="M9 9v.01"></path><path d="M9 12v.01"></path><path d="M9 15v.01"></path><path d="M9 18v.01"></path></svg>
+                      <span class="bg-dcard-cus-txt">{{ getCustomerBadgeInfo(report).companyName }}</span>
                     </span>
                   </div>
                 </div>
@@ -2879,9 +3264,9 @@
         <span class="bg-dock-lbl">Chia việc</span>
       </button>
 
-      <button type="button" class="bg-dock-btn" data-guide="m-dock-export" @click="exportExcel">
+      <button type="button" class="bg-dock-btn is-excel" data-guide="m-dock-export" @click="exportExcel">
         <span class="bg-dock-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="17" height="17" aria-hidden="true"><path fill="#4CAF50" d="M41,10H25v28h16c0.553,0,1-0.447,1-1V11C42,10.447,41.553,10,41,10z"/><path fill="#FFF" d="M32 15H39V18H32zM32 25H39V28H32zM32 30H39V33H32zM32 20H39V23H32zM25 15H30V18H25zM25 25H30V28H25zM25 30H30V33H25zM25 20H30V23H25z"/><path fill="#2E7D32" d="M27,42L6,38.746C5.416,38.655,5,38.146,5,37.555v-27.11c0-0.591,0.416-1.1,1-1.191L27,6V42z"/><path fill="#FFF" d="M19.129,31l-2.411-4.561c-0.092-0.171-0.186-0.483-0.284-0.938h-0.037c-0.046,0.215-0.154,0.541-0.324,0.979L13.652,31H9.895l4.462-7.001L10.274,17h3.837l2.001,4.196c0.156,0.331,0.296,0.725,0.42,1.179h0.04c0.078-0.271,0.224-0.68,0.439-1.22L19.237,17h3.515l-4.199,6.939l4.316,7.059h-3.74V31z"/></svg>
         </span>
         <span class="bg-dock-lbl">Excel</span>
       </button>
@@ -3485,19 +3870,6 @@
 
                     <button
                       type="button"
-                      class="bg-studio-mtrigger is-file-trigger"
-                      :class="{ 'has-data': hasFormLinkedFile }"
-                      @click="openStudioLinkedFileModal"
-                      title="Mở cửa sổ chọn Hồ sơ Quản Lý File"
-                    >
-                      <span class="bg-studio-mtrig-ic" aria-hidden="true">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.35" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-                      </span>
-                      <span class="bg-studio-mtrig-lbl">{{ hasFormLinkedFile ? 'Hồ sơ File ✓' : 'Hồ sơ File' }}</span>
-                    </button>
-
-                    <button
-                      type="button"
                       class="bg-studio-mtrigger is-pipeline-trigger"
                       :class="{ 'has-data': hasFormLinkedPipeline }"
                       @click="openStudioPipelineModal"
@@ -3595,8 +3967,8 @@
                       <div class="bg-studio-meta-text is-pipeline-stack">
                         <template v-if="selectedLinkedPipeline">
                           <div class="bg-studio-pl-top-line">
-                            <span v-if="selectedLinkedPipeline.ten_du_an" class="bg-pl-mini-chip is-proj">{{ selectedLinkedPipeline.ten_du_an }}</span>
-                            <span class="bg-pl-mini-chip is-wf">{{ selectedLinkedPipeline.name_workflow || 'Khung Chuẩn Hệ Thống' }}</span>
+                            <span v-if="selectedLinkedPipeline.ten_du_an" class="bg-pl-mini-chip is-proj">Dự án : {{ selectedLinkedPipeline.ten_du_an }}</span>
+                            <span class="bg-pl-mini-chip is-wf">Pipeline : {{ selectedLinkedPipeline.name_workflow || 'Khung Chuẩn Hệ Thống' }}</span>
                             <span class="bg-studio-pl-task-lbl">{{ getPipelineTaskDisplayLabel(selectedLinkedPipeline) }}</span>
                           </div>
                           <div
@@ -4611,6 +4983,280 @@
               <button type="button" class="bg-btn-xs is-sky" @click.stop="selectCustomer(cus)">Chọn</button>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODULE 4C-PL: MODAL LỌC THEO DỰ ÁN / PIPELINE / CÔNG VIỆC PIPELINE (LAZY LOAD) -->
+    <div v-if="plFilterModalKey && plFilterModalMeta" class="bg-modal-overlay" style="z-index: 100060;" @click.self="closePlFilterModal">
+      <div class="bg-modal-card is-md is-mobile-sheet" style="max-width: 640px;" role="dialog" aria-modal="true" @click="openPlFilterModalPicker = null">
+        <div class="bg-modal-head dt-only-head">
+          <div class="bg-modal-title-row">
+            <div class="bg-modal-icon" :class="plFilterModalMeta.iconTone">
+              <svg v-if="plFilterModalKey === 'projectId'" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+              <svg v-else-if="plFilterModalKey === 'workflowId'" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+              <svg v-else xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+            </div>
+            <div>
+              <h2 class="bg-modal-title">{{ plFilterModalMeta.title }}</h2>
+              <p class="bg-modal-sub">{{ plFilterModalMeta.subtitle }}</p>
+            </div>
+          </div>
+          <button type="button" class="bg-modal-close" @click="closePlFilterModal">✕</button>
+        </div>
+
+        <div class="m-grab-head-stack">
+          <div class="m-grab-pill"></div>
+          <div class="m-grab-bar">
+            <h2 class="m-grab-title">{{ plFilterModalMeta.title }}</h2>
+            <button type="button" class="bg-modal-close" @click="closePlFilterModal">✕</button>
+          </div>
+        </div>
+
+        <div class="bg-modal-subbar is-pl-hierarchy-subbar">
+          <div v-if="openPlFilterModalPicker" class="bg-pl-dd-backdrop" @click.stop="openPlFilterModalPicker = null"></div>
+
+          <!-- Bộ lọc nút phụ bên trong Modal (Dự án / Pipeline) -->
+          <div
+            v-if="plFilterModalKey === 'workflowId' || plFilterModalKey === 'pipelineTaskId'"
+            class="bg-pl-cascade-grid"
+            :class="{ 'is-single-col': plFilterModalKey === 'workflowId' }"
+          >
+            <!-- Nút lọc theo Dự án -->
+            <div class="bg-pl-dd-anchor">
+              <span class="bg-pl-dd-lbl">{{ plFilterModalKey === 'workflowId' ? 'LỌC THEO DỰ ÁN' : '1. LỌC THEO DỰ ÁN' }}</span>
+              <button
+                type="button"
+                class="bg-pl-dd-trigger"
+                :class="{ 'is-active': !!plModalSubProjectFilter, 'is-open': openPlFilterModalPicker === 'project' }"
+                @click.stop="togglePlFilterModalPicker('project')"
+              >
+                <svg class="bg-pl-dd-ic is-amber" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                <span class="bg-pl-dd-val">{{ activePlModalSubProjectLabel }}</span>
+                <span
+                  v-if="plModalSubProjectFilter"
+                  role="button"
+                  tabindex="0"
+                  class="bg-pl-dd-clear"
+                  @click.stop="selectPlModalSubProject('')"
+                  title="Bỏ lọc Dự án"
+                >✕</span>
+                <svg class="bg-pl-dd-chev" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </button>
+
+              <div v-if="openPlFilterModalPicker === 'project'" class="bg-pl-dd-menu" @click.stop>
+                <div class="bg-pl-dd-search-wrap">
+                  <input
+                    v-model="plModalSubProjectSearch"
+                    type="text"
+                    class="bg-pl-dd-search"
+                    placeholder="Tìm tên dự án, khách hàng, công ty..."
+                  />
+                </div>
+                <div class="bg-pl-dd-list">
+                  <button
+                    type="button"
+                    class="bg-pl-dd-item"
+                    :class="{ 'is-selected': plModalSubProjectFilter === '' }"
+                    @click.stop="selectPlModalSubProject('')"
+                  >
+                    <span class="bg-pl-dd-item-main">Tất cả Dự án</span>
+                    <span class="bg-pl-dd-cnt bg-tabular">{{ filterProjectOptions.length - 1 }}</span>
+                  </button>
+                  <div v-if="filteredPlModalSubProjectOptions.length === 0 && plModalSubProjectSearch.trim()" class="bg-pl-dd-empty">
+                    Không tìm thấy dự án phù hợp
+                  </div>
+                  <button
+                    v-for="proj in filteredPlModalSubProjectOptions"
+                    :key="'plf-sub-proj-' + proj.value"
+                    type="button"
+                    class="bg-pl-dd-item"
+                    :class="{ 'is-selected': plModalSubProjectFilter === proj.value }"
+                    @click.stop="selectPlModalSubProject(proj.value)"
+                  >
+                    <div class="bg-pl-dd-item-stack">
+                      <span class="bg-pl-dd-item-main">{{ proj.projectName }}</span>
+                      <span v-if="proj.customerName || proj.companyName" class="bg-pl-dd-item-sub">
+                        {{ [proj.customerName, proj.companyName].filter(Boolean).join(' · ') }}
+                      </span>
+                    </div>
+                    <span v-if="proj.taskCount > 0" class="bg-pl-dd-cnt bg-tabular">{{ proj.taskCount }}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Nút lọc theo Pipeline (chỉ hiện trong Modal Công việc pipeline) -->
+            <div v-if="plFilterModalKey === 'pipelineTaskId'" class="bg-pl-dd-anchor">
+              <span class="bg-pl-dd-lbl">2. LỌC THEO PIPELINE</span>
+              <button
+                type="button"
+                class="bg-pl-dd-trigger"
+                :class="{ 'is-active': !!plModalSubWorkflowFilter, 'is-open': openPlFilterModalPicker === 'workflow' }"
+                @click.stop="togglePlFilterModalPicker('workflow')"
+              >
+                <svg class="bg-pl-dd-ic is-teal" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
+                <span class="bg-pl-dd-val">{{ activePlModalSubWorkflowLabel }}</span>
+                <span
+                  v-if="plModalSubWorkflowFilter"
+                  role="button"
+                  tabindex="0"
+                  class="bg-pl-dd-clear"
+                  @click.stop="selectPlModalSubWorkflow('')"
+                  title="Bỏ lọc Pipeline"
+                >✕</span>
+                <svg class="bg-pl-dd-chev" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </button>
+
+              <div v-if="openPlFilterModalPicker === 'workflow'" class="bg-pl-dd-menu" @click.stop>
+                <div class="bg-pl-dd-search-wrap">
+                  <input
+                    v-model="plModalSubWorkflowSearch"
+                    type="text"
+                    class="bg-pl-dd-search"
+                    placeholder="Tìm tên Pipeline..."
+                  />
+                </div>
+                <div class="bg-pl-dd-list">
+                  <button
+                    type="button"
+                    class="bg-pl-dd-item"
+                    :class="{ 'is-selected': plModalSubWorkflowFilter === '' }"
+                    @click.stop="selectPlModalSubWorkflow('')"
+                  >
+                    <span class="bg-pl-dd-item-main">Tất cả Pipeline</span>
+                    <span class="bg-pl-dd-cnt bg-tabular">{{ plModalSubWorkflowOptions.length }}</span>
+                  </button>
+                  <div v-if="filteredPlModalSubWorkflowOptions.length === 0" class="bg-pl-dd-empty">
+                    Không tìm thấy Pipeline phù hợp
+                  </div>
+                  <button
+                    v-for="wf in filteredPlModalSubWorkflowOptions"
+                    :key="'plf-sub-wf-' + wf.value"
+                    type="button"
+                    class="bg-pl-dd-item"
+                    :class="{ 'is-selected': plModalSubWorkflowFilter === wf.value }"
+                    @click.stop="selectPlModalSubWorkflow(wf.value)"
+                  >
+                    <span class="bg-pl-dd-item-main">{{ wf.listLabel }}</span>
+                    <span v-if="wf.taskCount > 0" class="bg-pl-dd-cnt bg-tabular">{{ wf.taskCount }}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-pl-search-row">
+            <input
+              type="text"
+              v-model="plFilterModalSearch"
+              :placeholder="plFilterModalMeta.searchPlaceholder"
+              class="bg-input"
+              style="flex: 1;"
+            />
+            <button
+              v-if="plFilterModalSearch"
+              type="button"
+              class="bg-btn bg-btn-slate"
+              @click="plFilterModalSearch = ''"
+            >Xoá tìm</button>
+          </div>
+        </div>
+
+        <div ref="plFilterModalBodyRef" class="bg-modal-body" style="max-height: 55vh; padding: 8px 14px;">
+          <div
+            class="bg-cus-row is-all-row"
+            :class="{ 'is-selected-row': !filters[plFilterModalKey] }"
+            @click="selectPlFilterModalOption('')"
+          >
+            <div class="bg-cus-meta">
+              <span class="bg-cus-name is-sky">{{ plFilterModalMeta.allLabel }} (Bỏ lọc)</span>
+            </div>
+            <span v-if="!filters[plFilterModalKey]" class="bg-tag-pill is-emerald">Đang chọn ✓</span>
+            <span v-else class="bg-btn-xs is-sky">Chọn</span>
+          </div>
+
+          <div v-if="filteredPlFilterModalOptions.length === 0" class="bg-empty-box">
+            {{ plFilterModalMeta.emptyLabel }}
+          </div>
+
+          <div
+            v-for="opt in visiblePlFilterModalOptions"
+            :key="'plf-modal-' + plFilterModalKey + '-' + opt.value"
+            class="bg-cus-row bg-plf-item-row"
+            :class="{ 'is-selected-row': filters[plFilterModalKey] === opt.value }"
+            @click="selectPlFilterModalOption(opt.value)"
+          >
+            <div class="bg-cus-meta">
+              <!-- Modal 1: Lọc theo Dự án (Tên dự án, Tên khách hàng, Tên công ty) -->
+              <template v-if="plFilterModalKey === 'projectId'">
+                <div class="bg-cus-name">{{ opt.projectName }}</div>
+                <div v-if="opt.customerName" class="bg-plf-meta-line">
+                  <span class="bg-plf-meta-lbl">Khách hàng:</span>
+                  <span>{{ opt.customerName }}</span>
+                </div>
+                <div v-if="opt.companyName" class="bg-plf-meta-line">
+                  <span class="bg-plf-meta-lbl">Công ty:</span>
+                  <span>{{ opt.companyName }}</span>
+                </div>
+              </template>
+
+              <!-- Modal 2: Lọc theo Pipeline (Tên Pipeline chính, Tên dự án) -->
+              <template v-else-if="plFilterModalKey === 'workflowId'">
+                <div class="bg-cus-name">{{ opt.listLabel }}</div>
+                <div v-if="plModalSubProjectFilter || opt.projectNamesLabel" class="bg-plf-meta-line">
+                  <span class="bg-plf-meta-lbl">Dự án:</span>
+                  <span>{{ plModalSubProjectFilter ? activePlModalSubProjectLabel : opt.projectNamesLabel }}</span>
+                </div>
+              </template>
+
+              <!-- Modal 3: Lọc theo Công việc pipeline (Tên công việc trong pipeline) -->
+              <template v-else>
+                <div class="bg-cus-name">{{ opt.listLabel }}</div>
+              </template>
+            </div>
+            <div class="bg-cus-actions">
+              <span v-if="filters[plFilterModalKey] === opt.value" class="bg-tag-pill is-emerald">Đang chọn ✓</span>
+              <span v-else class="bg-btn-xs is-sky">Chọn</span>
+            </div>
+          </div>
+
+          <!-- Lazy Load Sentinel -->
+          <div
+            v-if="filteredPlFilterModalOptions.length > LAZY_BATCH_SIZE"
+            ref="plFilterModalSentinel"
+            class="lazy-load-footer bg-tabular"
+            style="margin-top: 10px;"
+          >
+            <div class="lazy-load-status">
+              <span class="lazy-load-dot"></span>
+              <span>Đang hiển thị <strong>{{ currentlyRenderedPlFilterCount }}</strong> / <strong>{{ filteredPlFilterModalOptions.length }}</strong> mục</span>
+            </div>
+            <div v-if="hasMorePlFilterOptions" class="lazy-load-actions">
+              <button type="button" class="lazy-load-btn primary" @click="loadMorePlFilterOptions">
+                Tải thêm {{ Math.min(LAZY_BATCH_SIZE, filteredPlFilterModalOptions.length - currentlyRenderedPlFilterCount) }} mục
+              </button>
+              <button
+                v-if="filteredPlFilterModalOptions.length - currentlyRenderedPlFilterCount > LAZY_BATCH_SIZE"
+                type="button"
+                class="lazy-load-btn secondary"
+                @click="showAllPlFilterOptions"
+              >
+                Hiển thị tất cả ({{ filteredPlFilterModalOptions.length }})
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-modal-foot">
+          <button
+            v-if="filters[plFilterModalKey]"
+            type="button"
+            class="bg-btn-xs is-rose"
+            @click="selectPlFilterModalOption('')"
+          >Bỏ lọc mục này</button>
+          <div v-else></div>
+          <button type="button" class="bg-btn" @click="closePlFilterModal">Đóng</button>
         </div>
       </div>
     </div>
@@ -6238,8 +6884,8 @@
               <div class="bg-pl-linked-current-info">
                 <strong>Đang gắn: </strong>
                 <template v-if="selectedLinkedPipeline">
-                  <span v-if="selectedLinkedPipeline.ten_du_an" class="bg-pl-mini-chip is-proj">{{ selectedLinkedPipeline.ten_du_an }}</span>
-                  <span class="bg-pl-mini-chip is-wf">{{ selectedLinkedPipeline.name_workflow || 'Khung Chuẩn Hệ Thống' }}</span>
+                  <span v-if="selectedLinkedPipeline.ten_du_an" class="bg-pl-mini-chip is-proj">Dự án : {{ selectedLinkedPipeline.ten_du_an }}</span>
+                  <span class="bg-pl-mini-chip is-wf">Pipeline : {{ selectedLinkedPipeline.name_workflow || 'Khung Chuẩn Hệ Thống' }}</span>
                   <span class="bg-pl-linked-task-name">{{ getPipelineTaskDisplayLabel(selectedLinkedPipeline) }}</span>
                 </template>
                 <span v-else>Công việc Pipeline #{{ getSinglePipelineId(formData.id_pipeline) }}</span>
@@ -6273,12 +6919,11 @@
               <div style="flex: 1; min-width: 0;">
                 <div class="bg-pl-task-badges">
                   <span v-if="p.ten_du_an" class="bg-pl-mini-chip is-proj" :title="'Dự án: ' + p.ten_du_an">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-                    <span>{{ p.ten_du_an }}</span>
+                    <span>Dự án : {{ p.ten_du_an }}</span>
                   </span>
                   <span class="bg-pl-mini-chip is-wf" :title="'Pipeline: ' + (p.name_workflow || 'Khung Chuẩn Hệ Thống')">
                     <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="3" x2="6" y2="15"></line><circle cx="18" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M18 9a9 9 0 0 1-9 9"></path></svg>
-                    <span>{{ p.name_workflow || 'Khung Chuẩn Hệ Thống' }}</span>
+                    <span>Pipeline : {{ p.name_workflow || 'Khung Chuẩn Hệ Thống' }}</span>
                   </span>
                 </div>
                 <div class="bg-dist-task-title" style="margin-bottom: 3px;">
@@ -7180,7 +7825,10 @@ const filters = ref({
   sortOrder: 'desc',
   period: '',
   searchQuery: '',
-  maKH: ''
+  maKH: '',
+  projectId: '',
+  workflowId: '',
+  pipelineTaskId: ''
 })
 
 const isRecordingVoice = ref(null);
@@ -7488,6 +8136,28 @@ const baseFilteredReports = computed(() => {
     }
     const rMaKH = r.maKH || r.MAKH || r.ma_khach_hang || '';
     if (filters.value.maKH && rMaKH !== filters.value.maKH) return false;
+    if (filters.value.projectId || filters.value.workflowId || filters.value.pipelineTaskId) {
+      const linkedPls = getLinkedPipelines(r);
+      if (!linkedPls.length) return false;
+      if (
+        filters.value.projectId &&
+        !linkedPls.some((pl) => getTaskProjectFilterKey(pl) === filters.value.projectId)
+      ) {
+        return false;
+      }
+      if (
+        filters.value.workflowId &&
+        !linkedPls.some((pl) => String(pl.id_workflow_resolved || 'WF_DEFAULT').trim() === filters.value.workflowId)
+      ) {
+        return false;
+      }
+      if (
+        filters.value.pipelineTaskId &&
+        !linkedPls.some((pl) => String(pl.Id_pipeline) === String(filters.value.pipelineTaskId))
+      ) {
+        return false;
+      }
+    }
     if (normQuery) {
       const cus = rMaKH
         ? customersList.value.find(c => c.ma_khach_hang === rMaKH || c.id === rMaKH)
@@ -8130,7 +8800,7 @@ const droppedReportId = ref(null);
 const dragOverColumn = ref(null); // track cột đang hover khi kéo
 
 const onDragStartReport = (e, report) => {
-  if (e?.target?.closest && e.target.closest('button, a, input, textarea, select, .bg-dcard-files-wrap, .bg-dcard-actions, .bg-dcard-pipelines, .bg-dcard-pl-badges, .bg-dcard-pl-tree, .is-pipe-task-chip')) {
+  if (e?.target?.closest && e.target.closest('button, a, input, textarea, select, .bg-dcard-files-wrap, .bg-dcard-actions, .bg-dcard-pipelines, .bg-dcard-pl-badges, .is-proj-chip, .is-wf-chip, .is-pipe-task-chip')) {
     e.preventDefault();
     return;
   }
@@ -10036,8 +10706,26 @@ const downloadDirectAttachment = (url, name, event) => {
 
 const editReport = openEditModal;
 
-// --- Adaptive Pickers (5 Attribute Pickers — Trạng thái moved to Bento Status Cards) ---
+// --- Adaptive Pickers (5 Attribute Pickers + 3 Pipeline Modal Pickers — Trạng thái moved to Bento Status Cards) ---
 const openPickerKey = ref(null);
+const plFilterModalKey = ref(null); // 'projectId' | 'workflowId' | 'pipelineTaskId' | null
+const plFilterModalSearch = ref('');
+const openPlFilterModalPicker = ref(null); // 'project' | 'workflow' | null
+const plModalSubProjectFilter = ref('');
+const plModalSubWorkflowFilter = ref('');
+const plModalSubProjectSearch = ref('');
+const plModalSubWorkflowSearch = ref('');
+const plModalSubDirty = ref(false);
+const plFilterModalVisibleCount = ref(LAZY_BATCH_SIZE);
+const plFilterModalSentinel = ref(null);
+const plFilterModalBodyRef = ref(null);
+let plFilterModalObserver = null;
+
+const pipelineFilterPickers = [
+  { key: 'projectId', prefix: 'Dự án:' },
+  { key: 'workflowId', prefix: 'Pipeline:' },
+  { key: 'pipelineTaskId', prefix: 'Công việc PL:' }
+];
 
 const pickerMetaMap = computed(() => ({
   period: { title: 'Chọn buổi làm việc', options: periodOptions, defaultVal: '' },
@@ -10045,6 +10733,257 @@ const pickerMetaMap = computed(() => ({
   phan_loai: { title: 'Lọc phân loại báo cáo', options: typeOptions, defaultVal: '' },
   sortOrder: { title: 'Thứ tự thời gian', options: sortOptions, defaultVal: 'desc' }
 }));
+
+const plFilterModalConfigMap = computed(() => ({
+  projectId: {
+    title: 'Lọc Theo Dự Án',
+    subtitle: 'Chọn 1 dự án để lọc danh sách báo cáo liên quan',
+    allLabel: 'Tất cả Dự án',
+    searchPlaceholder: 'Tìm tên dự án, khách hàng, công ty...',
+    emptyLabel: 'Không tìm thấy dự án phù hợp.',
+    iconTone: 'is-amber',
+    options: filterProjectOptions.value
+  },
+  workflowId: {
+    title: 'Lọc Theo Pipeline',
+    subtitle: plModalSubProjectFilter.value
+      ? 'Đang hiển thị các Pipeline thuộc Dự án đang chọn'
+      : 'Chọn 1 Pipeline để lọc danh sách báo cáo liên quan',
+    allLabel: 'Tất cả Pipeline',
+    searchPlaceholder: 'Tìm tên pipeline, dự án...',
+    emptyLabel: 'Không tìm thấy pipeline phù hợp.',
+    iconTone: 'is-teal',
+    options: buildFilterWorkflowOptions(plModalSubProjectFilter.value)
+  },
+  pipelineTaskId: {
+    title: 'Lọc Theo Công Việc Pipeline',
+    subtitle:
+      plModalSubProjectFilter.value || plModalSubWorkflowFilter.value
+        ? 'Đang lọc danh sách theo Dự án / Pipeline đã chọn'
+        : 'Chọn 1 Công việc pipeline để lọc các báo cáo liên quan',
+    allLabel: 'Tất cả Công việc pipeline',
+    searchPlaceholder: 'Tìm tên công việc pipeline...',
+    emptyLabel: 'Không tìm thấy công việc pipeline phù hợp.',
+    iconTone: 'is-sky',
+    options: buildFilterPipelineTaskOptions(
+      plModalSubProjectFilter.value,
+      plModalSubWorkflowFilter.value
+    )
+  }
+}));
+
+const plFilterModalMeta = computed(() =>
+  plFilterModalKey.value ? plFilterModalConfigMap.value[plFilterModalKey.value] || null : null
+);
+
+const plModalSubProjectOptions = computed(() =>
+  filterProjectOptions.value.filter((opt) => opt.value !== '')
+);
+
+const filteredPlModalSubProjectOptions = computed(() => {
+  const list = plModalSubProjectOptions.value;
+  const q = normalizePlSearchStr(plModalSubProjectSearch.value);
+  if (!q) return list;
+  return list.filter((opt) =>
+    normalizePlSearchStr(
+      opt.searchText ||
+        [opt.listLabel || opt.label, opt.projectName, opt.customerName, opt.companyName, opt.sub]
+          .filter(Boolean)
+          .join(' ')
+    ).includes(q)
+  );
+});
+
+const plModalSubWorkflowOptions = computed(() =>
+  buildFilterWorkflowOptions(plModalSubProjectFilter.value).filter((opt) => opt.value !== '')
+);
+
+const filteredPlModalSubWorkflowOptions = computed(() => {
+  const list = plModalSubWorkflowOptions.value;
+  const q = normalizePlSearchStr(plModalSubWorkflowSearch.value);
+  if (!q) return list;
+  return list.filter((opt) =>
+    normalizePlSearchStr(
+      opt.searchText ||
+        [opt.listLabel || opt.label, opt.projectNamesLabel, opt.sub].filter(Boolean).join(' ')
+    ).includes(q)
+  );
+});
+
+const activePlModalSubProjectLabel = computed(() => {
+  if (!plModalSubProjectFilter.value) return 'Tất cả dự án';
+  const found = plModalSubProjectOptions.value.find(
+    (opt) => opt.value === plModalSubProjectFilter.value
+  );
+  return found?.listLabel || found?.projectName || found?.label || 'Dự án đã chọn';
+});
+
+const activePlModalSubWorkflowLabel = computed(() => {
+  if (!plModalSubWorkflowFilter.value) return 'Tất cả pipeline';
+  const found = plModalSubWorkflowOptions.value.find(
+    (opt) => opt.value === plModalSubWorkflowFilter.value
+  );
+  return found?.listLabel || found?.label || 'Pipeline đã chọn';
+});
+
+const togglePlFilterModalPicker = (which) => {
+  if (openPlFilterModalPicker.value === which) {
+    openPlFilterModalPicker.value = null;
+    return;
+  }
+  openPlFilterModalPicker.value = which;
+  if (which === 'project') plModalSubProjectSearch.value = '';
+  if (which === 'workflow') plModalSubWorkflowSearch.value = '';
+};
+
+const selectPlModalSubProject = (value) => {
+  const nextProj = value || '';
+  plModalSubProjectFilter.value = nextProj;
+  if (plModalSubWorkflowFilter.value) {
+    const validWf = buildFilterWorkflowOptions(nextProj).some(
+      (opt) => opt.value === plModalSubWorkflowFilter.value
+    );
+    if (!validWf) plModalSubWorkflowFilter.value = '';
+  }
+  plModalSubDirty.value = true;
+  openPlFilterModalPicker.value = null;
+  plModalSubProjectSearch.value = '';
+};
+
+const selectPlModalSubWorkflow = (value) => {
+  plModalSubWorkflowFilter.value = value || '';
+  plModalSubDirty.value = true;
+  openPlFilterModalPicker.value = null;
+  plModalSubWorkflowSearch.value = '';
+};
+
+const filteredPlFilterModalOptions = computed(() => {
+  const meta = plFilterModalMeta.value;
+  if (!meta) return [];
+  const list = meta.options.filter((opt) => opt.value !== '');
+  const q = normalizePlSearchStr(plFilterModalSearch.value);
+  if (!q) return list;
+  return list.filter((opt) =>
+    normalizePlSearchStr(
+      opt.searchText ||
+        [
+          opt.listLabel || opt.label,
+          opt.projectName,
+          opt.customerName,
+          opt.companyName,
+          opt.projectNamesLabel,
+          opt.sub
+        ]
+          .filter(Boolean)
+          .join(' ')
+    ).includes(q)
+  );
+});
+
+const visiblePlFilterModalOptions = computed(() =>
+  filteredPlFilterModalOptions.value.slice(0, plFilterModalVisibleCount.value)
+);
+
+const currentlyRenderedPlFilterCount = computed(() => visiblePlFilterModalOptions.value.length);
+
+const hasMorePlFilterOptions = computed(
+  () => plFilterModalVisibleCount.value < filteredPlFilterModalOptions.value.length
+);
+
+const loadMorePlFilterOptions = () => {
+  if (!hasMorePlFilterOptions.value) return;
+  plFilterModalVisibleCount.value = Math.min(
+    filteredPlFilterModalOptions.value.length,
+    plFilterModalVisibleCount.value + LAZY_BATCH_SIZE
+  );
+};
+
+const showAllPlFilterOptions = () => {
+  plFilterModalVisibleCount.value = filteredPlFilterModalOptions.value.length;
+};
+
+const setupPlFilterModalObserver = () => {
+  if (plFilterModalObserver) {
+    plFilterModalObserver.disconnect();
+    plFilterModalObserver = null;
+  }
+  const el = plFilterModalSentinel.value;
+  if (!el || !plFilterModalKey.value || !hasMorePlFilterOptions.value) return;
+  const scrollRoot =
+    plFilterModalBodyRef.value || el.closest('.bg-modal-body, .elite-modal-body') || null;
+  plFilterModalObserver = new IntersectionObserver(
+    (entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        loadMorePlFilterOptions();
+      }
+    },
+    { root: scrollRoot, rootMargin: '250px 0px', threshold: 0.01 }
+  );
+  plFilterModalObserver.observe(el);
+};
+
+watch(
+  [plFilterModalKey, plFilterModalSearch, plModalSubProjectFilter, plModalSubWorkflowFilter],
+  () => {
+    plFilterModalVisibleCount.value = LAZY_BATCH_SIZE;
+    if (plFilterModalBodyRef.value) plFilterModalBodyRef.value.scrollTop = 0;
+    nextTick(() => setupPlFilterModalObserver());
+  }
+);
+
+watch([plFilterModalSentinel, hasMorePlFilterOptions, visiblePlFilterModalOptions], () => {
+  nextTick(() => setupPlFilterModalObserver());
+});
+
+const openPlFilterModal = (key) => {
+  openPickerKey.value = null;
+  openPlFilterModalPicker.value = null;
+  plFilterModalSearch.value = '';
+  plModalSubProjectSearch.value = '';
+  plModalSubWorkflowSearch.value = '';
+  plModalSubProjectFilter.value = filters.value.projectId || '';
+  plModalSubWorkflowFilter.value = filters.value.workflowId || '';
+  plModalSubDirty.value = false;
+  plFilterModalVisibleCount.value = LAZY_BATCH_SIZE;
+  plFilterModalKey.value = key;
+};
+
+const closePlFilterModal = () => {
+  openPlFilterModalPicker.value = null;
+  plFilterModalKey.value = null;
+  plFilterModalSearch.value = '';
+  plModalSubProjectSearch.value = '';
+  plModalSubWorkflowSearch.value = '';
+  if (plFilterModalObserver) {
+    plFilterModalObserver.disconnect();
+    plFilterModalObserver = null;
+  }
+};
+
+const selectPlFilterModalOption = (value) => {
+  const key = plFilterModalKey.value;
+  if (!key) return;
+  const nextVal = value || '';
+  if (nextVal !== '' && plModalSubDirty.value) {
+    if (key === 'workflowId') {
+      filters.value.projectId = plModalSubProjectFilter.value || '';
+    } else if (key === 'pipelineTaskId') {
+      filters.value.projectId = plModalSubProjectFilter.value || '';
+      filters.value.workflowId = plModalSubWorkflowFilter.value || '';
+    }
+  }
+  filters.value[key] = nextVal;
+  closePlFilterModal();
+};
+
+const getPlFilterTriggerLabel = (key) => {
+  const meta = plFilterModalConfigMap.value[key];
+  if (!meta) return 'Tất cả';
+  const currentVal = filters.value[key];
+  if (!currentVal) return 'Tất cả';
+  const found = meta.options.find((opt) => opt.value === currentVal);
+  return found ? found.label : currentVal;
+};
 
 const togglePicker = (key) => {
   openPickerKey.value = openPickerKey.value === key ? null : key;
@@ -10105,6 +11044,9 @@ const activeCustomFilterCount = computed(() => {
   if (isPickerCustomActive('phan_loai')) count++;
   if (isPickerCustomActive('maKH')) count++;
   if (isPickerCustomActive('sortOrder')) count++;
+  if (isPickerCustomActive('projectId')) count++;
+  if (isPickerCustomActive('workflowId')) count++;
+  if (isPickerCustomActive('pipelineTaskId')) count++;
   if (isDeepLinkDateLocked.value) count++;
   return count;
 });
@@ -10119,8 +11061,15 @@ const resetAllFilters = () => {
   filters.value.tag = '';
   filters.value.phan_loai = '';
   filters.value.maKH = '';
+  filters.value.projectId = '';
+  filters.value.workflowId = '';
+  filters.value.pipelineTaskId = '';
   filters.value.sortOrder = 'desc';
   openPickerKey.value = null;
+  plModalSubProjectFilter.value = '';
+  plModalSubWorkflowFilter.value = '';
+  plModalSubDirty.value = false;
+  closePlFilterModal();
   showToast('Đã đặt lại bộ lọc tìm kiếm', 'info', 2000);
 };
 
@@ -10134,6 +11083,9 @@ watch(
     filters.value.tag,
     filters.value.phan_loai,
     filters.value.maKH,
+    filters.value.projectId,
+    filters.value.workflowId,
+    filters.value.pipelineTaskId,
     filters.value.sortOrder
   ],
   () => {
@@ -12576,6 +13528,10 @@ const onBaogiaGlobalKeydown = (e) => {
       isCustomerModalOpen.value = false;
     } else if (isCustomerSelectModalOpen.value) {
       isCustomerSelectModalOpen.value = false;
+    } else if (openPlFilterModalPicker.value) {
+      openPlFilterModalPicker.value = null;
+    } else if (plFilterModalKey.value) {
+      closePlFilterModal();
     } else if (isFileSelectModalOpen.value) {
       isFileSelectModalOpen.value = false;
     } else if (openModalPlPicker.value) {
@@ -13689,6 +14645,35 @@ const getCustomerDisplayName = (maKH) => {
   const cus = customersList.value.find(c => (c.ma_khach_hang && c.ma_khach_hang === maKH) || c.id === maKH);
   if (!cus) return maKH;
   return cus.ten_khach_hang || cus.ten_cong_ty || maKH;
+};
+
+const getCustomerBadgeInfo = (report) => {
+  const code = String(report?.maKH || report?.MAKH || report?.ma_khach_hang || '').trim();
+  if (!code) {
+    return { code: '', customerName: '', companyName: '', hasAny: false };
+  }
+  const cus = customersList.value.find(
+    (c) => (c.ma_khach_hang && c.ma_khach_hang === code) || c.id === code
+  );
+  const plList = getLinkedPipelines(report);
+  const matchingPl = plList.find((p) => String(p?.ma_khach_hang || '').trim() === code) || null;
+
+  let customerName = String(cus?.ten_khach_hang || matchingPl?.ten_khach_hang || '').trim();
+  let companyName = String(cus?.ten_cong_ty || matchingPl?.ten_cong_ty || '').trim();
+
+  if (!customerName && !companyName) {
+    customerName = code;
+  }
+  if (customerName && companyName && customerName.toLowerCase() === companyName.toLowerCase()) {
+    companyName = '';
+  }
+
+  return {
+    code,
+    customerName,
+    companyName,
+    hasAny: Boolean(customerName || companyName)
+  };
 };
 
 const handlePasteImage = async (e) => {
@@ -14826,6 +15811,10 @@ const moveDaysCalendar = computed(() => {
 const successDropTaskId = ref(null);
 
 const onMoveTaskDragStart = (e, task) => {
+  if (e?.target?.closest && e.target.closest('button, a, input, textarea, select, .is-proj-chip, .is-wf-chip, .is-pipe-task-chip')) {
+    e.preventDefault();
+    return;
+  }
   draggedMoveTask.value = task;
   e.dataTransfer.effectAllowed = 'move';
   // Required for Firefox
@@ -15621,6 +16610,229 @@ const resetModalPlHierarchyFilters = () => {
   openModalPlPicker.value = null;
 };
 
+// --- Board Filter Bar: Dự án -> Pipeline -> Công việc pipeline ---
+const filterProjectOptions = computed(() => {
+  const cusByCode = new Map();
+  if (Array.isArray(customersList.value)) {
+    customersList.value.forEach((c) => {
+      if (!c) return;
+      const code = String(c.ma_khach_hang || '').trim().toUpperCase();
+      const cid = String(c.id || '').trim().toUpperCase();
+      if (code) cusByCode.set(code, c);
+      if (cid) cusByCode.set(cid, c);
+    });
+  }
+
+  const resolveProjectParty = (src) => {
+    const code = String(src?.ma_khach_hang || '').trim().toUpperCase();
+    const cus = code ? cusByCode.get(code) || null : null;
+    return {
+      customerName: String(src?.ten_khach_hang || cus?.ten_khach_hang || '').trim(),
+      companyName: String(src?.ten_cong_ty || cus?.ten_cong_ty || '').trim()
+    };
+  };
+
+  const map = new Map();
+  projectsData.value.forEach((pr) => {
+    if (!pr || !pr.id_project) return;
+    const { customerName, companyName } = resolveProjectParty(pr);
+    map.set(pr.id_project, {
+      value: pr.id_project,
+      label: pr.ten_du_an,
+      listLabel: pr.ten_du_an,
+      projectName: pr.ten_du_an,
+      customerName,
+      companyName,
+      sub: [customerName, companyName, pr.ma_du_an].filter(Boolean).join(' · '),
+      searchText: [pr.ten_du_an, pr.ma_du_an, customerName, companyName, pr.ma_khach_hang]
+        .filter(Boolean)
+        .join(' '),
+      linkedWorkflowIds: Array.isArray(pr.linked_workflow_ids_arr) ? [...pr.linked_workflow_ids_arr] : [],
+      taskCount: 0
+    });
+  });
+
+  pipelineData.value.forEach((p) => {
+    const key = getTaskProjectFilterKey(p);
+    if (!key) return;
+    const party = resolveProjectParty(p);
+    if (!map.has(key)) {
+      const pName = String(p.ten_du_an || key).trim();
+      map.set(key, {
+        value: key,
+        label: pName,
+        listLabel: pName,
+        projectName: pName,
+        customerName: party.customerName,
+        companyName: party.companyName,
+        sub: [party.customerName, party.companyName, p.ma_du_an].filter(Boolean).join(' · '),
+        searchText: [pName, p.ma_du_an, party.customerName, party.companyName, p.ma_khach_hang]
+          .filter(Boolean)
+          .join(' '),
+        linkedWorkflowIds: [],
+        taskCount: 0
+      });
+    }
+    const entry = map.get(key);
+    if (!entry.customerName && party.customerName) entry.customerName = party.customerName;
+    if (!entry.companyName && party.companyName) entry.companyName = party.companyName;
+    entry.sub = [entry.customerName, entry.companyName, p.ma_du_an].filter(Boolean).join(' · ');
+    entry.searchText = [
+      entry.projectName,
+      p.ma_du_an,
+      entry.customerName,
+      entry.companyName,
+      p.ma_khach_hang
+    ]
+      .filter(Boolean)
+      .join(' ');
+    entry.taskCount += 1;
+    const wfId = String(p.id_workflow_resolved || 'WF_DEFAULT').trim();
+    if (wfId && !entry.linkedWorkflowIds.includes(wfId)) {
+      entry.linkedWorkflowIds.push(wfId);
+    }
+  });
+
+  const sorted = Array.from(map.values()).sort((a, b) => {
+    if (b.taskCount !== a.taskCount) return b.taskCount - a.taskCount;
+    return String(a.label || '').localeCompare(String(b.label || ''), 'vi');
+  });
+
+  return [
+    { value: '', label: 'Tất cả', listLabel: 'Tất cả Dự án', projectName: '', customerName: '', companyName: '', sub: '' },
+    ...sorted
+  ];
+});
+
+const buildFilterWorkflowOptions = (projKey = '') => {
+  const projMetaMap = new Map();
+  const projectNamesByWf = new Map();
+  filterProjectOptions.value.forEach((pr) => {
+    if (!pr || !pr.value) return;
+    projMetaMap.set(pr.value, pr);
+    if (Array.isArray(pr.linkedWorkflowIds)) {
+      pr.linkedWorkflowIds.forEach((wfId) => {
+        if (!projectNamesByWf.has(wfId)) projectNamesByWf.set(wfId, new Set());
+        if (pr.projectName) projectNamesByWf.get(wfId).add(pr.projectName);
+      });
+    }
+  });
+
+  const scopedTasks = projKey
+    ? pipelineData.value.filter((p) => getTaskProjectFilterKey(p) === projKey)
+    : pipelineData.value;
+
+  const countByWf = new Map();
+  scopedTasks.forEach((p) => {
+    const wfId = String(p.id_workflow_resolved || 'WF_DEFAULT').trim() || 'WF_DEFAULT';
+    countByWf.set(wfId, (countByWf.get(wfId) || 0) + 1);
+    const pKey = getTaskProjectFilterKey(p);
+    const pName = String(p.ten_du_an || projMetaMap.get(pKey)?.projectName || '').trim();
+    if (pName) {
+      if (!projectNamesByWf.has(wfId)) projectNamesByWf.set(wfId, new Set());
+      projectNamesByWf.get(wfId).add(pName);
+    }
+  });
+
+  const catalog = new Map();
+  catalog.set('WF_DEFAULT', { value: 'WF_DEFAULT', label: 'Khung Chuẩn Hệ Thống', listLabel: 'Khung Chuẩn Hệ Thống' });
+  workflowsData.value.forEach((w) => {
+    if (!w || !w.id_workflow) return;
+    const wfId = String(w.id_workflow).trim();
+    const wfName = String(w.name_workflow || 'Khung Chuẩn Hệ Thống').trim();
+    catalog.set(wfId, { value: wfId, label: wfName, listLabel: wfName });
+  });
+
+  const selectedProjObj = projKey ? projMetaMap.get(projKey) || null : null;
+
+  const list = [];
+  catalog.forEach((meta, wfId) => {
+    const cnt = countByWf.get(wfId) || 0;
+    if (selectedProjObj) {
+      const isLinked = Array.isArray(selectedProjObj.linkedWorkflowIds) && selectedProjObj.linkedWorkflowIds.includes(wfId);
+      if (cnt <= 0 && !isLinked) return;
+    } else if (wfId === 'WF_DEFAULT' && cnt <= 0 && workflowsData.value.length > 0) {
+      return;
+    }
+
+    const projNames = selectedProjObj
+      ? [selectedProjObj.projectName].filter(Boolean)
+      : Array.from(projectNamesByWf.get(wfId) || []);
+    const projectNamesLabel =
+      projNames.length > 3
+        ? `${projNames.slice(0, 3).join(', ')} (+${projNames.length - 3} dự án)`
+        : projNames.join(', ');
+
+    list.push({
+      ...meta,
+      projectNamesLabel,
+      sub: [projectNamesLabel, cnt > 0 ? `${cnt} công việc pipeline` : ''].filter(Boolean).join(' · '),
+      searchText: [meta.listLabel, ...projNames].filter(Boolean).join(' '),
+      taskCount: cnt
+    });
+  });
+
+  list.sort((a, b) => {
+    if (b.taskCount !== a.taskCount) return b.taskCount - a.taskCount;
+    return String(a.label || '').localeCompare(String(b.label || ''), 'vi');
+  });
+
+  return [{ value: '', label: 'Tất cả', listLabel: 'Tất cả Pipeline', projectNamesLabel: '', sub: '' }, ...list];
+};
+
+const filterWorkflowOptions = computed(() => buildFilterWorkflowOptions(filters.value.projectId));
+
+const buildFilterPipelineTaskOptions = (projKey = '', wfKey = '') => {
+  const scoped = pipelineData.value.filter((p) => {
+    if (projKey && getTaskProjectFilterKey(p) !== projKey) return false;
+    if (wfKey && String(p.id_workflow_resolved || 'WF_DEFAULT').trim() !== wfKey) return false;
+    return true;
+  });
+
+  const items = scoped.map((p) => {
+    const label = getPipelineTaskDisplayLabel(p);
+    return {
+      value: String(p.Id_pipeline),
+      label,
+      listLabel: label,
+      sub: [p.ten_du_an, p.name_workflow || 'Khung Chuẩn Hệ Thống', p.ten_cong_ty || p.ten_khach_hang]
+        .filter(Boolean)
+        .join(' · '),
+      searchText: [
+        label,
+        p.content_of_contract_po,
+        p.ten_du_an,
+        p.ma_du_an,
+        p.name_workflow,
+        p.ten_khach_hang,
+        p.ten_cong_ty
+      ]
+        .filter(Boolean)
+        .join(' ')
+    };
+  });
+
+  return [{ value: '', label: 'Tất cả', listLabel: 'Tất cả Công việc pipeline', sub: '' }, ...items];
+};
+
+const filterPipelineTaskOptions = computed(() =>
+  buildFilterPipelineTaskOptions(filters.value.projectId, filters.value.workflowId)
+);
+
+watch(
+  () => [filters.value.projectId, filters.value.workflowId],
+  () => {
+    if (filters.value.workflowId) {
+      const wfValid = filterWorkflowOptions.value.some((opt) => opt.value === filters.value.workflowId);
+      if (!wfValid) filters.value.workflowId = '';
+    }
+    if (filters.value.pipelineTaskId) {
+      const taskValid = filterPipelineTaskOptions.value.some((opt) => opt.value === filters.value.pipelineTaskId);
+      if (!taskValid) filters.value.pipelineTaskId = '';
+    }
+  }
+);
+
 const filteredModalPipelines = computed(() => {
   let res = [...modalPlProjectScopedTasks.value];
   if (modalPlWorkflowFilter.value) {
@@ -15686,6 +16898,27 @@ const togglePipelineSelection = (id) => {
 const goToPipeline = (id) => {
   if (!id) return
   const routeData = router.resolve({ path: '/pipeline-firebase', query: { openId: id } })
+  window.open(routeData.href, '_blank')
+}
+
+const goToPipelineProject = (pl) => {
+  if (!pl) return
+  const query = {}
+  if (pl.id_project) query.projectId = String(pl.id_project).trim()
+  if (pl.ten_du_an) query.projectName = String(pl.ten_du_an).trim()
+  if (!query.projectId && !query.projectName) return
+  const routeData = router.resolve({ path: '/pipeline-firebase', query })
+  window.open(routeData.href, '_blank')
+}
+
+const goToPipelineWorkflow = (pl) => {
+  if (!pl) return
+  const wfId = String(pl.id_workflow_resolved || pl.id_workflow || 'WF_DEFAULT').trim() || 'WF_DEFAULT'
+  const query = { workflowId: wfId }
+  if (pl.id_project) query.projectId = String(pl.id_project).trim()
+  if (pl.ten_du_an) query.projectName = String(pl.ten_du_an).trim()
+  if (pl.name_workflow) query.workflowName = String(pl.name_workflow).trim()
+  const routeData = router.resolve({ path: '/pipeline-firebase', query })
   window.open(routeData.href, '_blank')
 }
 
@@ -16203,6 +17436,10 @@ onUnmounted(() => {
   if (pendingModalObserver) {
     pendingModalObserver.disconnect();
     pendingModalObserver = null;
+  }
+  if (plFilterModalObserver) {
+    plFilterModalObserver.disconnect();
+    plFilterModalObserver = null;
   }
   if (unsubscribeReports) {
     unsubscribeReports();
@@ -22260,6 +23497,14 @@ span[style*="color: #334155"] {
   color: var(--theme-pri-bright);
 }
 
+.bg-tool-island .bg-btn-excel-soft.is-island-item {
+  color: var(--sem-emerald-bright);
+}
+.bg-tool-island .bg-btn-excel-soft.is-island-item:hover:not(:disabled) {
+  background: var(--sem-emerald-bg);
+  color: var(--sem-emerald-bright);
+}
+
 .bg-tool-island .bg-btn-theme.is-island-item {
   color: var(--sem-amber-bright);
 }
@@ -22726,10 +23971,30 @@ span[style*="color: #334155"] {
   align-items: center;
   gap: 5px;
   margin-top: auto;
-  padding: 8px 10px 10px;
+  padding: 8px 10px 7px;
   background: var(--bg-subbar);
   border-top: 1px solid var(--bg-subbar-sep);
+}
+
+.bg-filter-row-pickers:has(.pl-popover) {
+  z-index: 360 !important;
+}
+
+.bg-filter-row-pl-pickers {
+  position: relative;
+  z-index: 90;
+  overflow: visible !important;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: center;
+  gap: 5px;
+  padding: 0 10px 10px;
+  background: var(--bg-subbar);
   border-radius: 0 0 17px 17px;
+}
+
+.bg-filter-row-pl-pickers:has(.pl-popover) {
+  z-index: 360 !important;
 }
 
 .report-container.page.theme-light-blue .bg-filter-row-pickers {
@@ -22737,13 +24002,19 @@ span[style*="color: #334155"] {
   border-top-color: #e2e8f0;
 }
 
+.report-container.page.theme-light-blue .bg-filter-row-pl-pickers {
+  background: #f8fafc;
+}
+
 @media (max-width: 880px) {
-  .bg-filter-row-pickers {
+  .bg-filter-row-pickers,
+  .bg-filter-row-pl-pickers {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
   }
-  .bg-filter-row-pickers .pl-picker-wrap {
+  .bg-filter-row-pickers .pl-picker-wrap,
+  .bg-filter-row-pl-pickers .pl-picker-wrap {
     flex: 1 1 calc(50% - 4px);
   }
 }
@@ -22954,6 +24225,7 @@ span[style*="color: #334155"] {
   white-space: nowrap;
   transition: all 0.14s ease;
 }
+
 .pl-option-item:hover {
   background: var(--bg-hover);
   color: var(--bg-text);
@@ -24579,6 +25851,8 @@ span[style*="color: #334155"] {
 }
 .bg-icon-sq.is-sky { background: var(--sem-sky-bg); border-color: var(--sem-sky-bd); color: var(--sem-sky-bright); }
 .bg-icon-sq.is-emerald { background: var(--sem-emerald-bg); border-color: var(--sem-emerald-bd); color: var(--sem-emerald-bright); }
+.bg-icon-sq.is-amber { background: var(--sem-amber-bg); border-color: var(--sem-amber-bd); color: var(--sem-amber-bright); }
+.bg-icon-sq.is-teal { background: var(--sem-teal-bg); border-color: var(--sem-teal-bd); color: var(--sem-teal-bright); }
 
 /* Customer Selector List */
 .bg-cus-row {
@@ -24599,6 +25873,10 @@ span[style*="color: #334155"] {
   background: var(--sem-sky-bg);
   border: 1px solid var(--sem-sky-bd);
   margin-bottom: 6px;
+}
+.bg-cus-row.is-selected-row {
+  background: var(--sem-emerald-bg);
+  border: 1px solid var(--sem-emerald-bd);
 }
 
 .bg-cus-meta {
@@ -24626,6 +25904,31 @@ span[style*="color: #334155"] {
 }
 .bg-cus-code strong {
   color: var(--sem-sky-bright);
+}
+
+.bg-plf-item-row {
+  align-items: center;
+  gap: 12px;
+}
+
+.bg-plf-meta-line {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  font-size: 0.78rem;
+  line-height: 1.38;
+  color: var(--bg-text-sec);
+  margin-top: 2px;
+}
+
+.bg-plf-meta-lbl {
+  flex-shrink: 0;
+  font-weight: 700;
+  color: var(--bg-text-muted);
+}
+
+.bg-cus-actions {
+  flex-shrink: 0;
 }
 
 .bg-cus-actions {
@@ -26415,28 +27718,51 @@ span[style*="color: #334155"] {
 
 .bg-detail-card.is-done .bg-dcard-chip.is-work,
 .bg-detail-card.is-done .bg-dcard-chip.is-life,
-.bg-detail-card.is-done .bg-dcard-chip.is-cus-chip,
 .bg-detail-card.is-done .bg-dcard-chip.is-proj-chip,
-.bg-detail-card.is-done .bg-dcard-chip.is-wf-chip {
-  background: rgba(255, 255, 255, 0.18) !important;
-  border-color: rgba(255, 255, 255, 0.36) !important;
+.bg-detail-card.is-done .bg-dcard-chip.is-wf-chip,
+.bg-gcal-event.is-done .bg-dcard-chip.is-proj-chip,
+.bg-gcal-event.is-done .bg-dcard-chip.is-wf-chip {
+  background: transparent !important;
+  border-color: transparent !important;
   color: #ffffff !important;
 }
 
-.bg-detail-card.is-done .bg-dcard-chip.is-pipe-task-chip {
-  background: rgba(255, 255, 255, 0.25) !important;
-  border-color: rgba(255, 255, 255, 0.52) !important;
+.bg-detail-card.is-done .bg-dcard-chip.is-proj-chip .bg-dcard-tree-lbl,
+.bg-detail-card.is-done .bg-dcard-chip.is-wf-chip .bg-dcard-tree-lbl,
+.bg-detail-card.is-done .bg-dcard-chip.is-pipe-task-chip .bg-dcard-tree-lbl,
+.bg-gcal-event.is-done .bg-dcard-chip.is-proj-chip .bg-dcard-tree-lbl,
+.bg-gcal-event.is-done .bg-dcard-chip.is-wf-chip .bg-dcard-tree-lbl,
+.bg-gcal-event.is-done .bg-dcard-chip.is-pipe-task-chip .bg-dcard-tree-lbl {
+  color: #ffffff !important;
+  font-weight: 800 !important;
+}
+
+.bg-detail-card.is-done .bg-dcard-chip.is-cus-chip,
+.bg-detail-card.is-done .bg-dcard-chip.is-company-chip,
+.bg-detail-card.is-done .bg-dcard-pl-tree .bg-dcard-chip-ic,
+.bg-gcal-event.is-done .bg-dcard-pl-tree .bg-dcard-chip-ic {
+  background: transparent !important;
+  border-color: transparent !important;
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+
+.bg-detail-card.is-done .bg-dcard-chip.is-pipe-task-chip,
+.bg-gcal-event.is-done .bg-dcard-chip.is-pipe-task-chip {
+  background: transparent !important;
+  border-color: transparent !important;
   color: #ffffff !important;
 }
 
-.bg-detail-card.is-done .bg-dcard-chip.is-pipe-task-chip:hover {
-  background: #ffffff !important;
-  border-color: #ffffff !important;
-  color: #047857 !important;
+.bg-detail-card.is-done .bg-dcard-chip.is-pipe-task-chip:hover,
+.bg-gcal-event.is-done .bg-dcard-chip.is-pipe-task-chip:hover {
+  background: transparent !important;
+  border-color: transparent !important;
+  color: #ffffff !important;
 }
 
-.report-container.page.theme-light-blue .bg-detail-card.is-done .bg-dcard-chip.is-pipe-task-chip:hover {
-  color: #0284c7 !important;
+.report-container.page.theme-light-blue .bg-detail-card.is-done .bg-dcard-chip.is-pipe-task-chip:hover,
+.report-container.page.theme-light-blue .bg-gcal-event.is-done .bg-dcard-chip.is-pipe-task-chip:hover {
+  color: #ffffff !important;
 }
 
 .bg-detail-card.is-done .bg-dcard-chip.is-prio-chip {
@@ -26469,21 +27795,22 @@ span[style*="color: #334155"] {
 
 .bg-detail-card.is-done .bg-dcard-files-toggle,
 .bg-detail-card.is-done .bg-dcard-qlf-btn {
-  background: rgba(255, 255, 255, 0.16) !important;
-  border-color: rgba(255, 255, 255, 0.32) !important;
+  background: transparent !important;
+  border-color: transparent !important;
   color: #ffffff !important;
 }
 .bg-detail-card.is-done .bg-dcard-files-toggle:hover,
 .bg-detail-card.is-done .bg-dcard-files-toggle.is-open,
 .bg-detail-card.is-done .bg-dcard-qlf-btn:hover {
-  background: rgba(255, 255, 255, 0.24) !important;
-  border-color: rgba(255, 255, 255, 0.48) !important;
+  background: transparent !important;
+  border-color: transparent !important;
   color: #ffffff !important;
+  text-decoration: underline;
 }
 
 .bg-detail-card.is-done .tl-att-v5 .tl-att-row {
-  background: rgba(0, 0, 0, 0.18) !important;
-  border-color: rgba(255, 255, 255, 0.26) !important;
+  background: transparent !important;
+  border-color: transparent !important;
   color: #ffffff !important;
 }
 .bg-detail-card.is-done .tl-att-v5 .tl-att-name,
@@ -26562,6 +27889,11 @@ span[style*="color: #334155"] {
   min-width: 0;
 }
 
+.bg-dcard-badges.is-top-right {
+  margin-left: auto;
+  justify-content: flex-end;
+}
+
 .bg-dcard-chip {
   display: inline-flex;
   align-items: center;
@@ -26599,17 +27931,49 @@ span[style*="color: #334155"] {
   color: var(--sem-rose-bright);
 }
 
-.bg-dcard-chip.is-cus-chip {
-  background: var(--bg-soft-pad);
-  border: 1px solid var(--bg-border-strong);
-  color: var(--bg-text-sec);
+.bg-dcard-cus-stack {
+  flex: 1 1 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  min-width: 0;
+}
+
+.bg-dcard-pl-tree + .bg-dcard-cus-stack {
+  padding-top: 7px;
+  margin-top: 2px;
+  border-top: 1px dotted var(--bg-border-strong);
+}
+
+.bg-detail-card.is-done .bg-dcard-pl-tree + .bg-dcard-cus-stack {
+  border-top-color: rgba(255, 255, 255, 0.36);
+}
+
+.bg-dcard-chip.is-cus-chip,
+.bg-dcard-chip.is-company-chip {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0;
+  padding: 0;
+  font-style: italic;
+  font-weight: 700;
   max-width: 100%;
   white-space: normal;
   align-items: flex-start;
   text-align: left;
 }
 
-.bg-dcard-chip.is-cus-chip > svg {
+.bg-dcard-chip.is-cus-chip {
+  color: var(--bg-text-sec);
+}
+
+.bg-dcard-chip.is-company-chip {
+  color: var(--bg-text-muted);
+}
+
+.bg-dcard-chip.is-cus-chip > svg,
+.bg-dcard-chip.is-company-chip > svg {
   flex-shrink: 0;
   margin-top: 2px;
 }
@@ -26627,6 +27991,12 @@ span[style*="color: #334155"] {
   align-items: flex-start;
   gap: 9px;
   min-width: 0;
+  padding-top: 8px;
+  border-top: 1px dotted var(--bg-border-strong);
+}
+
+.bg-detail-card.is-done .bg-dcard-title-row {
+  border-top-color: rgba(255, 255, 255, 0.36);
 }
 
 .bg-dcard-done-circle {
@@ -26757,35 +28127,38 @@ span[style*="color: #334155"] {
 .bg-dcard-files-bar {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 6px 12px;
   flex-wrap: wrap;
   min-width: 0;
 }
 
 .bg-dcard-files-toggle {
-  flex: 1 1 135px;
+  flex: 0 1 auto;
   min-width: 0;
-  height: 31px !important;
+  height: auto !important;
   margin: 0 !important;
-  padding: 0 11px !important;
-  border-radius: 9px;
-  background: var(--bg-soft-pad);
-  border: 1px solid var(--bg-border-strong);
+  padding: 2px 0 !important;
+  border-radius: 0;
+  background: transparent !important;
+  border: none !important;
   color: var(--theme-pri-bright);
   font-size: 0.76rem;
   font-weight: 700;
   display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 7px;
+  justify-content: flex-start;
+  gap: 5px;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  transition: color 0.15s ease, opacity 0.15s ease;
 }
 
 .bg-dcard-files-toggle:hover,
 .bg-dcard-files-toggle.is-open {
-  background: var(--theme-pri-bg);
-  border-color: var(--theme-pri-bd);
+  background: transparent !important;
+  border-color: transparent !important;
+}
+.bg-dcard-files-toggle:hover {
+  text-decoration: underline;
 }
 
 .bg-dcard-files-toggle-left {
@@ -26804,12 +28177,12 @@ span[style*="color: #334155"] {
 
 .bg-dcard-qlf-btn {
   flex: 0 0 auto;
-  height: 31px !important;
+  height: auto !important;
   margin: 0 !important;
-  padding: 0 11px !important;
-  border-radius: 9px;
-  background: var(--sem-sky-bg);
-  border: 1px solid var(--sem-sky-bd);
+  padding: 2px 0 !important;
+  border-radius: 0;
+  background: transparent !important;
+  border: none !important;
   color: var(--sem-sky-bright);
   font-size: 0.75rem;
   font-weight: 700;
@@ -26818,12 +28191,13 @@ span[style*="color: #334155"] {
   gap: 5px;
   white-space: nowrap;
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  transition: color 0.15s ease, opacity 0.15s ease;
 }
 .bg-dcard-qlf-btn:hover {
-  background: #0284c7;
-  border-color: #0284c7;
-  color: #ffffff;
+  background: transparent !important;
+  border-color: transparent !important;
+  color: var(--sem-sky-bright);
+  text-decoration: underline;
 }
 
 .bg-dcard-att-collapse {
@@ -26853,12 +28227,19 @@ span[style*="color: #334155"] {
 .bg-dcard-att-list.tl-att-v5 {
   margin-top: 0 !important;
   padding: 0 !important;
-  gap: 6px !important;
+  gap: 4px !important;
 }
 
-.bg-dcard-att-list.tl-att-v5 .tl-att-row {
-  padding: 6.5px 9px;
-  border-radius: 9px;
+.bg-dcard-att-list.tl-att-v5 .tl-att-row,
+.bg-dcard-att-list.tl-att-v5 .tl-att-row:hover,
+.report-container.page.theme-light-blue .bg-dcard-att-list.tl-att-v5 .tl-att-row,
+.report-container.page.theme-light-blue .bg-dcard-att-list.tl-att-v5 .tl-att-row:hover,
+.report-container.page.theme-custom-glass .bg-dcard-att-list.tl-att-v5 .tl-att-row,
+.report-container.page.theme-custom-glass .bg-dcard-att-list.tl-att-v5 .tl-att-row:hover {
+  padding: 2px 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  border: none !important;
 }
 
 .bg-dcard-att-list.tl-att-v5 .tl-att-name {
@@ -27605,6 +28986,19 @@ span[style*="color: #334155"] {
   min-width: 0;
 }
 
+.bg-dcard-pl-tree.is-gcal-tree + .bg-gcal-event-top {
+  padding-top: 5px;
+  border-top: 1px dotted var(--bg-border-strong);
+}
+
+.bg-gcal-event.is-compact .bg-dcard-pl-tree.is-gcal-tree + .bg-gcal-event-top {
+  padding-top: 4px;
+}
+
+.bg-gcal-event.is-done .bg-dcard-pl-tree.is-gcal-tree + .bg-gcal-event-top {
+  border-top-color: rgba(255, 255, 255, 0.36);
+}
+
 .bg-gcal-event-badges {
   display: flex;
   align-items: center;
@@ -27625,13 +29019,38 @@ span[style*="color: #334155"] {
   white-space: nowrap;
 }
 
+.bg-gcal-cus-stack {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+
 .bg-gcal-cus-tag {
-  padding: 1.5px 6px;
-  border-radius: 5px;
-  background: var(--theme-pri-bg);
-  border: 1px solid var(--theme-pri-bd);
-  color: var(--theme-pri-bright);
+  padding: 0;
+  border-radius: 0;
+  background: transparent !important;
+  border: none !important;
+  color: var(--bg-text-sec);
+  font-size: 0.65rem;
+  font-style: italic;
+  font-weight: 700;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bg-gcal-comp-tag {
+  padding: 0;
+  border-radius: 0;
+  background: transparent !important;
+  border: none !important;
+  color: var(--bg-text-muted);
   font-size: 0.63rem;
+  font-style: italic;
   font-weight: 700;
   max-width: 100%;
   overflow: hidden;
@@ -27645,10 +29064,11 @@ span[style*="color: #334155"] {
   color: #ffffff;
 }
 
-.bg-gcal-event.is-done .bg-gcal-cus-tag {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.36);
-  color: #ffffff;
+.bg-gcal-event.is-done .bg-gcal-cus-tag,
+.bg-gcal-event.is-done .bg-gcal-comp-tag {
+  background: transparent !important;
+  border-color: transparent !important;
+  color: rgba(255, 255, 255, 0.92) !important;
 }
 
 .bg-gcal-event-title {
@@ -27668,6 +29088,16 @@ span[style*="color: #334155"] {
   align-items: flex-start;
   gap: 6px;
   min-width: 0;
+  padding-top: 5px;
+  border-top: 1px dotted var(--bg-border-strong);
+}
+
+.bg-gcal-event.is-compact .bg-gcal-title-row {
+  padding-top: 4px;
+}
+
+.bg-gcal-event.is-done .bg-gcal-title-row {
+  border-top-color: rgba(255, 255, 255, 0.36);
 }
 
 .bg-gcal-title-row .bg-gcal-event-title {
@@ -27738,45 +29168,48 @@ span[style*="color: #334155"] {
 }
 
 .bg-gcal-files-toggle {
-  width: 100% !important;
+  width: auto !important;
   max-width: 100%;
   min-width: 0;
   margin: 0 !important;
-  padding: 3.5px 7px !important;
-  border-radius: 7px;
-  background: var(--bg-soft-pad);
-  border: 1px solid var(--bg-border-strong);
+  padding: 1.5px 0 !important;
+  border-radius: 0;
+  background: transparent !important;
+  border: none !important;
   color: var(--theme-pri-bright);
   font-size: 0.68rem;
   font-weight: 700;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 4px;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  transition: color 0.15s ease, opacity 0.15s ease;
 }
 
 .bg-gcal-files-toggle.is-compact {
-  padding: 2.5px 6px !important;
+  padding: 1px 0 !important;
   font-size: 0.65rem;
 }
 
 .bg-gcal-files-toggle:hover,
 .bg-gcal-files-toggle.is-open {
-  background: var(--theme-pri-bg);
-  border-color: var(--theme-pri-bd);
+  background: transparent !important;
+  border-color: transparent !important;
+}
+.bg-gcal-files-toggle:hover {
+  text-decoration: underline;
 }
 
 .bg-gcal-event.is-done .bg-gcal-files-toggle {
-  background: rgba(0, 0, 0, 0.18);
-  border-color: rgba(255, 255, 255, 0.34);
+  background: transparent !important;
+  border-color: transparent !important;
   color: #ffffff;
 }
 .bg-gcal-event.is-done .bg-gcal-files-toggle:hover,
 .bg-gcal-event.is-done .bg-gcal-files-toggle.is-open {
-  background: rgba(0, 0, 0, 0.28);
-  border-color: rgba(255, 255, 255, 0.55);
+  background: transparent !important;
+  border-color: transparent !important;
 }
 
 .bg-gcal-files-toggle-left {
@@ -27819,15 +29252,15 @@ span[style*="color: #334155"] {
   gap: 3.5px;
   min-width: 0;
   max-width: 100%;
-  padding: 2.5px 4px;
-  border-radius: 6px;
-  background: var(--bg-well);
-  border: 1px solid var(--bg-border);
+  padding: 1.5px 0;
+  border-radius: 0;
+  background: transparent !important;
+  border: none !important;
 }
 
 .bg-gcal-event.is-done .bg-gcal-file-item {
-  background: rgba(0, 0, 0, 0.22);
-  border-color: rgba(255, 255, 255, 0.28);
+  background: transparent !important;
+  border-color: transparent !important;
 }
 
 .bg-gcal-file-ic {
@@ -28358,6 +29791,10 @@ span[style*="color: #334155"] {
     gap: 3px;
   }
 
+  .bg-dock-btn.is-excel {
+    color: var(--sem-emerald-bright);
+  }
+
   .bg-dock-btn.is-primary {
     background: var(--theme-pri-bg);
     border: 1px solid var(--theme-pri-bd);
@@ -28756,6 +30193,19 @@ span[style*="color: #334155"] {
   }
 
   .bg-filter-row-pickers .pl-picker-wrap:nth-child(5) {
+    grid-column: 1 / -1;
+  }
+
+  .bg-filter-row-pl-pickers {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+    padding: 6px 0 0 !important;
+    background: transparent !important;
+    border-radius: 0 !important;
+  }
+
+  .bg-filter-row-pl-pickers .pl-picker-wrap:nth-child(3) {
     grid-column: 1 / -1;
   }
 
@@ -29820,10 +31270,10 @@ span[style*="color: #334155"] {
   border-radius: 13px;
 }
 
-/* 3. Four Popup Modal Trigger Buttons (B1: 44px + 26x26 Semantic Tinted Icon Boxes) */
+/* 3. Three Popup Modal Trigger Buttons (B1: 44px + 26x26 Semantic Tinted Icon Boxes) */
 .bg-studio-modal-triggers {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -30806,7 +32256,7 @@ span[style*="color: #334155"] {
   }
 
   .bg-studio-modal-triggers {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
   }
 
@@ -32280,12 +33730,18 @@ span[style*="color: #334155"] {
   box-shadow: inset 0 1px 0 var(--cg-specular, rgba(255, 255, 255, 0.38)) !important;
 }
 
-.report-container.page.theme-custom-glass .bg-filter-row-pickers {
+.report-container.page.theme-custom-glass .bg-filter-row-pickers,
+.report-container.page.theme-custom-glass .bg-filter-row-pl-pickers {
   position: relative;
   z-index: 30;
   background: rgba(255, 255, 255, 0.04) !important;
   border-top-color: var(--cg-border, rgba(255, 255, 255, 0.28)) !important;
   overflow: visible !important;
+}
+
+.report-container.page.theme-custom-glass .bg-filter-row-pickers:has(.pl-popover),
+.report-container.page.theme-custom-glass .bg-filter-row-pl-pickers:has(.pl-popover) {
+  z-index: 150 !important;
 }
 
 .report-container.page.theme-custom-glass .pl-picker-wrap {
@@ -33187,90 +34643,97 @@ span[style*="color: #334155"] {
   flex: 1 1 100%;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
   min-width: 0;
 }
 
 .bg-dcard-tree-group {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
   min-width: 0;
 }
 
 .bg-dcard-tree-row {
   display: flex;
   align-items: flex-start;
+  padding-left: 0;
   min-width: 0;
   max-width: 100%;
 }
 
-.bg-dcard-tree-row.is-lv-0 {
-  padding-left: 0;
-}
-
-.bg-dcard-tree-row.is-lv-1 {
-  padding-left: 10px;
-}
-
-.bg-dcard-tree-row.is-lv-2 {
-  padding-left: 26px;
-}
-
-.bg-dcard-tree-elbow {
-  width: 12px;
-  height: 13px;
-  margin-top: -2px;
-  margin-right: 5px;
-  border-left: 1.8px solid rgba(148, 163, 184, 0.62);
-  border-bottom: 1.8px solid rgba(148, 163, 184, 0.62);
-  border-bottom-left-radius: 5px;
-  flex-shrink: 0;
-  pointer-events: none;
-}
-
-.report-container.page.theme-light-blue .bg-dcard-tree-elbow {
-  border-left-color: rgba(14, 116, 144, 0.48);
-  border-bottom-color: rgba(14, 116, 144, 0.48);
-}
-
-.bg-detail-card.is-done .bg-dcard-tree-elbow,
-.report-container.page.theme-light-blue .bg-detail-card.is-done .bg-dcard-tree-elbow {
-  border-left-color: rgba(255, 255, 255, 0.72) !important;
-  border-bottom-color: rgba(255, 255, 255, 0.72) !important;
-}
-
 .bg-dcard-top.has-pl-hierarchy .bg-dcard-badges {
-  flex: 1 1 100%;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 5px;
   min-width: 0;
 }
 
+.bg-dcard-top.has-pl-hierarchy .bg-dcard-badges.is-top-right {
+  margin-left: auto;
+  justify-content: flex-end;
+}
+
 .bg-dcard-chip.is-proj-chip {
-  background: var(--sem-amber-bg);
-  border: 1px solid var(--sem-amber-bd);
+  width: auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
   color: var(--sem-amber-bright);
   max-width: 100% !important;
   min-width: 0;
   white-space: normal !important;
   align-items: flex-start;
   text-align: left;
-  padding: 3.5px 8.5px;
+  padding: 0 !important;
+  font-size: 0.79rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.01em;
+  line-height: 1.38 !important;
+  cursor: pointer;
+  transition: color 0.16s ease, opacity 0.16s ease;
 }
 
 .bg-dcard-chip.is-wf-chip {
-  background: var(--sem-teal-bg);
-  border: 1px solid var(--sem-teal-bd);
+  width: auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
   color: var(--sem-teal-bright);
   max-width: 100% !important;
   min-width: 0;
   white-space: normal !important;
   align-items: flex-start;
   text-align: left;
-  padding: 3.5px 8.5px;
+  padding: 0 !important;
+  font-size: 0.79rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.01em;
+  line-height: 1.38 !important;
+  cursor: pointer;
+  transition: color 0.16s ease, opacity 0.16s ease;
+}
+
+.bg-dcard-chip.is-proj-chip:hover,
+.bg-dcard-chip.is-wf-chip:hover {
+  background: transparent !important;
+  border-color: transparent !important;
+  transform: none;
+}
+
+.bg-dcard-chip.is-proj-chip:hover .bg-dcard-tree-val,
+.bg-dcard-chip.is-wf-chip:hover .bg-dcard-tree-val {
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .bg-dcard-chip.is-pipe-task-chip {
@@ -33278,14 +34741,14 @@ span[style*="color: #334155"] {
   height: auto !important;
   min-height: 0 !important;
   margin: 0 !important;
-  padding: 3.5px 8.5px !important;
-  border-radius: 6.5px !important;
-  font-size: 0.68rem !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  font-size: 0.79rem !important;
   font-weight: 800 !important;
-  letter-spacing: 0.02em;
-  line-height: 1.35 !important;
-  background: var(--sem-sky-bg) !important;
-  border: 1px solid var(--sem-sky-bd) !important;
+  letter-spacing: 0.01em;
+  line-height: 1.38 !important;
+  background: transparent !important;
   color: var(--sem-sky-bright) !important;
   box-shadow: none !important;
   max-width: 100% !important;
@@ -33294,19 +34757,33 @@ span[style*="color: #334155"] {
   align-items: flex-start;
   text-align: left;
   cursor: pointer;
-  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.14s ease;
+  transition: color 0.16s ease, opacity 0.16s ease;
 }
 
 .bg-dcard-chip.is-pipe-task-chip:hover {
-  background: #0284c7 !important;
-  border-color: #0284c7 !important;
-  color: #ffffff !important;
-  transform: translateY(-1px);
+  background: transparent !important;
+  border-color: transparent !important;
+  transform: none;
+}
+
+.bg-dcard-chip.is-pipe-task-chip:hover .bg-dcard-tree-val {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.bg-dcard-tree-lbl {
+  color: var(--bg-text-sec);
+  font-weight: 800;
+}
+
+.bg-dcard-tree-val {
+  font-weight: 800;
 }
 
 .bg-dcard-chip-ic {
   flex-shrink: 0;
-  margin-top: 1.5px;
+  margin-top: 2px;
+  color: var(--bg-text-sec);
 }
 
 .bg-dcard-chip-full {
@@ -33324,6 +34801,43 @@ span[style*="color: #334155"] {
   flex-shrink: 0;
   margin-left: 2px;
   opacity: 0.92;
+}
+
+/* Calendar Week & Month Event Card Pipeline Hierarchy Tree */
+.bg-dcard-pl-tree.is-gcal-tree {
+  flex: 0 0 auto;
+  width: 100%;
+  gap: 3px;
+}
+
+.bg-dcard-pl-tree.is-gcal-tree .bg-dcard-tree-group {
+  gap: 2.5px;
+}
+
+.bg-dcard-pl-tree.is-gcal-tree .bg-dcard-chip.is-proj-chip,
+.bg-dcard-pl-tree.is-gcal-tree .bg-dcard-chip.is-wf-chip,
+.bg-dcard-pl-tree.is-gcal-tree .bg-dcard-chip.is-pipe-task-chip {
+  padding: 0 !important;
+  font-size: 0.7rem !important;
+  border-radius: 0 !important;
+  gap: 3.5px;
+}
+
+.bg-gcal-event.is-compact .bg-dcard-pl-tree.is-gcal-tree {
+  gap: 2.5px;
+}
+
+.bg-gcal-event.is-compact .bg-dcard-pl-tree.is-gcal-tree .bg-dcard-tree-group {
+  gap: 2px;
+}
+
+.bg-gcal-event.is-compact .bg-dcard-pl-tree.is-gcal-tree .bg-dcard-chip.is-proj-chip,
+.bg-gcal-event.is-compact .bg-dcard-pl-tree.is-gcal-tree .bg-dcard-chip.is-wf-chip,
+.bg-gcal-event.is-compact .bg-dcard-pl-tree.is-gcal-tree .bg-dcard-chip.is-pipe-task-chip {
+  padding: 0 !important;
+  font-size: 0.67rem !important;
+  border-radius: 0 !important;
+  gap: 3px;
 }
 
 /* Studio Add/Edit Modal Pipeline Row & Modal 4K Customer Subrow */
@@ -33406,6 +34920,18 @@ span[style*="color: #334155"] {
   min-width: 0;
   position: relative;
   z-index: 35;
+}
+
+.bg-pl-cascade-grid.is-single-col {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.bg-pl-search-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
 }
 
 .bg-pl-dd-anchor {
@@ -33685,7 +35211,7 @@ span[style*="color: #334155"] {
   font-size: 0.67rem;
   font-weight: 800;
   line-height: 1.25;
-  max-width: 220px;
+  max-width: min(340px, 100%);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -33723,14 +35249,6 @@ span[style*="color: #334155"] {
 
   .bg-pl-dd-search {
     font-size: 16px;
-  }
-
-  .bg-dcard-tree-row.is-lv-1 {
-    padding-left: 8px;
-  }
-
-  .bg-dcard-tree-row.is-lv-2 {
-    padding-left: 20px;
   }
 }
 </style>
