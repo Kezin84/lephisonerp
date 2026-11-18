@@ -1,106 +1,6 @@
 <template>
   <div class="qlbg-page" :class="{ 'theme-light-blue': uiTheme === 'light' }">
-    <!-- TOPBAR ĐỒNG BỘ CHUẨN HỆ THỐNG FIREBASE -->
-    <header class="bg-topbar">
-      <div class="bg-topbar-left">
-        <div class="bg-brand-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-            <polyline points="14 2 14 8 20 8"/>
-            <line x1="16" y1="13" x2="8" y2="13"/>
-            <line x1="16" y1="17" x2="8" y2="17"/>
-          </svg>
-        </div>
-        <div class="bg-title-wrap">
-          <div class="bg-title-row">
-            <h1 class="bg-title">Quản Lý Báo Giá</h1>
-            <span class="bg-count-pill tabular-nums">
-              {{ totalGroups }} nhóm · {{ filteredContracts.length }} bản
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div class="bg-topbar-right">
-        <!-- Segmented: Giá Hợp Đồng / Giá Khách -->
-        <div class="qlbg-seg-group" role="tablist" aria-label="Chế độ hiển thị giá">
-          <button
-            type="button"
-            class="qlbg-seg-btn"
-            :class="{ active: priceViewMode === 'hd' }"
-            @click="priceViewMode = 'hd'"
-            title="Hiển thị các chỉ số theo Giá hợp đồng (bao gồm chênh lệch COM)"
-          >
-            <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-            <span>Giá HĐ</span>
-          </button>
-          <button
-            type="button"
-            class="qlbg-seg-btn is-khach"
-            :class="{ active: priceViewMode === 'khach' }"
-            @click="priceViewMode = 'khach'"
-            title="Hiển thị các chỉ số theo Giá khách thực tế"
-          >
-            <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            <span>Giá Khách</span>
-          </button>
-        </div>
-
-        <!-- Segmented: Card / Table -->
-        <div class="qlbg-seg-group hide-xs" role="tablist" aria-label="Chế độ bố cục">
-          <button
-            type="button"
-            class="qlbg-seg-btn is-icon-only"
-            :class="{ active: layoutMode === 'card' }"
-            @click="layoutMode = 'card'"
-            title="Xem dạng Thẻ nhóm phiên bản"
-          >
-            <svg width="14.5" height="14.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
-            <span class="hide-md">Thẻ nhóm</span>
-          </button>
-          <button
-            type="button"
-            class="qlbg-seg-btn is-icon-only"
-            :class="{ active: layoutMode === 'table' }"
-            @click="layoutMode = 'table'"
-            title="Xem dạng Bảng gọn mật độ cao"
-          >
-            <svg width="14.5" height="14.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-            <span class="hide-md">Bảng gọn</span>
-          </button>
-        </div>
-
-        <!-- Theme Toggle -->
-        <button
-          type="button"
-          class="qlbg-icon-btn"
-          @click="toggleUiTheme"
-          :title="uiTheme === 'dark' ? 'Chuyển sang giao diện Sáng (Light Blue)' : 'Chuyển sang giao diện Tối (Dark Navy)'"
-        >
-          <svg v-if="uiTheme === 'dark'" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-          <svg v-else width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-        </button>
-
-        <!-- Refresh -->
-        <button
-          type="button"
-          class="qlbg-icon-btn"
-          :disabled="loading"
-          @click="fetchData(true)"
-          title="Đồng bộ lại dữ liệu"
-        >
-          <svg :class="{ 'is-spin': loading }" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-        </button>
-
-        <!-- Primary Create Quote CTA -->
-        <button type="button" class="qlbg-btn-primary" @click="goCreateNewQuote">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          <span>Tạo báo giá</span>
-        </button>
-      </div>
-    </header>
-
-    <!-- DẢI 4 THẺ BENTO KPI -->
+    <!-- DẢI 3 THẺ BENTO KPI -->
     <section class="qlbg-kpi-grid">
       <button
         type="button"
@@ -115,7 +15,6 @@
           </span>
         </div>
         <div class="kpi-val tabular-nums">{{ totalGroups }}</div>
-        <div class="kpi-sub tabular-nums">{{ filteredContracts.length }} phiên bản lưu trữ</div>
       </button>
 
       <button
@@ -131,7 +30,6 @@
           </span>
         </div>
         <div class="kpi-val tabular-nums">{{ processingGroups }}</div>
-        <div class="kpi-sub tabular-nums">{{ formatCompactVND(kpiMetrics.draftSauThue) }} đang thương thảo</div>
       </button>
 
       <button
@@ -147,27 +45,124 @@
           </span>
         </div>
         <div class="kpi-val tabular-nums">{{ completedGroups }}</div>
-        <div class="kpi-sub tabular-nums">Tỷ lệ chốt {{ kpiMetrics.winRate }}%</div>
       </button>
-
-      <div class="qlbg-kpi-card is-summary">
-        <div class="kpi-head">
-          <span class="kpi-label">
-            Doanh Số Lọc ({{ priceViewMode === 'hd' ? 'Giá HĐ' : 'Giá Khách' }})
-          </span>
-          <span v-if="kpiMetrics.totalNetCom > 0" class="kpi-com-pill tabular-nums" title="Tổng Net COM / Còn lại của các bản mới nhất đang hiển thị">
-            COM: {{ formatCompactVND(kpiMetrics.totalNetCom) }}
-          </span>
-        </div>
-        <div class="kpi-val is-money tabular-nums">{{ formatVND(kpiMetrics.activeSauThue) }}<small>đ</small></div>
-        <div class="kpi-sub tabular-nums">Trước thuế: {{ formatVND(kpiMetrics.activeTruocThue) }} đ</div>
-      </div>
     </section>
 
-    <!-- THANH BỘ LỌC HỢP NHẤT -->
+    <!-- THANH BỘ LỌC & TÌM KIẾM HỢP NHẤT (TRÁI BỘ LỌC · GIỮA TÌM KIẾM · PHẢI HIỂN THỊ & TẠO MỚI) -->
     <section class="qlbg-filter-bar">
       <div class="qlbg-filter-row-main">
-        <!-- Ô tìm kiếm đa năng -->
+        <!-- BÊN TRÁI: BỘ LỌC (KHÁCH HÀNG · THỜI GIAN MODAL · SẮP XẾP TEMPLATE) -->
+        <div class="qlbg-filter-left">
+          <!-- Lọc Khách hàng (Modal) -->
+          <button
+            type="button"
+            class="qlbg-picker-btn"
+            :class="{ 'is-active': customerFilter !== 'ALL' }"
+            @click="openCustomerModal"
+            title="Lọc theo khách hàng"
+          >
+            <svg width="14.5" height="14.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <span class="picker-btn-text">{{ selectedCustomerLabel }}</span>
+            <span
+              v-if="customerFilter !== 'ALL'"
+              class="picker-clear-dot"
+              title="Bỏ lọc khách hàng"
+              @click.stop="customerFilter = 'ALL'"
+            >✕</span>
+            <svg v-else width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.65; flex-shrink: 0;"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+
+          <!-- Lọc Thời gian (Modal) -->
+          <button
+            type="button"
+            class="qlbg-picker-btn"
+            :class="{ 'is-active': dateQuickRange !== 'all' }"
+            @click="openDateModal"
+            title="Lọc theo khoảng thời gian"
+          >
+            <svg width="14.5" height="14.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <span class="picker-btn-text">{{ selectedDateLabel }}</span>
+            <span
+              v-if="dateQuickRange !== 'all'"
+              class="picker-clear-dot"
+              title="Bỏ lọc thời gian"
+              @click.stop="resetDateFilter"
+            >✕</span>
+            <svg v-else width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.65; flex-shrink: 0;"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+
+          <!-- Sắp xếp (Adaptive Template Picker: PC Popover ↔ Mobile Bottom Sheet) -->
+          <div ref="sortRootRef" class="qlbg-sort-root">
+            <button
+              type="button"
+              class="qlbg-picker-btn qlbg-sort-trigger"
+              :class="{ 'is-active': sortMode !== 'DESC', 'is-open': showSortMenu }"
+              @click.stop="toggleSortMenu"
+              title="Chọn thứ tự sắp xếp"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+              <span class="picker-btn-text">{{ selectedSortLabel }}</span>
+              <span
+                v-if="sortMode !== 'DESC'"
+                class="picker-clear-dot"
+                title="Về sắp xếp mặc định (Mới → Cũ)"
+                @click.stop="sortMode = 'DESC'; showSortMenu = false"
+              >✕</span>
+              <svg v-else class="qlbg-chev-ico" :class="{ 'is-rotated': showSortMenu }" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+
+            <div
+              v-if="showSortMenu"
+              class="qlbg-sort-backdrop"
+              @click="showSortMenu = false"
+            ></div>
+
+            <div
+              v-if="showSortMenu"
+              class="qlbg-pop-menu"
+              :class="{ 'theme-light-blue': uiTheme === 'light' }"
+              @click.stop
+            >
+              <div class="mob-sheet-grabber"></div>
+              <div class="qlbg-pop-head">
+                <span>Sắp xếp danh sách</span>
+                <button type="button" class="qlbg-pop-close" @click="showSortMenu = false">✕</button>
+              </div>
+              <div class="qlbg-pop-list">
+                <button
+                  v-for="opt in sortOptions"
+                  :key="opt.value"
+                  type="button"
+                  class="qlbg-pop-opt"
+                  :class="{ active: sortMode === opt.value }"
+                  @click="selectSortOption(opt.value)"
+                >
+                  <div class="qlbg-pop-opt-main">
+                    <div class="qlbg-pop-opt-title-row">
+                      <strong>{{ opt.label }}</strong>
+                      <span class="qlbg-pop-tag">{{ opt.tag }}</span>
+                    </div>
+                    <span class="qlbg-pop-opt-desc">{{ opt.desc }}</span>
+                  </div>
+                  <span v-if="sortMode === opt.value" class="pm-check">✓</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <button
+            v-if="hasActiveFilters"
+            type="button"
+            class="qlbg-reset-btn"
+            @click="resetAllFilters"
+            title="Đặt lại toàn bộ bộ lọc"
+          >
+            <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            <span>Đặt lại</span>
+          </button>
+        </div>
+
+        <!-- Ở GIỮA: Ô TÌM KIẾM ĐA NĂNG -->
         <div class="qlbg-search-box">
           <svg class="qlbg-search-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input
@@ -186,93 +181,45 @@
           </button>
         </div>
 
-        <!-- Nút mở Modal lọc Khách hàng -->
-        <button
-          type="button"
-          class="qlbg-picker-btn"
-          :class="{ 'is-active': customerFilter !== 'ALL' }"
-          @click="openCustomerModal"
-        >
-          <svg width="14.5" height="14.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          <span class="picker-btn-text">{{ selectedCustomerLabel }}</span>
-          <span
-            v-if="customerFilter !== 'ALL'"
-            class="picker-clear-dot"
-            title="Bỏ lọc khách hàng"
-            @click.stop="customerFilter = 'ALL'"
-          >✕</span>
-          <svg v-else width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.65; flex-shrink: 0;"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-
-        <!-- Sắp xếp -->
-        <div class="qlbg-select-wrap">
-          <svg class="qlbg-select-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
-          <select v-model="sortMode" class="qlbg-select">
-            <option value="DESC">Ngày tạo: Mới → Cũ</option>
-            <option value="ASC">Ngày tạo: Cũ → Mới</option>
-            <option value="AMOUNT_DESC">Giá trị: Cao → Thấp</option>
-            <option value="AMOUNT_ASC">Giá trị: Thấp → Cao</option>
-          </select>
-        </div>
-
-        <!-- Thu gọn / Mở rộng nhóm -->
-        <button
-          v-if="layoutMode === 'card' && displayedGroupedContracts.length > 0"
-          type="button"
-          class="qlbg-ghost-btn hide-xs"
-          @click="toggleAllGroupsCollapse"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
-            <polyline v-if="areAllGroupsCollapsed" points="6 9 12 15 18 9"/>
-            <polyline v-else points="18 15 12 9 6 15"/>
-          </svg>
-          <span>{{ areAllGroupsCollapsed ? 'Mở rộng nhóm' : 'Thu gọn nhóm' }}</span>
-        </button>
-
-        <!-- Đặt lại bộ lọc -->
-        <button
-          v-if="hasActiveFilters"
-          type="button"
-          class="qlbg-reset-btn"
-          @click="resetAllFilters"
-        >
-          <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          <span>Đặt lại</span>
-        </button>
-      </div>
-
-      <!-- Dải lọc nhanh thời gian -->
-      <div class="qlbg-filter-row-sub">
-        <div class="qlbg-date-chips">
-          <span class="date-chip-label">Thời gian:</span>
+        <!-- BÊN PHẢI: HIỂN THỊ & TẠO BÁO GIÁ MỚI -->
+        <div class="qlbg-filter-right">
           <button
-            v-for="opt in dateQuickOptions"
-            :key="opt.value"
+            v-if="displayedGroupedContracts.length > 0"
             type="button"
-            class="qlbg-date-chip"
-            :class="{ active: dateQuickRange === opt.value }"
-            @click="setDateQuickRange(opt.value)"
+            class="qlbg-ghost-btn hide-xs"
+            @click="toggleAllGroupsCollapse"
           >
-            {{ opt.label }}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+              <polyline v-if="areAllGroupsCollapsed" points="6 9 12 15 18 9"/>
+              <polyline v-else points="18 15 12 9 6 15"/>
+            </svg>
+            <span>{{ areAllGroupsCollapsed ? 'Mở rộng nhóm' : 'Thu gọn nhóm' }}</span>
           </button>
-        </div>
 
-        <div v-if="dateQuickRange === 'custom'" class="qlbg-custom-dates">
-          <label class="custom-date-field">
-            <span>Từ</span>
-            <input v-model="customDateFrom" type="date" :max="customDateTo || undefined" />
-          </label>
-          <span class="custom-date-sep">→</span>
-          <label class="custom-date-field">
-            <span>Đến</span>
-            <input v-model="customDateTo" type="date" :min="customDateFrom || undefined" />
-          </label>
-        </div>
+          <button
+            type="button"
+            class="qlbg-icon-btn"
+            :disabled="loading"
+            @click="fetchData(true)"
+            title="Đồng bộ lại dữ liệu"
+          >
+            <svg :class="{ 'is-spin': loading }" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          </button>
 
-        <!-- Mobile Layout Toggle -->
-        <div class="qlbg-mobile-layout-toggle show-xs-flex">
-          <button type="button" class="qlbg-date-chip" :class="{ active: layoutMode === 'card' }" @click="layoutMode = 'card'">Thẻ</button>
-          <button type="button" class="qlbg-date-chip" :class="{ active: layoutMode === 'table' }" @click="layoutMode = 'table'">Bảng</button>
+          <button
+            type="button"
+            class="qlbg-icon-btn"
+            @click="toggleUiTheme"
+            :title="uiTheme === 'dark' ? 'Chuyển sang giao diện Sáng (Light Blue)' : 'Chuyển sang giao diện Tối (Dark Navy)'"
+          >
+            <svg v-if="uiTheme === 'dark'" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            <svg v-else width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </button>
+
+          <button type="button" class="qlbg-btn-primary" @click="goCreateNewQuote">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span>Tạo báo giá</span>
+          </button>
         </div>
       </div>
     </section>
@@ -307,9 +254,9 @@
     </div>
 
     <!-- =========================================================
-         CHẾ ĐỘ 1: XEM DẠNG THẺ NHÓM PHIÊN BẢN & THẺ LẺ (CARD VIEW)
+         HIỂN THỊ THẺ NHÓM PHIÊN BẢN & THẺ LẺ (CARD VIEW)
     ========================================================== -->
-    <div v-else-if="layoutMode === 'card'" class="qlbg-content-stack">
+    <div v-else class="qlbg-content-stack">
       <!-- NHÓM BÁO GIÁ CÓ NHIỀU PHIÊN BẢN / HỢP ĐỒNG GỐC -->
       <div v-if="paginatedGroupedContracts.length > 0" class="qlbg-groups-list">
         <section
@@ -321,44 +268,62 @@
           <!-- Group Header tinh tế (bỏ hoàn toàn dải vàng cũ) -->
           <div class="qlbg-group-header" @click="toggleGroup(group.goc)">
             <div class="gh-left">
-              <span class="gh-chevron" :class="{ 'is-collapsed': collapsedGroups[group.goc] }">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-              </span>
+              <button
+                type="button"
+                class="sr-md-cc-check"
+                :class="{
+                  selected: isGroupSelectedForCompare(group),
+                  'is-partial': isGroupPartiallySelectedForCompare(group)
+                }"
+                :title="isGroupSelectedForCompare(group) ? 'Bỏ chọn tất cả phiên bản trong nhóm để so sánh' : 'Chọn tất cả phiên bản trong nhóm để so sánh'"
+                @click.stop="toggleGroupCompareSelection(group)"
+              >
+                <svg v-if="isGroupSelectedForCompare(group)" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                <span v-else-if="isGroupPartiallySelectedForCompare(group)" class="qlbg-chk-dash"></span>
+              </button>
               <span class="gh-folder-ico" :class="isGroupCompleted(group) ? 'is-emerald' : 'is-amber'">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
               </span>
-              <div class="gh-titles">
-                <div class="gh-title-main">
-                  <span
-                    class="gh-company"
-                    v-html="highlightText(getCustomerInfo(group.latest.ma_khach_hang).tenCongTy || group.latest.ten_khach_hang || 'Chưa rõ khách hàng', searchKeyword)"
-                  ></span>
-                  <span
-                    v-if="getCustomerInfo(group.latest.ma_khach_hang).tenCongTy && group.latest.ten_khach_hang"
-                    class="gh-contact-sub"
-                    v-html="'· ' + highlightText(group.latest.ten_khach_hang, searchKeyword)"
-                  ></span>
+              <div class="gh-info-grid">
+                <!-- Khối trái: MST -> Tên công ty -> Tên KH -->
+                <div class="gh-col-cust">
+                  <div v-if="getCustomerInfo(group.latest.ma_khach_hang).mst" class="gh-line tabular-nums">
+                    <span v-html="'MST: ' + highlightText(getCustomerInfo(group.latest.ma_khach_hang).mst, searchKeyword)"></span>
+                  </div>
+                  <div v-if="getCustomerInfo(group.latest.ma_khach_hang).tenCongTy" class="gh-line gh-line-strong">
+                    <span v-html="highlightText(getCustomerInfo(group.latest.ma_khach_hang).tenCongTy, searchKeyword)"></span>
+                  </div>
+                  <div class="gh-line">
+                    <span v-html="highlightText(group.latest.ten_khach_hang || getCustomerInfo(group.latest.ma_khach_hang).tenKH || 'Chưa rõ khách hàng', searchKeyword)"></span>
+                  </div>
                 </div>
-                <div class="gh-meta-row">
-                  <span
-                    v-if="group.latest.content_of_contract_po"
-                    class="gh-po-content"
-                    v-html="highlightText(group.latest.content_of_contract_po, searchKeyword)"
-                  ></span>
-                  <span class="gh-root-code tabular-nums">Gốc: {{ group.goc }}</span>
+
+                <!-- Khối giữa/phải: Nội dung PO -> Thời gian mới nhất -->
+                <div class="gh-col-po">
+                  <div v-if="getGroupPoContent(group)" class="gh-line gh-line-wrap">
+                    <span v-html="highlightText(getGroupPoContent(group), searchKeyword)"></span>
+                  </div>
+                  <div v-if="getGroupNewestCreatedTime(group)" class="gh-line gh-line-time tabular-nums">
+                    <svg width="12.5" height="12.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <span>{{ getGroupNewestCreatedTime(group) }}</span>
+                  </div>
                 </div>
               </div>
             </div>
 
             <div class="gh-right">
-              <span v-if="getGroupOfficialPo(group)" class="gh-status-pill is-emerald tabular-nums">
-                Đã chốt · PO #{{ getGroupOfficialPo(group) }}
-              </span>
-              <span v-else class="gh-status-pill is-amber">
-                Đang thương thảo
-              </span>
               <span class="gh-ver-count tabular-nums">{{ group.versions.length }} bản</span>
-              <span class="gh-latest-amount tabular-nums">{{ formatVND(getContractSauThue(group.latest)) }} đ</span>
+              <button
+                type="button"
+                class="gh-toggle-btn"
+                :aria-expanded="!collapsedGroups[group.goc]"
+                :title="collapsedGroups[group.goc] ? 'Mở rộng nhóm phiên bản' : 'Thu gọn nhóm phiên bản'"
+                @click.stop="toggleGroup(group.goc)"
+              >
+                <span class="gh-chevron" :class="{ 'is-collapsed': collapsedGroups[group.goc] }">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </span>
+              </button>
             </div>
           </div>
 
@@ -368,11 +333,20 @@
               v-for="(c, vIdx) in group.versions"
               :key="c.ma_hop_dong"
               class="qlbg-quote-card"
-              :class="[c.is_completed ? 'is-official' : 'is-draft', { 'is-latest-ver': vIdx === 0 }]"
+              :class="[isOfficialContract(c) ? 'is-official' : 'is-draft', { 'is-latest-ver': vIdx === 0, 'is-selected-card': isQuoteSelectedForCompare(c) }]"
               @click="viewDetails(c)"
             >
               <div class="qc-top">
                 <div class="qc-top-left">
+                  <button
+                    type="button"
+                    class="sr-md-cc-check"
+                    :class="{ selected: isQuoteSelectedForCompare(c) }"
+                    :title="isQuoteSelectedForCompare(c) ? 'Bỏ chọn báo giá này' : 'Chọn báo giá này để so sánh'"
+                    @click.stop="toggleQuoteCompareSelection(c)"
+                  >
+                    <svg v-if="isQuoteSelectedForCompare(c)" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  </button>
                   <span v-if="c.so_po" class="qc-po-badge tabular-nums">PO #{{ c.so_po }}</span>
                 </div>
                 <div class="qc-top-right">
@@ -390,11 +364,12 @@
               </div>
 
               <div class="qc-badges">
-                <span class="qc-status-badge" :class="c.is_completed ? 'is-emerald' : 'is-amber'">
+                <span class="qc-status-badge" :class="isOfficialContract(c) ? 'is-emerald' : 'is-amber'">
                   <span class="status-dot"></span>
-                  {{ c.is_completed ? 'Chính thức' : 'Bản tạm' }}
+                  {{ isOfficialContract(c) ? 'Chính thức' : 'Bản tạm' }}
                 </span>
                 <span v-if="getVersionNumberLabel(c)" class="qc-ver-tag tabular-nums">{{ getVersionNumberLabel(c) }}</span>
+                <span v-if="isOriginalContract(c)" class="qc-origin-tag">Gốc</span>
                 <span v-if="vIdx === 0 && group.versions.length > 1" class="qc-latest-tag">Mới nhất</span>
                 <button
                   v-if="!c.is_completed && isActiveOnSaleReportCraft(c)"
@@ -449,6 +424,53 @@
                 </div>
               </div>
 
+              <!-- File đính kèm (nằm dưới nội dung card, không khung bọc, xuống dòng đầy đủ + Xem / Tải) -->
+              <div v-if="getCardFilesList(c).length > 0" class="qc-files-block" @click.stop>
+                <div class="qc-files-list">
+                  <div
+                    v-for="(f, fi) in getCardFilesList(c)"
+                    :key="'gcf-' + c.ma_hop_dong + '-' + fi"
+                    class="qc-file-row"
+                  >
+                    <a
+                      :href="getCardFilePreviewUrl(f.link, f.name)"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="qc-file-chip"
+                      :class="f.slot === 'khach' ? 'is-khach' : 'is-hd'"
+                      :title="f.name"
+                      @click.stop
+                    >
+                      <span class="qc-file-ico" v-html="getCardFileIconSvg(f.name, f.link)"></span>
+                      <span class="qc-file-tag">{{ f.label }}</span>
+                      <span class="qc-file-name">{{ f.name }}</span>
+                    </a>
+                    <div class="qc-file-actions">
+                      <a
+                        :href="getCardFilePreviewUrl(f.link, f.name)"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="qc-file-act-btn is-view"
+                        title="Xem file"
+                        @click.stop
+                      >
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        <span>Xem</span>
+                      </a>
+                      <a
+                        :href="getCardFileDownloadUrl(f.link)"
+                        class="qc-file-act-btn is-dl"
+                        title="Tải xuống"
+                        @click.stop="handleCardFileDownload($event, f.link, f.name)"
+                      >
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        <span>Tải</span>
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <!-- Khối Tài chính -->
               <div class="qc-fin-box">
                 <div class="qc-fin-row">
@@ -474,7 +496,7 @@
                   <span class="tabular-nums">{{ formatVND(c.tong_truoc_thue_khach) }} đ</span>
                 </div>
                 <div class="qc-fin-row">
-                  <span>Tổng tiền trước thuế ({{ priceViewMode === 'hd' ? 'HĐ' : 'Khách' }})</span>
+                  <span>Tổng tiền trước thuế (HĐ)</span>
                   <span class="tabular-nums">{{ formatVND(getContractTruocThue(c)) }} đ</span>
                 </div>
                 <div class="qc-fin-row">
@@ -484,23 +506,6 @@
                 <div class="qc-fin-total">
                   <span>Tổng tiền sau thuế</span>
                   <strong class="tabular-nums">{{ formatVND(getContractSauThue(c)) }} đ</strong>
-                </div>
-
-                <!-- Strip phụ: Công nợ / Số SP / File -->
-                <div class="qc-meta-pills">
-                  <span
-                    v-if="getPaymentStatusBadge(c)"
-                    class="qc-mini-pill tabular-nums"
-                    :class="getPaymentStatusBadge(c)!.cls"
-                  >
-                    {{ getPaymentStatusBadge(c)!.label }}
-                  </span>
-                  <span class="qc-mini-pill is-slate tabular-nums">
-                    {{ getContractItemCount(c.ma_hop_dong) }} SP
-                  </span>
-                  <span v-if="getTotalContractFilesCount(c) > 0" class="qc-mini-pill is-sky tabular-nums">
-                    {{ getTotalContractFilesCount(c) }} file
-                  </span>
                 </div>
               </div>
 
@@ -518,7 +523,7 @@
                 </button>
                 <button type="button" class="qc-btn" @click="duplicateContract(c)">Nhân bản</button>
                 <button
-                  v-if="c.is_completed"
+                  v-if="isOfficialContract(c)"
                   type="button"
                   class="qc-btn is-sr-link"
                   title="Mở đơn hàng PO tương ứng trong Sale Report"
@@ -530,8 +535,9 @@
                   v-else
                   type="button"
                   class="qc-btn is-chot-deal"
-                  :disabled="chotDealLoading"
-                  @click="chotDealAndSaleReport(c)"
+                  :disabled="chotDealLoading || c.is_completed"
+                  :title="c.is_completed ? 'Nhóm đã chốt hợp đồng chính thức — hãy dùng Nhân bản để tạo báo giá mới' : 'Chốt Deal & Lưu sang Sale Report'"
+                  @click="!c.is_completed && chotDealAndSaleReport(c)"
                 >
                   Chốt Deal
                 </button>
@@ -541,289 +547,12 @@
         </section>
       </div>
 
-      <!-- BÁO GIÁ ĐƠN LẺ (STANDALONE) -->
-      <section v-if="paginatedStandaloneContracts.length > 0" class="qlbg-standalone-section">
-        <div v-if="displayedGroupedContracts.length > 0" class="qlbg-section-divider">
-          <span>Báo giá đơn lẻ ({{ displayedStandaloneContracts.length }})</span>
-        </div>
-
-        <div class="qlbg-cards-grid">
-          <article
-            v-for="c in paginatedStandaloneContracts"
-            :key="c.ma_hop_dong"
-            class="qlbg-quote-card"
-            :class="c.is_completed ? 'is-official' : 'is-draft'"
-            @click="viewDetails(c)"
-          >
-            <div class="qc-top">
-              <div class="qc-top-left">
-                <span v-if="c.so_po" class="qc-po-badge tabular-nums">PO #{{ c.so_po }}</span>
-              </div>
-              <div class="qc-top-right">
-                <span class="qc-date tabular-nums">{{ c.created_time || c.ngay_tao }}</span>
-                <button
-                  v-if="!c.is_completed"
-                  type="button"
-                  class="qc-del-btn"
-                  title="Xóa bản báo giá tạm này"
-                  @click.stop="requestDeleteDraft(c)"
-                >
-                  <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
-                </button>
-              </div>
-            </div>
-
-            <div class="qc-badges">
-              <span class="qc-status-badge" :class="c.is_completed ? 'is-emerald' : 'is-amber'">
-                <span class="status-dot"></span>
-                {{ c.is_completed ? 'Chính thức' : 'Bản tạm' }}
-              </span>
-              <button
-                v-if="!c.is_completed && isActiveOnSaleReportCraft(c)"
-                type="button"
-                class="qc-sr-active-pill"
-                title="Đang hiển thị trên Sale Report Tạm — bấm để mở"
-                @click.stop="openInSaleReport(c, true)"
-              >
-                Đang hiện trên SR Tạm ↗
-              </button>
-              <button
-                v-else-if="canPinToSaleReportCraft(c)"
-                type="button"
-                class="qc-pin-sr-btn"
-                :disabled="pinningSrCraftMa === c.ma_hop_dong"
-                title="Đưa bản báo giá tạm này lên Sale Report Tạm"
-                @click.stop="pinContractToSaleReportCraft(c)"
-              >
-                {{ pinningSrCraftMa === c.ma_hop_dong ? 'Đang ghim...' : 'Đưa lên SR Tạm' }}
-              </button>
-            </div>
-
-            <div class="qc-code-row">
-              <span class="qc-code tabular-nums" v-html="highlightText(c.so_hop_dong || c.ma_hop_dong, searchKeyword)"></span>
-              <span v-if="c.so_hop_dong && c.so_hop_dong !== c.ma_hop_dong" class="qc-sub-id tabular-nums">{{ c.ma_hop_dong }}</span>
-            </div>
-
-            <div class="qc-cust-list" @click.stop="openCustomerInfoModal(c.ma_khach_hang)" title="Xem thông tin khách hàng">
-              <div v-if="getCustomerInfo(c.ma_khach_hang).tenCongTy" class="qc-cust-line is-company">
-                <svg class="qc-cust-ico" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><path d="M9 9v.01"/><path d="M9 12v.01"/><path d="M9 15v.01"/><path d="M9 18v.01"/></svg>
-                <span class="qc-cust-text" v-html="highlightText(getCustomerInfo(c.ma_khach_hang).tenCongTy, searchKeyword)"></span>
-              </div>
-              <div class="qc-cust-line is-name">
-                <svg class="qc-cust-ico" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                <span class="qc-cust-text" v-html="highlightText(c.ten_khach_hang || getCustomerInfo(c.ma_khach_hang).tenKH || 'Chưa có người nhận', searchKeyword)"></span>
-              </div>
-              <div v-if="getCustomerInfo(c.ma_khach_hang).mst" class="qc-cust-line is-mst tabular-nums">
-                <svg class="qc-cust-ico" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>
-                <span class="qc-cust-text">MST: <span v-html="highlightText(getCustomerInfo(c.ma_khach_hang).mst, searchKeyword)"></span></span>
-              </div>
-            </div>
-
-            <div v-if="c.content_of_contract_po || c.ghi_chu" class="qc-content-note">
-              <div v-if="c.content_of_contract_po" class="qc-po-line" :title="c.content_of_contract_po">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                <span v-html="highlightText(c.content_of_contract_po, searchKeyword)"></span>
-              </div>
-              <div v-if="c.ghi_chu" class="qc-note-line" :title="c.ghi_chu">
-                Ghi chú: <span v-html="highlightText(c.ghi_chu, searchKeyword)"></span>
-              </div>
-            </div>
-
-            <div class="qc-fin-box">
-              <div class="qc-fin-row">
-                <span>Chênh lệch giá</span>
-                <span
-                  class="tabular-nums qc-fin-diff"
-                  :class="c.chenh_lech_gia > 0 ? 'is-pos' : c.chenh_lech_gia < 0 ? 'is-neg' : ''"
-                >
-                  {{ c.chenh_lech_gia > 0 ? '+' : '' }}{{ formatVND(c.chenh_lech_gia) }} đ
-                </span>
-              </div>
-              <div class="qc-fin-row">
-                <span>Còn lại</span>
-                <span class="tabular-nums qc-fin-val-strong">{{ formatVND(c.con_lai) }} đ</span>
-              </div>
-              <div class="qc-fin-discount">
-                <span>Tổng chiết khấu</span>
-                <strong class="tabular-nums">{{ formatVND(c.tong_chiet_khau) }} đ</strong>
-              </div>
-
-              <div class="qc-fin-row is-actual">
-                <span>Tổng giá thực tế</span>
-                <span class="tabular-nums">{{ formatVND(c.tong_truoc_thue_khach) }} đ</span>
-              </div>
-              <div class="qc-fin-row">
-                <span>Tổng tiền trước thuế ({{ priceViewMode === 'hd' ? 'HĐ' : 'Khách' }})</span>
-                <span class="tabular-nums">{{ formatVND(getContractTruocThue(c)) }} đ</span>
-              </div>
-              <div class="qc-fin-row">
-                <span>Thuế VAT</span>
-                <span class="tabular-nums">{{ formatVND(getContractVat(c)) }} đ</span>
-              </div>
-              <div class="qc-fin-total">
-                <span>Tổng tiền sau thuế</span>
-                <strong class="tabular-nums">{{ formatVND(getContractSauThue(c)) }} đ</strong>
-              </div>
-
-              <div class="qc-meta-pills">
-                <span
-                  v-if="getPaymentStatusBadge(c)"
-                  class="qc-mini-pill tabular-nums"
-                  :class="getPaymentStatusBadge(c)!.cls"
-                >
-                  {{ getPaymentStatusBadge(c)!.label }}
-                </span>
-                <span class="qc-mini-pill is-slate tabular-nums">
-                  {{ getContractItemCount(c.ma_hop_dong) }} SP
-                </span>
-                <span v-if="getTotalContractFilesCount(c) > 0" class="qc-mini-pill is-sky tabular-nums">
-                  {{ getTotalContractFilesCount(c) }} file
-                </span>
-              </div>
-            </div>
-
-            <div class="qc-actions" @click.stop>
-              <button type="button" class="qc-btn" @click="viewDetails(c)">Chi tiết</button>
-              <button
-                type="button"
-                class="qc-btn"
-                :disabled="c.is_completed"
-                @click="!c.is_completed && editContract(c)"
-              >
-                Sửa
-              </button>
-              <button type="button" class="qc-btn" @click="duplicateContract(c)">Nhân bản</button>
-              <button
-                v-if="c.is_completed"
-                type="button"
-                class="qc-btn is-sr-link"
-                @click="openInSaleReport(c)"
-              >
-                Sale Report ↗
-              </button>
-              <button
-                v-else
-                type="button"
-                class="qc-btn is-chot-deal"
-                :disabled="chotDealLoading"
-                @click="chotDealAndSaleReport(c)"
-              >
-                Chốt Deal
-              </button>
-            </div>
-          </article>
-        </div>
-      </section>
-
-      <!-- INTERSECTION OBSERVER SENTINEL CHO CARD VIEW -->
+      <!-- INTERSECTION OBSERVER SENTINEL CHO DANH SÁCH NHÓM -->
       <div v-if="hasMoreCards" ref="cardLazySentinelRef" class="qlbg-lazy-sentinel">
         <span class="lazy-info tabular-nums">
-          Đang hiển thị {{ visibleCardUnitsCount }} / {{ totalCardUnitsCount }} mục
+          Đang hiển thị {{ paginatedGroupedContracts.length }} / {{ displayedGroupedContracts.length }} nhóm
         </span>
         <button type="button" class="qlbg-ghost-btn" @click="loadMoreCards">Tải thêm</button>
-      </div>
-    </div>
-
-    <!-- =========================================================
-         CHẾ ĐỘ 2: XEM DẠNG BẢNG GỌN MẬT ĐỘ CAO (TABLE VIEW)
-    ========================================================== -->
-    <div v-else class="qlbg-table-card">
-      <div class="qlbg-table-scroll">
-        <table class="qlbg-data-table">
-          <thead>
-            <tr>
-              <th>Trạng thái</th>
-              <th>Số / Mã HĐ</th>
-              <th>Khách hàng &amp; Công ty</th>
-              <th>Nội dung PO</th>
-              <th>Ngày tạo</th>
-              <th class="text-right">Trước thuế</th>
-              <th class="text-right">Sau thuế ({{ priceViewMode === 'hd' ? 'HĐ' : 'Khách' }})</th>
-              <th class="text-right">Net COM</th>
-              <th class="text-center">SP / File</th>
-              <th class="text-right">Thao tác</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="c in paginatedTableContracts"
-              :key="'tbl-' + c.ma_hop_dong"
-              class="qlbg-table-row"
-              @click="viewDetails(c)"
-            >
-              <td>
-                <div class="tbl-status-cell">
-                  <span class="qc-status-badge" :class="c.is_completed ? 'is-emerald' : 'is-amber'">
-                    <span class="status-dot"></span>
-                    {{ c.is_completed ? 'Chính thức' : 'Bản tạm' }}
-                  </span>
-                  <span v-if="getVersionNumberLabel(c)" class="qc-ver-tag tabular-nums">{{ getVersionNumberLabel(c) }}</span>
-                  <span v-if="c.so_po" class="qc-po-badge tabular-nums">PO #{{ c.so_po }}</span>
-                  <button
-                    v-if="!c.is_completed && isActiveOnSaleReportCraft(c)"
-                    type="button"
-                    class="qc-sr-active-pill is-compact"
-                    title="Đang hiện trên Sale Report Tạm — bấm để mở"
-                    @click.stop="openInSaleReport(c, true)"
-                  >
-                    SR Tạm ↗
-                  </button>
-                </div>
-              </td>
-              <td>
-                <div class="tbl-code-main tabular-nums" v-html="highlightText(c.so_hop_dong || c.ma_hop_dong, searchKeyword)"></div>
-                <div v-if="c.ma_hop_dong_goc && c.ma_hop_dong_goc !== c.ma_hop_dong" class="tbl-code-sub tabular-nums">Gốc: {{ c.ma_hop_dong_goc }}</div>
-              </td>
-              <td @click.stop="openCustomerInfoModal(c.ma_khach_hang)">
-                <div class="tbl-cust-name" v-html="highlightText(getCustomerInfo(c.ma_khach_hang).tenCongTy || c.ten_khach_hang || '—', searchKeyword)"></div>
-                <div v-if="getCustomerInfo(c.ma_khach_hang).tenCongTy && c.ten_khach_hang" class="tbl-cust-sub" v-html="highlightText(c.ten_khach_hang, searchKeyword)"></div>
-              </td>
-              <td>
-                <div class="tbl-po-content" :title="c.content_of_contract_po || c.ghi_chu">
-                  <span v-html="highlightText(c.content_of_contract_po || c.ghi_chu || '—', searchKeyword)"></span>
-                </div>
-              </td>
-              <td class="tabular-nums nowrap">{{ c.created_time || c.ngay_tao }}</td>
-              <td class="text-right tabular-nums nowrap">{{ formatVND(getContractTruocThue(c)) }}</td>
-              <td class="text-right tabular-nums nowrap tbl-amount-strong">{{ formatVND(getContractSauThue(c)) }} đ</td>
-              <td class="text-right tabular-nums nowrap">
-                <span v-if="getContractNetCom(c) > 0" class="tbl-com-val">{{ formatVND(getContractNetCom(c)) }}</span>
-                <span v-else class="tbl-muted">—</span>
-              </td>
-              <td class="text-center tabular-nums nowrap">
-                <span class="qc-mini-pill is-slate">{{ getContractItemCount(c.ma_hop_dong) }} SP</span>
-                <span v-if="getTotalContractFilesCount(c) > 0" class="qc-mini-pill is-sky" style="margin-left: 4px;">{{ getTotalContractFilesCount(c) }}F</span>
-              </td>
-              <td class="text-right nowrap" @click.stop>
-                <div class="tbl-actions">
-                  <button type="button" class="tbl-act-btn" title="Xem chi tiết" @click="viewDetails(c)">Chi tiết</button>
-                  <button type="button" class="tbl-act-btn" :disabled="c.is_completed" title="Chỉnh sửa" @click="!c.is_completed && editContract(c)">Sửa</button>
-                  <button type="button" class="tbl-act-btn" title="Nhân bản" @click="duplicateContract(c)">Nhân bản</button>
-                  <button
-                    v-if="canPinToSaleReportCraft(c)"
-                    type="button"
-                    class="tbl-act-btn is-sr"
-                    :disabled="pinningSrCraftMa === c.ma_hop_dong"
-                    title="Đưa phiên bản này lên Sale Report Tạm"
-                    @click="pinContractToSaleReportCraft(c)"
-                  >
-                    Lên SR Tạm
-                  </button>
-                  <button v-if="c.is_completed" type="button" class="tbl-act-btn is-sr" @click="openInSaleReport(c)">SR ↗</button>
-                  <button v-else type="button" class="tbl-act-btn is-chot" @click="chotDealAndSaleReport(c)">Chốt</button>
-                  <button v-if="!c.is_completed" type="button" class="tbl-act-btn is-del" title="Xóa bản tạm" @click="requestDeleteDraft(c)">✕</button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div v-if="hasMoreTableRows" ref="tableLazySentinelRef" class="qlbg-lazy-sentinel">
-        <span class="lazy-info tabular-nums">
-          Đang hiển thị {{ paginatedTableContracts.length }} / {{ displayedTableContracts.length }} dòng
-        </span>
-        <button type="button" class="qlbg-ghost-btn" @click="loadMoreTableRows">Tải thêm</button>
       </div>
     </div>
 
@@ -837,39 +566,84 @@
         :class="{ 'theme-light-blue': uiTheme === 'light' }"
         @click.self="showDetailModal = false"
       >
-        <div class="qlbg-detail-modal">
-          <div class="mob-sheet-grabber"></div>
+        <div
+          class="qlbg-detail-modal"
+          :class="{
+            'is-mob-view': isMobileModalView,
+            'is-mob-chitiet': isMobileModalView && activeMobileSubTab === 'chitiet',
+            'is-mob-tongket': isMobileModalView && activeMobileSubTab === 'tongket'
+          }"
+        >
+          <!-- Shared hidden file inputs cho cả Desktop Dock lẫn Mobile File Pane -->
+          <input
+            ref="contractFileInputHd"
+            type="file"
+            multiple
+            style="display: none"
+            @change="handleSlotFileUpload($event, 'hd')"
+          />
+          <input
+            ref="contractFileInputKhach"
+            type="file"
+            multiple
+            style="display: none"
+            @change="handleSlotFileUpload($event, 'khach')"
+          />
 
           <!-- Header Modal -->
           <div class="dm-head">
             <div class="dm-head-left">
-              <div class="dm-title-row">
-                <span class="qc-status-badge" :class="selectedContract.is_completed ? 'is-emerald' : 'is-amber'">
-                  <span class="status-dot"></span>
-                  {{ selectedContract.is_completed ? 'Chính thức' : 'Bản tạm' }}
-                </span>
-                <span v-if="getVersionNumberLabel(selectedContract)" class="qc-ver-tag tabular-nums">{{ getVersionNumberLabel(selectedContract) }}</span>
-                <h2 class="dm-code tabular-nums">{{ selectedContract.so_hop_dong || selectedContract.ma_hop_dong }}</h2>
-                <span v-if="selectedContract.so_po" class="qc-po-badge tabular-nums">PO #{{ selectedContract.so_po }}</span>
-                <button
-                  v-if="!selectedContract.is_completed && isActiveOnSaleReportCraft(selectedContract)"
-                  type="button"
-                  class="qc-sr-active-pill"
-                  @click="openInSaleReport(selectedContract, true)"
-                >
-                  Đang hiện trên SR Tạm ↗
-                </button>
-              </div>
-              <div class="dm-sub-row tabular-nums">
-                <span>Mã lưu: {{ selectedContract.ma_hop_dong }}</span>
-                <span v-if="selectedContract.ngay_tao">· Ngày: {{ selectedContract.ngay_tao }}</span>
-                <span v-if="selectedContract.content_of_contract_po">· {{ selectedContract.content_of_contract_po }}</span>
+              <span class="dm-mob-header-icon" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+              </span>
+              <div class="dm-head-titles">
+                <!-- Header Mobile: chỉ hiển thị Tên công ty, Chính thức / Bản tạm, Version -->
+                <template v-if="isMobileModalView">
+                  <h2 class="dm-code dm-mob-company-title">
+                    {{ modalCustEdit.tenCongTy || modalCustEdit.tenKH || selectedContract.so_hop_dong || selectedContract.ma_hop_dong }}
+                  </h2>
+                  <div class="dm-title-row dm-mob-head-pills">
+                    <span class="qc-status-badge" :class="isOfficialContract(selectedContract) ? 'is-emerald' : 'is-amber'">
+                      <span class="status-dot"></span>
+                      {{ isOfficialContract(selectedContract) ? 'Chính thức' : 'Bản tạm' }}
+                    </span>
+                    <span class="qc-ver-tag tabular-nums">{{ getVersionNumberLabel(selectedContract) || 'V1' }}</span>
+                  </div>
+                </template>
+
+                <!-- Header Desktop: giữ nguyên đầy đủ thông tin -->
+                <template v-else>
+                  <div class="dm-title-row">
+                    <span class="qc-status-badge" :class="isOfficialContract(selectedContract) ? 'is-emerald' : 'is-amber'">
+                      <span class="status-dot"></span>
+                      {{ isOfficialContract(selectedContract) ? 'Chính thức' : 'Bản tạm' }}
+                    </span>
+                    <span v-if="getVersionNumberLabel(selectedContract)" class="qc-ver-tag tabular-nums">{{ getVersionNumberLabel(selectedContract) }}</span>
+                    <span v-if="isOriginalContract(selectedContract)" class="qc-origin-tag">Gốc</span>
+                    <h2 class="dm-code tabular-nums">{{ selectedContract.so_hop_dong || selectedContract.ma_hop_dong }}</h2>
+                    <span v-if="selectedContract.so_po" class="qc-po-badge tabular-nums">PO #{{ selectedContract.so_po }}</span>
+                    <button
+                      v-if="!selectedContract.is_completed && isActiveOnSaleReportCraft(selectedContract)"
+                      type="button"
+                      class="qc-sr-active-pill"
+                      @click="openInSaleReport(selectedContract, true)"
+                    >
+                      <span class="dm-lbl-dt">Đang hiện trên SR Tạm ↗</span>
+                      <span class="dm-lbl-mob">SR Tạm ↗</span>
+                    </button>
+                  </div>
+                  <div class="dm-sub-row tabular-nums">
+                    <span>Mã lưu: {{ selectedContract.ma_hop_dong }}</span>
+                    <span v-if="selectedContract.ngay_tao">· {{ selectedContract.ngay_tao }}</span>
+                    <span v-if="selectedContract.content_of_contract_po">· {{ selectedContract.content_of_contract_po }}</span>
+                  </div>
+                </template>
               </div>
             </div>
 
             <div class="dm-head-controls">
-              <!-- Chế độ giá trong Modal -->
-              <div class="qlbg-seg-group">
+              <!-- Chế độ giá trong Modal (PC header; Mobile chuyển xuống thẻ chế độ giá trong body) -->
+              <div class="qlbg-seg-group dm-dt-only-ctrl">
                 <button
                   type="button"
                   class="qlbg-seg-btn"
@@ -896,13 +670,13 @@
                 </button>
               </div>
 
-              <!-- Tiền tệ VND / USD -->
-              <div class="qlbg-seg-group">
+              <!-- Tiền tệ VND / USD (PC header; Mobile chuyển xuống thẻ chế độ giá trong body) -->
+              <div class="qlbg-seg-group dm-dt-only-ctrl">
                 <button type="button" class="qlbg-seg-btn" :class="{ active: quoteCurrency === 'VND' }" @click="quoteCurrency = 'VND'">VND</button>
                 <button type="button" class="qlbg-seg-btn" :class="{ active: quoteCurrency === 'USD' }" @click="quoteCurrency = 'USD'">USD</button>
               </div>
 
-              <!-- Xuất Excel (Chữ xanh lá + SVG Excel chuẩn) -->
+              <!-- Xuất Excel -->
               <button
                 type="button"
                 class="qlbg-excel-btn"
@@ -916,14 +690,17 @@
                   <path d="m9 13 3 4"/>
                   <path d="m12 13-3 4"/>
                 </svg>
-                <span>{{ exportingExcel ? 'Đang xuất...' : 'Xuất Excel' }}</span>
+                <span class="dm-lbl-dt">{{ exportingExcel ? 'Đang xuất...' : 'Xuất Excel' }}</span>
+                <span class="dm-lbl-mob">{{ exportingExcel ? 'Xuất...' : 'Excel' }}</span>
               </button>
 
-              <button type="button" class="dm-close-btn" @click="showDetailModal = false" title="Đóng">✕</button>
+              <button type="button" class="dm-close-btn" @click="showDetailModal = false" title="Đóng">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
             </div>
           </div>
 
-          <!-- Mobile Sub-Tab Switcher -->
+          <!-- Mobile Pane Switcher (<= 1080px, đồng bộ Sale Report .sr-po-mobile-switch) -->
           <div class="dm-mobile-tabs">
             <button
               type="button"
@@ -931,7 +708,8 @@
               :class="{ active: activeMobileSubTab === 'chitiet' }"
               @click="activeMobileSubTab = 'chitiet'"
             >
-              Hàng hóa ({{ selectedContractDetails.length }})
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+              <span>Thông tin &amp; Hàng hóa ({{ selectedContractDetails.length }})</span>
             </button>
             <button
               type="button"
@@ -939,14 +717,214 @@
               :class="{ active: activeMobileSubTab === 'tongket' }"
               @click="activeMobileSubTab = 'tongket'"
             >
-              Tổng kết &amp; Hồ sơ file ({{ detailFilesTotalCount }})
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              <span>Hồ sơ File ({{ detailFilesTotalCount }}) &amp; Tổng kết</span>
             </button>
           </div>
 
-          <!-- Body 2 cột -->
-          <div class="dm-body" :class="{ 'is-side-collapsed': !showCompareFinancePanel }">
+          <!-- Body 2 cột (PC) / Workspace Option A (Mobile) -->
+          <div
+            class="dm-body"
+            :class="[
+              {
+                'is-side-collapsed': !isMobileModalView && !showCompareFinancePanel,
+                'is-mob-chitiet': isMobileModalView && activeMobileSubTab === 'chitiet',
+                'is-mob-tongket': isMobileModalView && activeMobileSubTab === 'tongket'
+              },
+              detailViewMode === 'khach' ? 'is-mode-khach' : detailViewMode === 'noibo' ? 'is-mode-noibo' : 'is-mode-hd'
+            ]"
+          >
+            <!-- MOBILE CARD 1: THÔNG TIN CHUNG & KHÁCH HÀNG (Option A, Tab 1) -->
+            <div v-if="isMobileModalView && activeMobileSubTab === 'chitiet'" class="dm-mob-overview-card">
+              <div class="dm-mob-overview-accent"></div>
+              <div class="dm-mob-overview-head">
+                <div class="dm-mob-overview-title">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  <span>Thông tin Khách hàng &amp; Báo giá</span>
+                </div>
+                <button
+                  v-if="selectedContract.ma_khach_hang"
+                  type="button"
+                  class="btn-customer-detail-pill"
+                  @click="openCustomerInfoModal(selectedContract.ma_khach_hang)"
+                >
+                  Chi tiết KH →
+                </button>
+              </div>
+              <div class="dm-mob-overview-grid">
+                <div class="dm-mob-ov-field is-full">
+                  <span class="dm-mob-ov-lbl">Công ty / Đơn vị</span>
+                  <div class="dm-mob-ov-val" :class="{ 'is-empty': !modalCustEdit.tenCongTy }">
+                    {{ modalCustEdit.tenCongTy || '—' }}
+                  </div>
+                </div>
+                <div class="dm-mob-ov-field">
+                  <span class="dm-mob-ov-lbl">Số hợp đồng / PO</span>
+                  <div class="dm-mob-ov-val tabular-nums">
+                    {{ selectedContract.so_hop_dong || selectedContract.ma_hop_dong }}<template v-if="selectedContract.so_po"> · PO #{{ selectedContract.so_po }}</template>
+                  </div>
+                </div>
+                <div class="dm-mob-ov-field">
+                  <span class="dm-mob-ov-lbl">Ngày tạo</span>
+                  <div class="dm-mob-ov-val tabular-nums">{{ selectedContract.ngay_tao || '—' }}</div>
+                </div>
+                <div class="dm-mob-ov-field">
+                  <span class="dm-mob-ov-lbl">Khách hàng</span>
+                  <div class="dm-mob-ov-val" :class="{ 'is-empty': !modalCustEdit.tenKH }">
+                    {{ modalCustEdit.tenKH || '—' }}
+                  </div>
+                </div>
+                <div class="dm-mob-ov-field">
+                  <span class="dm-mob-ov-lbl">MST</span>
+                  <div class="dm-mob-ov-val tabular-nums" :class="{ 'is-empty': !modalCustEdit.mst }">
+                    {{ modalCustEdit.mst || '—' }}
+                  </div>
+                </div>
+                <div v-if="selectedContract.content_of_contract_po" class="dm-mob-ov-field is-full">
+                  <span class="dm-mob-ov-lbl">Nội dung / Diễn giải</span>
+                  <div class="dm-mob-ov-val">{{ selectedContract.content_of_contract_po }}</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- MOBILE CARD 2 CHROME: CHẾ ĐỘ GIÁ + TIỀN TỆ + TAB CON (Option A, Tab 1) -->
+            <div
+              v-if="isMobileModalView && activeMobileSubTab === 'chitiet'"
+              class="dm-mob-tabs-chrome"
+              :class="detailViewMode === 'khach' ? 'is-mode-khach' : detailViewMode === 'noibo' ? 'is-mode-noibo' : 'is-mode-hd'"
+            >
+              <div class="dm-mob-price-bar">
+                <div class="dm-mob-price-seg" role="tablist" aria-label="Chế độ xem giá">
+                  <button
+                    type="button"
+                    role="tab"
+                    class="dm-mob-price-btn is-hd"
+                    :class="{ active: detailViewMode === 'hd' }"
+                    @click="detailViewMode = 'hd'"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    <span>Giá HĐ</span>
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    class="dm-mob-price-btn is-khach"
+                    :class="{ active: detailViewMode === 'khach' }"
+                    @click="detailViewMode = 'khach'"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    <span>Giá Khách</span>
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    class="dm-mob-price-btn is-noibo"
+                    :class="{ active: detailViewMode === 'noibo' }"
+                    @click="detailViewMode = 'noibo'"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+                    <span>Nội bộ</span>
+                  </button>
+                </div>
+
+                <div class="dm-mob-util-strip">
+                  <div class="dm-mob-currency-wrap">
+                    <div class="dm-mob-currency-seg" role="group" aria-label="Tiền tệ">
+                      <button
+                        type="button"
+                        class="dm-mob-cur-btn"
+                        :class="{ active: quoteCurrency === 'VND' }"
+                        @click="quoteCurrency = 'VND'"
+                      >
+                        VND
+                      </button>
+                      <button
+                        type="button"
+                        class="dm-mob-cur-btn"
+                        :class="{ active: quoteCurrency === 'USD' }"
+                        @click="quoteCurrency = 'USD'"
+                      >
+                        USD
+                      </button>
+                    </div>
+                    <span v-if="quoteCurrency === 'USD'" class="dm-mob-rate-note tabular-nums">
+                      1$ = {{ formatVND(effectiveModalExchangeRate || 25400) }}đ
+                    </span>
+                  </div>
+
+                  <div class="dm-mob-active-total tabular-nums">
+                    <span class="dm-mob-total-lbl">{{ detailViewMode === 'noibo' ? 'Net Margin:' : 'Sau VAT:' }}</span>
+                    <strong class="dm-mob-total-val" :class="detailViewMode === 'noibo' ? (detailSummary.netMargin >= 0 ? 'is-profit' : 'is-warn') : ''">
+                      {{ formatModalMoneyWithUnit(detailViewMode === 'noibo' ? detailSummary.netMargin : detailSummary.activeSau) }}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+
+              <div class="dm-mob-tabs-head">
+                <div class="dm-mob-tabs-btn-group">
+                  <button
+                    type="button"
+                    class="dm-mob-inner-tab"
+                    :class="{ active: activeMobileInnerTab === 'goods' }"
+                    @click="activeMobileInnerTab = 'goods'"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                    <span>Bảng Hàng hóa ({{ selectedContractDetails.length }})</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="dm-mob-inner-tab"
+                    :class="{ active: activeMobileInnerTab === 'metrics' }"
+                    @click="activeMobileInnerTab = 'metrics'"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    <span>Chỉ số &amp; Chiết khấu</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <!-- CỘT TRÁI: BẢNG HÀNG HÓA -->
-            <div class="dm-main-col" :class="{ 'mob-hidden': activeMobileSubTab !== 'chitiet' }">
+            <div
+              class="dm-main-col"
+              :class="{
+                'mob-hidden': isMobileModalView && !(activeMobileSubTab === 'chitiet' && activeMobileInnerTab === 'goods'),
+                'is-mob-tab-panel': isMobileModalView
+              }"
+            >
+              <!-- Dải tóm tắt nhanh tiền hàng trên Mobile -->
+              <div v-if="isMobileModalView && !loadingDetails && selectedContractDetails.length > 0" class="dm-mob-goods-summary">
+                <template v-if="detailViewMode === 'noibo'">
+                  <div class="dm-mob-gs-cell">
+                    <span>Giá vốn</span>
+                    <strong class="tabular-nums">{{ formatModalMoneyWithUnit(detailSummary.costTotal) }}</strong>
+                  </div>
+                  <div class="dm-mob-gs-cell">
+                    <span>Chênh lệch</span>
+                    <strong class="is-sky tabular-nums">{{ formatModalMoneyWithUnit(detailSummary.clGia) }}</strong>
+                  </div>
+                  <div class="dm-mob-gs-cell">
+                    <span>Net Margin</span>
+                    <strong :class="detailSummary.netMargin >= 0 ? 'is-emerald' : 'is-rose'" class="tabular-nums">{{ formatModalMoneyWithUnit(detailSummary.netMargin) }}</strong>
+                  </div>
+                </template>
+                <template v-else>
+                  <div class="dm-mob-gs-cell">
+                    <span>Trước VAT</span>
+                    <strong class="tabular-nums">{{ formatModalMoneyWithUnit(detailSummary.activeTruoc) }}</strong>
+                  </div>
+                  <div class="dm-mob-gs-cell">
+                    <span>Thuế VAT</span>
+                    <strong class="tabular-nums">{{ formatModalMoneyWithUnit(detailSummary.activeVat) }}</strong>
+                  </div>
+                  <div class="dm-mob-gs-cell">
+                    <span>Sau VAT</span>
+                    <strong class="is-emerald tabular-nums">{{ formatModalMoneyWithUnit(detailSummary.activeSau) }}</strong>
+                  </div>
+                </template>
+              </div>
+
               <div v-if="loadingDetails" class="dm-loading-state">
                 <div class="dm-spinner"></div>
                 <span>Đang tải chi tiết hàng hóa...</span>
@@ -1046,16 +1024,20 @@
               </div>
             </div>
 
-            <!-- CỘT PHẢI: 3 BỘ CHỈ SỐ + DOCK KHÁCH / HỒ SƠ / CHIẾT KHẤU / TÀI CHÍNH (100% NHƯ BAOGIAFIREBASE) -->
+            <!-- CỘT PHẢI: 3 BỘ CHỈ SỐ + DOCK KHÁCH / HỒ SƠ / CHIẾT KHẤU / TÀI CHÍNH -->
             <aside
               class="dm-side-col"
               :class="{
-                'mob-hidden': activeMobileSubTab !== 'tongket',
-                'is-collapsed': !showCompareFinancePanel
+                'mob-hidden':
+                  isMobileModalView &&
+                  !((activeMobileSubTab === 'chitiet' && activeMobileInnerTab === 'metrics') || activeMobileSubTab === 'tongket'),
+                'is-collapsed': !isMobileModalView && !showCompareFinancePanel,
+                'is-mob-metrics': isMobileModalView && activeMobileSubTab === 'chitiet' && activeMobileInnerTab === 'metrics',
+                'is-mob-tongket': isMobileModalView && activeMobileSubTab === 'tongket'
               }"
             >
-              <!-- Thanh dọc thu gọn khi đóng panel -->
-              <div v-if="!showCompareFinancePanel" class="cmp-sr-collapsed-rail">
+              <!-- Thanh dọc thu gọn khi đóng panel (Chỉ PC) -->
+              <div v-if="!isMobileModalView && !showCompareFinancePanel" class="cmp-sr-collapsed-rail">
                 <button
                   type="button"
                   class="cmp-sr-expand-btn"
@@ -1070,37 +1052,34 @@
               </div>
 
               <div v-else class="cmp-sr-po1-blocks">
-                <!-- Thanh chọn nguồn giá & thao tác nhanh -->
-                <div class="cmp-sr-source-bar">
+                <!-- Thanh chọn nguồn giá & thao tác nhanh (Trên Mobile chỉ hiện khi đang xem Nội bộ & Tab Chỉ số) -->
+                <div
+                  v-if="!isMobileModalView || (activeMobileSubTab === 'chitiet' && activeMobileInnerTab === 'metrics' && detailViewMode === 'noibo')"
+                  class="cmp-sr-source-bar"
+                >
                   <div class="cmp-sr-source-pills" role="tablist" aria-label="Nguồn giá tính chỉ số">
                     <button
                       type="button"
+                      role="tab"
                       class="cmp-sr-source-pill"
-                      :class="{ active: cmpSrPriceSource === 'hopdong' }"
-                      @click="cmpSrPriceSource = 'hopdong'"
+                      :class="{ active: cmpSrPriceSource === 'contract' }"
+                      :aria-selected="cmpSrPriceSource === 'contract'"
+                      @click="setCmpSrPriceSource('contract')"
                     >
                       Giá Hợp đồng
                     </button>
                     <button
                       type="button"
-                      class="cmp-sr-source-pill"
-                      :class="{ active: cmpSrPriceSource === 'khach' }"
-                      @click="cmpSrPriceSource = 'khach'"
+                      role="tab"
+                      class="cmp-sr-source-pill is-khach"
+                      :class="{ active: cmpSrPriceSource === 'customer' }"
+                      :aria-selected="cmpSrPriceSource === 'customer'"
+                      @click="setCmpSrPriceSource('customer')"
                     >
                       Giá Khách
                     </button>
                   </div>
-                  <div class="cmp-sr-source-actions">
-                    <span v-if="savingModalMetrics" class="cmp-sr-sync-badge">Đang lưu...</span>
-                    <button
-                      v-if="hasCmpSrOverrides"
-                      type="button"
-                      class="cmp-sr-reset-btn"
-                      title="Khôi phục chỉ số gốc từ bảng báo giá"
-                      @click="resetCurrentCmpSrBucket"
-                    >
-                      ↺ Mặc định
-                    </button>
+                  <div v-if="!isMobileModalView" class="cmp-sr-source-actions">
                     <button
                       type="button"
                       class="cmp-sr-collapse-btn"
@@ -1114,35 +1093,26 @@
                   </div>
                 </div>
 
-                <!-- Vùng cuộn 3 bộ chỉ số -->
-                <div class="cmp-sr-blocks-scroll">
+                <!-- Vùng cuộn 3 bộ chỉ số (PC luôn hiện; Mobile hiện trong Tab 1 -> Chỉ số & Chiết khấu) -->
+                <div
+                  v-show="!isMobileModalView || (activeMobileSubTab === 'chitiet' && activeMobileInnerTab === 'metrics')"
+                  class="cmp-sr-blocks-scroll"
+                >
                   <!-- BỘ 1: Doanh số & Chi phí -->
-                  <div class="cmp-sr-po1-block">
+                  <div class="cmp-sr-po1-block is-tone-sky">
                     <div class="cmp-sr-po1-block-title">Doanh số &amp; Chi phí</div>
                     <div class="cmp-sr-po1-list">
                       <div class="cmp-sr-po1-item">
                         <span class="cmp-sr-po1-lbl">Doanh số bán</span>
-                        <FormattedInput
-                          :modelValue="Math.round(cmpSrDoanhSoBan)"
-                          class="cmp-sr-po1-input"
-                          @update:modelValue="(val) => onCmpSrFieldChange('doanhSoBan', val)"
-                        />
+                        <span class="cmp-sr-po1-val">{{ fmtCmpSrMoney(cmpSrDoanhSoBan) }}</span>
                       </div>
                       <div class="cmp-sr-po1-item">
                         <span class="cmp-sr-po1-lbl">Giá mua</span>
-                        <FormattedInput
-                          :modelValue="Math.round(cmpSrGiaMua)"
-                          class="cmp-sr-po1-input"
-                          @update:modelValue="(val) => onCmpSrFieldChange('giaMua', val)"
-                        />
+                        <span class="cmp-sr-po1-val">{{ fmtCmpSrMoney(cmpSrGiaMua) }}</span>
                       </div>
                       <div class="cmp-sr-po1-item">
                         <span class="cmp-sr-po1-lbl">Tổng CP đơn hàng</span>
-                        <FormattedInput
-                          :modelValue="Math.round(cmpSrTongCP)"
-                          class="cmp-sr-po1-input"
-                          @update:modelValue="(val) => onCmpSrFieldChange('tongCP', val)"
-                        />
+                        <span class="cmp-sr-po1-val">{{ fmtCmpSrMoney(cmpSrTongCP) }}</span>
                       </div>
                       <div class="cmp-sr-po1-item is-readonly-accent">
                         <span class="cmp-sr-po1-lbl">Tổng tiền sau VAT</span>
@@ -1152,145 +1122,31 @@
                   </div>
 
                   <!-- BỘ 2: COM, Thuế & Margin -->
-                  <div class="cmp-sr-po1-block">
+                  <div class="cmp-sr-po1-block is-tone-emerald">
                     <div class="cmp-sr-po1-block-title">COM, Thuế &amp; Margin</div>
                     <div class="cmp-sr-po1-list">
                       <!-- Gross COM -->
-                      <div class="cmp-sr-po1-item is-inline-dual is-com-adjustable">
+                      <div class="cmp-sr-po1-item is-inline-dual">
                         <div class="cmp-sr-po1-lbl-group">
-                          <div class="cmp-sr-po1-lbl-main-row">
-                            <span class="cmp-sr-po1-lbl">Gross COM</span>
-                            <div class="cmp-sr-pct-wrap">
-                              <input
-                                type="number"
-                                step="any"
-                                class="cmp-sr-pct-input"
-                                :value="Number(cmpSrGrossComPct.toFixed(2))"
-                                @change="(e) => onCmpSrFieldChange('grossComPct', (e.target as HTMLInputElement).value)"
-                              />
-                              <span class="cmp-sr-pct-unit">%</span>
-                            </div>
-                          </div>
-                          <div
-                            v-if="lastCmpSrComAdjust && lastCmpSrComAdjust.target === 'grossCom'"
-                            class="cmp-sr-com-delta-hint"
-                          >
-                            <span
-                              class="cmp-sr-com-delta-val"
-                              :class="lastCmpSrComAdjust.delta >= 0 ? 'is-plus' : 'is-minus'"
-                            >
-                              {{ lastCmpSrComAdjust.delta >= 0 ? '+' : '−' }}{{ fmtCmpSrMoney(Math.abs(lastCmpSrComAdjust.delta)) }}
-                            </span>
-                            <button
-                              type="button"
-                              class="cmp-sr-com-undo-btn"
-                              title="Hoàn tác lần cộng/trừ gần nhất"
-                              @click="undoCmpSrComAdjust"
-                            >
-                              Hoàn tác
-                            </button>
-                          </div>
+                          <span class="cmp-sr-po1-lbl">Gross COM</span>
+                          <span class="cmp-sr-pct-badge">{{ Number(cmpSrGrossComPct.toFixed(2)) }}%</span>
                         </div>
-                        <div class="cmp-sr-com-val-group">
-                          <FormattedInput
-                            :modelValue="Math.round(cmpSrGrossCom)"
-                            class="cmp-sr-po1-input"
-                            @update:modelValue="(val) => onCmpSrFieldChange('grossCom', val)"
-                          />
-                          <button
-                            type="button"
-                            class="cmp-sr-com-plus-btn"
-                            :class="{ active: cmpSrComAdjustMode === 'grossCom' }"
-                            title="Cộng / Trừ thêm số tiền vào Gross COM"
-                            @click="toggleCmpSrComAdjustPanel('grossCom')"
-                          >
-                            +
-                          </button>
-                        </div>
+                        <span class="cmp-sr-po1-val">{{ fmtCmpSrMoney(cmpSrGrossCom) }}</span>
                       </div>
 
                       <!-- Thuế -->
                       <div class="cmp-sr-po1-item is-inline-dual">
                         <div class="cmp-sr-po1-lbl-group">
                           <span class="cmp-sr-po1-lbl">Thuế</span>
-                          <div class="cmp-sr-pct-wrap">
-                            <input
-                              type="number"
-                              step="any"
-                              class="cmp-sr-pct-input"
-                              :value="Number(cmpSrTaxPct.toFixed(2))"
-                              @change="(e) => onCmpSrFieldChange('taxPct', (e.target as HTMLInputElement).value)"
-                            />
-                            <span class="cmp-sr-pct-unit">%</span>
-                          </div>
+                          <span class="cmp-sr-pct-badge">{{ Number(cmpSrTaxPct.toFixed(2)) }}%</span>
                         </div>
                         <span class="cmp-sr-po1-val is-warn">{{ fmtCmpSrMoney(cmpSrTaxAmount) }}</span>
                       </div>
 
                       <!-- Net COM -->
-                      <div class="cmp-sr-po1-item is-com-adjustable">
-                        <div class="cmp-sr-po1-lbl-col">
-                          <span class="cmp-sr-po1-lbl">Net COM</span>
-                          <div
-                            v-if="lastCmpSrComAdjust && lastCmpSrComAdjust.target === 'netCom'"
-                            class="cmp-sr-com-delta-hint"
-                          >
-                            <span
-                              class="cmp-sr-com-delta-val"
-                              :class="lastCmpSrComAdjust.delta >= 0 ? 'is-plus' : 'is-minus'"
-                            >
-                              {{ lastCmpSrComAdjust.delta >= 0 ? '+' : '−' }}{{ fmtCmpSrMoney(Math.abs(lastCmpSrComAdjust.delta)) }}
-                            </span>
-                            <button
-                              type="button"
-                              class="cmp-sr-com-undo-btn"
-                              title="Hoàn tác lần cộng/trừ gần nhất"
-                              @click="undoCmpSrComAdjust"
-                            >
-                              Hoàn tác
-                            </button>
-                          </div>
-                        </div>
-                        <div class="cmp-sr-com-val-group">
-                          <FormattedInput
-                            :modelValue="Math.round(cmpSrNetCom)"
-                            class="cmp-sr-po1-input"
-                            @update:modelValue="(val) => onCmpSrFieldChange('netCom', val)"
-                          />
-                          <button
-                            type="button"
-                            class="cmp-sr-com-plus-btn"
-                            :class="{ active: cmpSrComAdjustMode === 'netCom' }"
-                            title="Cộng / Trừ thêm số tiền vào Net COM"
-                            @click="toggleCmpSrComAdjustPanel('netCom')"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-
-                      <!-- Inline popover cộng / trừ nhanh Gross COM hoặc Net COM -->
-                      <div v-if="cmpSrComAdjustMode" class="cmp-sr-com-adjust-popover">
-                        <div class="cmp-sr-com-adjust-head">
-                          <span>
-                            Điều chỉnh <strong>{{ cmpSrComAdjustMode === 'grossCom' ? 'Gross COM' : 'Net COM' }}</strong>
-                          </span>
-                          <button type="button" class="cmp-sr-com-adjust-close" @click="closeCmpSrComAdjustPanel">✕</button>
-                        </div>
-                        <div class="cmp-sr-com-adjust-controls">
-                          <input
-                            ref="cmpSrComAdjustInputRef"
-                            v-model="cmpSrComAdjustRaw"
-                            type="text"
-                            inputmode="numeric"
-                            class="cmp-sr-com-adjust-input"
-                            placeholder="Nhập số tiền..."
-                            @keydown.enter.prevent="applyCmpSrComAdjust(1)"
-                            @keydown.esc.prevent="closeCmpSrComAdjustPanel"
-                          />
-                          <button type="button" class="cmp-sr-com-act-btn is-plus" @click="applyCmpSrComAdjust(1)">+ Cộng</button>
-                          <button type="button" class="cmp-sr-com-act-btn is-minus" @click="applyCmpSrComAdjust(-1)">− Trừ</button>
-                        </div>
+                      <div class="cmp-sr-po1-item">
+                        <span class="cmp-sr-po1-lbl">Net COM</span>
+                        <span class="cmp-sr-po1-val">{{ fmtCmpSrMoney(cmpSrNetCom) }}</span>
                       </div>
 
                       <!-- Net PO -->
@@ -1308,14 +1164,14 @@
                   </div>
 
                   <!-- BỘ 3: Tỉ suất (%) -->
-                  <div class="cmp-sr-po1-block is-ratio-block">
+                  <div class="cmp-sr-po1-block is-tone-amber is-ratio-block">
                     <div class="cmp-sr-po1-block-head">
                       <div class="cmp-sr-po1-block-title">Tỉ suất (%)</div>
                       <button
                         type="button"
                         class="cmp-sr-round-toggle-btn"
                         :class="{ 'is-active': cmpSrIsRatioRounded }"
-                        title="Bật/tắt làm tròn số phần trăm"
+                        title="Bật/tắt làm tròn số phần trăm khi xem"
                         @click="toggleCmpSrRatioRounding"
                       >
                         Làm tròn {{ cmpSrIsRatioRounded ? '✓' : '' }}
@@ -1339,60 +1195,17 @@
                         <span class="cmp-sr-po1-val is-ratio is-profit">{{ fmtCmpSrPct(cmpSrNetMarginOnDsbPct) }}</span>
                       </div>
                     </div>
-
-                    <!-- CHỈ SỐ NET MARGIN / DSB MONG MUỐN -->
-                    <div class="cmp-sr-predict-box">
-                      <div class="cmp-sr-predict-row">
-                        <div class="cmp-sr-predict-lbl-wrap">
-                          <span class="cmp-sr-predict-title">CHỈ SỐ NET MARGIN/DSB MONG MUỐN</span>
-                        </div>
-                        <div class="cmp-sr-predict-actions">
-                          <div class="cmp-sr-pct-wrap is-predict">
-                            <input
-                              type="number"
-                              step="any"
-                              class="cmp-sr-pct-input"
-                              placeholder="Nhập %"
-                              :value="cmpSrOverrides.predictMarginOnDsbPct !== null ? cmpSrOverrides.predictMarginOnDsbPct : Number(cmpSrNetMarginOnDsbPct.toFixed(2))"
-                              @change="onCmpSrPredictInput"
-                              @keydown.enter.prevent="onCmpSrPredictInput"
-                            />
-                            <span class="cmp-sr-pct-unit">%</span>
-                          </div>
-                          <button
-                            v-if="cmpSrOverrides.predictMarginOnDsbPct !== null"
-                            type="button"
-                            class="cmp-sr-predict-reset"
-                            title="Hoàn tác dự đoán về mặc định"
-                            @click="resetCmpSrPredictPct"
-                          >
-                            Hoàn tác
-                          </button>
-                        </div>
-                      </div>
-                    </div>
                   </div>
                 </div>
 
                 <!-- DOCK BÊN DƯỚI: KHÁCH / HỒ SƠ / CHIẾT KHẤU / TÀI CHÍNH -->
                 <div class="pc-right-finance-dock">
-                  <!-- Hidden file inputs luôn sẵn sàng cho tab Hồ sơ -->
-                  <input
-                    ref="contractFileInputHd"
-                    type="file"
-                    multiple
-                    style="display: none"
-                    @change="handleSlotFileUpload($event, 'hd')"
-                  />
-                  <input
-                    ref="contractFileInputKhach"
-                    type="file"
-                    multiple
-                    style="display: none"
-                    @change="handleSlotFileUpload($event, 'khach')"
-                  />
-
-                  <div class="sidebar-dock-tabs" role="tablist" aria-label="Thông tin khách hàng, hồ sơ, chiết khấu và tài chính">
+                  <div
+                    v-if="!isMobileModalView"
+                    class="sidebar-dock-tabs"
+                    role="tablist"
+                    aria-label="Thông tin khách hàng, hồ sơ, chiết khấu và tài chính"
+                  >
                     <button
                       type="button"
                       role="tab"
@@ -1455,8 +1268,8 @@
                     </button>
                   </div>
 
-                  <!-- TAB 1: THÔNG TIN KHÁCH HÀNG (CHỈNH SỬA & CHỌN KHÁCH Y NHƯ BAOGIAFIREBASE) -->
-                  <div v-if="activeDetailDockTab === 'customer'" class="dock-tab-panel customer-dock-panel">
+                  <!-- TAB 1: THÔNG TIN KHÁCH HÀNG (PC Dock; Mobile đã có Card Tổng quan ở Tab 1) -->
+                  <div v-if="!isMobileModalView && activeDetailDockTab === 'customer'" class="dock-tab-panel customer-dock-panel">
                     <div class="customer-dock-micro-bar">
                       <span class="customer-dock-title">Thông tin KH</span>
                       <div class="customer-dock-actions">
@@ -1474,134 +1287,119 @@
 
                     <div class="customer-dock-grid">
                       <div class="cd-row">
-                        <label class="cd-lbl">MST</label>
-                        <div class="cd-input-group">
-                          <input
-                            v-model="modalCustEdit.mst"
-                            type="text"
-                            class="cd-input tabular-nums"
-                            placeholder="Mã số thuế..."
-                            @change="onModalCustomerFieldCommit"
-                          />
-                          <button
-                            type="button"
-                            class="cd-btn-pick"
-                            title="Chọn từ danh sách khách hàng"
-                            @click="openCustomerModal(true)"
+                        <span class="cd-lbl">MST</span>
+                        <div class="cd-readonly-val tabular-nums" :class="{ 'is-empty': !modalCustEdit.mst }">
+                          {{ modalCustEdit.mst || '—' }}
+                        </div>
+                      </div>
+
+                      <div class="cd-row">
+                        <span class="cd-lbl">Khách</span>
+                        <div class="cd-readonly-val" :class="{ 'is-empty': !modalCustEdit.tenKH }">
+                          {{ modalCustEdit.tenKH || '—' }}
+                        </div>
+                      </div>
+
+                      <div class="cd-row">
+                        <span class="cd-lbl">Công ty</span>
+                        <div class="cd-readonly-val" :class="{ 'is-empty': !modalCustEdit.tenCongTy }">
+                          {{ modalCustEdit.tenCongTy || '—' }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- TAB 2: HỒ SƠ FILE (PC Dock hoặc Tab 2 Mobile Option A) -->
+                  <div
+                    v-if="isMobileModalView ? activeMobileSubTab === 'tongket' : activeDetailDockTab === 'files'"
+                    class="dock-tab-panel files-dock-panel"
+                  >
+                    <div v-if="isMobileModalView" class="dm-mob-dock-sec-head is-sky">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                      <span>Hồ sơ Đính kèm ({{ detailFilesTotalCount }} file)</span>
+                    </div>
+                    <!-- File Hồ sơ (SVG icon, tên file xuống dòng, Xem, Tải, Đính kèm) -->
+                    <div
+                      v-for="slotCfg in [
+                        { key: 'hd' as const, title: 'File Báo giá Hợp đồng', files: parsedFilesHd, emptyText: 'Chưa có file hợp đồng' },
+                        { key: 'khach' as const, title: 'File Báo giá Khách', files: parsedFilesKhach, emptyText: 'Chưa có file báo giá khách' }
+                      ]"
+                      :key="'dm-slot-' + slotCfg.key"
+                      class="dm-file-slot"
+                    >
+                      <div class="slot-head" :class="slotCfg.key === 'khach' ? 'is-khach' : 'is-hd'">
+                        <span class="slot-label">{{ slotCfg.title }} ({{ slotCfg.files.length }})</span>
+                        <button
+                          type="button"
+                          class="slot-upload-btn"
+                          :disabled="uploadingFileSlot !== null"
+                          @click="triggerSlotUpload(slotCfg.key)"
+                        >
+                          {{ uploadingFileSlot === slotCfg.key ? 'Đang tải...' : '+ Đính kèm' }}
+                        </button>
+                      </div>
+                      <div v-if="slotCfg.files.length === 0" class="slot-empty">{{ slotCfg.emptyText }}</div>
+                      <div v-else class="slot-file-list">
+                        <div
+                          v-for="(f, idx) in slotCfg.files"
+                          :key="'f-' + slotCfg.key + '-' + idx"
+                          class="slot-file-item"
+                        >
+                          <a
+                            :href="getCardFilePreviewUrl(f.link, f.name)"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="slot-file-main"
+                            :class="slotCfg.key === 'khach' ? 'is-khach' : 'is-hd'"
+                            :title="f.name"
                           >
-                            Chọn
-                          </button>
-                        </div>
-                      </div>
-
-                      <div class="cd-row">
-                        <label class="cd-lbl">Khách</label>
-                        <input
-                          v-model="modalCustEdit.tenKH"
-                          type="text"
-                          class="cd-input"
-                          placeholder="Tên người nhận / khách hàng..."
-                          @change="onModalCustomerFieldCommit"
-                        />
-                      </div>
-
-                      <div class="cd-row">
-                        <label class="cd-lbl">Công ty</label>
-                        <input
-                          v-model="modalCustEdit.tenCongTy"
-                          type="text"
-                          class="cd-input"
-                          placeholder="Tên công ty..."
-                          @change="onModalCustomerFieldCommit"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- TAB 2: HỒ SƠ FILE & TIẾN ĐỘ SALE REPORT -->
-                  <div v-if="activeDetailDockTab === 'files'" class="dock-tab-panel files-dock-panel">
-                    <div v-if="selectedLinkedSaleReport" class="dock-sr-payment-box">
-                      <div class="dock-sr-payment-head">
-                        <span>Tiến độ Thanh toán (SR)</span>
-                        <button type="button" class="dm-inline-link" @click="openInSaleReport(selectedContract)">Mở SR ↗</button>
-                      </div>
-                      <div class="dock-sr-payment-rows">
-                        <div class="dock-sr-row">
-                          <span>Đã thanh toán</span>
-                          <strong class="tabular-nums text-emerald">{{ formatVND(selectedLinkedSaleReport.paid) }} đ</strong>
-                        </div>
-                        <div class="dock-sr-row">
-                          <span>Công nợ còn thu</span>
-                          <strong class="tabular-nums" :class="selectedLinkedSaleReport.debt > 0 ? 'text-rose' : 'text-emerald'">
-                            {{ formatVND(selectedLinkedSaleReport.debt) }} đ
-                          </strong>
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- Slot 1: File Hợp đồng -->
-                    <div class="dm-file-slot">
-                      <div class="slot-head">
-                        <span class="slot-label">File Báo giá Hợp đồng ({{ parsedFilesHd.length }})</span>
-                        <button
-                          type="button"
-                          class="slot-upload-btn"
-                          :disabled="uploadingFileSlot !== null"
-                          @click="contractFileInputHd?.click()"
-                        >
-                          {{ uploadingFileSlot === 'hd' ? 'Đang tải...' : '+ Đính kèm' }}
-                        </button>
-                      </div>
-                      <div v-if="parsedFilesHd.length === 0" class="slot-empty">Chưa có file hợp đồng</div>
-                      <div v-else class="slot-file-list">
-                        <div v-for="(f, idx) in parsedFilesHd" :key="'fhd-' + idx" class="slot-file-item">
-                          <a :href="f.link" target="_blank" rel="noopener noreferrer" class="slot-file-link" :title="f.name">
-                            {{ f.name }}
+                            <span class="qc-file-ico" v-html="getCardFileIconSvg(f.name, f.link)"></span>
+                            <span class="slot-file-name">{{ f.name }}</span>
                           </a>
-                          <button type="button" class="slot-file-del" title="Gỡ file" @click="removeSlotFile('hd', idx)">✕</button>
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- Slot 2: File Khách -->
-                    <div class="dm-file-slot">
-                      <div class="slot-head">
-                        <span class="slot-label">File Báo giá Khách ({{ parsedFilesKhach.length }})</span>
-                        <button
-                          type="button"
-                          class="slot-upload-btn"
-                          :disabled="uploadingFileSlot !== null"
-                          @click="contractFileInputKhach?.click()"
-                        >
-                          {{ uploadingFileSlot === 'khach' ? 'Đang tải...' : '+ Đính kèm' }}
-                        </button>
-                      </div>
-                      <div v-if="parsedFilesKhach.length === 0" class="slot-empty">Chưa có file báo giá khách</div>
-                      <div v-else class="slot-file-list">
-                        <div v-for="(f, idx) in parsedFilesKhach" :key="'fkh-' + idx" class="slot-file-item">
-                          <a :href="f.link" target="_blank" rel="noopener noreferrer" class="slot-file-link" :title="f.name">
-                            {{ f.name }}
-                          </a>
-                          <button type="button" class="slot-file-del" title="Gỡ file" @click="removeSlotFile('khach', idx)">✕</button>
+                          <div class="slot-file-actions">
+                            <a
+                              :href="getCardFilePreviewUrl(f.link, f.name)"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              class="qc-file-act-btn is-view"
+                              title="Xem file"
+                            >
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                              <span>Xem</span>
+                            </a>
+                            <a
+                              :href="getCardFileDownloadUrl(f.link)"
+                              class="qc-file-act-btn is-dl"
+                              title="Tải xuống"
+                              @click="handleCardFileDownload($event, f.link, f.name)"
+                            >
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                              <span>Tải</span>
+                            </a>
+                            <button type="button" class="slot-file-del" title="Gỡ file" @click="removeSlotFile(slotCfg.key, idx)">✕</button>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <!-- TAB 3: CHIẾT KHẤU & CHÊNH LỆCH GIÁ (CHỈNH ĐƯỢC % Y NHƯ BAOGIAFIREBASE) -->
-                  <div v-if="activeDetailDockTab === 'discount'" class="dock-tab-panel discount-dock-panel">
+                  <!-- TAB 3: CHIẾT KHẤU & CHÊNH LỆCH GIÁ (CHỈ XEM) -->
+                  <div
+                    v-if="
+                      isMobileModalView
+                        ? activeMobileSubTab === 'tongket' || (activeMobileSubTab === 'chitiet' && activeMobileInnerTab === 'metrics')
+                        : activeDetailDockTab === 'discount'
+                    "
+                    class="dock-tab-panel discount-dock-panel"
+                  >
+                    <div v-if="isMobileModalView" class="dm-mob-dock-sec-head is-amber">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg>
+                      <span>Chiết khấu &amp; Chênh lệch giá</span>
+                    </div>
                     <div class="fin-row">
                       <div class="fin-lbl-inline">
                         <span class="fin-lbl">Chiết khấu tổng trước thuế</span>
-                        <div class="fin-pct-inline">
-                          <FormattedInput
-                            :modelValue="modalChietKhauTruocThuePct"
-                            :isDecimal="true"
-                            class="fin-pct-input"
-                            @update:modelValue="(val) => onModalDiscountPctChange('ckPct', val)"
-                          />
-                          <span class="fin-pct-unit">%</span>
-                        </div>
+                        <span class="fin-pct-badge">{{ modalChietKhauTruocThuePct }}%</span>
                       </div>
                       <span class="fin-val is-discount tabular-nums">{{ formatModalMoneyWithUnit(detailSummary.tongChietKhau) }}</span>
                     </div>
@@ -1609,15 +1407,7 @@
                     <div class="fin-row">
                       <div class="fin-lbl-inline">
                         <span class="fin-lbl">Thuế chênh lệch giá</span>
-                        <div class="fin-pct-inline">
-                          <FormattedInput
-                            :modelValue="modalThueChenhLechPct"
-                            :isDecimal="true"
-                            class="fin-pct-input"
-                            @update:modelValue="(val) => onModalDiscountPctChange('taxPct', val)"
-                          />
-                          <span class="fin-pct-unit">%</span>
-                        </div>
+                        <span class="fin-pct-badge">{{ modalThueChenhLechPct }}%</span>
                       </div>
                       <span class="fin-val is-warn tabular-nums">{{ formatModalMoneyWithUnit(detailSummary.thueCL) }}</span>
                     </div>
@@ -1639,7 +1429,18 @@
                   </div>
 
                   <!-- TAB 4: TÀI CHÍNH TỔNG HỢP -->
-                  <div v-if="activeDetailDockTab === 'finance'" class="dock-tab-panel finance-dock-panel">
+                  <div
+                    v-if="
+                      isMobileModalView
+                        ? activeMobileSubTab === 'tongket' || (activeMobileSubTab === 'chitiet' && activeMobileInnerTab === 'metrics')
+                        : activeDetailDockTab === 'finance'
+                    "
+                    class="dock-tab-panel finance-dock-panel"
+                  >
+                    <div v-if="isMobileModalView" class="dm-mob-dock-sec-head is-emerald">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                      <span>Tài chính Tổng hợp ({{ quoteCurrency }})</span>
+                    </div>
                     <div class="fin-row">
                       <span class="fin-lbl">TT trước thuế (Khách)</span>
                       <span class="fin-val tabular-nums">{{ formatModalMoneyWithUnit(detailSummary.khachTruoc) }}</span>
@@ -1662,35 +1463,17 @@
             </aside>
           </div>
 
-          <!-- Footer Modal -->
+          <!-- Footer Modal (PC 1 hàng; Mobile <= 768px 2 hàng chuẩn Sale Report) -->
           <div class="dm-foot">
-            <div class="dm-foot-left">
+            <div class="dm-foot-sec-row">
               <button
                 v-if="!selectedContract.is_completed"
                 type="button"
-                class="qlbg-btn-danger-ghost"
+                class="qlbg-btn-danger-ghost dm-btn-delete"
                 @click="requestDeleteDraft(selectedContract, true)"
               >
-                Xóa bản tạm
-              </button>
-            </div>
-            <div class="dm-foot-right">
-              <button
-                v-if="!selectedContract.is_completed && isActiveOnSaleReportCraft(selectedContract)"
-                type="button"
-                class="qlbg-ghost-btn"
-                @click="openInSaleReport(selectedContract, true)"
-              >
-                Mở SR Tạm ↗
-              </button>
-              <button
-                v-else-if="canPinToSaleReportCraft(selectedContract)"
-                type="button"
-                class="qlbg-ghost-btn"
-                :disabled="pinningSrCraftMa === selectedContract.ma_hop_dong"
-                @click="pinContractToSaleReportCraft(selectedContract)"
-              >
-                {{ pinningSrCraftMa === selectedContract.ma_hop_dong ? 'Đang ghim...' : 'Đưa lên SR Tạm' }}
+                <span class="dm-lbl-dt">Xóa bản tạm</span>
+                <span class="dm-lbl-mob">Xóa</span>
               </button>
               <button
                 type="button"
@@ -1698,27 +1481,58 @@
                 :disabled="selectedContract.is_completed"
                 @click="!selectedContract.is_completed && editContract(selectedContract)"
               >
-                Sửa báo giá
+                <span class="dm-lbl-dt">Sửa báo giá</span>
+                <span class="dm-lbl-mob">Sửa</span>
               </button>
               <button type="button" class="qlbg-ghost-btn" @click="duplicateContract(selectedContract)">
-                Nhân bản
+                <span>Nhân bản</span>
               </button>
               <button
-                v-if="selectedContract.is_completed"
+                type="button"
+                class="qlbg-ghost-btn is-mob-inline-close"
+                @click="showDetailModal = false"
+              >
+                <span>Đóng</span>
+              </button>
+            </div>
+            <div class="dm-foot-cta-row">
+              <button
+                v-if="!selectedContract.is_completed && isActiveOnSaleReportCraft(selectedContract)"
+                type="button"
+                class="qlbg-ghost-btn dm-btn-sr-craft"
+                @click="openInSaleReport(selectedContract, true)"
+              >
+                <span class="dm-lbl-dt">Mở SR Tạm ↗</span>
+                <span class="dm-lbl-mob">SR Tạm ↗</span>
+              </button>
+              <button
+                v-else-if="canPinToSaleReportCraft(selectedContract)"
+                type="button"
+                class="qlbg-ghost-btn dm-btn-sr-craft"
+                :disabled="pinningSrCraftMa === selectedContract.ma_hop_dong"
+                @click="pinContractToSaleReportCraft(selectedContract)"
+              >
+                <span class="dm-lbl-dt">{{ pinningSrCraftMa === selectedContract.ma_hop_dong ? 'Đang ghim...' : 'Đưa lên SR Tạm' }}</span>
+                <span class="dm-lbl-mob">{{ pinningSrCraftMa === selectedContract.ma_hop_dong ? 'Đang ghim...' : 'Lên SR Tạm' }}</span>
+              </button>
+              <button
+                v-if="isOfficialContract(selectedContract)"
                 type="button"
                 class="qlbg-btn-primary"
                 @click="openInSaleReport(selectedContract)"
               >
-                Mở trong Sale Report ↗
+                <span class="dm-lbl-dt">Mở trong Sale Report ↗</span>
+                <span class="dm-lbl-mob">Sale Report ↗</span>
               </button>
               <button
                 v-else
                 type="button"
                 class="qlbg-btn-emerald"
-                :disabled="chotDealLoading"
-                @click="chotDealAndSaleReport(selectedContract)"
+                :disabled="chotDealLoading || selectedContract.is_completed"
+                @click="!selectedContract.is_completed && chotDealAndSaleReport(selectedContract)"
               >
-                Chốt Deal &amp; Lưu Sale Report
+                <span class="dm-lbl-dt">Chốt Deal &amp; Lưu Sale Report</span>
+                <span class="dm-lbl-mob">Chốt Deal</span>
               </button>
             </div>
           </div>
@@ -1810,12 +1624,98 @@
     </Teleport>
 
     <!-- =========================================================
-         MODAL 3: HỒ SƠ NHANH KHÁCH HÀNG
+         MODAL 2B: LỌC THEO THỜI GIAN
+    ========================================================== -->
+    <Teleport to="body">
+      <div
+        v-if="showDateModal"
+        class="modal-overlay qlbg-overlay"
+        :class="{ 'theme-light-blue': uiTheme === 'light' }"
+        @click.self="showDateModal = false"
+      >
+        <div class="qlbg-picker-modal qlbg-date-modal">
+          <div class="mob-sheet-grabber"></div>
+          <div class="pm-head">
+            <div class="pm-title-wrap">
+              <h3>Lọc theo Thời gian</h3>
+              <span class="pm-count">{{ selectedDateLabel }}</span>
+            </div>
+            <button type="button" class="dm-close-btn" @click="showDateModal = false">✕</button>
+          </div>
+
+          <div class="dm-date-modal-body">
+            <div class="dm-date-sec-lbl">Chọn nhanh</div>
+            <div class="dm-preset-grid">
+              <button
+                v-for="opt in dateQuickOptions"
+                :key="'dm-date-' + opt.value"
+                type="button"
+                class="dm-preset-btn"
+                :class="{ active: draftDateRange === opt.value }"
+                @click="selectDatePresetInModal(opt.value)"
+              >
+                <div class="dm-preset-top">
+                  <strong>{{ opt.label }}</strong>
+                  <span v-if="draftDateRange === opt.value" class="pm-check">✓</span>
+                </div>
+                <span class="dm-preset-desc">{{ opt.desc }}</span>
+              </button>
+            </div>
+
+            <div class="dm-custom-range-box" :class="{ 'is-highlighted': draftDateRange === 'custom' }">
+              <div class="dm-date-sec-lbl">Khoảng ngày tùy chỉnh</div>
+              <div class="dm-custom-range-inputs">
+                <label class="dm-date-field">
+                  <span>Từ ngày</span>
+                  <input
+                    v-model="draftCustomFrom"
+                    type="date"
+                    :max="draftCustomTo || undefined"
+                    class="qlbg-date-input"
+                    @focus="draftDateRange = 'custom'"
+                  />
+                </label>
+                <span class="dm-date-arrow">→</span>
+                <label class="dm-date-field">
+                  <span>Đến ngày</span>
+                  <input
+                    v-model="draftCustomTo"
+                    type="date"
+                    :min="draftCustomFrom || undefined"
+                    class="qlbg-date-input"
+                    @focus="draftDateRange = 'custom'"
+                  />
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="pm-foot">
+            <button
+              type="button"
+              class="qlbg-ghost-btn"
+              @click="resetDateFilter(); showDateModal = false"
+            >
+              Đặt lại
+            </button>
+            <div class="pm-foot-right">
+              <button type="button" class="qlbg-ghost-btn" @click="showDateModal = false">Đóng</button>
+              <button type="button" class="qlbg-btn-primary" @click="applyCustomDateModal">
+                Áp dụng khoảng ngày
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- =========================================================
+         MODAL 3: HỒ SƠ CHI TIẾT KHÁCH HÀNG (ĐẦY ĐỦ NHƯ TRANG KHÁCH HÀNG)
     ========================================================== -->
     <Teleport to="body">
       <div
         v-if="showCustomerInfoModal"
-        class="modal-overlay qlbg-overlay"
+        class="modal-overlay qlbg-overlay qlbg-cust-overlay"
         :class="{ 'theme-light-blue': uiTheme === 'light' }"
         @click.self="showCustomerInfoModal = false"
       >
@@ -1823,54 +1723,187 @@
           <div class="mob-sheet-grabber"></div>
           <div class="pm-head">
             <div class="pm-title-wrap">
-              <h3>Hồ sơ Khách hàng</h3>
+              <h3>Hồ sơ Chi tiết Khách hàng</h3>
               <span v-if="customerInfoData.maKH" class="pm-count tabular-nums">{{ customerInfoData.maKH }}</span>
+              <span v-if="customerInfoData.lastUpdated" class="cm-upd-pill tabular-nums">
+                Cập nhật: {{ formatCustomerUpdatedAt(customerInfoData.lastUpdated) }}
+              </span>
             </div>
-            <button type="button" class="dm-close-btn" @click="showCustomerInfoModal = false">✕</button>
+            <button type="button" class="dm-close-btn" @click="showCustomerInfoModal = false" title="Đóng">✕</button>
           </div>
 
           <div class="cm-body">
-            <div class="cm-hero">
-              <div class="cm-avatar">{{ getInitials(customerInfoData.tenCongTy || customerInfoData.tenKH) }}</div>
-              <div>
-                <div class="cm-company">{{ customerInfoData.tenCongTy || customerInfoData.company || customerInfoData.tenKH || 'Chưa cập nhật tên' }}</div>
-                <div v-if="customerInfoData.mst" class="cm-mst tabular-nums">MST: {{ customerInfoData.mst }}</div>
-              </div>
-            </div>
+            <!-- Bố cục 2 cột đầy đủ như Modal Chi tiết bên trang Khách hàng -->
+            <div class="cm-2col">
+              <!-- CỘT TRÁI: LIÊN HỆ & PHÂN NHÓM & CÔNG NỢ -->
+              <div class="cm-col">
+                <!-- Box 1: Người Liên Hệ & Định Danh -->
+                <div class="cm-section-box">
+                  <div class="cm-section-title is-emerald">
+                    <span>Người Liên Hệ &amp; Định Danh</span>
+                  </div>
+                  <div class="cm-grid">
+                    <div class="cm-field">
+                      <span>Tên người liên hệ chính</span>
+                      <strong>{{ customerInfoData.tenKH || '—' }}</strong>
+                    </div>
+                    <div class="cm-field">
+                      <span>Mã khách hàng</span>
+                      <strong class="is-mono tabular-nums">{{ customerInfoData.maKH || '—' }}</strong>
+                    </div>
+                    <div class="cm-field">
+                      <span>SĐT cá nhân</span>
+                      <strong class="tabular-nums">{{ customerInfoData.sdt || '—' }}</strong>
+                    </div>
+                    <div class="cm-field">
+                      <span>Email cá nhân</span>
+                      <strong>{{ customerInfoData.email || '—' }}</strong>
+                    </div>
+                  </div>
 
-            <div class="cm-grid">
-              <div class="cm-field">
-                <span>Người liên hệ</span>
-                <strong>{{ customerInfoData.tenKH || '—' }}</strong>
+                  <div class="cm-sub-divider">Người liên hệ phụ / Giao nhận</div>
+                  <div class="cm-grid">
+                    <div class="cm-field is-full">
+                      <span>Tên khách hàng phụ</span>
+                      <strong>{{ customerInfoData.tenKHPhu || '—' }}</strong>
+                    </div>
+                    <div class="cm-field">
+                      <span>SĐT liên hệ phụ</span>
+                      <strong class="tabular-nums">{{ customerInfoData.sdtPhu || '—' }}</strong>
+                    </div>
+                    <div class="cm-field">
+                      <span>Email liên hệ phụ</span>
+                      <strong>{{ customerInfoData.emailPhu || '—' }}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Box 2: Nhóm Khách Hàng (tagKH) & Ghi Chú -->
+                <div class="cm-section-box">
+                  <div class="cm-section-title is-amber">
+                    <span>Nhóm Khách Hàng (tagKH) &amp; Ghi Chú</span>
+                  </div>
+                  <div v-if="customerInfoData.tagKH && customerInfoData.tagKH.length > 0" class="cm-tag-list">
+                    <span v-for="tag in customerInfoData.tagKH" :key="'cm-tag-' + tag" class="cm-tag-chip">
+                      {{ tag }}
+                    </span>
+                  </div>
+                  <div v-else class="cm-empty-note">Chưa gán nhóm khách hàng</div>
+
+                  <div class="cm-field is-full" style="margin-top: 8px;">
+                    <span>Ghi chú chăm sóc</span>
+                    <strong>{{ customerInfoData.ghiChu || '—' }}</strong>
+                  </div>
+                </div>
+
+                <!-- Box 3: Công Nợ Hiện Tại Của Khách Hàng -->
+                <div class="cm-section-box cm-debt-box">
+                  <div class="cm-section-title is-sky">
+                    <span>Công Nợ Hiện Tại Của Khách Hàng</span>
+                  </div>
+                  <div class="cm-debt-stats">
+                    <div class="cm-debt-stat">
+                      <span class="cm-debt-lbl">Công nợ hiện tại</span>
+                      <strong
+                        class="cm-debt-val-lg tabular-nums"
+                        :class="customerInfoDebtSummary.congNo > 0 ? 'is-rose' : 'is-emerald'"
+                      >
+                        {{ formatVND(customerInfoDebtSummary.congNo) }} đ
+                      </strong>
+                    </div>
+                    <div class="cm-debt-stat">
+                      <span class="cm-debt-lbl">Đã thanh toán</span>
+                      <strong class="cm-debt-val tabular-nums is-emerald">
+                        {{ formatVND(customerInfoDebtSummary.daThanhToan) }} đ
+                      </strong>
+                    </div>
+                    <div class="cm-debt-stat">
+                      <span class="cm-debt-lbl">Tổng phải thu ({{ customerInfoDebtSummary.poCount }} PO)</span>
+                      <strong class="cm-debt-val tabular-nums is-sky">
+                        {{ formatVND(customerInfoDebtSummary.tongSauVat) }} đ
+                        <small>({{ customerInfoDebtSummary.progressPct }}%)</small>
+                      </strong>
+                    </div>
+                  </div>
+                  <div class="cm-debt-bar-track">
+                    <div
+                      class="cm-debt-bar-fill"
+                      :class="{ 'is-paid': customerInfoDebtSummary.congNo <= 0 }"
+                      :style="{ width: customerInfoDebtSummary.progressPct + '%' }"
+                    ></div>
+                  </div>
+                </div>
               </div>
-              <div class="cm-field">
-                <span>Số điện thoại</span>
-                <strong class="tabular-nums">{{ customerInfoData.sdt || customerInfoData.sdtCongTy || customerInfoData.tel || '—' }}</strong>
-              </div>
-              <div class="cm-field">
-                <span>Email</span>
-                <strong>{{ customerInfoData.email || customerInfoData.emailCongTy || '—' }}</strong>
-              </div>
-              <div class="cm-field">
-                <span>Website</span>
-                <strong>{{ customerInfoData.website || '—' }}</strong>
-              </div>
-              <div class="cm-field is-full">
-                <span>Địa chỉ</span>
-                <strong>{{ customerInfoData.diaChi || customerInfoData.address || '—' }}</strong>
-              </div>
-              <div v-if="customerInfoData.tenKHPhu || customerInfoData.sdtPhu" class="cm-field is-full">
-                <span>Liên hệ phụ</span>
-                <strong>{{ [customerInfoData.tenKHPhu, customerInfoData.sdtPhu, customerInfoData.emailPhu].filter(Boolean).join(' · ') }}</strong>
-              </div>
-              <div v-if="customerInfoData.ghiChu" class="cm-field is-full">
-                <span>Ghi chú</span>
-                <strong>{{ customerInfoData.ghiChu }}</strong>
+
+              <!-- CỘT PHẢI: PHÁP NHÂN CÔNG TY & HÓA ĐƠN -->
+              <div class="cm-col">
+                <div class="cm-section-box">
+                  <div class="cm-section-title is-indigo">
+                    <span>Pháp Nhân Công Ty &amp; Hóa Đơn</span>
+                  </div>
+                  <div class="cm-grid">
+                    <div class="cm-field is-full">
+                      <span>Tên công ty / Tổ chức</span>
+                      <strong>{{ customerInfoData.tenCongTy || '—' }}</strong>
+                    </div>
+                    <div class="cm-field">
+                      <span>Mã công ty</span>
+                      <strong class="is-mono tabular-nums">{{ customerInfoData.maCongTy || '—' }}</strong>
+                    </div>
+                    <div class="cm-field">
+                      <span>Mã số thuế (MST)</span>
+                      <strong class="is-mono tabular-nums">{{ customerInfoData.mst || '—' }}</strong>
+                    </div>
+                    <div class="cm-field is-full">
+                      <span>Địa chỉ xuất hóa đơn / Trụ sở</span>
+                      <strong>{{ customerInfoData.diaChi || '—' }}</strong>
+                    </div>
+                    <div class="cm-field">
+                      <span>SĐT công ty</span>
+                      <strong class="tabular-nums">{{ customerInfoData.sdtCongTy || '—' }}</strong>
+                    </div>
+                    <div class="cm-field">
+                      <span>Số Fax</span>
+                      <strong class="tabular-nums">{{ customerInfoData.fax || '—' }}</strong>
+                    </div>
+                    <div class="cm-field">
+                      <span>Email công ty / Hóa đơn</span>
+                      <strong>{{ customerInfoData.emailCongTy || '—' }}</strong>
+                    </div>
+                    <div class="cm-field">
+                      <span>Website</span>
+                      <strong>{{ customerInfoData.website || '—' }}</strong>
+                    </div>
+                    <div class="cm-field is-full">
+                      <span>Ngành nghề kinh doanh chính</span>
+                      <strong>{{ customerInfoData.nganhNghe || '—' }}</strong>
+                    </div>
+                  </div>
+
+                  <div class="cm-sub-divider">Thông tin tiếng Anh / Đề xuất mua hàng (DXMH)</div>
+                  <div class="cm-grid">
+                    <div class="cm-field">
+                      <span>COMPANY (Eng)</span>
+                      <strong>{{ customerInfoData.company || '—' }}</strong>
+                    </div>
+                    <div class="cm-field">
+                      <span>TEL (Eng)</span>
+                      <strong class="tabular-nums">{{ customerInfoData.tel || '—' }}</strong>
+                    </div>
+                    <div class="cm-field is-full">
+                      <span>ADDRESS (Eng)</span>
+                      <strong>{{ customerInfoData.address || '—' }}</strong>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
           <div class="cm-foot">
+            <button type="button" class="qlbg-ghost-btn" @click="showCustomerInfoModal = false">
+              Đóng
+            </button>
             <button
               v-if="customerInfoData.maKH"
               type="button"
@@ -1964,6 +1997,65 @@
       </div>
     </Teleport>
 
+    <!-- THANH NỔI THAO TÁC NHANH KHI CHỌN BÁO GIÁ ĐỂ SO SÁNH (100% ĐỒNG BỘ SALEREPORT) -->
+    <Teleport to="body">
+      <div
+        v-if="selectedCompareIds.length > 0 && !showCompareModal && !showDetailModal && !confirmDialog.visible && !asyncResultModal.show && !showCustomerInfoModal && !showCustomerPickerModal"
+        class="sr-selection-floating-bar"
+      >
+        <div class="sr-sel-bar-info">
+          <span class="sr-sel-count-badge">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Đã chọn: {{ selectedCompareIds.length }}
+          </span>
+        </div>
+        <div class="sr-sel-bar-actions">
+          <button
+            type="button"
+            class="sr-sel-btn sr-sel-btn-compare"
+            @click="showCompareModal = true"
+            title="Mở bảng Phân tích & So sánh chỉ số giữa các báo giá đang chọn"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            <span>So sánh</span>
+          </button>
+          <button
+            v-if="filteredContracts.length > 0 && !isAllFilteredSelectedForCompare"
+            type="button"
+            class="sr-sel-btn sr-sel-btn-ghost"
+            @click="toggleSelectAllVisibleForCompare"
+            title="Chọn tất cả báo giá đang hiển thị theo bộ lọc"
+          >
+            Chọn tất cả ({{ filteredContracts.length }})
+          </button>
+          <button
+            type="button"
+            class="sr-sel-btn sr-sel-btn-clear"
+            @click="clearCompareSelection"
+          >
+            Bỏ chọn
+          </button>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- MODAL PHÂN TÍCH & SO SÁNH ĐA PHƯƠNG ÁN (100% ĐỒNG BỘ SALEREPORT PHƯƠNG ÁN TẠM) -->
+    <QuoteCompareModal
+      :show="showCompareModal"
+      :rows="compareModalRows"
+      :total-count="filteredContracts.length || contracts.length"
+      :ui-theme="uiTheme"
+      initial-price-mode="hd"
+      :chot-deal-loading="chotDealLoading"
+      @close="showCompareModal = false"
+      @remove="removeFromCompareModal"
+      @view-detail="c => viewDetails(c)"
+      @edit="c => { showCompareModal = false; editContract(c) }"
+      @duplicate="c => { showCompareModal = false; duplicateContract(c) }"
+      @chot-deal="c => chotDealAndSaleReport(c)"
+      @open-sr="c => { showCompareModal = false; openInSaleReport(c) }"
+    />
+
     <Teleport to="body">
       <Transition name="qlbg-toast">
         <div
@@ -1976,6 +2068,136 @@
         </div>
       </Transition>
     </Teleport>
+
+    <!-- POPOVER THIẾT LẬP HIỂN THỊ MOBILE (TRÊN FLOATING DOCK <= 768px) -->
+    <div
+      v-if="isMobileDockViewport && showMobileDisplayPopover && !isMobileDockHidden"
+      ref="mobileDisplayPopoverRef"
+      class="bg-mob-display-popover"
+      @click.stop
+    >
+      <div class="bg-ds-head">
+        <span class="bg-ds-title">Thiết lập hiển thị</span>
+        <button type="button" class="bg-ds-close" @click="showMobileDisplayPopover = false" aria-label="Đóng">✕</button>
+      </div>
+
+      <div class="bg-ds-section">
+        <div class="bg-ds-label">Giao diện (Theme)</div>
+        <div class="bg-ds-grid-2">
+          <button
+            type="button"
+            class="bg-ds-opt-btn"
+            :class="{ active: uiTheme === 'dark' }"
+            @click="uiTheme !== 'dark' && toggleUiTheme()"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            <span>Tối (Mặc định)</span>
+          </button>
+          <button
+            type="button"
+            class="bg-ds-opt-btn"
+            :class="{ active: uiTheme === 'light' }"
+            @click="uiTheme !== 'light' && toggleUiTheme()"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            <span>Sáng (Xanh-Trắng)</span>
+          </button>
+        </div>
+      </div>
+
+      <div v-if="displayedGroupedContracts.length > 0" class="bg-ds-section" :class="{ 'is-last': !hasActiveFilters }">
+        <div class="bg-ds-label">Nhóm phiên bản</div>
+        <div class="bg-ds-grid-2">
+          <button
+            type="button"
+            class="bg-ds-opt-btn"
+            :class="{ active: !areAllGroupsCollapsed }"
+            @click="areAllGroupsCollapsed && toggleAllGroupsCollapse()"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            <span>Mở rộng tất cả</span>
+          </button>
+          <button
+            type="button"
+            class="bg-ds-opt-btn"
+            :class="{ active: areAllGroupsCollapsed }"
+            @click="!areAllGroupsCollapsed && toggleAllGroupsCollapse()"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+            <span>Thu gọn tất cả</span>
+          </button>
+        </div>
+      </div>
+
+      <div v-if="hasActiveFilters" class="bg-ds-section is-last">
+        <button
+          type="button"
+          class="bg-ds-reset-btn"
+          @click="resetAllFilters(); showMobileDisplayPopover = false"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          <span>Đặt lại toàn bộ bộ lọc</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- MOBILE FLOATING GLASS BOTTOM SUB-DOCK (HIỂN THỊ | TẠO BÁO GIÁ | ĐỒNG BỘ — CHUẨN APP.VUE & SALEREPORT) -->
+    <nav
+      v-if="isMobileDockViewport"
+      ref="mobileDockRef"
+      class="bg-mobile-dock"
+      :class="{ 'is-modal-hidden': isMobileDockHidden }"
+      aria-label="Thanh thao tác nhanh Quản lý Báo giá Mobile"
+    >
+      <!-- 1. Hiển thị (Theme Sáng/Tối + Thu gọn/Mở rộng nhóm) -->
+      <button
+        type="button"
+        class="bg-dock-btn"
+        :class="{ active: showMobileDisplayPopover }"
+        @click.stop="showMobileDisplayPopover = !showMobileDisplayPopover"
+        title="Thiết lập hiển thị & giao diện"
+      >
+        <div class="bg-dock-icon-wrap">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+          <span class="bg-dock-badge is-mode">
+            {{ uiTheme === 'dark' ? 'Tối' : 'Sáng' }}
+          </span>
+        </div>
+        <span>Hiển thị</span>
+      </button>
+
+      <!-- 2. Tạo báo giá mới (Primary Center CTA) -->
+      <button
+        type="button"
+        class="bg-dock-btn is-primary is-center-cta"
+        @click="goCreateNewQuote"
+      >
+        <div class="bg-dock-icon-wrap">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </div>
+        <span>Tạo báo giá</span>
+      </button>
+
+      <!-- 3. Đồng bộ dữ liệu -->
+      <button
+        type="button"
+        class="bg-dock-btn"
+        :disabled="loading"
+        @click="fetchData(true)"
+        title="Đồng bộ lại dữ liệu"
+      >
+        <div class="bg-dock-icon-wrap">
+          <svg :class="{ 'is-spin': loading }" width="17.5" height="17.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          <span v-if="totalGroups > 0" class="bg-dock-badge tabular-nums">
+            {{ totalGroups > 999 ? '999+' : totalGroups }}
+          </span>
+        </div>
+        <span>{{ loading ? 'Đang tải...' : 'Đồng bộ' }}</span>
+      </button>
+    </nav>
   </div>
 </template>
 
@@ -1991,8 +2213,8 @@ import { useRouter, useRoute } from 'vue-router'
 import { initializeApp, getApps, getApp } from 'firebase/app'
 import { getDatabase, ref as dbRef, get, set, update, push, onValue } from 'firebase/database'
 import ExcelJS from 'exceljs'
-import FormattedInput from './FormattedInput.vue'
 import { buildQuoteFileName } from '../utils/printTemplateEngine'
+import QuoteCompareModal, { type CompareQuoteRow } from './QuoteCompareModal.vue'
 
 const firebaseConfig = {
   apiKey: 'AIzaSyB3fHD_sOqyqVygCxP2gZtvaipr-35a1s8',
@@ -2029,8 +2251,6 @@ function toggleUiTheme() {
   } catch {}
 }
 
-const priceViewMode = ref<'hd' | 'khach'>('hd')
-const layoutMode = ref<'card' | 'table'>('card')
 const quoteCurrency = ref<'VND' | 'USD'>('VND')
 const detailViewMode = ref<'hd' | 'khach' | 'noibo'>('hd')
 
@@ -2662,9 +2882,11 @@ const detailFbKeysByContract = ref<Record<string, string[]>>({})
 const detailItemCountMap = ref<Record<string, number>>({})
 const detailSearchIndexMap = ref<Record<string, string>>({})
 const customersRaw = ref<any[][]>([])
+const customerFullMap = ref<Map<string, any>>(new Map())
 const hangHoaDescMap = ref<Record<string, string>>({})
 const hangHoaSkuMap = ref<Record<string, string>>({})
 const saleReportMapByKeyOrPo = ref<Record<string, { key: string; soPo: string; paid: number; debt: number; total: number }>>({})
+const saleReportRecords = ref<Array<{ maKH: string; maCT: string; mst: string; total: number; paid: number; debt: number }>>([])
 const saleReportCraftMap = ref<Record<string, any>>({})
 const pinningSrCraftMa = ref('')
 
@@ -2791,12 +3013,100 @@ function applyDetailsSnapshot(data: any) {
   }
 }
 
+function normalizeCustomerFullRecord(item: any, fbKey: string) {
+  if (!item || typeof item !== 'object') return null
+  if (Array.isArray(item)) {
+    const r = fbKhachHangToRow(item, fbKey)
+    return {
+      maKH: String(r[0] || fbKey || '').trim(),
+      tenKH: String(r[1] || ''),
+      email: String(r[2] || ''),
+      sdt: String(r[3] || ''),
+      maCongTy: String(r[4] || ''),
+      tenCongTy: String(r[5] || ''),
+      sdtCongTy: String(r[6] || ''),
+      fax: String(r[7] || ''),
+      diaChi: String(r[8] || ''),
+      emailCongTy: String(r[9] || ''),
+      website: String(r[10] || ''),
+      trangThai: String(r[14] || ''),
+      ghiChu: String(r[15] || ''),
+      tenKHPhu: String(r[16] || ''),
+      sdtPhu: String(r[17] || ''),
+      emailPhu: String(r[18] || ''),
+      mst: String(r[19] || ''),
+      company: String(r[20] || ''),
+      address: String(r[21] || ''),
+      tel: String(r[22] || ''),
+      nganhNghe: '',
+      tagKH: [] as string[],
+      congNoRaw: toNum(r[13], 0),
+      lastUpdated: ''
+    }
+  }
+  const maKH = String(item.ma_khach_hang ?? item.Ma_khach_hang ?? fbKey ?? '').trim()
+  const tagKH = Array.isArray(item.tagKH)
+    ? item.tagKH.map((t: any) => String(t || '').trim()).filter(Boolean)
+    : typeof item.tagKH === 'string' && item.tagKH.trim()
+      ? [item.tagKH.trim()]
+      : []
+  return {
+    maKH,
+    tenKH: String(item.ten_khach_hang ?? item.Ten_khach_hang ?? ''),
+    email: String(item.email_ca_nhan ?? item.Email_ca_nhan ?? item.email ?? ''),
+    sdt: String(item.so_dien_thoai_ca_nhan ?? item.So_dien_thoai_ca_nhan ?? item.sdt ?? ''),
+    maCongTy: String(item.ma_cong_ty ?? item.Ma_cong_ty ?? ''),
+    tenCongTy: String(item.ten_cong_ty ?? item.Ten_cong_ty ?? item.COMPANY ?? ''),
+    sdtCongTy: String(item.so_dien_thoai_cong_ty ?? item.So_dien_thoai_cong_ty ?? ''),
+    fax: String(item.so_fax_cong_ty ?? item.So_fax_cong_ty ?? ''),
+    diaChi: String(
+      item.dia_chi_cong_ty ??
+        item.Dia_chi_cong_ty ??
+        item.dia_chi ??
+        item.Dia_chi ??
+        item.diaChi ??
+        item.dia_chi_hoa_don ??
+        item.Dia_chi_hoa_don ??
+        ''
+    ),
+    emailCongTy: String(item.email_cong_ty ?? item.Email_cong_ty ?? ''),
+    website: String(item.website_cong_ty ?? item.Website_cong_ty ?? ''),
+    trangThai: String(item.trang_thai ?? item.Trang_thai ?? ''),
+    ghiChu: String(item.ghi_chu ?? item.Ghi_chu ?? ''),
+    tenKHPhu: String(item.ten_khach_hang_phu ?? item.Ten_khach_hang_phu ?? ''),
+    sdtPhu: String(item.so_dien_thoai_ca_nhan_phu ?? item.So_dien_thoai_ca_nhan_phu ?? ''),
+    emailPhu: String(item.email_ca_nhan_phu ?? item.Email_ca_nhan_phu ?? ''),
+    mst: String(item.mst ?? item.MST ?? ''),
+    company: String(item.company ?? item.COMPANY ?? ''),
+    address: String(item.address ?? item.ADDRESS ?? ''),
+    tel: String(item.tel ?? item.TEL ?? ''),
+    nganhNghe: String(
+      item.nganh_nghe_cong_ty ?? item.Nganh_nghe_cong_ty ?? item.nganh_nghe_chinh ?? item.Nganh_nghe_chinh ?? ''
+    ),
+    tagKH,
+    congNoRaw: Math.max(0, toNum(item.cong_no, 0)),
+    lastUpdated: item.last_updated ?? item.lastupdated ?? item.lastUpdated ?? item.lastupadted ?? ''
+  }
+}
+
 function applyCustomersSnapshot(data: any) {
   if (!data || typeof data !== 'object') {
     customersRaw.value = []
+    customerFullMap.value = new Map()
     return
   }
-  customersRaw.value = Object.entries(data).map(([k, v]) => fbKhachHangToRow(v, k))
+  const rows: any[][] = []
+  const fullMap = new Map<string, any>()
+  for (const [k, v] of Object.entries(data)) {
+    const row = fbKhachHangToRow(v, k)
+    rows.push(row)
+    const full = normalizeCustomerFullRecord(v, k)
+    if (full && full.maKH) {
+      fullMap.set(full.maKH, full)
+    }
+  }
+  customersRaw.value = rows
+  customerFullMap.value = fullMap
 }
 
 function applyHangHoaSnapshot(data: any) {
@@ -2817,6 +3127,7 @@ function applyHangHoaSnapshot(data: any) {
 
 function applySaleReportSnapshot(data: any) {
   const map: Record<string, { key: string; soPo: string; paid: number; debt: number; total: number }> = {}
+  const list: Array<{ maKH: string; maCT: string; mst: string; total: number; paid: number; debt: number }> = []
   if (data && typeof data === 'object') {
     for (const [k, v] of Object.entries(data) as [string, any][]) {
       if (!v || typeof v !== 'object') continue
@@ -2829,9 +3140,18 @@ function applySaleReportSnapshot(data: any) {
       map[`KEY:${k}`] = info
       if (maHD) map[`HD:${maHD}`] = info
       if (soPo) map[`PO:${soPo}`] = info
+      list.push({
+        maKH: String(v.Ma_khach_hang ?? v.ma_khach_hang ?? '').trim(),
+        maCT: String(v.Ma_cong_ty ?? v.ma_cong_ty ?? '').trim(),
+        mst: String(v.MST ?? v.mst ?? '').trim(),
+        total,
+        paid,
+        debt
+      })
     }
   }
   saleReportMapByKeyOrPo.value = map
+  saleReportRecords.value = list
 }
 
 function applySaleReportCraftSnapshot(data: any) {
@@ -2956,13 +3276,13 @@ function getContractItemCount(maHD: string): number {
 }
 
 function getContractTruocThue(c: Contract): number {
-  return priceViewMode.value === 'khach' ? c.tong_truoc_thue_khach : c.tong_truoc_thue
+  return c.tong_truoc_thue
 }
 function getContractVat(c: Contract): number {
-  return priceViewMode.value === 'khach' ? c.tong_vat_khach : c.tong_vat
+  return c.tong_vat
 }
 function getContractSauThue(c: Contract): number {
-  return priceViewMode.value === 'khach' ? c.tong_sau_thue_khach : c.tong_sau_thue
+  return c.tong_sau_thue
 }
 function getContractNetCom(c: Contract): number {
   return c.con_lai || c.tong_chiet_khau || 0
@@ -2980,20 +3300,12 @@ function getLinkedSaleReportRecord(c: Contract | null) {
   return null
 }
 
-function getPaymentStatusBadge(c: Contract): { label: string; cls: string } | null {
-  if (!c.is_completed) return null
-  const sr = getLinkedSaleReportRecord(c)
-  if (!sr) return null
-  if (sr.debt <= 0 && sr.total > 0) {
-    return { label: 'Đã thu đủ', cls: 'is-emerald' }
-  }
-  if (sr.paid > 0 && sr.debt > 0) {
-    return { label: `Nợ ${formatCompactVND(sr.debt)}`, cls: 'is-amber' }
-  }
-  if (sr.debt > 0) {
-    return { label: `Chưa thu ${formatCompactVND(sr.debt)}`, cls: 'is-rose' }
-  }
-  return null
+function isOfficialContract(c: Contract | null): boolean {
+  if (!c) return false
+  const status = String(c.trang_thai || '').trim()
+  if (status === 'Chính thức') return true
+  if (status === 'Tạm') return false
+  return Boolean(c.is_completed)
 }
 
 /* ======================
@@ -3007,25 +3319,104 @@ const dateQuickRange = ref<'all' | 'today' | '7d' | 'month' | 'quarter' | 'year'
 const customDateFrom = ref('')
 const customDateTo = ref('')
 
-const dateQuickOptions: { value: typeof dateQuickRange.value; label: string }[] = [
-  { value: 'all', label: 'Tất cả' },
-  { value: 'today', label: 'Hôm nay' },
-  { value: '7d', label: '7 ngày' },
-  { value: 'month', label: 'Tháng này' },
-  { value: 'quarter', label: 'Quý này' },
-  { value: 'year', label: 'Năm nay' },
-  { value: 'custom', label: 'Tùy chọn' }
+const sortRootRef = ref<HTMLElement | null>(null)
+const showSortMenu = ref(false)
+const sortOptions: { value: typeof sortMode.value; label: string; desc: string; tag: string }[] = [
+  { value: 'DESC', label: 'Ngày tạo: Mới → Cũ', desc: 'Ưu tiên báo giá mới tạo lên đầu', tag: 'Mặc định' },
+  { value: 'ASC', label: 'Ngày tạo: Cũ → Mới', desc: 'Xem theo thứ tự thời gian cũ trước', tag: 'Tăng dần' },
+  { value: 'AMOUNT_DESC', label: 'Giá trị: Cao → Thấp', desc: 'Ưu tiên đơn tổng sau VAT lớn nhất', tag: 'Giá cao' },
+  { value: 'AMOUNT_ASC', label: 'Giá trị: Thấp → Cao', desc: 'Xem các đơn giá trị nhỏ trước', tag: 'Giá thấp' }
+]
+const selectedSortLabel = computed(() => {
+  return sortOptions.find(o => o.value === sortMode.value)?.label || 'Ngày tạo: Mới → Cũ'
+})
+function toggleSortMenu() {
+  showSortMenu.value = !showSortMenu.value
+}
+function selectSortOption(val: typeof sortMode.value) {
+  sortMode.value = val
+  showSortMenu.value = false
+}
+
+const showDateModal = ref(false)
+const draftDateRange = ref<typeof dateQuickRange.value>('all')
+const draftCustomFrom = ref('')
+const draftCustomTo = ref('')
+
+const dateQuickOptions: { value: typeof dateQuickRange.value; label: string; desc: string }[] = [
+  { value: 'all', label: 'Tất cả', desc: 'Không giới hạn ngày tạo' },
+  { value: 'today', label: 'Hôm nay', desc: 'Tạo trong ngày hôm nay' },
+  { value: '7d', label: '7 ngày qua', desc: 'Trong 7 ngày gần nhất' },
+  { value: 'month', label: 'Tháng này', desc: 'Từ đầu tháng tới nay' },
+  { value: 'quarter', label: 'Quý này', desc: 'Trong quý hiện tại' },
+  { value: 'year', label: 'Năm nay', desc: 'Từ đầu năm tới nay' },
+  { value: 'custom', label: 'Tùy chọn', desc: 'Tự chọn Từ ngày → Đến ngày' }
 ]
 
-function setDateQuickRange(val: typeof dateQuickRange.value) {
-  dateQuickRange.value = val
-  if (val === 'custom' && !customDateFrom.value && !customDateTo.value) {
+function formatShortIsoDate(iso: string): string {
+  const parts = String(iso || '').split('-')
+  if (parts.length !== 3) return iso
+  return `${parts[2]}/${parts[1]}`
+}
+
+const selectedDateLabel = computed(() => {
+  if (dateQuickRange.value === 'all') return 'Thời gian: Tất cả'
+  if (dateQuickRange.value === 'custom') {
+    if (customDateFrom.value && customDateTo.value) {
+      return `${formatShortIsoDate(customDateFrom.value)} → ${formatShortIsoDate(customDateTo.value)}`
+    }
+    if (customDateFrom.value) return `Từ ${formatShortIsoDate(customDateFrom.value)}`
+    if (customDateTo.value) return `Đến ${formatShortIsoDate(customDateTo.value)}`
+    return 'Khoảng ngày'
+  }
+  return dateQuickOptions.find(o => o.value === dateQuickRange.value)?.label || 'Thời gian: Tất cả'
+})
+
+function openDateModal() {
+  showSortMenu.value = false
+  draftDateRange.value = dateQuickRange.value
+  if (customDateFrom.value || customDateTo.value) {
+    draftCustomFrom.value = customDateFrom.value
+    draftCustomTo.value = customDateTo.value
+  } else {
     const now = new Date()
     const pad = (n: number) => String(n).padStart(2, '0')
-    customDateTo.value = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+    draftCustomTo.value = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
     const first = new Date(now.getFullYear(), now.getMonth(), 1)
-    customDateFrom.value = `${first.getFullYear()}-${pad(first.getMonth() + 1)}-${pad(first.getDate())}`
+    draftCustomFrom.value = `${first.getFullYear()}-${pad(first.getMonth() + 1)}-${pad(first.getDate())}`
   }
+  showDateModal.value = true
+}
+
+function selectDatePresetInModal(val: typeof dateQuickRange.value) {
+  draftDateRange.value = val
+  if (val !== 'custom') {
+    dateQuickRange.value = val
+    customDateFrom.value = ''
+    customDateTo.value = ''
+    showDateModal.value = false
+  }
+}
+
+function applyCustomDateModal() {
+  let fromVal = draftCustomFrom.value
+  let toVal = draftCustomTo.value
+  if (fromVal && toVal && fromVal > toVal) {
+    const tmp = fromVal
+    fromVal = toVal
+    toVal = tmp
+  }
+  dateQuickRange.value = 'custom'
+  customDateFrom.value = fromVal
+  customDateTo.value = toVal
+  showDateModal.value = false
+}
+
+function resetDateFilter() {
+  dateQuickRange.value = 'all'
+  customDateFrom.value = ''
+  customDateTo.value = ''
+  draftDateRange.value = 'all'
 }
 
 const hasActiveFilters = computed(() => {
@@ -3163,8 +3554,7 @@ const filteredContracts = computed(() => {
 })
 
 const groupedContracts = computed((): ContractGroup[] => {
-  const byGoc = new Map<string, Contract[]>()
-  // Group all contracts that share ma_hop_dong_goc where count >= 2 OR ma_hop_dong_goc !== ma_hop_dong
+  // Gom toàn bộ báo giá (cả nhóm nhiều phiên bản lẫn đơn 1 bản) theo ma_hop_dong_goc || ma_hop_dong
   const tempBucket = new Map<string, Contract[]>()
   filteredContracts.value.forEach(c => {
     const gocKey = String(c.ma_hop_dong_goc || c.ma_hop_dong).trim()
@@ -3173,57 +3563,54 @@ const groupedContracts = computed((): ContractGroup[] => {
     if (!arr.some(x => x.ma_hop_dong === c.ma_hop_dong)) arr.push(c)
   })
 
+  const groups: ContractGroup[] = []
   tempBucket.forEach((vers, goc) => {
-    const isMultiOrChild = vers.length > 1 || vers.some(v => v.ma_hop_dong_goc && v.ma_hop_dong_goc !== v.ma_hop_dong)
-    if (isMultiOrChild) {
-      // Sort versions inside a group newest first so latest[0] is always the most recent version
-      const sortedVers = [...vers].sort((a, b) => {
-        if (a.is_completed !== b.is_completed) return a.is_completed ? -1 : 1
-        const da = parseVietnameseDate(a.created_time || a.ngay_tao)?.getTime() || 0
-        const db = parseVietnameseDate(b.created_time || b.ngay_tao)?.getTime() || 0
-        return db - da
-      })
-      byGoc.set(goc, sortedVers)
-    }
+    if (!vers.length) return
+    // Sort versions inside a group: Chính thức first, then newest first so versions[0] is always the lead version
+    const sortedVers = [...vers].sort((a, b) => {
+      const aOff = isOfficialContract(a)
+      const bOff = isOfficialContract(b)
+      if (aOff !== bOff) return aOff ? -1 : 1
+      const da = parseVietnameseDate(a.created_time || a.ngay_tao)?.getTime() || 0
+      const db = parseVietnameseDate(b.created_time || b.ngay_tao)?.getTime() || 0
+      return db - da
+    })
+    groups.push({ goc, latest: sortedVers[0], versions: sortedVers })
   })
 
-  const groups: ContractGroup[] = []
-  byGoc.forEach((versions, goc) => {
-    if (versions.length > 0) groups.push({ goc, latest: versions[0], versions })
-  })
   return groups.sort((a, b) => compareContracts(a.latest, b.latest))
 })
 
-const standaloneContracts = computed((): Contract[] => {
-  const groupedIds = new Set<string>()
-  groupedContracts.value.forEach(g => {
-    g.versions.forEach(v => groupedIds.add(v.ma_hop_dong))
-  })
-  return filteredContracts.value.filter(c => !groupedIds.has(c.ma_hop_dong))
-})
-
 function isGroupCompleted(g: ContractGroup): boolean {
-  return g.versions.some(v => v.is_completed || v.trang_thai === 'Chính thức')
+  return g.versions.some(v => isOfficialContract(v))
 }
 
-function getGroupOfficialPo(g: ContractGroup): string {
-  const off = g.versions.find(v => v.is_completed || v.trang_thai === 'Chính thức')
-  return off?.so_po || (off ? 'Đã chốt' : '')
+function getGroupPoContent(g: ContractGroup): string {
+  if (!g?.versions?.length) return ''
+  const fromLatest = String(g.latest?.content_of_contract_po || '').trim()
+  if (fromLatest) return fromLatest
+  const match = g.versions.find(v => String(v.content_of_contract_po || '').trim())
+  return String(match?.content_of_contract_po || '').trim()
 }
 
-const totalGroups = computed(() => groupedContracts.value.length + standaloneContracts.value.length)
-const completedGroups = computed(() => {
-  return (
-    groupedContracts.value.filter(g => isGroupCompleted(g)).length +
-    standaloneContracts.value.filter(c => c.is_completed).length
-  )
-})
-const processingGroups = computed(() => {
-  return (
-    groupedContracts.value.filter(g => !isGroupCompleted(g)).length +
-    standaloneContracts.value.filter(c => !c.is_completed).length
-  )
-})
+function getGroupNewestCreatedTime(g: ContractGroup): string {
+  if (!g?.versions?.length) return ''
+  let newestVer = g.versions[0]
+  let newestTs = parseVietnameseDate(newestVer.created_time || newestVer.ngay_tao)?.getTime() || 0
+  for (let i = 1; i < g.versions.length; i++) {
+    const v = g.versions[i]
+    const ts = parseVietnameseDate(v.created_time || v.ngay_tao)?.getTime() || 0
+    if (ts > newestTs) {
+      newestTs = ts
+      newestVer = v
+    }
+  }
+  return newestVer.created_time || newestVer.ngay_tao || ''
+}
+
+const totalGroups = computed(() => groupedContracts.value.length)
+const completedGroups = computed(() => groupedContracts.value.filter(g => isGroupCompleted(g)).length)
+const processingGroups = computed(() => groupedContracts.value.filter(g => !isGroupCompleted(g)).length)
 
 const displayedGroupedContracts = computed(() => {
   if (dashboardFilter.value === 'ALL') return groupedContracts.value
@@ -3231,46 +3618,8 @@ const displayedGroupedContracts = computed(() => {
   return groupedContracts.value.filter(g => !isGroupCompleted(g))
 })
 
-const displayedStandaloneContracts = computed(() => {
-  if (dashboardFilter.value === 'ALL') return standaloneContracts.value
-  if (dashboardFilter.value === 'COMPLETED') return standaloneContracts.value.filter(c => c.is_completed)
-  return standaloneContracts.value.filter(c => !c.is_completed)
-})
-
-const displayedTableContracts = computed(() => {
-  if (dashboardFilter.value === 'ALL') return filteredContracts.value
-  if (dashboardFilter.value === 'COMPLETED') return filteredContracts.value.filter(c => c.is_completed)
-  return filteredContracts.value.filter(c => !c.is_completed)
-})
-
-const kpiMetrics = computed(() => {
-  const repUnits: Contract[] = [
-    ...displayedGroupedContracts.value.map(g => g.latest),
-    ...displayedStandaloneContracts.value
-  ]
-  let activeTruocThue = 0
-  let activeSauThue = 0
-  let totalNetCom = 0
-  repUnits.forEach(c => {
-    activeTruocThue += getContractTruocThue(c)
-    activeSauThue += getContractSauThue(c)
-    totalNetCom += getContractNetCom(c)
-  })
-
-  const draftUnits: Contract[] = [
-    ...groupedContracts.value.filter(g => !isGroupCompleted(g)).map(g => g.latest),
-    ...standaloneContracts.value.filter(c => !c.is_completed)
-  ]
-  const draftSauThue = draftUnits.reduce((acc, c) => acc + getContractSauThue(c), 0)
-  const winRate = totalGroups.value > 0 ? Math.round((completedGroups.value / totalGroups.value) * 100) : 0
-
-  return { activeTruocThue, activeSauThue, totalNetCom, draftSauThue, winRate }
-})
-
 const hasAnyDisplayedData = computed(() => {
-  return layoutMode.value === 'table'
-    ? displayedTableContracts.value.length > 0
-    : displayedGroupedContracts.value.length > 0 || displayedStandaloneContracts.value.length > 0
+  return displayedGroupedContracts.value.length > 0
 })
 
 /* ======================
@@ -3292,52 +3641,27 @@ function toggleAllGroupsCollapse() {
 }
 
 const CARD_LAZY_BATCH = 16
-const TABLE_LAZY_BATCH = 30
 const MODAL_CUST_LAZY_BATCH = 25
 
 const cardDisplayLimit = ref(CARD_LAZY_BATCH)
-const tableDisplayLimit = ref(TABLE_LAZY_BATCH)
-
-const totalCardUnitsCount = computed(
-  () => displayedGroupedContracts.value.length + displayedStandaloneContracts.value.length
-)
 
 const paginatedGroupedContracts = computed(() => {
   return displayedGroupedContracts.value.slice(0, cardDisplayLimit.value)
 })
 
-const paginatedStandaloneContracts = computed(() => {
-  const rem = cardDisplayLimit.value - paginatedGroupedContracts.value.length
-  if (rem <= 0) return []
-  return displayedStandaloneContracts.value.slice(0, rem)
-})
-
-const visibleCardUnitsCount = computed(
-  () => paginatedGroupedContracts.value.length + paginatedStandaloneContracts.value.length
-)
-
-const hasMoreCards = computed(() => visibleCardUnitsCount.value < totalCardUnitsCount.value)
+const hasMoreCards = computed(() => paginatedGroupedContracts.value.length < displayedGroupedContracts.value.length)
 function loadMoreCards() {
   if (hasMoreCards.value) cardDisplayLimit.value += CARD_LAZY_BATCH
 }
 
-const paginatedTableContracts = computed(() => displayedTableContracts.value.slice(0, tableDisplayLimit.value))
-const hasMoreTableRows = computed(() => paginatedTableContracts.value.length < displayedTableContracts.value.length)
-function loadMoreTableRows() {
-  if (hasMoreTableRows.value) tableDisplayLimit.value += TABLE_LAZY_BATCH
-}
-
 watch([searchKeyword, customerFilter, dashboardFilter, dateQuickRange, customDateFrom, customDateTo, sortMode], () => {
   cardDisplayLimit.value = CARD_LAZY_BATCH
-  tableDisplayLimit.value = TABLE_LAZY_BATCH
 })
 
 const cardLazySentinelRef = ref<HTMLElement | null>(null)
-const tableLazySentinelRef = ref<HTMLElement | null>(null)
 const customerModalSentinelRef = ref<HTMLElement | null>(null)
 
 let cardObserver: IntersectionObserver | null = null
-let tableObserver: IntersectionObserver | null = null
 let custModalObserver: IntersectionObserver | null = null
 
 watch(cardLazySentinelRef, el => {
@@ -3353,22 +3677,6 @@ watch(cardLazySentinelRef, el => {
       { rootMargin: '260px' }
     )
     cardObserver.observe(el)
-  }
-})
-
-watch(tableLazySentinelRef, el => {
-  if (tableObserver) {
-    tableObserver.disconnect()
-    tableObserver = null
-  }
-  if (el && typeof IntersectionObserver !== 'undefined') {
-    tableObserver = new IntersectionObserver(
-      entries => {
-        if (entries.some(e => e.isIntersecting)) loadMoreTableRows()
-      },
-      { rootMargin: '260px' }
-    )
-    tableObserver.observe(el)
   }
 })
 
@@ -3439,23 +3747,14 @@ watch(customerModalSentinelRef, el => {
   }
 })
 
-const customerPickerForDetail = ref(false)
-
-function openCustomerModal(forDetail = false) {
-  customerPickerForDetail.value = forDetail
+function openCustomerModal() {
+  showSortMenu.value = false
   customerModalSearch.value = ''
   customerModalLimit.value = MODAL_CUST_LAZY_BATCH
   showCustomerModal.value = true
 }
 
 function selectCustomerFilter(id: string) {
-  if (customerPickerForDetail.value && selectedContract.value) {
-    customerPickerForDetail.value = false
-    showCustomerModal.value = false
-    applyPickedCustomerToDetailModal(id)
-    return
-  }
-  customerPickerForDetail.value = false
   customerFilter.value = id
   showCustomerModal.value = false
 }
@@ -3471,33 +3770,88 @@ const selectedCustomerLabel = computed(() => {
 const showCustomerInfoModal = ref(false)
 const customerInfoData = ref<any>({})
 
+function formatCustomerUpdatedAt(val: any): string {
+  if (!val && val !== 0) return ''
+  const rawStr = String(val).trim()
+  if (!rawStr) return ''
+  const dt = /^\d+$/.test(rawStr) ? new Date(Number(rawStr)) : parseVietnameseDate(rawStr)
+  if (!dt || isNaN(dt.getTime())) return rawStr
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${pad(dt.getDate())}/${pad(dt.getMonth() + 1)}/${dt.getFullYear()} ${pad(dt.getHours())}:${pad(dt.getMinutes())}`
+}
+
+const customerInfoDebtSummary = computed(() => {
+  const d = customerInfoData.value
+  if (!d) return { poCount: 0, tongSauVat: 0, daThanhToan: 0, congNo: 0, progressPct: 100 }
+  const mkh = String(d.maKH || '').trim()
+  const mct = String(d.maCongTy || '').trim()
+  const mst = String(d.mst || '').trim()
+
+  const pos = saleReportRecords.value.filter(r => {
+    if (mkh && r.maKH && mkh === r.maKH) return true
+    if (mct && r.maCT && mct === r.maCT) return true
+    if (mkh && r.maCT && mkh === r.maCT) return true
+    if (mct && r.maKH && mct === r.maKH) return true
+    if (mst && r.mst && mst === r.mst) return true
+    return false
+  })
+
+  if (pos.length > 0) {
+    const tongSauVat = pos.reduce((s, r) => s + r.total, 0)
+    const daThanhToan = pos.reduce((s, r) => s + r.paid, 0)
+    const congNo = pos.reduce((s, r) => s + r.debt, 0)
+    const progressPct =
+      tongSauVat > 0 ? Math.min(100, Math.round((daThanhToan / tongSauVat) * 100)) : congNo <= 0 ? 100 : 0
+    return { poCount: pos.length, tongSauVat, daThanhToan, congNo, progressPct }
+  }
+
+  const fallbackCn = Math.max(0, toNum(d.congNoRaw, 0))
+  return {
+    poCount: 0,
+    tongSauVat: fallbackCn,
+    daThanhToan: 0,
+    congNo: fallbackCn,
+    progressPct: fallbackCn > 0 ? 0 : 100
+  }
+})
+
 function openCustomerInfoModal(maKH: string) {
-  const row = customerMap.value.get(String(maKH || '').trim())
-  if (row) {
-    customerInfoData.value = {
-      maKH: String(row[0] || ''),
-      tenKH: String(row[1] || ''),
-      email: String(row[2] || ''),
-      sdt: String(row[3] || ''),
-      tenCongTy: String(row[5] || ''),
-      sdtCongTy: String(row[6] || ''),
-      fax: String(row[7] || ''),
-      diaChi: String(row[8] || ''),
-      emailCongTy: String(row[9] || ''),
-      website: String(row[10] || ''),
-      congNo: String(row[13] || ''),
-      trangThai: String(row[14] || ''),
-      ghiChu: String(row[15] || ''),
-      tenKHPhu: String(row[16] || ''),
-      sdtPhu: String(row[17] || ''),
-      emailPhu: String(row[18] || ''),
-      mst: String(row[19] || ''),
-      company: String(row[20] || ''),
-      address: String(row[21] || ''),
-      tel: String(row[22] || '')
-    }
+  const key = String(maKH || '').trim()
+  const full = customerFullMap.value.get(key)
+  if (full) {
+    customerInfoData.value = { ...full }
   } else {
-    customerInfoData.value = { maKH }
+    const row = customerMap.value.get(key)
+    if (row) {
+      customerInfoData.value = {
+        maKH: String(row[0] || ''),
+        tenKH: String(row[1] || ''),
+        email: String(row[2] || ''),
+        sdt: String(row[3] || ''),
+        maCongTy: String(row[4] || ''),
+        tenCongTy: String(row[5] || ''),
+        sdtCongTy: String(row[6] || ''),
+        fax: String(row[7] || ''),
+        diaChi: String(row[8] || ''),
+        emailCongTy: String(row[9] || ''),
+        website: String(row[10] || ''),
+        congNoRaw: Math.max(0, toNum(row[13], 0)),
+        trangThai: String(row[14] || ''),
+        ghiChu: String(row[15] || ''),
+        tenKHPhu: String(row[16] || ''),
+        sdtPhu: String(row[17] || ''),
+        emailPhu: String(row[18] || ''),
+        mst: String(row[19] || ''),
+        company: String(row[20] || ''),
+        address: String(row[21] || ''),
+        tel: String(row[22] || ''),
+        nganhNghe: '',
+        tagKH: [],
+        lastUpdated: ''
+      }
+    } else {
+      customerInfoData.value = { maKH: key, tagKH: [], congNoRaw: 0 }
+    }
   }
   showCustomerInfoModal.value = true
 }
@@ -3513,6 +3867,33 @@ function filterByCustomerFromProfile(maKH: string) {
 ====================== */
 const showDetailModal = ref(false)
 const activeMobileSubTab = ref<'chitiet' | 'tongket'>('chitiet')
+const activeMobileInnerTab = ref<'goods' | 'metrics'>('goods')
+const isMobileModalView = ref(false)
+const isMobileDockViewport = ref(false)
+const showMobileDisplayPopover = ref(false)
+const mobileDockRef = ref<HTMLElement | null>(null)
+const mobileDisplayPopoverRef = ref<HTMLElement | null>(null)
+let detailModalMq: MediaQueryList | null = null
+let mobileDockMq: MediaQueryList | null = null
+
+function updateMobileModalViewport(target?: MediaQueryList | MediaQueryListEvent) {
+  const matches = target
+    ? target.matches
+    : typeof window !== 'undefined'
+      ? window.innerWidth <= 1080
+      : false
+  isMobileModalView.value = matches
+}
+
+function updateMobileDockViewport(target?: MediaQueryList | MediaQueryListEvent) {
+  const matches = target
+    ? target.matches
+    : typeof window !== 'undefined'
+      ? window.innerWidth <= 768
+      : false
+  isMobileDockViewport.value = matches
+  if (!matches) showMobileDisplayPopover.value = false
+}
 const selectedContract = ref<Contract | null>(null)
 const loadingDetails = ref(false)
 const selectedContractDetails = ref<ContractDetail[]>([])
@@ -3580,24 +3961,9 @@ const modalCustEdit = reactive({
   tenKH: '',
   tenCongTy: ''
 })
-const savingModalMetrics = ref(false)
-let suppressModalPersist = false
-let persistModalTimer: ReturnType<typeof setTimeout> | null = null
 
 function toggleDetailDockTab(tab: 'customer' | 'files' | 'discount' | 'finance') {
   activeDetailDockTab.value = activeDetailDockTab.value === tab ? '' : tab
-}
-
-type CmpSrComAdjustHistoryEntry = {
-  field: 'grossCom' | 'netCom'
-  prevGrossOverride: number | null
-  prevNetOverride: number | null
-  prevGrossPctOverride: number | null
-  prevComPctActive: boolean
-  prevPredictPct: string
-  prevDisplayGross: number
-  prevDisplayNet: number
-  delta: number
 }
 
 type CmpSrOverrideBucket = {
@@ -3614,10 +3980,6 @@ type CmpSrOverrideBucket = {
   _origGross: number | null
   _origNet: number | null
   _hasOrigSaved: boolean
-  _comAdjustOpenField?: 'grossCom' | 'netCom' | null
-  _comAdjustSign?: 1 | -1
-  _comAdjustAmount?: number
-  _comAdjustHistory?: CmpSrComAdjustHistoryEntry[]
 }
 
 function createEmptyCmpSrBucket(): CmpSrOverrideBucket {
@@ -3634,11 +3996,7 @@ function createEmptyCmpSrBucket(): CmpSrOverrideBucket {
     lamTronTiSuat: false,
     _origGross: null,
     _origNet: null,
-    _hasOrigSaved: false,
-    _comAdjustOpenField: null,
-    _comAdjustSign: 1,
-    _comAdjustAmount: 0,
-    _comAdjustHistory: []
+    _hasOrigSaved: false
   }
 }
 
@@ -3658,12 +4016,12 @@ function resetAllCmpSrOverrides() {
 }
 
 function viewDetails(contract: Contract) {
-  suppressModalPersist = true
   selectedContract.value = contract
-  detailViewMode.value = priceViewMode.value
-  cmpSrPriceSource.value = priceViewMode.value === 'khach' ? 'customer' : 'contract'
+  detailViewMode.value = 'hd'
+  cmpSrPriceSource.value = 'contract'
   quoteCurrency.value = 'VND'
   activeMobileSubTab.value = 'chitiet'
+  activeMobileInnerTab.value = 'goods'
   showCompareFinancePanel.value = true
   if (!activeDetailDockTab.value) activeDetailDockTab.value = 'discount'
   showDetailModal.value = true
@@ -3671,9 +4029,6 @@ function viewDetails(contract: Contract) {
   rebuildSelectedContractDetails(contract.ma_hop_dong)
   initModalMetricsFromContract(contract)
   loadingDetails.value = false
-  nextTick(() => {
-    suppressModalPersist = false
-  })
 }
 
 const effectiveModalExchangeRate = computed(() => {
@@ -3853,6 +4208,13 @@ function initModalMetricsFromContract(c: Contract) {
   const isRounded = Boolean(c.lam_tron_ti_suat)
   cmpSrOverridesMap.contract.lamTronTiSuat = isRounded
   cmpSrOverridesMap.customer.lamTronTiSuat = isRounded
+}
+
+function setCmpSrPriceSource(src: 'contract' | 'customer') {
+  cmpSrPriceSource.value = src
+  if (detailViewMode.value !== 'noibo') {
+    detailViewMode.value = src === 'customer' ? 'khach' : 'hd'
+  }
 }
 
 watch(detailViewMode, mode => {
@@ -4038,264 +4400,6 @@ function toggleCmpSrRatioRounding() {
   const next = !cmpSrIsRatioRounded.value
   cmpSrOverridesMap.contract.lamTronTiSuat = next
   cmpSrOverridesMap.customer.lamTronTiSuat = next
-  schedulePersistModalAdjustments()
-}
-
-function onCmpSrFieldChange(
-  field: 'doanhSoBan' | 'giaMua' | 'tongCP' | 'netCom' | 'grossCom' | 'grossComPct' | 'taxPct',
-  rawVal: number | string
-) {
-  const bucket = cmpSrOverrides.value
-  const numVal = toNum(rawVal, 0)
-  const nextVal =
-    field === 'taxPct'
-      ? Math.max(0, round2(numVal))
-      : field === 'grossComPct'
-        ? roundCmpSrComPct(numVal)
-        : cmpSrRound(numVal)
-  const currentVal =
-    field === 'doanhSoBan'
-      ? cmpSrDoanhSoBan.value
-      : field === 'giaMua'
-        ? cmpSrGiaMua.value
-        : field === 'tongCP'
-          ? cmpSrTongCP.value
-          : field === 'netCom'
-            ? cmpSrNetCom.value
-            : field === 'grossCom'
-              ? cmpSrGrossCom.value
-              : field === 'grossComPct'
-                ? cmpSrGrossComPct.value
-                : cmpSrTaxPct.value
-
-  if (Math.abs(currentVal - nextVal) < 1e-6) return
-
-  if (field === 'taxPct') {
-    modalThueChenhLechPct.value = nextVal
-  } else if (field === 'giaMua' || field === 'tongCP') {
-    cmpSrOverridesMap.contract[field] = nextVal
-    cmpSrOverridesMap.customer[field] = nextVal
-  } else if (field === 'grossComPct') {
-    bucket.grossComPct = nextVal
-    bucket._comPctActive = nextVal !== 0
-  } else {
-    bucket[field] = nextVal
-  }
-  const pct = (field === 'taxPct' ? nextVal : cmpSrTaxPct.value) / 100
-
-  if (field === 'grossComPct') {
-    const gc = cmpSrRound(cmpSrDoanhSoBan.value * (nextVal / 100))
-    bucket.grossCom = gc
-    bucket.netCom = cmpSrRound(gc * (1 - pct))
-  } else if (field === 'doanhSoBan') {
-    if (bucket._comPctActive && (Number(bucket.grossComPct) || 0) !== 0) {
-      const gc = cmpSrRound(nextVal * ((Number(bucket.grossComPct) || 0) / 100))
-      bucket.grossCom = gc
-      bucket.netCom = cmpSrRound(gc * (1 - pct))
-    }
-  } else if (field === 'netCom') {
-    if (pct < 1) {
-      bucket.grossCom = cmpSrRound(nextVal / (1 - pct))
-    }
-    bucket._comPctActive = false
-    bucket.grossComPct = null
-  } else if (field === 'grossCom') {
-    bucket.netCom = cmpSrRound(nextVal * (1 - pct))
-    bucket._comPctActive = false
-    bucket.grossComPct = null
-  } else if (field === 'taxPct') {
-    const gc = cmpSrGrossCom.value
-    bucket.netCom = cmpSrRound(gc * (1 - pct))
-  }
-
-  bucket.predictPct = ''
-  bucket._origGross = null
-  bucket._origNet = null
-  bucket._hasOrigSaved = false
-  schedulePersistModalAdjustments()
-}
-
-function onModalDiscountPctChange(field: 'ckPct' | 'taxPct', rawVal: number | string) {
-  const numVal = Math.max(0, round2(toNum(rawVal, 0)))
-  if (field === 'ckPct') {
-    if (Math.abs(modalChietKhauTruocThuePct.value - numVal) < 1e-6) return
-    modalChietKhauTruocThuePct.value = numVal
-    // Nếu chưa có chênh lệch giá dòng, cập nhật lại Gross/Net COM theo % chiết khấu trước thuế
-    const b = modalBaseTotalsVnd.value
-    if (Math.abs(b.hdTruoc - b.khachTruoc) <= 1) {
-      cmpSrOverridesMap.contract.grossCom = null
-      cmpSrOverridesMap.contract.netCom = null
-      cmpSrOverridesMap.customer.grossCom = null
-      cmpSrOverridesMap.customer.netCom = null
-    }
-  } else {
-    if (Math.abs(modalThueChenhLechPct.value - numVal) < 1e-6) return
-    modalThueChenhLechPct.value = numVal
-    const tp = numVal / 100
-    ;(['contract', 'customer'] as const).forEach(mode => {
-      const b = cmpSrOverridesMap[mode]
-      if (mode === cmpSrPriceSource.value && b.predictPct !== '') {
-        applyCmpSrPredictPct(b.predictPct)
-      } else if (b.netCom !== null || b.grossCom !== null) {
-        const gc = b.grossCom !== null ? b.grossCom : cmpSrBaseGrossCom.value
-        b.netCom = cmpSrRound(gc * (1 - tp))
-      }
-    })
-  }
-  schedulePersistModalAdjustments()
-}
-
-function applyCmpSrPredictPct(rawStr: string) {
-  const bucket = cmpSrOverrides.value
-  bucket.predictPct = rawStr
-
-  if (rawStr === '') {
-    if (bucket._hasOrigSaved) {
-      bucket.grossCom = bucket._origGross
-      bucket.netCom = bucket._origNet
-      bucket._origGross = null
-      bucket._origNet = null
-      bucket._hasOrigSaved = false
-    }
-    schedulePersistModalAdjustments()
-    return
-  }
-
-  const normalized = rawStr.replace(/,/g, '.')
-  if (normalized === '-' || normalized === '.' || normalized === '-.') return
-  const desiredPct = Number(normalized)
-  if (isNaN(desiredPct)) return
-
-  if (!bucket._hasOrigSaved) {
-    bucket._origGross = bucket.grossCom
-    bucket._origNet = bucket.netCom
-    bucket._hasOrigSaved = true
-  }
-
-  const pct = desiredPct / 100
-  const tax = cmpSrTaxPct.value / 100
-  const dsb = cmpSrDoanhSoBan.value
-  const tcp = cmpSrTongCP.value
-
-  const targetNetMargin = dsb * pct
-  const requiredGrossCom = cmpSrRound(dsb - tcp - targetNetMargin)
-  const requiredNetCom = cmpSrRound(requiredGrossCom * (1 - tax))
-
-  bucket.grossCom = requiredGrossCom
-  bucket.netCom = requiredNetCom
-  bucket._comPctActive = false
-  bucket.grossComPct = null
-  schedulePersistModalAdjustments()
-}
-
-function resetCmpSrPredictPct() {
-  applyCmpSrPredictPct('')
-}
-
-function onCmpSrPredictInput(e: Event) {
-  const target = e.target as HTMLInputElement
-  const cleaned = target.value.replace(/[^0-9.,-]/g, '')
-  if (target.value !== cleaned) {
-    target.value = cleaned
-  }
-  applyCmpSrPredictPct(cleaned)
-}
-
-function resetCurrentCmpSrBucket() {
-  Object.assign(cmpSrOverridesMap[cmpSrPriceSource.value], createEmptyCmpSrBucket())
-  const otherMode = cmpSrPriceSource.value === 'contract' ? 'customer' : 'contract'
-  cmpSrOverridesMap[otherMode].giaMua = null
-  cmpSrOverridesMap[otherMode].tongCP = null
-  schedulePersistModalAdjustments()
-}
-
-const hasCmpSrOverrides = computed(() => {
-  const b = cmpSrOverrides.value
-  return (
-    b.doanhSoBan !== null ||
-    b.giaMua !== null ||
-    b.tongCP !== null ||
-    b.grossCom !== null ||
-    b.netCom !== null ||
-    b.grossComPct !== null ||
-    b._comPctActive ||
-    b.taxPct !== null ||
-    b.predictPct !== ''
-  )
-})
-
-const lastCmpSrComAdjust = computed(() => {
-  const hist = cmpSrOverrides.value._comAdjustHistory
-  return hist && hist.length > 0 ? hist[hist.length - 1] : null
-})
-
-function toggleCmpSrComAdjustPanel(field: 'grossCom' | 'netCom') {
-  const bucket = cmpSrOverrides.value
-  if (bucket._comAdjustOpenField === field) {
-    closeCmpSrComAdjustPanel()
-    return
-  }
-  bucket._comAdjustOpenField = field
-  bucket._comAdjustSign = 1
-  bucket._comAdjustAmount = 0
-  nextTick(() => {
-    const el = document.getElementById('qlbg-cmp-sr-input-comAdjust') as HTMLInputElement | null
-    if (el) {
-      el.focus()
-      el.select()
-    }
-  })
-}
-
-function closeCmpSrComAdjustPanel() {
-  const bucket = cmpSrOverrides.value
-  bucket._comAdjustOpenField = null
-  bucket._comAdjustAmount = 0
-  bucket._comAdjustSign = 1
-}
-
-function applyCmpSrComAdjust() {
-  const bucket = cmpSrOverrides.value
-  const field = bucket._comAdjustOpenField
-  if (!field) return
-  const sign = (bucket._comAdjustSign ?? 1) >= 0 ? 1 : -1
-  const rawAmt = Math.abs(Number(bucket._comAdjustAmount) || 0)
-  const amt = quoteCurrency.value === 'USD' ? round2(rawAmt) : Math.round(rawAmt)
-  if (!amt) return
-
-  const delta = quoteCurrency.value === 'USD' ? round2(sign * amt) : sign * amt
-  if (!Array.isArray(bucket._comAdjustHistory)) {
-    bucket._comAdjustHistory = []
-  }
-  bucket._comAdjustHistory.push({
-    field,
-    prevGrossOverride: bucket.grossCom,
-    prevNetOverride: bucket.netCom,
-    prevGrossPctOverride: bucket.grossComPct,
-    prevComPctActive: Boolean(bucket._comPctActive),
-    prevPredictPct: bucket.predictPct || '',
-    prevDisplayGross: cmpSrGrossCom.value,
-    prevDisplayNet: cmpSrNetCom.value,
-    delta
-  })
-
-  const baseVal = field === 'grossCom' ? cmpSrGrossCom.value : cmpSrNetCom.value
-  const nextVal = cmpSrRound(baseVal + delta)
-  onCmpSrFieldChange(field, nextVal)
-  closeCmpSrComAdjustPanel()
-}
-
-function undoCmpSrComAdjust() {
-  const bucket = cmpSrOverrides.value
-  const hist = bucket._comAdjustHistory
-  if (!hist || hist.length === 0) return
-  const snap = hist.pop()!
-  bucket.grossCom = snap.prevGrossOverride
-  bucket.netCom = snap.prevNetOverride
-  bucket.grossComPct = snap.prevGrossPctOverride
-  bucket._comPctActive = snap.prevComPctActive
-  bucket.predictPct = snap.prevPredictPct
-  schedulePersistModalAdjustments()
 }
 
 const resolvedModalMetricsVnd = computed(() => {
@@ -4423,203 +4527,17 @@ const detailSummary = computed(() => {
   }
 })
 
-function schedulePersistModalAdjustments() {
-  if (suppressModalPersist || !selectedContract.value) return
-  const c = selectedContract.value
-  const m = resolvedModalMetricsVnd.value
-
-  // Cập nhật ngay lập tức trên object đang chọn để UI card ngoài & modal đồng bộ tức thì
-  c.tong_truoc_thue = m.truocHD
-  c.tong_vat = m.vatHD
-  c.tong_sau_thue = m.sauHD
-  c.tong_truoc_thue_khach = m.truocKhach
-  c.tong_vat_khach = m.vatKhach
-  c.tong_sau_thue_khach = m.sauKhach
-  c.gia_mua = m.giaMuaVnd
-  c.tong_cp = m.tongCpVnd
-  c.chiet_khau_truoc_thue = m.ckTruocThue
-  c.chiet_khau_truoc_thue_pct = m.ckTruocThuePct
-  c.thue_chenh_lech = m.thueCL
-  c.thue_chenh_lech_pct = m.thueCLPct
-  c.chenh_lech_gia = m.clGia
-  c.con_lai = m.conLaiVal
-  c.tong_chiet_khau = m.tongCKVal
-  c.lam_tron_ti_suat = m.lamTronTiSuat
-
-  if (persistModalTimer) clearTimeout(persistModalTimer)
-  persistModalTimer = setTimeout(() => {
-    persistModalFinancialAdjustments(c, m)
-  }, 450)
-}
-
-async function persistModalFinancialAdjustments(
-  c: Contract,
-  m: ReturnType<typeof resolvedModalMetricsVnd.value extends infer T ? () => T : never>
-) {
-  const targetKey = c._fbKey || c.ma_hop_dong
-  if (!targetKey) return
-  savingModalMetrics.value = true
-  try {
-    const snap = await get(dbRef(database, `hop_dong_tong_quat/${targetKey}`))
-    if (snap.exists()) {
-      const val = snap.val()
-      if (Array.isArray(val)) {
-        const copy = [...val]
-        while (copy.length < 47) copy.push('')
-        copy[2] = modalCustEdit.maKH || copy[2]
-        copy[3] = modalCustEdit.tenKH || copy[3]
-        copy[5] = m.truocHD
-        copy[6] = m.vatHD
-        copy[7] = m.sauHD
-        copy[9] = m.sauHD
-        copy[20] = m.truocKhach
-        copy[25] = m.ckTruocThue
-        copy[26] = m.ckTruocThuePct
-        copy[27] = m.thueCL
-        copy[28] = m.thueCLPct
-        copy[29] = m.clGia
-        copy[30] = m.conLaiVal
-        copy[31] = m.tongCKVal
-        copy[37] = m.vatKhach
-        copy[38] = m.sauKhach
-        copy[40] = m.giaMuaVnd
-        copy[45] = m.tongCpVnd
-        copy[46] = m.lamTronTiSuat
-        await set(dbRef(database, `hop_dong_tong_quat/${targetKey}`), copy)
-      } else {
-        await update(dbRef(database, `hop_dong_tong_quat/${targetKey}`), {
-          ma_khach_hang: modalCustEdit.maKH || c.ma_khach_hang,
-          ten_khach_hang: modalCustEdit.tenKH || c.ten_khach_hang,
-          Tong_tien_truoc_thueVAT: m.truocHD,
-          tong_truoc_vat: m.truocHD,
-          Tong_thueVAT: m.vatHD,
-          tong_vat: m.vatHD,
-          Tong_tien_sau_thueVAT: m.sauHD,
-          tong_sau_vat: m.sauHD,
-          Tong_cong: m.sauHD,
-          Tong_gia_thuc_te: m.truocKhach,
-          Tong_tien_truoc_thueVAT_khach: m.truocKhach,
-          tong_truoc_vat_goc: m.truocKhach,
-          Tong_thueVAT_khach: m.vatKhach,
-          Tong_tien_sau_thueVAT_khach: m.sauKhach,
-          Tong_thanh_tien_chua_VAT_mua_hang: m.giaMuaVnd,
-          giaMua: m.giaMuaVnd,
-          Tong_CP_don_hang: m.tongCpVnd,
-          tongCP: m.tongCpVnd,
-          chiet_khau_tong_truoc_thue: m.ckTruocThue,
-          gross_com: m.grossComVal,
-          grossCom: m.grossComVal,
-          phan_tram_chiet_khau_tong_truoc_thue: m.ckTruocThuePct,
-          phan_tram_chiet_khau: m.ckTruocThuePct,
-          thue_chenh_lech_gia: m.thueCL,
-          phan_tram_thue_chenh_lech_gia: m.thueCLPct,
-          phan_tram_thue: m.thueCLPct,
-          chenh_lech_gia: m.clGia,
-          con_lai: m.conLaiVal,
-          net_com: m.netComVal,
-          netCom: m.netComVal,
-          tong_chiet_khau: m.tongCKVal,
-          lam_tron_ti_suat: m.lamTronTiSuat
-        })
-      }
-    }
-
-    const srPatch = {
-      Ma_khach_hang: modalCustEdit.maKH || c.ma_khach_hang,
-      Ten_khach_hang: modalCustEdit.tenKH || c.ten_khach_hang,
-      Ten_cong_ty: modalCustEdit.tenCongTy || getCustomerInfo(c.ma_khach_hang).tenCongTy,
-      MST: modalCustEdit.mst || getCustomerInfo(c.ma_khach_hang).mst,
-      Tong_tien_truoc_thueVAT: m.truocHD,
-      Tong_thueVAT: m.vatHD,
-      Tong_tien_sau_thueVAT: m.sauHD,
-      doanhSoBan: m.truocHD,
-      Tong_gia_thuc_te: m.truocKhach,
-      Tong_tien_truoc_thueVAT_khach: m.truocKhach,
-      tong_truoc_vat_goc: m.truocKhach,
-      Tong_thueVAT_khach: m.vatKhach,
-      Tong_tien_sau_thueVAT_khach: m.sauKhach,
-      doanhSoBan_khach: m.truocKhach,
-      Tong_thanh_tien_chua_VAT_mua_hang: m.giaMuaVnd,
-      giaMua: m.giaMuaVnd,
-      Tong_CP_don_hang: m.tongCpVnd,
-      tongCP: m.tongCpVnd,
-      chiet_khau_tong_truoc_thue: m.ckTruocThue,
-      phan_tram_chiet_khau_tong_truoc_thue: m.ckTruocThuePct,
-      thue_chenh_lech_gia: m.thueCL,
-      phan_tram_thue_chenh_lech_gia: m.thueCLPct,
-      taxPct: m.thueCLPct,
-      chenh_lech_gia: m.clGia,
-      gross_com: m.grossComVal,
-      grossCom: m.grossComVal,
-      con_lai: m.conLaiVal,
-      tong_chiet_khau: m.tongCKVal,
-      net_com: m.netComVal,
-      netCom: m.netComVal,
-      lam_tron_ti_suat: m.lamTronTiSuat,
-      updated_at: Date.now()
-    }
-
-    const craftEntry = findCraftEntryForFamily(c)
-    if (craftEntry && (!craftEntry.data?.ma_hop_dong || String(craftEntry.data.ma_hop_dong).trim() === c.ma_hop_dong)) {
-      await update(dbRef(database, `sale_report_craft/${craftEntry.key}`), srPatch).catch(() => {})
-    }
-    if (c.id_sale_report) {
-      await update(dbRef(database, `sale_report/${c.id_sale_report}`), srPatch).catch(() => {})
-    }
-  } catch (err) {
-    console.warn('Lỗi đồng bộ chỉ số báo giá:', err)
-  } finally {
-    savingModalMetrics.value = false
-  }
-}
-
-async function applyPickedCustomerToDetailModal(newMaKH: string) {
-  if (!selectedContract.value || !newMaKH || newMaKH === 'ALL') return
-  const info = getCustomerInfo(newMaKH)
-  modalCustEdit.maKH = newMaKH
-  modalCustEdit.mst = info.mst || ''
-  modalCustEdit.tenKH = info.tenKH || selectedContract.value.ten_khach_hang || ''
-  modalCustEdit.tenCongTy = info.tenCongTy || ''
-  selectedContract.value.ma_khach_hang = newMaKH
-  if (info.tenKH) selectedContract.value.ten_khach_hang = info.tenKH
-  schedulePersistModalAdjustments()
-}
-
-async function onModalCustomerFieldCommit() {
-  if (!selectedContract.value) return
-  const c = selectedContract.value
-  c.ten_khach_hang = modalCustEdit.tenKH.trim()
-  const maKH = String(modalCustEdit.maKH || c.ma_khach_hang || '').trim()
-  if (maKH) {
-    const row = customerMap.value.get(maKH)
-    if (row) {
-      row[1] = modalCustEdit.tenKH.trim()
-      row[5] = modalCustEdit.tenCongTy.trim()
-      row[19] = modalCustEdit.mst.trim()
-    }
-    const custFound = await findCustomerInFirebase(maKH).catch(() => null)
-    if (custFound?.key) {
-      await update(dbRef(database, `khach_hang/${custFound.key}`), {
-        ten_khach_hang: modalCustEdit.tenKH.trim(),
-        Ten_khach_hang: modalCustEdit.tenKH.trim(),
-        ten_cong_ty: modalCustEdit.tenCongTy.trim(),
-        Ten_cong_ty: modalCustEdit.tenCongTy.trim(),
-        mst: modalCustEdit.mst.trim(),
-        MST: modalCustEdit.mst.trim()
-      }).catch(() => {})
-    }
-  }
-  schedulePersistModalAdjustments()
-}
-
-const selectedLinkedSaleReport = computed(() => getLinkedSaleReportRecord(selectedContract.value))
-
 /* ======================
    DUAL-SLOT FILE MANAGEMENT (HĐ & KHÁCH + ĐỒNG BỘ SALE REPORT / QUAN LY FILE)
 ====================== */
 const contractFileInputHd = ref<HTMLInputElement | null>(null)
 const contractFileInputKhach = ref<HTMLInputElement | null>(null)
 const uploadingFileSlot = ref<'hd' | 'khach' | null>(null)
+
+function triggerSlotUpload(slot: 'hd' | 'khach') {
+  if (slot === 'hd') contractFileInputHd.value?.click()
+  else contractFileInputKhach.value?.click()
+}
 
 function parseJsonArray(val: string): string[] {
   if (!val) return []
@@ -4648,6 +4566,101 @@ function extractFilePairs(tenStr: string, linkStr: string): { name: string; link
 
 function getTotalContractFilesCount(c: Contract): number {
   return extractFilePairs(c.ten_file, c.link_file).length + extractFilePairs(c.ten_file_khach, c.link_file_khach).length
+}
+
+function getCardFilesList(c: Contract): { slot: 'hd' | 'khach'; label: string; name: string; link: string }[] {
+  const hd = extractFilePairs(c.ten_file, c.link_file).map(f => ({
+    slot: 'hd' as const,
+    label: 'HĐ',
+    name: f.name,
+    link: f.link
+  }))
+  const khach = extractFilePairs(c.ten_file_khach, c.link_file_khach).map(f => ({
+    slot: 'khach' as const,
+    label: 'Khách',
+    name: f.name,
+    link: f.link
+  }))
+  return [...hd, ...khach]
+}
+
+function getCardFileIconSvg(fileName: string, fileUrl = ''): string {
+  const check = `${fileName || ''} ${fileUrl || ''}`.toLowerCase()
+  const isPdf = /\.pdf(\?|#|\s|$)/i.test(check)
+  const isWord = /\.(docx?|rtf)(\?|#|\s|$)/i.test(check) || (!isPdf && check.includes('word'))
+  const isImage = /\.(png|jpe?g|webp|gif|bmp|svg|jfif|tiff?)(\?|#|\s|$)/i.test(check)
+  const isExcel =
+    /\.(xlsx?|xls|xlsm|xlsb|csv)(\?|#|\s|$)/i.test(check) ||
+    (!isPdf && !isWord && !isImage && (check.includes('excel') || check.includes('báo giá') || check.includes('mua hàng') || check.includes('dxmh')))
+
+  if (isExcel) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="15" height="15"><path fill="#4CAF50" d="M41,10H25v28h16c0.553,0,1-0.447,1-1V11C42,10.447,41.553,10,41,10z"/><path fill="#FFF" d="M32 15H39V18H32zM32 25H39V28H32zM32 30H39V33H32zM32 20H39V23H32zM25 15H30V18H25zM25 25H30V28H25zM25 30H30V33H25zM25 20H30V23H25z"/><path fill="#2E7D32" d="M27,42L6,38.746C5.416,38.655,5,38.146,5,37.555v-27.11c0-0.591,0.416-1.1,1-1.191L27,6V42z"/><path fill="#FFF" d="M19.129,31l-2.411-4.561c-0.092-0.171-0.186-0.483-0.284-0.938h-0.037c-0.046,0.215-0.154,0.541-0.324,0.979L13.652,31H9.895l4.462-7.001L10.274,17h3.837l2.001,4.196c0.156,0.331,0.296,0.725,0.42,1.179h0.04c0.078-0.271,0.224-0.68,0.439-1.22L19.237,17h3.515l-4.199,6.939l4.316,7.059h-3.74V31z"/></svg>`
+  }
+  if (isPdf) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="15" height="15"><path fill="#FF1744" d="M38,42H10c-2.2,0-4-1.8-4-4V10c0-2.2,1.8-4,4-4h19l13,13v19C42,40.2,40.2,42,38,42z"/><path fill="#B71C1C" d="M29,6v9c0,2.2,1.8,4,4,4h9L29,6z"/><path fill="#FFF" d="M13.5,27v-8h3.3c1.8,0,2.9,1,2.9,2.6c0,1.6-1.1,2.6-2.9,2.6h-1.4V27H13.5z M15.4,22.6h1.2c0.8,0,1.2-0.4,1.2-1.1c0-0.7-0.4-1.1-1.2-1.1h-1.2V22.6z M21.2,27v-8h3c2.5,0,4.1,1.5,4.1,4c0,2.5-1.6,4-4.1,4H21.2z M23.1,25.4h1c1.4,0,2.2-0.9,2.2-2.4c0-1.5-0.8-2.4-2.2-2.4h-1V25.4z M29.9,27v-8h5.4v1.6h-3.5v1.7h3.1v1.6h-3.1V27H29.9z"/><rect x="13.5" y="30" width="21" height="2" rx="1" fill="#FFF"/><rect x="13.5" y="33.5" width="16" height="2" rx="1" fill="#FFF"/><rect x="13.5" y="37" width="12" height="2" rx="1" fill="#FFF"/></svg>`
+  }
+  if (isWord) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="15" height="15"><path fill="#2196F3" d="M41,10H25v28h16c0.553,0,1-0.447,1-1V11C42,10.447,41.553,10,41,10z"/><path fill="#FFF" d="M25 15H39V17.5H25zM25 20H39V22.5H25zM25 25H39V27.5H25zM25 30H35V32.5H25z"/><path fill="#1565C0" d="M27,42L6,38.746C5.416,38.655,5,38.146,5,37.555v-27.11c0-0.591,0.416-1.1,1-1.191L27,6V42z"/><path fill="#FFF" d="M21.8,17h-2.7l-1.5,8.6L15.8,17h-2.5l-1.9,8.6L9.9,17H7.1l2.8,14h2.7l1.9-8.3l1.8,8.3H19l2.8-14z"/></svg>`
+  }
+  if (isImage) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="15" height="15"><rect x="6" y="8" width="36" height="32" rx="4" fill="#29B6F6"/><circle cx="16.5" cy="17.5" r="4" fill="#FFD54F"/><path fill="#0277BD" d="M23,25l-11,13h26c2.2,0,4-1.8,4-4v-2L31,20L23,25z"/><path fill="#4FC3F7" d="M16,24L6,36c0,2.2,1.8,4,4,4h22L16,24z"/></svg>`
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="15" height="15"><path fill="#90CAF9" d="M38,42H10c-2.2,0-4-1.8-4-4V10c0-2.2,1.8-4,4-4h19l13,13v19C42,40.2,40.2,42,38,42z"/><path fill="#1976D2" d="M29,6v9c0,2.2,1.8,4,4,4h9L29,6z"/><rect x="14" y="23" width="20" height="2.5" rx="1.2" fill="#1565C0"/><rect x="14" y="29" width="20" height="2.5" rx="1.2" fill="#1565C0"/><rect x="14" y="35" width="13" height="2.5" rx="1.2" fill="#1565C0"/></svg>`
+}
+
+function getCardFilePreviewUrl(url: string, fileName = ''): string {
+  if (!url) return ''
+  const check = `${url} ${fileName}`.toLowerCase()
+  if (/\.(xlsx?|xls|xlsm|xlsb|docx?|pptx?)(\?|#|\s|$)/i.test(check) || check.includes('.xls') || check.includes('.doc') || check.includes('.ppt')) {
+    return `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(url)}`
+  }
+  return url
+}
+
+function getCardFileDownloadUrl(url: string): string {
+  if (!url) return ''
+  if (url.includes('drive.google.com/file/d/')) {
+    try {
+      const id = url.split('/d/')[1].split('/')[0]
+      return `https://drive.google.com/uc?export=download&id=${id}`
+    } catch {
+      return url
+    }
+  }
+  if (url.includes('cloudinary.com') && url.includes('/upload/')) {
+    return url.replace('/upload/', '/upload/fl_attachment/')
+  }
+  return url
+}
+
+async function handleCardFileDownload(event: Event, url: string, defaultName: string) {
+  event.preventDefault()
+  if (!url || typeof url !== 'string') return
+  let name = defaultName || 'file'
+  const lastPart = url.split('?')[0].split('/').pop() || ''
+  const extIdx = lastPart.lastIndexOf('.')
+  if (extIdx > -1) {
+    const ext = lastPart.substring(extIdx)
+    if (ext && !name.toLowerCase().endsWith(ext.toLowerCase())) name += ext
+  }
+  try {
+    const response = await fetch(url)
+    if (!response.ok) throw new Error('Fetch failed')
+    const blob = await response.blob()
+    const objUrl = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.style.display = 'none'
+    a.href = objUrl
+    a.download = name
+    document.body.appendChild(a)
+    a.click()
+    setTimeout(() => {
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(objUrl)
+    }, 1000)
+  } catch {
+    window.open(getCardFileDownloadUrl(url), '_blank')
+  }
 }
 
 const parsedFilesHd = computed(() =>
@@ -4826,13 +4839,15 @@ async function removeSlotFile(slot: 'hd' | 'khach', idx: number) {
    NAVIGATION ACTIONS: CREATE, EDIT, DUPLICATE, OPEN SALE REPORT, DELETE DRAFT
 ====================== */
 function goCreateNewQuote() {
-  router.push('/baogiafirebase')
+  localStorage.setItem('pendingCreateNewQuoteTab', '1')
+  router.push({ path: '/baogiafirebase', query: { newTab: '1', _ts: String(Date.now()) } })
 }
 
 function editContract(c: Contract | null) {
   if (!c || c.is_completed) return
   const ma = String(c.ma_hop_dong || '').trim()
   if (!ma) return
+  localStorage.removeItem('pendingCreateNewQuoteTab')
   localStorage.setItem('pendingEditQuoteMaHopDong', ma)
   showDetailModal.value = false
   router.push({ path: '/baogiafirebase', query: { ma, _ts: String(Date.now()) } })
@@ -4840,6 +4855,7 @@ function editContract(c: Contract | null) {
 
 function duplicateContract(c: Contract | null) {
   if (!c) return
+  localStorage.removeItem('pendingCreateNewQuoteTab')
   const rawDetails = allDetailsRaw.value.filter(r => String(r[0] || '').trim() === c.ma_hop_dong)
   localStorage.setItem('cloneQuoteProductsRaw', JSON.stringify(rawDetails))
   localStorage.setItem(
@@ -4901,6 +4917,14 @@ const familyVersionsMap = computed(() => {
   return m
 })
 
+function isOriginalContract(c: Contract | null): boolean {
+  if (!c) return false
+  const ma = String(c.ma_hop_dong || '').trim()
+  const goc = String(c.ma_hop_dong_goc || '').trim()
+  if (!ma) return false
+  return !goc || goc === ma
+}
+
 function getVersionNumberLabel(c: Contract | null): string {
   if (!c) return ''
   const goc = String(c.ma_hop_dong_goc || c.ma_hop_dong).trim()
@@ -4909,6 +4933,188 @@ function getVersionNumberLabel(c: Contract | null): string {
   const idx = arr.findIndex(x => x.ma_hop_dong === c.ma_hop_dong)
   return idx >= 0 ? `V${idx + 1}` : ''
 }
+
+/* ======================
+   CHỌN & SO SÁNH BÁO GIÁ (100% ĐỒNG BỘ SO SÁNH PHƯƠNG ÁN TẠM SALEREPORT)
+====================== */
+const selectedCompareIds = ref<string[]>([])
+const showCompareModal = ref(false)
+
+function isQuoteSelectedForCompare(c: Contract | null): boolean {
+  if (!c?.ma_hop_dong) return false
+  return selectedCompareIds.value.includes(c.ma_hop_dong)
+}
+
+function toggleQuoteCompareSelection(c: Contract | null) {
+  const id = String(c?.ma_hop_dong || '').trim()
+  if (!id) return
+  const idx = selectedCompareIds.value.indexOf(id)
+  if (idx >= 0) {
+    selectedCompareIds.value.splice(idx, 1)
+  } else {
+    selectedCompareIds.value.push(id)
+  }
+}
+
+function isGroupSelectedForCompare(group: ContractGroup): boolean {
+  if (!group?.versions?.length) return false
+  return group.versions.every(v => isQuoteSelectedForCompare(v))
+}
+
+function isGroupPartiallySelectedForCompare(group: ContractGroup): boolean {
+  if (!group?.versions?.length) return false
+  const selectedCount = group.versions.filter(v => isQuoteSelectedForCompare(v)).length
+  return selectedCount > 0 && selectedCount < group.versions.length
+}
+
+function toggleGroupCompareSelection(group: ContractGroup) {
+  if (!group?.versions?.length) return
+  const ids = group.versions.map(v => String(v.ma_hop_dong || '').trim()).filter(Boolean)
+  if (!ids.length) return
+  if (isGroupSelectedForCompare(group)) {
+    const idSet = new Set(ids)
+    selectedCompareIds.value = selectedCompareIds.value.filter(id => !idSet.has(id))
+  } else {
+    const curSet = new Set(selectedCompareIds.value)
+    ids.forEach(id => {
+      if (!curSet.has(id)) {
+        curSet.add(id)
+        selectedCompareIds.value.push(id)
+      }
+    })
+  }
+}
+
+const isAllFilteredSelectedForCompare = computed(() => {
+  const list = filteredContracts.value
+  if (!list.length) return false
+  return list.every(c => isQuoteSelectedForCompare(c))
+})
+
+function toggleSelectAllVisibleForCompare() {
+  const list = filteredContracts.value
+  if (!list.length) return
+  if (isAllFilteredSelectedForCompare.value) {
+    const visSet = new Set(list.map(c => c.ma_hop_dong))
+    selectedCompareIds.value = selectedCompareIds.value.filter(id => !visSet.has(id))
+  } else {
+    const curSet = new Set(selectedCompareIds.value)
+    list.forEach(c => {
+      if (c.ma_hop_dong && !curSet.has(c.ma_hop_dong)) {
+        curSet.add(c.ma_hop_dong)
+        selectedCompareIds.value.push(c.ma_hop_dong)
+      }
+    })
+  }
+}
+
+function clearCompareSelection() {
+  selectedCompareIds.value = []
+  showCompareModal.value = false
+}
+
+function removeFromCompareModal(row: CompareQuoteRow) {
+  const targetId = String(row?.ma_hop_dong || row?.rowKey || '').trim()
+  if (!targetId) return
+  selectedCompareIds.value = selectedCompareIds.value.filter(id => id !== targetId)
+}
+
+const contractDetailStatsMap = computed(() => {
+  const statsMap = new Map<string, { suppliers: string; giaMuaSum: number }>()
+  const nccSets = new Map<string, Set<string>>()
+  const muaSums = new Map<string, number>()
+
+  allDetailsRaw.value.forEach(r => {
+    const maHD = String(r[0] || '').trim()
+    if (!maHD) return
+
+    const ncc = String(r[6] || '').trim()
+    if (ncc) {
+      if (!nccSets.has(maHD)) nccSets.set(maHD, new Set<string>())
+      nccSets.get(maHD)!.add(ncc)
+    }
+
+    const sl = Math.max(1, toNum(r[18], 1))
+    const tgUsd = toNum(r[24], 0)
+    const effTg = tgUsd > 1 ? tgUsd : (toNum(r[16], 1) > 1 ? toNum(r[16], 1) : 1)
+    const giaMuaUnit =
+      tgUsd > 1 && toNum(r[25], 0) > 0
+        ? round2(toNum(r[25], 0) * tgUsd)
+        : round2(toNum(r[13], 0) * effTg)
+    muaSums.set(maHD, (muaSums.get(maHD) || 0) + round2(giaMuaUnit * sl))
+  })
+
+  nccSets.forEach((set, maHD) => {
+    statsMap.set(maHD, {
+      suppliers: Array.from(set).join(', '),
+      giaMuaSum: Math.round(muaSums.get(maHD) || 0)
+    })
+  })
+  muaSums.forEach((sum, maHD) => {
+    if (!statsMap.has(maHD)) {
+      statsMap.set(maHD, { suppliers: '', giaMuaSum: Math.round(sum) })
+    }
+  })
+
+  return statsMap
+})
+
+const compareModalRows = computed<CompareQuoteRow[]>(() => {
+  if (!selectedCompareIds.value.length) return []
+  const byMa = new Map<string, Contract>()
+  contracts.value.forEach(c => {
+    if (c.ma_hop_dong) byMa.set(c.ma_hop_dong, c)
+  })
+  return selectedCompareIds.value
+    .map(id => byMa.get(id))
+    .filter((c): c is Contract => Boolean(c))
+    .map(c => {
+      const cust = getCustomerInfo(c.ma_khach_hang)
+      const detStats = contractDetailStatsMap.value.get(c.ma_hop_dong)
+      const giaMuaVal = c.gia_mua > 0 ? c.gia_mua : (detStats?.giaMuaSum || 0)
+      const tongCpVal = c.tong_cp > 0 ? c.tong_cp : giaMuaVal
+      const grossVal = c.chiet_khau_truoc_thue || c.chenh_lech_gia || 0
+      const netVal = c.con_lai || c.tong_chiet_khau || 0
+      const taxPct =
+        c.thue_chenh_lech_pct > 0
+          ? c.thue_chenh_lech_pct
+          : c.thue_chenh_lech > 0 && grossVal > 0
+            ? Math.round((c.thue_chenh_lech / grossVal) * 10000) / 100
+            : grossVal === 0 && netVal === 0
+              ? 25
+              : 0
+
+      return {
+        rowKey: c.ma_hop_dong,
+        ma_hop_dong: c.ma_hop_dong,
+        so_hop_dong: c.so_hop_dong,
+        is_completed: c.is_completed,
+        is_official: isOfficialContract(c),
+        isOriginal: isOriginalContract(c),
+        versionLabel: getVersionNumberLabel(c),
+        So_PO: c.so_po,
+        content_of_contract_PO: c.content_of_contract_po,
+        Ten_cong_ty: cust.tenCongTy || '',
+        Ten_khach_hang: c.ten_khach_hang || cust.tenKH || '',
+        Ten_nha_cung_cap: detStats?.suppliers || '',
+        Tong_tien_truoc_thueVAT: c.tong_truoc_thue,
+        Tong_thueVAT: c.tong_vat,
+        Tong_tien_sau_thueVAT: c.tong_sau_thue,
+        Tong_tien_truoc_thueVAT_khach: c.tong_truoc_thue_khach,
+        Tong_thueVAT_khach: c.tong_vat_khach,
+        Tong_tien_sau_thueVAT_khach: c.tong_sau_thue_khach,
+        Tong_thanh_tien_chua_VAT_mua_hang: giaMuaVal,
+        Tong_CP_don_hang: tongCpVal,
+        chiet_khau_tong_truoc_thue: c.chiet_khau_truoc_thue,
+        chenh_lech_gia: c.chenh_lech_gia,
+        phan_tram_thue_chenh_lech_gia: taxPct,
+        con_lai: c.con_lai,
+        tong_chiet_khau: c.tong_chiet_khau,
+        lam_tron_ti_suat: c.lam_tron_ti_suat,
+        _contract: c
+      }
+    })
+})
 
 function isFamilyCompleted(c: Contract | null): boolean {
   if (!c) return false
@@ -6069,15 +6275,6 @@ function formatVND(n: number): string {
   }).format(Math.round(Number(n) || 0))
 }
 
-function formatCompactVND(n: number): string {
-  const val = Math.abs(Number(n) || 0)
-  const sign = n < 0 ? '-' : ''
-  if (val >= 1_000_000_000) return `${sign}${(val / 1_000_000_000).toFixed(2).replace(/\.?0+$/, '')} tỷ`
-  if (val >= 1_000_000) return `${sign}${(val / 1_000_000).toFixed(1).replace(/\.0$/, '')} tr`
-  if (val >= 1_000) return `${sign}${Math.round(val / 1_000)}k`
-  return `${sign}${Math.round(val)} đ`
-}
-
 function formatModalMoney(n: number): string {
   if (quoteCurrency.value === 'USD') {
     return new Intl.NumberFormat('en-US', {
@@ -6209,10 +6406,69 @@ function applyIncomingRouteQuery() {
   }
 }
 
+function handleGlobalDocumentClick(ev: MouseEvent) {
+  const targetNode = ev.target as Node
+  if (showSortMenu.value && sortRootRef.value && !sortRootRef.value.contains(targetNode)) {
+    showSortMenu.value = false
+  }
+  if (
+    showMobileDisplayPopover.value &&
+    (!mobileDisplayPopoverRef.value || !mobileDisplayPopoverRef.value.contains(targetNode)) &&
+    (!mobileDockRef.value || !mobileDockRef.value.contains(targetNode))
+  ) {
+    showMobileDisplayPopover.value = false
+  }
+}
+
+function handleGlobalKeydown(ev: KeyboardEvent) {
+  if (ev.key === 'Escape') {
+    if (showSortMenu.value) showSortMenu.value = false
+    if (showDateModal.value) showDateModal.value = false
+    if (showMobileDisplayPopover.value) showMobileDisplayPopover.value = false
+  }
+}
+
+const isMobileDockHidden = computed(() =>
+  Boolean(
+    showDetailModal.value ||
+      showCustomerModal.value ||
+      showDateModal.value ||
+      showCustomerInfoModal.value ||
+      showCompareModal.value ||
+      confirmDialog.visible ||
+      asyncResultModal.show ||
+      showSortMenu.value ||
+      selectedCompareIds.value.length > 0
+  )
+)
+
+watch(isMobileDockHidden, hidden => {
+  if (hidden) showMobileDisplayPopover.value = false
+})
+
 onMounted(() => {
   uiTheme.value = loadSavedTheme()
   setupRealtimeSubscriptions()
   applyIncomingRouteQuery()
+  document.addEventListener('click', handleGlobalDocumentClick)
+  document.addEventListener('keydown', handleGlobalKeydown)
+  if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+    detailModalMq = window.matchMedia('(max-width: 1080px)')
+    updateMobileModalViewport(detailModalMq)
+    if (typeof detailModalMq.addEventListener === 'function') {
+      detailModalMq.addEventListener('change', updateMobileModalViewport)
+    } else if (typeof (detailModalMq as any).addListener === 'function') {
+      ;(detailModalMq as any).addListener(updateMobileModalViewport)
+    }
+
+    mobileDockMq = window.matchMedia('(max-width: 768px)')
+    updateMobileDockViewport(mobileDockMq)
+    if (typeof mobileDockMq.addEventListener === 'function') {
+      mobileDockMq.addEventListener('change', updateMobileDockViewport)
+    } else if (typeof (mobileDockMq as any).addListener === 'function') {
+      ;(mobileDockMq as any).addListener(updateMobileDockViewport)
+    }
+  }
 })
 
 onActivated(() => {
@@ -6221,6 +6477,24 @@ onActivated(() => {
 })
 
 onUnmounted(() => {
+  document.removeEventListener('click', handleGlobalDocumentClick)
+  document.removeEventListener('keydown', handleGlobalKeydown)
+  if (detailModalMq) {
+    if (typeof detailModalMq.removeEventListener === 'function') {
+      detailModalMq.removeEventListener('change', updateMobileModalViewport)
+    } else if (typeof (detailModalMq as any).removeListener === 'function') {
+      ;(detailModalMq as any).removeListener(updateMobileModalViewport)
+    }
+    detailModalMq = null
+  }
+  if (mobileDockMq) {
+    if (typeof mobileDockMq.removeEventListener === 'function') {
+      mobileDockMq.removeEventListener('change', updateMobileDockViewport)
+    } else if (typeof (mobileDockMq as any).removeListener === 'function') {
+      ;(mobileDockMq as any).removeListener(updateMobileDockViewport)
+    }
+    mobileDockMq = null
+  }
   unsubscribers.forEach(fn => {
     try {
       fn()
@@ -6228,7 +6502,6 @@ onUnmounted(() => {
   })
   unsubscribers.length = 0
   if (cardObserver) cardObserver.disconnect()
-  if (tableObserver) tableObserver.disconnect()
   if (custModalObserver) custModalObserver.disconnect()
   if (smartToastTimer) clearTimeout(smartToastTimer)
   if (asyncResultTimeout) clearTimeout(asyncResultTimeout)
@@ -6292,6 +6565,14 @@ onUnmounted(() => {
   --slate-bg: rgba(148, 163, 184, 0.12);
   --slate-border: rgba(148, 163, 184, 0.24);
 
+  --indigo-text: #a5b4fc;
+  --indigo-bg: rgba(99, 102, 241, 0.14);
+  --indigo-border: rgba(129, 140, 248, 0.36);
+
+  --bg-modal-head-rich: linear-gradient(135deg, #0d1d36 0%, #102a49 55%, #0c223b 100%);
+  --bg-table-head-rich: #102442;
+  --ink-table-head: #7dd3fc;
+
   --shadow-card: 0 10px 28px -10px rgba(0, 0, 0, 0.55);
   --shadow-modal: 0 26px 60px -12px rgba(0, 0, 0, 0.78);
 }
@@ -6343,6 +6624,14 @@ onUnmounted(() => {
   --slate-bg: #f1f5f9;
   --slate-border: #cbd5e1;
 
+  --indigo-text: #4338ca;
+  --indigo-bg: #eef2ff;
+  --indigo-border: #c7d2fe;
+
+  --bg-modal-head-rich: linear-gradient(135deg, #e0f2fe 0%, #dbeafe 55%, #eff6ff 100%);
+  --bg-table-head-rich: #dbeafe;
+  --ink-table-head: #0369a1;
+
   --shadow-card: 0 8px 24px -8px rgba(15, 23, 42, 0.08);
   --shadow-modal: 0 24px 52px -12px rgba(15, 23, 42, 0.22);
 }
@@ -6361,6 +6650,22 @@ onUnmounted(() => {
 .qlbg-page *,
 .qlbg-overlay * {
   box-sizing: border-box;
+}
+
+.qlbg-overlay {
+  font-family: var(--font-sans);
+  letter-spacing: normal;
+}
+
+.qlbg-overlay *,
+.qlbg-overlay *::before,
+.qlbg-overlay *::after {
+  font-family: inherit;
+}
+
+.qlbg-overlay .qc-ver-tag,
+.qlbg-overlay .cm-field strong.is-mono {
+  font-family: var(--font-sans) !important;
 }
 
 /* Utilities */
@@ -6397,9 +6702,6 @@ onUnmounted(() => {
 .text-strong {
   color: var(--ink-strong) !important;
 }
-.show-xs-flex {
-  display: none;
-}
 
 :deep(mark.qlbg-hl) {
   background: rgba(250, 204, 21, 0.28);
@@ -6434,81 +6736,8 @@ onUnmounted(() => {
 }
 
 /* ==========================================================================
-   1. TOPBAR
+   1. CONTROLS (Segmented Controls & Standard Buttons)
 ========================================================================== */
-.bg-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  padding: 11px 16px;
-  background: var(--bg-surface-elevated);
-  border: 1px solid var(--border-subtle);
-  border-radius: 14px;
-  box-shadow: var(--shadow-card);
-  margin-bottom: 14px;
-}
-
-.bg-topbar-left {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  min-width: 0;
-}
-
-.bg-brand-icon {
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--sky-bg);
-  color: var(--sky-text);
-  border: 1px solid var(--sky-border);
-  flex-shrink: 0;
-}
-
-.bg-title-wrap {
-  min-width: 0;
-}
-
-.bg-title-row {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  flex-wrap: wrap;
-}
-
-.bg-title {
-  margin: 0;
-  font-size: 16.5px;
-  font-weight: 800;
-  letter-spacing: -0.01em;
-  color: var(--ink-strong);
-}
-
-.bg-count-pill {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 9px;
-  border-radius: 999px;
-  font-size: 11.5px;
-  font-weight: 700;
-  background: var(--sky-bg);
-  color: var(--sky-text);
-  border: 1px solid var(--sky-border);
-  white-space: nowrap;
-}
-
-.bg-topbar-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
 /* Segmented Controls */
 .qlbg-seg-group {
   display: inline-flex;
@@ -6697,7 +6926,7 @@ onUnmounted(() => {
 ========================================================================== */
 .qlbg-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 14px;
 }
@@ -6706,40 +6935,135 @@ onUnmounted(() => {
   width: 100%;
   margin: 0;
   text-align: left;
-  padding: 13px 15px;
-  border-radius: 13px;
+  padding: 15px 17px 14px;
+  border-radius: 14px;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   box-shadow: var(--shadow-card);
   color: var(--ink-primary);
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 8px;
   min-width: 0;
   transition: all 0.18s ease;
 }
-
-.qlbg-kpi-card.is-summary {
-  cursor: default;
+.qlbg-kpi-card * {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
 }
 
-.qlbg-kpi-card:not(.is-summary):hover {
-  background: var(--bg-card-hover);
+.qlbg-kpi-card:hover {
   transform: translateY(-1px);
 }
+.qlbg-kpi-card:not(.active):hover {
+  background: var(--bg-card-hover);
+}
 
+/* Nền mặc định bình thường (trắng ở Light / nền card ở Dark) + giữ nguyên màu chữ theo loại; chỉ tô đậm nền khi .active */
+.qlbg-kpi-card.is-sky .kpi-label {
+  color: #bae6fd;
+}
+.qlbg-kpi-card.is-sky .kpi-val {
+  color: #ffffff;
+}
+.qlbg-kpi-card.is-sky:not(.active):hover {
+  border-color: #38bdf8;
+}
 .qlbg-kpi-card.is-sky.active {
-  border-color: var(--sky-border);
-  box-shadow: inset 3px 0 0 #0ea5e9, var(--shadow-card);
+  background: linear-gradient(155deg, #0369a1 0%, #075985 55%, #0c4a6e 100%);
+  border-color: #7dd3fc;
+  box-shadow: inset 3px 0 0 #38bdf8, 0 8px 22px -8px rgba(14, 165, 233, 0.45);
+}
+
+.qlbg-kpi-card.is-amber .kpi-label {
+  color: #fde68a;
+}
+.qlbg-kpi-card.is-amber .kpi-val {
+  color: #ffffff;
+}
+.qlbg-kpi-card.is-amber:not(.active):hover {
+  border-color: #fbbf24;
 }
 .qlbg-kpi-card.is-amber.active {
-  border-color: var(--amber-border);
-  box-shadow: inset 3px 0 0 #f59e0b, var(--shadow-card);
+  background: linear-gradient(155deg, #b45309 0%, #92400e 58%, #78350f 100%);
+  border-color: #fde68a;
+  box-shadow: inset 3px 0 0 #fbbf24, 0 8px 22px -8px rgba(245, 158, 11, 0.45);
+}
+
+.qlbg-kpi-card.is-emerald .kpi-label {
+  color: #a7f3d0;
+}
+.qlbg-kpi-card.is-emerald .kpi-val {
+  color: #ffffff;
+}
+.qlbg-kpi-card.is-emerald:not(.active):hover {
+  border-color: #6ee7b7;
 }
 .qlbg-kpi-card.is-emerald.active {
-  border-color: var(--emerald-border);
-  box-shadow: inset 3px 0 0 #10b981, var(--shadow-card);
+  background: linear-gradient(155deg, #047857 0%, #065f46 58%, #064e3b 100%);
+  border-color: #6ee7b7;
+  box-shadow: inset 3px 0 0 #34d399, 0 8px 22px -8px rgba(16, 185, 129, 0.45);
+}
+
+.qlbg-kpi-card.active .kpi-icon {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+/* Light Blue Theme: card không active giữ nền trắng + màu chữ tương ứng; active mới tô đậm nền */
+.qlbg-page.theme-light-blue .qlbg-kpi-card.is-sky .kpi-label {
+  color: #0369a1;
+}
+.qlbg-page.theme-light-blue .qlbg-kpi-card.is-sky .kpi-val {
+  color: #0c4a6e;
+}
+.qlbg-page.theme-light-blue .qlbg-kpi-card.is-sky:not(.active):hover {
+  border-color: #38bdf8;
+}
+.qlbg-page.theme-light-blue .qlbg-kpi-card.is-sky.active {
+  background: linear-gradient(155deg, #0284c7 0%, #0369a1 58%, #075985 100%);
+  border-color: #0284c7;
+  box-shadow: inset 3px 0 0 #bae6fd, 0 8px 22px -8px rgba(2, 132, 199, 0.38);
+}
+
+.qlbg-page.theme-light-blue .qlbg-kpi-card.is-amber .kpi-label {
+  color: #b45309;
+}
+.qlbg-page.theme-light-blue .qlbg-kpi-card.is-amber .kpi-val {
+  color: #78350f;
+}
+.qlbg-page.theme-light-blue .qlbg-kpi-card.is-amber:not(.active):hover {
+  border-color: #f59e0b;
+}
+.qlbg-page.theme-light-blue .qlbg-kpi-card.is-amber.active {
+  background: linear-gradient(155deg, #d97706 0%, #b45309 58%, #92400e 100%);
+  border-color: #b45309;
+  box-shadow: inset 3px 0 0 #fde68a, 0 8px 22px -8px rgba(217, 119, 6, 0.38);
+}
+
+.qlbg-page.theme-light-blue .qlbg-kpi-card.is-emerald .kpi-label {
+  color: #047857;
+}
+.qlbg-page.theme-light-blue .qlbg-kpi-card.is-emerald .kpi-val {
+  color: #064e3b;
+}
+.qlbg-page.theme-light-blue .qlbg-kpi-card.is-emerald:not(.active):hover {
+  border-color: #10b981;
+}
+.qlbg-page.theme-light-blue .qlbg-kpi-card.is-emerald.active {
+  background: linear-gradient(155deg, #059669 0%, #047857 58%, #065f46 100%);
+  border-color: #047857;
+  box-shadow: inset 3px 0 0 #a7f3d0, 0 8px 22px -8px rgba(5, 150, 105, 0.38);
+}
+
+.qlbg-page.theme-light-blue .qlbg-kpi-card.active .kpi-label,
+.qlbg-page.theme-light-blue .qlbg-kpi-card.active .kpi-val {
+  color: #ffffff;
+}
+.qlbg-page.theme-light-blue .qlbg-kpi-card.active .kpi-icon {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
 }
 
 .kpi-head {
@@ -6750,10 +7074,9 @@ onUnmounted(() => {
 }
 
 .kpi-label {
-  font-size: 11.5px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
+  font-size: 13.5px;
+  font-weight: 800;
+  letter-spacing: -0.005em;
   color: var(--ink-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -6782,42 +7105,12 @@ onUnmounted(() => {
   color: var(--emerald-text);
 }
 
-.kpi-com-pill {
-  padding: 2px 7px;
-  border-radius: 999px;
-  font-size: 10.5px;
-  font-weight: 800;
-  background: var(--emerald-bg);
-  color: var(--emerald-text);
-  border: 1px solid var(--emerald-border);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
 .kpi-val {
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 800;
-  line-height: 1.18;
+  line-height: 1.2;
   color: var(--ink-strong);
   letter-spacing: -0.02em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.kpi-val.is-money {
-  font-size: 19px;
-  color: var(--emerald-text);
-}
-.kpi-val.is-money small {
-  font-size: 12.5px;
-  margin-left: 3px;
-  font-weight: 700;
-  opacity: 0.85;
-}
-
-.kpi-sub {
-  font-size: 11.5px;
-  color: var(--ink-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -6827,12 +7120,12 @@ onUnmounted(() => {
    3. UNIFIED SMART FILTER BAR
 ========================================================================== */
 .qlbg-filter-bar {
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: 13px;
-  padding: 11px 14px;
-  margin-bottom: 16px;
-  box-shadow: var(--shadow-card);
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  margin-bottom: 14px;
+  box-shadow: none;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -6841,31 +7134,60 @@ onUnmounted(() => {
 .qlbg-filter-row-main {
   display: flex;
   align-items: center;
-  gap: 9px;
+  justify-content: space-between;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
-.qlbg-search-box {
-  flex: 1 1 280px;
-  min-width: 0;
+.qlbg-filter-left,
+.qlbg-filter-right {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.qlbg-filter-bar .qlbg-picker-btn:not(.is-active),
+.qlbg-filter-bar .qlbg-icon-btn,
+.qlbg-filter-bar .qlbg-ghost-btn {
+  background: var(--bg-card);
+}
+
+.qlbg-filter-right .qlbg-icon-btn {
+  width: 36px;
   height: 36px;
-  padding: 0 10px;
-  background: var(--bg-input);
-  border: 1px solid var(--border-control);
-  border-radius: 9px;
-  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+.qlbg-filter-right .qlbg-ghost-btn,
+.qlbg-filter-right .qlbg-btn-primary {
+  height: 36px;
+  padding: 0 13px;
+}
+
+.qlbg-search-box {
+  flex: 1 1 260px;
+  min-width: 190px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 14px;
+  background: var(--bg-card);
+  border: 1.5px solid var(--sky-border);
+  border-radius: 999px;
+  box-shadow: 0 2px 10px -4px rgba(14, 165, 233, 0.18);
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
 }
 
 .qlbg-search-box:focus-within {
   border-color: var(--border-strong);
-  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.14);
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.16);
 }
 
 .qlbg-search-ico {
-  color: var(--ink-faint);
+  color: var(--sky-text);
+  opacity: 0.85;
   flex-shrink: 0;
 }
 
@@ -6888,8 +7210,8 @@ onUnmounted(() => {
   width: auto !important;
   flex: 0 0 auto !important;
   margin: 0 !important;
-  padding: 3px 8px;
-  border-radius: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
   border: 1px solid var(--border-control);
   background: var(--slate-bg);
   color: var(--ink-secondary);
@@ -6909,7 +7231,7 @@ onUnmounted(() => {
   width: auto;
   margin: 0;
   height: 36px;
-  max-width: 260px;
+  max-width: 220px;
   padding: 0 11px;
   border-radius: 9px;
   border: 1px solid var(--border-control);
@@ -6924,7 +7246,8 @@ onUnmounted(() => {
   min-width: 0;
   transition: all 0.16s ease;
 }
-.qlbg-picker-btn:hover {
+.qlbg-picker-btn:hover,
+.qlbg-picker-btn.is-open {
   border-color: var(--sky-border);
 }
 .qlbg-picker-btn.is-active {
@@ -6953,37 +7276,141 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-.qlbg-select-wrap {
+.qlbg-chev-ico {
+  opacity: 0.65;
+  flex-shrink: 0;
+  transition: transform 0.18s ease;
+}
+.qlbg-chev-ico.is-rotated {
+  transform: rotate(180deg);
+  opacity: 1;
+  color: var(--sky-text);
+}
+
+/* Custom Template Adaptive Sort Picker (PC Popover ↔ Mobile Bottom Sheet) */
+.qlbg-sort-root {
   position: relative;
   display: inline-flex;
+  min-width: 0;
+}
+.qlbg-sort-trigger {
+  width: 100%;
+  max-width: 240px;
+}
+.qlbg-sort-backdrop {
+  display: none;
+}
+.qlbg-pop-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 270px;
+  z-index: 80;
+  border-radius: 13px;
+  background: var(--bg-modal);
+  border: 1px solid var(--sky-border);
+  box-shadow: var(--shadow-modal);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.qlbg-pop-head {
+  display: flex;
   align-items: center;
-  height: 36px;
-  background: var(--bg-input);
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 12px;
+  background: var(--bg-modal-head-rich);
+  border-bottom: 1px solid var(--sky-border);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-table-head);
+}
+.qlbg-pop-close {
+  display: none;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  padding: 0;
+  border-radius: 6px;
   border: 1px solid var(--border-control);
+  background: var(--bg-input);
+  color: var(--ink-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+}
+.qlbg-pop-list {
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.qlbg-pop-opt {
+  width: 100%;
+  margin: 0;
+  padding: 8px 10px;
   border-radius: 9px;
-  padding: 0 8px 0 10px;
-  gap: 6px;
-}
-
-.qlbg-select-ico {
-  color: var(--ink-muted);
-  flex-shrink: 0;
-}
-
-.qlbg-select {
-  border: none;
-  outline: none;
+  border: 1px solid transparent;
   background: transparent;
   color: var(--ink-primary);
-  font-size: 12.5px;
-  font-weight: 600;
-  font-family: inherit;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   cursor: pointer;
-  padding-right: 4px;
+  transition: all 0.14s ease;
 }
-.qlbg-select option {
-  background: var(--bg-modal);
-  color: var(--ink-primary);
+.qlbg-pop-opt:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-subtle);
+}
+.qlbg-pop-opt.active {
+  background: var(--sky-bg);
+  border-color: var(--sky-border);
+}
+.qlbg-pop-opt-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.qlbg-pop-opt-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.qlbg-pop-opt-title-row strong {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink-strong);
+}
+.qlbg-pop-opt.active .qlbg-pop-opt-title-row strong {
+  color: var(--sky-text);
+}
+.qlbg-pop-tag {
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  background: var(--slate-bg);
+  color: var(--ink-secondary);
+  border: 1px solid var(--slate-border);
+}
+.qlbg-pop-opt.active .qlbg-pop-tag {
+  background: var(--bg-card);
+  color: var(--sky-text);
+  border-color: var(--sky-border);
+}
+.qlbg-pop-opt-desc {
+  font-size: 11px;
+  color: var(--ink-muted);
 }
 
 .qlbg-reset-btn {
@@ -7006,85 +7433,6 @@ onUnmounted(() => {
 .qlbg-reset-btn:hover {
   background: #ef4444;
   color: #ffffff;
-}
-
-.qlbg-filter-row-sub {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
-  padding-top: 8px;
-  border-top: 1px dashed var(--border-subtle);
-}
-
-.qlbg-date-chips {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.date-chip-label {
-  font-size: 11.5px;
-  font-weight: 700;
-  color: var(--ink-muted);
-  margin-right: 2px;
-}
-
-.qlbg-date-chip {
-  width: auto;
-  margin: 0;
-  padding: 4px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--border-control);
-  background: var(--bg-input);
-  color: var(--ink-secondary);
-  font-size: 11.5px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.15s ease;
-}
-.qlbg-date-chip:hover {
-  border-color: var(--sky-border);
-  color: var(--sky-text);
-}
-.qlbg-date-chip.active {
-  background: var(--sky-bg);
-  color: var(--sky-text);
-  border-color: var(--sky-border);
-  font-weight: 700;
-}
-
-.qlbg-custom-dates {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.custom-date-field {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 8px;
-  border-radius: 8px;
-  background: var(--bg-input);
-  border: 1px solid var(--border-control);
-  font-size: 11.5px;
-  color: var(--ink-muted);
-}
-.custom-date-field input {
-  border: none;
-  outline: none;
-  background: transparent;
-  color: var(--ink-primary);
-  font-family: inherit;
-  font-size: 12px;
-}
-.custom-date-sep {
-  color: var(--ink-faint);
 }
 
 /* ==========================================================================
@@ -7233,26 +7581,116 @@ onUnmounted(() => {
 }
 
 .qlbg-group-header {
+  --gh-ink: #fffbeb;
+  --gh-divider: rgba(251, 191, 36, 0.32);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px 16px;
-  background: var(--bg-surface-elevated);
+  gap: 14px;
+  padding: 11px 16px;
+  background: linear-gradient(90deg, rgba(180, 83, 9, 0.56) 0%, rgba(146, 64, 14, 0.48) 58%, rgba(120, 53, 15, 0.42) 100%);
+  border-bottom: 1px solid rgba(245, 158, 11, 0.36);
   cursor: pointer;
   user-select: none;
   transition: background 0.15s ease;
 }
 .qlbg-group-header:hover {
-  background: var(--bg-card-hover);
+  background: linear-gradient(90deg, rgba(217, 119, 6, 0.62) 0%, rgba(180, 83, 9, 0.54) 58%, rgba(146, 64, 14, 0.48) 100%);
+}
+.qlbg-page.theme-light-blue .qlbg-group-header {
+  --gh-ink: #0f172a;
+  --gh-divider: rgba(217, 119, 6, 0.28);
+  background: linear-gradient(90deg, #ffedd5 0%, #fed7aa 65%, #ffedd5 100%);
+  border-bottom: 1px solid #f59e0b;
+}
+.qlbg-page.theme-light-blue .qlbg-group-header:hover {
+  background: linear-gradient(90deg, #fed7aa 0%, #fdba74 65%, #fed7aa 100%);
+}
+.qlbg-group-header .gh-folder-ico.is-amber {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fde68a;
+  border-color: rgba(253, 224, 71, 0.4);
+}
+.qlbg-page.theme-light-blue .qlbg-group-header .gh-folder-ico.is-amber {
+  background: rgba(255, 255, 255, 0.72);
+  color: #b45309;
+  border-color: #f59e0b;
+}
+.qlbg-group-block:not(.is-group-official) .qlbg-group-header .gh-ver-count,
+.qlbg-group-block:not(.is-group-official) .qlbg-group-header .gh-toggle-btn {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fffbeb;
+  border-color: rgba(253, 224, 71, 0.35);
+}
+.qlbg-group-block:not(.is-group-official) .qlbg-group-header .gh-chevron {
+  color: #fffbeb;
+}
+.qlbg-group-block:not(.is-group-official) .qlbg-group-header .gh-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.24);
+  border-color: rgba(253, 224, 71, 0.6);
+  color: #ffffff;
+}
+.qlbg-page.theme-light-blue .qlbg-group-block:not(.is-group-official) .qlbg-group-header .gh-ver-count,
+.qlbg-page.theme-light-blue .qlbg-group-block:not(.is-group-official) .qlbg-group-header .gh-toggle-btn {
+  background: rgba(255, 255, 255, 0.72);
+  color: #9a3412;
+  border-color: rgba(217, 119, 6, 0.38);
+}
+.qlbg-page.theme-light-blue .qlbg-group-block:not(.is-group-official) .qlbg-group-header .gh-chevron {
+  color: #9a3412;
+}
+
+.qlbg-group-block.is-group-official .qlbg-group-header {
+  --gh-ink: #ffffff;
+  --gh-divider: rgba(167, 243, 208, 0.32);
+  background: linear-gradient(90deg, #065f46 0%, #064e3b 55%, #053e2f 100%);
+  border-bottom: 1px solid rgba(52, 211, 153, 0.42);
+}
+.qlbg-group-block.is-group-official .qlbg-group-header:hover {
+  background: linear-gradient(90deg, #047857 0%, #065f46 55%, #064e3b 100%);
+}
+.qlbg-page.theme-light-blue .qlbg-group-block.is-group-official .qlbg-group-header {
+  --gh-ink: #ffffff;
+  --gh-divider: rgba(255, 255, 255, 0.32);
+  background: linear-gradient(90deg, #059669 0%, #047857 58%, #065f46 100%);
+  border-bottom: 1px solid #047857;
+}
+.qlbg-page.theme-light-blue .qlbg-group-block.is-group-official .qlbg-group-header:hover {
+  background: linear-gradient(90deg, #10b981 0%, #059669 58%, #047857 100%);
+}
+.qlbg-group-block.is-group-official .qlbg-group-header .gh-folder-ico.is-emerald {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.34);
+}
+.qlbg-group-block.is-group-official .qlbg-group-header .gh-ver-count,
+.qlbg-group-block.is-group-official .qlbg-group-header .gh-toggle-btn {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+.qlbg-group-block.is-group-official .qlbg-group-header .gh-chevron {
+  color: #ffffff;
+}
+.qlbg-group-block.is-group-official .qlbg-group-header .gh-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.26);
+  border-color: rgba(255, 255, 255, 0.55);
+  color: #ffffff;
+}
+.qlbg-group-block.is-group-official .qlbg-group-header .sr-md-cc-check:not(.selected) {
+  background: rgba(2, 44, 34, 0.55);
+  border-color: rgba(255, 255, 255, 0.58);
 }
 
 .gh-left {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   min-width: 0;
   flex: 1 1 auto;
+}
+.gh-left > .sr-md-cc-check {
+  margin-top: 3px;
 }
 
 .gh-chevron {
@@ -7287,52 +7725,56 @@ onUnmounted(() => {
   border: 1px solid var(--amber-border);
 }
 
-.gh-titles {
-  min-width: 0;
+.gh-info-grid {
   flex: 1 1 auto;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(220px, 1.05fr) minmax(240px, 1fr);
+  gap: 16px;
+  align-items: start;
 }
 
-.gh-title-main {
+.gh-col-cust,
+.gh-col-po {
   display: flex;
-  align-items: baseline;
-  gap: 6px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
-.gh-company {
-  font-size: 14px;
-  font-weight: 800;
-  color: var(--ink-strong);
+.gh-col-po {
+  border-left: 1px solid var(--gh-divider);
+  padding-left: 16px;
 }
 
-.gh-contact-sub {
+.gh-line {
+  min-width: 0;
   font-size: 12.5px;
+  line-height: 1.4;
   font-weight: 600;
-  color: var(--ink-secondary);
+  color: var(--gh-ink);
+  word-break: break-word;
 }
 
-.gh-meta-row {
-  display: flex;
+.gh-line-strong {
+  font-weight: 700;
+}
+
+.gh-line-time {
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 2px;
+  gap: 5px;
 }
 
-.gh-po-content {
-  font-size: 12px;
-  color: var(--sky-text);
-  font-weight: 600;
-  max-width: 520px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.gh-root-code {
-  font-size: 11px;
-  color: var(--ink-muted);
-  font-family: var(--font-mono);
+@media (max-width: 900px) {
+  .gh-info-grid {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+  .gh-col-po {
+    border-left: none;
+    padding-left: 0;
+  }
 }
 
 .gh-right {
@@ -7380,6 +7822,28 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
+.gh-toggle-btn {
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  border-radius: 8px;
+  border: 1px solid var(--border-control);
+  background: var(--bg-input);
+  color: var(--ink-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+.gh-toggle-btn:hover {
+  border-color: var(--sky-border);
+  color: var(--sky-text);
+  background: var(--sky-bg);
+}
+
 /* Cards Grid */
 .qlbg-cards-grid {
   display: grid;
@@ -7404,7 +7868,7 @@ onUnmounted(() => {
   min-width: 0;
   cursor: pointer;
   box-shadow: var(--shadow-card);
-  transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+  transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease, opacity 0.16s ease;
 }
 
 .qlbg-quote-card:hover {
@@ -7413,12 +7877,90 @@ onUnmounted(() => {
   border-color: var(--border-strong);
 }
 
-.qlbg-quote-card.is-official {
-  border-top: 2.5px solid #10b981;
+.qlbg-quote-card.is-official,
+.qlbg-page.theme-light-blue .qlbg-quote-card.is-official {
+  --ink-strong: #ffffff;
+  --ink-primary: #f0fdf4;
+  --ink-secondary: #d1fae5;
+  --ink-muted: #a7f3d0;
+  --ink-faint: #6ee7b7;
+  --bg-well: rgba(2, 24, 18, 0.66);
+  --bg-input: rgba(2, 30, 22, 0.56);
+  --border-subtle: rgba(110, 231, 183, 0.28);
+  --border-control: rgba(110, 231, 183, 0.42);
+  --sky-text: #7dd3fc;
+  --sky-bg: rgba(14, 165, 233, 0.24);
+  --sky-border: rgba(125, 211, 252, 0.48);
+  --emerald-text: #6ee7b7;
+  --emerald-bg: rgba(16, 185, 129, 0.34);
+  --emerald-border: rgba(110, 231, 183, 0.55);
+  --amber-text: #fde68a;
+  --rose-text: #fda4af;
+  --slate-text: #ecfdf5;
+  --slate-bg: rgba(255, 255, 255, 0.15);
+  --slate-border: rgba(255, 255, 255, 0.3);
+
+  background: linear-gradient(160deg, #065f46 0%, #064e3b 52%, #05382b 100%);
+  border-color: rgba(52, 211, 153, 0.65);
+  border-top: 3px solid #34d399;
+}
+.qlbg-quote-card.is-official:hover {
+  background: linear-gradient(160deg, #047857 0%, #065f46 52%, #064e3b 100%);
+  border-color: #6ee7b7;
+}
+.qlbg-page.theme-light-blue .qlbg-quote-card.is-official {
+  background: linear-gradient(160deg, #059669 0%, #047857 54%, #065f46 100%);
+  border-color: #10b981;
+  border-top: 3px solid #6ee7b7;
+}
+.qlbg-page.theme-light-blue .qlbg-quote-card.is-official:hover {
+  background: linear-gradient(160deg, #10b981 0%, #059669 54%, #047857 100%);
+  border-color: #a7f3d0;
+}
+.qlbg-quote-card.is-official .qc-status-badge.is-emerald {
+  background: rgba(16, 185, 129, 0.42);
+  color: #ffffff;
+  border-color: #a7f3d0;
+}
+.qlbg-quote-card.is-official .qc-fin-box {
+  background: rgba(2, 24, 18, 0.68);
+  border-color: rgba(110, 231, 183, 0.32);
+}
+.qlbg-quote-card.is-official .qc-btn:not(.is-sr-link):not(.is-chot-deal) {
+  background: rgba(2, 32, 24, 0.58);
+  color: #ecfdf5;
+  border-color: rgba(110, 231, 183, 0.38);
+}
+.qlbg-quote-card.is-official .qc-btn:not(.is-sr-link):not(.is-chot-deal):hover:not(:disabled) {
+  background: rgba(16, 185, 129, 0.35);
+  border-color: #a7f3d0;
+  color: #ffffff;
+}
+.qlbg-quote-card.is-official .qc-btn.is-sr-link {
+  background: rgba(2, 132, 199, 0.42);
+  color: #e0f2fe;
+  border-color: #7dd3fc;
+}
+.qlbg-quote-card.is-official .qc-btn.is-sr-link:hover {
+  background: #0284c7;
+  color: #ffffff;
+}
+.qlbg-quote-card.is-official .sr-md-cc-check:not(.selected) {
+  background: rgba(2, 44, 34, 0.55);
+  border-color: rgba(255, 255, 255, 0.58);
 }
 
 .qlbg-quote-card.is-draft {
   border-top: 2.5px solid rgba(245, 158, 11, 0.7);
+}
+.qlbg-group-block.is-group-official .qlbg-quote-card.is-draft {
+  opacity: 0.65;
+  border-top-color: rgba(245, 158, 11, 0.38);
+}
+.qlbg-group-block.is-group-official .qlbg-quote-card.is-draft:hover,
+.qlbg-group-block.is-group-official .qlbg-quote-card.is-draft.is-selected-card {
+  opacity: 0.96;
+  border-top-color: rgba(245, 158, 11, 0.72);
 }
 
 .qc-top {
@@ -7432,8 +7974,69 @@ onUnmounted(() => {
 .qc-top-left {
   display: inline-flex;
   align-items: center;
+  gap: 7px;
   min-width: 0;
   flex: 1 1 auto;
+}
+
+.sr-md-cc-check {
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  border-radius: 4px;
+  border: 1.5px solid rgba(148, 163, 184, 0.52);
+  background: rgba(15, 23, 42, 0.72);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: all 0.14s ease;
+}
+.sr-md-cc-check:hover {
+  border-color: #38bdf8;
+}
+.sr-md-cc-check.selected {
+  background: #0284c7;
+  border-color: #38bdf8;
+}
+.sr-md-cc-check.is-partial {
+  border-color: #38bdf8;
+  background: rgba(2, 132, 199, 0.24);
+}
+.qlbg-chk-dash {
+  width: 8px;
+  height: 2px;
+  border-radius: 999px;
+  background: #38bdf8;
+}
+
+.qlbg-page.theme-light-blue .sr-md-cc-check {
+  background: #ffffff;
+  border-color: #94a3b8;
+}
+.qlbg-page.theme-light-blue .sr-md-cc-check.selected {
+  background: #059669;
+  border-color: #059669;
+  color: #ffffff;
+}
+.qlbg-page.theme-light-blue .sr-md-cc-check.is-partial {
+  border-color: #059669;
+  background: #d1fae5;
+}
+.qlbg-page.theme-light-blue .qlbg-chk-dash {
+  background: #059669;
+}
+
+.qlbg-quote-card.is-selected-card {
+  border-color: #38bdf8 !important;
+  box-shadow: inset 3px 0 0 #38bdf8, 0 8px 20px -6px rgba(2, 132, 199, 0.35) !important;
+}
+.qlbg-page.theme-light-blue .qlbg-quote-card.is-selected-card {
+  border-color: #059669 !important;
+  box-shadow: inset 4px 0 0 #059669, 0 8px 20px -6px rgba(5, 150, 105, 0.22) !important;
 }
 
 .qc-badges {
@@ -7502,6 +8105,17 @@ onUnmounted(() => {
   background: var(--slate-bg);
   color: var(--ink-strong);
   border: 1px solid var(--slate-border);
+  white-space: nowrap;
+}
+
+.qc-origin-tag {
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-weight: 800;
+  background: var(--sky-bg);
+  color: var(--sky-text);
+  border: 1px solid var(--sky-border);
   white-space: nowrap;
 }
 
@@ -7723,6 +8337,119 @@ onUnmounted(() => {
   word-break: break-word;
 }
 
+/* File đính kèm hiển thị trực tiếp dưới nội dung Card (không khung bọc) */
+.qc-files-block {
+  display: flex;
+  flex-direction: column;
+  padding: 2px 0;
+}
+.qc-files-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.qc-file-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  padding: 1px 0;
+}
+.qc-file-chip {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  text-decoration: none;
+}
+.qc-file-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.qc-file-chip:hover .qc-file-name {
+  color: var(--sky-text);
+  text-decoration: underline;
+}
+.qc-file-chip.is-khach:hover .qc-file-name {
+  color: var(--emerald-text);
+}
+.qc-file-tag {
+  flex-shrink: 0;
+  margin-top: 1px;
+  padding: 0.5px 4.5px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 800;
+  background: var(--sky-bg);
+  color: var(--sky-text);
+  border: 1px solid var(--sky-border);
+}
+.qc-file-chip.is-khach .qc-file-tag {
+  background: var(--emerald-bg);
+  color: var(--emerald-text);
+  border-color: var(--emerald-border);
+}
+.qc-file-name {
+  min-width: 0;
+  flex: 1 1 auto;
+  font-size: 10.5px;
+  font-weight: 500;
+  line-height: 1.38;
+  color: var(--ink-secondary);
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  transition: color 0.14s ease;
+}
+.qc-file-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.qc-file-act-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.14s ease;
+}
+.qc-file-act-btn.is-view {
+  background: var(--sky-bg);
+  color: var(--sky-text);
+  border: 1px solid var(--sky-border);
+}
+.qc-file-act-btn.is-view:hover {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
+}
+.qc-file-act-btn.is-dl {
+  background: var(--emerald-bg);
+  color: var(--emerald-text);
+  border: 1px solid var(--emerald-border);
+}
+.qc-file-act-btn.is-dl:hover {
+  background: #059669;
+  color: #ffffff;
+  border-color: #059669;
+}
+
 /* Finance Box inside Card */
 .qc-fin-box {
   margin-top: auto;
@@ -7895,30 +8622,6 @@ onUnmounted(() => {
   color: #ffffff;
 }
 
-/* Standalone Divider & Sentinel */
-.qlbg-standalone-section {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.qlbg-section-divider {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: var(--ink-muted);
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-.qlbg-section-divider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--border-subtle);
-}
-
 .qlbg-lazy-sentinel {
   display: flex;
   align-items: center;
@@ -7927,154 +8630,6 @@ onUnmounted(() => {
   padding: 14px;
   color: var(--ink-muted);
   font-size: 12px;
-}
-
-/* ==========================================================================
-   6. COMPACT HIGH-DENSITY TABLE VIEW
-========================================================================== */
-.qlbg-table-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: 14px;
-  box-shadow: var(--shadow-card);
-  overflow: hidden;
-}
-
-.qlbg-table-scroll {
-  overflow-x: auto;
-}
-
-.qlbg-data-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12.5px;
-}
-
-.qlbg-data-table thead th {
-  position: sticky;
-  top: 0;
-  z-index: 5;
-  background: var(--bg-table-head);
-  color: var(--ink-muted);
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  text-align: left;
-  padding: 11px 12px;
-  border-bottom: 1px solid var(--border-subtle);
-  white-space: nowrap;
-}
-
-.qlbg-table-row {
-  border-bottom: 1px solid var(--border-subtle);
-  cursor: pointer;
-  transition: background 0.14s ease;
-}
-.qlbg-table-row:hover {
-  background: var(--bg-row-hover);
-}
-
-.qlbg-data-table td {
-  padding: 10px 12px;
-  vertical-align: middle;
-  color: var(--ink-primary);
-}
-
-.tbl-status-cell {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  flex-wrap: wrap;
-}
-
-.tbl-code-main {
-  font-weight: 700;
-  font-family: var(--font-mono);
-  color: var(--ink-strong);
-}
-.tbl-code-sub {
-  font-size: 11px;
-  color: var(--ink-faint);
-  font-family: var(--font-mono);
-}
-
-.tbl-cust-name {
-  font-weight: 700;
-  color: var(--ink-strong);
-  max-width: 240px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.tbl-cust-sub {
-  font-size: 11.5px;
-  color: var(--ink-muted);
-}
-
-.tbl-po-content {
-  max-width: 240px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--ink-secondary);
-}
-
-.tbl-amount-strong {
-  font-weight: 800;
-  color: var(--emerald-text) !important;
-}
-
-.tbl-com-val {
-  color: var(--sky-text);
-  font-weight: 700;
-}
-.tbl-muted {
-  color: var(--ink-faint);
-}
-
-.tbl-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.tbl-act-btn {
-  width: auto;
-  margin: 0;
-  padding: 4px 8px;
-  border-radius: 6px;
-  border: 1px solid var(--border-control);
-  background: var(--bg-input);
-  color: var(--ink-secondary);
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-}
-.tbl-act-btn:hover:not(:disabled) {
-  border-color: var(--sky-border);
-  color: var(--sky-text);
-  background: var(--sky-bg);
-}
-.tbl-act-btn:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-.tbl-act-btn.is-chot {
-  background: var(--emerald-bg);
-  color: var(--emerald-text);
-  border-color: var(--emerald-border);
-}
-.tbl-act-btn.is-sr {
-  background: var(--sky-bg);
-  color: var(--sky-text);
-  border-color: var(--sky-border);
-}
-.tbl-act-btn.is-del:hover {
-  background: var(--rose-bg);
-  color: var(--rose-text);
-  border-color: var(--rose-border);
 }
 
 /* ==========================================================================
@@ -8123,8 +8678,8 @@ onUnmounted(() => {
   gap: 12px;
   flex-wrap: wrap;
   padding: 13px 18px;
-  background: var(--bg-modal-head);
-  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-modal-head-rich);
+  border-bottom: 1.5px solid var(--sky-border);
   flex-shrink: 0;
 }
 
@@ -8144,7 +8699,9 @@ onUnmounted(() => {
   margin: 0;
   font-size: 16px;
   font-weight: 800;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  letter-spacing: -0.01em;
+  line-height: 1.3;
   color: var(--ink-strong);
 }
 
@@ -8155,7 +8712,7 @@ onUnmounted(() => {
   flex-wrap: wrap;
   margin-top: 3px;
   font-size: 12px;
-  color: var(--ink-muted);
+  color: var(--ink-secondary);
 }
 
 .dm-head-controls {
@@ -8253,15 +8810,15 @@ onUnmounted(() => {
   position: sticky;
   top: 0;
   z-index: 4;
-  background: var(--bg-table-head);
-  color: var(--ink-muted);
+  background: var(--bg-table-head-rich);
+  color: var(--ink-table-head);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
   text-align: left;
   padding: 10px 10px;
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: 1.5px solid var(--sky-border);
   white-space: nowrap;
 }
 
@@ -8277,6 +8834,11 @@ onUnmounted(() => {
   color: var(--sky-text);
   font-weight: 800;
   padding: 8px 10px;
+  border-top: 1px solid var(--sky-border);
+  border-bottom: 1px solid var(--sky-border);
+}
+.dm-group-row td:first-child {
+  box-shadow: inset 3px 0 0 var(--sky-text);
 }
 
 .dm-item-row:hover td {
@@ -8298,7 +8860,7 @@ onUnmounted(() => {
 }
 
 .sku-primary {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-weight: 700;
   font-size: 12px;
   color: var(--sky-text);
@@ -8409,8 +8971,8 @@ onUnmounted(() => {
   justify-content: space-between;
   gap: 6px;
   padding: 8px 10px;
-  background: var(--bg-modal-head);
-  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-modal-head-rich);
+  border-bottom: 1px solid var(--sky-border);
   flex-shrink: 0;
 }
 
@@ -8436,10 +8998,18 @@ onUnmounted(() => {
   cursor: pointer;
   transition: all 0.15s ease;
 }
+.cmp-sr-source-pill:hover:not(.active) {
+  color: var(--ink-primary);
+}
 .cmp-sr-source-pill.active {
   background: var(--sky-bg);
   color: var(--sky-text);
-  box-shadow: 0 1px 2px rgba(2, 6, 23, 0.2);
+  box-shadow: inset 0 0 0 1px var(--sky-border), 0 1px 2px rgba(2, 6, 23, 0.16);
+}
+.cmp-sr-source-pill.is-khach.active {
+  background: var(--emerald-bg);
+  color: var(--emerald-text);
+  box-shadow: inset 0 0 0 1px var(--emerald-border), 0 1px 2px rgba(2, 6, 23, 0.16);
 }
 
 .cmp-sr-source-actions {
@@ -8511,9 +9081,23 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  overflow: hidden;
+}
+.cmp-sr-po1-block.is-tone-sky {
+  border-color: var(--sky-border);
+}
+.cmp-sr-po1-block.is-tone-emerald {
+  border-color: var(--emerald-border);
+}
+.cmp-sr-po1-block.is-tone-amber {
+  border-color: var(--amber-border);
 }
 
+.cmp-sr-po1-block > .cmp-sr-po1-block-title,
 .cmp-sr-po1-block-head {
+  margin: -8px -10px 2px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -8527,6 +9111,30 @@ onUnmounted(() => {
   letter-spacing: 0.04em;
   color: var(--sky-text);
 }
+.cmp-sr-po1-block.is-tone-sky > .cmp-sr-po1-block-title,
+.cmp-sr-po1-block.is-tone-sky .cmp-sr-po1-block-head {
+  background: var(--sky-bg);
+  border-bottom-color: var(--sky-border);
+}
+.cmp-sr-po1-block.is-tone-sky .cmp-sr-po1-block-title {
+  color: var(--sky-text);
+}
+.cmp-sr-po1-block.is-tone-emerald > .cmp-sr-po1-block-title,
+.cmp-sr-po1-block.is-tone-emerald .cmp-sr-po1-block-head {
+  background: var(--emerald-bg);
+  border-bottom-color: var(--emerald-border);
+}
+.cmp-sr-po1-block.is-tone-emerald .cmp-sr-po1-block-title {
+  color: var(--emerald-text);
+}
+.cmp-sr-po1-block.is-tone-amber > .cmp-sr-po1-block-title,
+.cmp-sr-po1-block.is-tone-amber .cmp-sr-po1-block-head {
+  background: var(--amber-bg);
+  border-bottom-color: var(--amber-border);
+}
+.cmp-sr-po1-block.is-tone-amber .cmp-sr-po1-block-title {
+  color: var(--amber-text);
+}
 
 .cmp-sr-round-toggle-btn {
   width: auto;
@@ -8534,8 +9142,8 @@ onUnmounted(() => {
   padding: 2px 7px;
   border-radius: 6px;
   border: 1px solid var(--border-control);
-  background: var(--bg-input);
-  color: var(--ink-muted);
+  background: var(--bg-card);
+  color: var(--ink-secondary);
   font-size: 10px;
   font-weight: 700;
   cursor: pointer;
@@ -8653,6 +9261,20 @@ onUnmounted(() => {
   font-weight: 700;
   color: var(--ink-muted);
   margin-left: 2px;
+}
+
+.cmp-sr-pct-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 5px;
+  border: 1px solid var(--amber-border);
+  background: var(--amber-bg);
+  color: var(--amber-text);
+  font-size: 10.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }
 
 .cmp-sr-com-val-group {
@@ -8824,8 +9446,8 @@ onUnmounted(() => {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 3px;
   padding: 5px 6px;
-  background: var(--bg-modal-head);
-  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-table-head-rich);
+  border-bottom: 1px solid var(--sky-border);
 }
 
 .dock-tab-btn {
@@ -8835,7 +9457,7 @@ onUnmounted(() => {
   border-radius: 6px;
   border: 1px solid transparent;
   background: transparent;
-  color: var(--ink-muted);
+  color: var(--ink-secondary);
   font-size: 10.5px;
   font-weight: 700;
   cursor: pointer;
@@ -8847,13 +9469,20 @@ onUnmounted(() => {
   transition: all 0.15s ease;
 }
 .dock-tab-btn:hover {
-  color: var(--ink-primary);
-  background: var(--bg-row-hover);
+  color: var(--ink-strong);
+  background: var(--sky-bg);
 }
 .dock-tab-btn.active {
   background: var(--sky-bg);
   color: var(--sky-text);
   border-color: var(--sky-border);
+  font-weight: 800;
+}
+.qlbg-overlay.theme-light-blue .dock-tab-btn.active {
+  background: #ffffff;
+  color: #0284c7;
+  border-color: #60a5fa;
+  box-shadow: 0 1px 3px rgba(2, 132, 199, 0.16);
 }
 
 .dock-tab-panel {
@@ -8870,12 +9499,17 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 6px;
+  padding: 4px 8px;
+  border-radius: 7px;
+  background: var(--sky-bg);
+  border: 1px solid var(--sky-border);
 }
 .customer-dock-title {
   font-size: 10.5px;
   font-weight: 800;
   text-transform: uppercase;
-  color: var(--ink-muted);
+  letter-spacing: 0.03em;
+  color: var(--sky-text);
 }
 .btn-customer-detail-pill {
   width: auto;
@@ -8883,7 +9517,7 @@ onUnmounted(() => {
   padding: 2px 8px;
   border-radius: 999px;
   border: 1px solid var(--sky-border);
-  background: var(--sky-bg);
+  background: var(--bg-card);
   color: var(--sky-text);
   font-size: 10.5px;
   font-weight: 700;
@@ -8905,6 +9539,22 @@ onUnmounted(() => {
   font-size: 11px;
   font-weight: 700;
   color: var(--ink-muted);
+}
+.cd-readonly-val {
+  min-height: 24px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--bg-well);
+  border: 1px solid var(--border-subtle);
+  color: var(--ink-strong);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  word-break: break-word;
+}
+.cd-readonly-val.is-empty {
+  color: var(--ink-faint);
+  font-weight: 500;
 }
 .cd-input-group {
   display: flex;
@@ -8940,37 +9590,6 @@ onUnmounted(() => {
   font-weight: 700;
   cursor: pointer;
   flex-shrink: 0;
-}
-
-.dock-sr-payment-box {
-  padding: 7px 9px;
-  border-radius: 8px;
-  background: var(--bg-well);
-  border: 1px solid var(--border-subtle);
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.dock-sr-payment-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 10.5px;
-  font-weight: 800;
-  color: var(--ink-muted);
-  text-transform: uppercase;
-}
-.dock-sr-payment-rows {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-.dock-sr-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 11.5px;
-  color: var(--ink-secondary);
 }
 
 .fin-row {
@@ -9023,6 +9642,19 @@ onUnmounted(() => {
   font-weight: 700;
   color: var(--ink-muted);
   margin-left: 2px;
+}
+.fin-pct-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 5px;
+  border: 1px solid var(--amber-border);
+  background: var(--amber-bg);
+  color: var(--amber-text);
+  font-size: 10.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }
 .fin-val {
   font-weight: 800;
@@ -9089,18 +9721,6 @@ onUnmounted(() => {
   color: var(--sky-text);
   border: 1px solid var(--sky-border);
 }
-.dm-inline-link {
-  width: auto;
-  margin: 0;
-  padding: 2px 7px;
-  border-radius: 6px;
-  border: 1px solid var(--sky-border);
-  background: var(--sky-bg);
-  color: var(--sky-text);
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
-}
 
 .dm-cust-company {
   font-size: 13px;
@@ -9155,26 +9775,47 @@ onUnmounted(() => {
   margin: 2px 0;
 }
 
-/* Dual File Slots */
+/* Dual File Slots (không đóng khung, SVG icon + tên file xuống dòng + Xem / Tải / Đính kèm) */
 .dm-file-slot {
-  padding: 9px 10px;
-  border-radius: 9px;
-  background: var(--bg-well);
-  border: 1px solid var(--border-subtle);
+  padding: 6px 0;
+  border-radius: 0;
+  background: transparent;
+  border: none;
+  border-top: 1px dashed var(--border-subtle);
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+.dm-file-slot:first-of-type {
+  border-top: none;
+  padding-top: 2px;
 }
 .slot-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+.slot-head.is-hd {
+  background: var(--sky-bg);
+  border-left: 3px solid var(--sky-text);
+}
+.slot-head.is-khach {
+  background: var(--emerald-bg);
+  border-left: 3px solid var(--emerald-text);
 }
 .slot-label {
   font-size: 11.5px;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--ink-secondary);
+}
+.slot-head.is-hd .slot-label {
+  color: var(--sky-text);
+}
+.slot-head.is-khach .slot-label {
+  color: var(--emerald-text);
 }
 .slot-upload-btn {
   width: auto;
@@ -9182,7 +9823,7 @@ onUnmounted(() => {
   padding: 3px 9px;
   border-radius: 6px;
   border: 1px solid var(--sky-border);
-  background: var(--sky-bg);
+  background: var(--bg-card);
   color: var(--sky-text);
   font-size: 11px;
   font-weight: 700;
@@ -9193,6 +9834,14 @@ onUnmounted(() => {
   background: #0284c7;
   color: #ffffff;
 }
+.slot-head.is-khach .slot-upload-btn {
+  border-color: var(--emerald-border);
+  color: var(--emerald-text);
+}
+.slot-head.is-khach .slot-upload-btn:hover:not(:disabled) {
+  background: #059669;
+  color: #ffffff;
+}
 .slot-empty {
   font-size: 11.5px;
   color: var(--ink-faint);
@@ -9201,30 +9850,50 @@ onUnmounted(() => {
 .slot-file-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 7px;
 }
 .slot-file-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 6px;
-  padding: 5px 8px;
-  border-radius: 7px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
+  gap: 8px;
+  padding: 2px 0;
+  background: transparent;
+  border: none;
 }
-.slot-file-link {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--sky-text);
-  text-decoration: none;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.slot-file-main {
+  flex: 1 1 auto;
   min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  text-decoration: none;
 }
-.slot-file-link:hover {
+.slot-file-name {
+  min-width: 0;
+  flex: 1 1 auto;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.38;
+  color: var(--ink-primary);
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  transition: color 0.14s ease;
+}
+.slot-file-main.is-hd:hover .slot-file-name {
+  color: var(--sky-text);
   text-decoration: underline;
+}
+.slot-file-main.is-khach:hover .slot-file-name {
+  color: var(--emerald-text);
+  text-decoration: underline;
+}
+.slot-file-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
 }
 .slot-file-del {
   width: 22px;
@@ -9244,6 +9913,21 @@ onUnmounted(() => {
   color: var(--rose-text);
 }
 
+.dm-mob-header-icon {
+  display: none;
+}
+.dm-head-titles {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.dm-lbl-mob,
+.is-mob-inline-close {
+  display: none !important;
+}
+
 .dm-foot {
   display: flex;
   align-items: center;
@@ -9255,8 +9939,18 @@ onUnmounted(() => {
   border-top: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
-.dm-foot-left,
-.dm-foot-right {
+.dm-foot-sec-row {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.dm-foot-sec-row .dm-btn-delete {
+  margin-right: auto;
+}
+.dm-foot-cta-row {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -9266,6 +9960,10 @@ onUnmounted(() => {
 /* ==========================================================================
    8. CUSTOMER PICKER MODAL, PROFILE MODAL, CONFIRM & SMART TOAST
 ========================================================================== */
+.qlbg-cust-overlay {
+  z-index: 10025;
+  padding: 0 !important;
+}
 .qlbg-picker-modal,
 .qlbg-cust-modal {
   width: min(560px, 100%);
@@ -9278,6 +9976,17 @@ onUnmounted(() => {
   flex-direction: column;
   overflow: hidden;
 }
+.qlbg-cust-modal {
+  width: 100vw !important;
+  max-width: 100vw !important;
+  height: 100vh !important;
+  max-height: 100vh !important;
+  border-radius: 0 !important;
+  border: none !important;
+}
+.qlbg-cust-modal .mob-sheet-grabber {
+  display: none !important;
+}
 
 .pm-head {
   display: flex;
@@ -9285,8 +9994,142 @@ onUnmounted(() => {
   justify-content: space-between;
   gap: 10px;
   padding: 13px 16px;
+  background: var(--bg-modal-head-rich);
+  border-bottom: 1.5px solid var(--sky-border);
+}
+.dm-date-modal-body {
+  padding: 14px 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.dm-date-sec-lbl {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--sky-text);
+}
+.dm-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.dm-preset-btn {
+  width: 100%;
+  margin: 0;
+  padding: 9px 11px;
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-well);
+  color: var(--ink-primary);
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  transition: all 0.14s ease;
+}
+.dm-preset-btn:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--sky-border);
+}
+.dm-preset-btn.active {
+  background: var(--sky-bg);
+  border-color: var(--sky-border);
+}
+.dm-preset-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.dm-preset-top strong {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink-strong);
+}
+.dm-preset-btn.active .dm-preset-top strong {
+  color: var(--sky-text);
+}
+.dm-preset-desc {
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+.dm-custom-range-box {
+  padding: 11px 12px;
+  border-radius: 11px;
+  background: var(--bg-well);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.dm-custom-range-box.is-highlighted {
+  border-color: var(--sky-border);
+  background: var(--sky-bg);
+}
+.dm-custom-range-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dm-date-field {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.dm-date-field span {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.qlbg-date-input {
+  width: 100%;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 9px;
+  border: 1px solid var(--border-control);
+  background: var(--bg-input);
+  color: var(--ink-strong);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color-scheme: dark;
+  outline: none;
+}
+.theme-light-blue .qlbg-date-input {
+  color-scheme: light;
+}
+.qlbg-date-input:focus {
+  border-color: var(--border-strong);
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.14);
+}
+.dm-date-arrow {
+  padding-top: 16px;
+  color: var(--ink-muted);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.pm-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 11px 16px;
   background: var(--bg-modal-head);
-  border-bottom: 1px solid var(--border-subtle);
+  border-top: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+.pm-foot-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .pm-title-wrap {
   display: flex;
@@ -9441,8 +10284,19 @@ onUnmounted(() => {
   color: var(--ink-muted);
 }
 
-/* Customer Profile Modal */
+/* Customer Profile Modal (Full 2-Column Bento Layout like CustomerFirebase) */
+.cm-upd-pill {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--slate-bg);
+  color: var(--ink-secondary);
+  border: 1px solid var(--slate-border);
+}
 .cm-body {
+  flex: 1 1 auto;
+  min-height: 0;
   padding: 16px;
   overflow-y: auto;
   display: flex;
@@ -9453,10 +10307,14 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px;
+  padding: 12px 14px;
   border-radius: 12px;
   background: var(--bg-well);
   border: 1px solid var(--border-subtle);
+}
+.cm-hero-info {
+  min-width: 0;
+  flex: 1 1 auto;
 }
 .cm-avatar {
   width: 44px;
@@ -9477,18 +10335,104 @@ onUnmounted(() => {
   font-weight: 800;
   color: var(--ink-strong);
 }
-.cm-mst {
-  font-size: 12px;
+.cm-hero-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.cm-hero-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--bg-card);
+  color: var(--ink-secondary);
+  border: 1px solid var(--border-subtle);
+}
+.cm-hero-chip.is-sky {
+  background: var(--sky-bg);
   color: var(--sky-text);
+  border-color: var(--sky-border);
+}
+.cm-hero-chip.is-emerald {
+  background: var(--emerald-bg);
+  color: var(--emerald-text);
+  border-color: var(--emerald-border);
+}
+.cm-2col {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+.cm-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.cm-section-box {
+  padding: 13px 14px;
+  border-radius: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cm-section-title {
+  margin: -13px -14px 2px;
+  padding: 9px 14px;
+  font-size: 11.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--slate-bg);
+  color: var(--ink-secondary);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.cm-section-title.is-emerald {
+  background: var(--emerald-bg);
+  color: var(--emerald-text);
+  border-bottom-color: var(--emerald-border);
+}
+.cm-section-title.is-sky {
+  background: var(--sky-bg);
+  color: var(--sky-text);
+  border-bottom-color: var(--sky-border);
+}
+.cm-section-title.is-amber {
+  background: var(--amber-bg);
+  color: var(--amber-text);
+  border-bottom-color: var(--amber-border);
+}
+.cm-section-title.is-indigo {
+  background: var(--indigo-bg);
+  color: var(--indigo-text);
+  border-bottom-color: var(--indigo-border);
+}
+.cm-sub-divider {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--sky-text);
+  padding: 8px 0 2px;
   margin-top: 2px;
+  border-top: 1px dashed var(--sky-border);
 }
 .cm-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 .cm-field {
-  padding: 9px 11px;
+  padding: 8px 10px;
   border-radius: 9px;
   background: var(--bg-well);
   border: 1px solid var(--border-subtle);
@@ -9501,7 +10445,7 @@ onUnmounted(() => {
   grid-column: 1 / -1;
 }
 .cm-field span {
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
   text-transform: uppercase;
   color: var(--ink-muted);
@@ -9511,6 +10455,92 @@ onUnmounted(() => {
   color: var(--ink-strong);
   word-break: break-word;
 }
+.cm-field strong.is-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+.cm-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.cm-tag-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  background: var(--sky-bg);
+  color: var(--sky-text);
+  border: 1px solid var(--sky-border);
+}
+.cm-empty-note {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--ink-faint);
+}
+.cm-debt-box {
+  border-color: var(--sky-border);
+}
+.cm-debt-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.cm-debt-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.cm-debt-lbl {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+.cm-debt-val-lg {
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1.15;
+}
+.cm-debt-val {
+  font-size: 13.5px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+.cm-debt-val small {
+  font-size: 11px;
+  font-weight: 700;
+}
+.cm-debt-val-lg.is-rose,
+.cm-debt-val.is-rose {
+  color: var(--rose-text);
+}
+.cm-debt-val-lg.is-emerald,
+.cm-debt-val.is-emerald {
+  color: var(--emerald-text);
+}
+.cm-debt-val.is-sky {
+  color: var(--sky-text);
+}
+.cm-debt-bar-track {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--bg-well);
+  border: 1px solid var(--border-subtle);
+  overflow: hidden;
+}
+.cm-debt-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #38bdf8, #10b981);
+  transition: width 0.3s ease;
+}
+.cm-debt-bar-fill.is-paid {
+  background: #10b981;
+}
 .cm-foot {
   padding: 12px 16px;
   border-top: 1px solid var(--border-subtle);
@@ -9519,6 +10549,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 /* Queued Confirm Dialog */
@@ -9701,74 +10732,817 @@ onUnmounted(() => {
 }
 
 /* ==========================================================================
-   9. RESPONSIVE — TABLET & MOBILE BOTTOM-SHEET ARCHITECTURE
+   9. RESPONSIVE — TABLET & MOBILE MODAL (SYNCED SALEREPORT PO OPTION A)
 ========================================================================== */
 @media (max-width: 1080px) {
   .qlbg-kpi-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
-  .hide-md {
-    display: none;
+
+  /* 1. Fullscreen 100dvh Modal Shell + Khóa trượt ngang + Né tai thỏ / Dynamic Island */
+  .qlbg-overlay.qlbg-detail-overlay {
+    padding: 0 !important;
+    align-items: stretch !important;
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+    touch-action: pan-y;
   }
-  .dm-body {
-    grid-template-columns: 1fr;
+
+  .qlbg-detail-modal {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    border: none !important;
+    overflow-x: hidden !important;
+    overscroll-behavior-x: none !important;
+    touch-action: pan-y;
   }
-  .dm-mobile-tabs {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 6px;
-    padding: 8px 14px;
-    background: var(--bg-modal-head);
-    border-bottom: 1px solid var(--border-subtle);
+
+  .qlbg-detail-modal .dm-head,
+  .qlbg-detail-modal .dm-mobile-tabs,
+  .qlbg-detail-modal .dm-body,
+  .qlbg-detail-modal .dm-main-col,
+  .qlbg-detail-modal .dm-side-col,
+  .qlbg-detail-modal .dm-mob-overview-card,
+  .qlbg-detail-modal .dm-mob-tabs-chrome,
+  .qlbg-detail-modal .dm-foot {
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  /* 2. Gradient Full-Bleed Header chuẩn .sr-po-modal-header */
+  .dm-dt-only-ctrl {
+    display: none !important;
+  }
+
+  .dm-mob-header-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.34);
+    color: #ffffff;
     flex-shrink: 0;
   }
-  .dm-mob-tab {
-    width: 100%;
-    margin: 0;
-    padding: 7px 10px;
-    border-radius: 8px;
-    border: 1px solid var(--border-control);
-    background: var(--bg-input);
-    color: var(--ink-muted);
+
+  .dm-head {
+    padding: max(calc(env(safe-area-inset-top, 0px) + 6px), 52px) 14px 12px !important;
+    background: linear-gradient(90deg, #059669 0%, #047857 55%, #0f766e 100%) !important;
+    border-bottom: 1px solid rgba(52, 211, 153, 0.34) !important;
+    border-radius: 0 !important;
+    color: #ffffff !important;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .qlbg-overlay.theme-light-blue .dm-head {
+    background: linear-gradient(90deg, #0284c7 0%, #2563eb 55%, #1d4ed8 100%) !important;
+    border-bottom: 1px solid #7dd3fc !important;
+  }
+
+  .dm-head-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .dm-title-row {
+    gap: 6px;
+  }
+
+  .dm-code,
+  .dm-code.dm-mob-company-title {
+    font-size: 14px;
+    font-weight: 800;
+    font-family: var(--font-sans);
+    letter-spacing: -0.01em;
+    line-height: 1.28;
+    color: #ffffff !important;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: break-word;
+  }
+
+  .dm-mob-head-pills {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+  }
+
+  .dm-head .qc-status-badge,
+  .dm-head .qc-ver-tag {
+    background: rgba(255, 255, 255, 0.2) !important;
+    border-color: rgba(255, 255, 255, 0.36) !important;
+    color: #ffffff !important;
+    font-family: var(--font-sans) !important;
+  }
+
+  .dm-head .status-dot {
+    background: #ffffff !important;
+  }
+
+  .dm-head-controls {
+    flex-wrap: nowrap;
+    gap: 7px;
+    flex-shrink: 0;
+  }
+
+  .dm-head .qlbg-excel-btn {
+    height: 34px;
+    padding: 0 10px;
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.16) !important;
+    border: 1px solid rgba(255, 255, 255, 0.36) !important;
+    color: #ffffff !important;
     font-size: 12px;
-    font-weight: 700;
+    font-weight: 800;
+  }
+
+  .dm-head .qlbg-excel-btn:hover:not(:disabled) {
+    background: #ffffff !important;
+    color: #059669 !important;
+  }
+
+  .qlbg-overlay.theme-light-blue .dm-head .qlbg-excel-btn:hover:not(:disabled) {
+    color: #0284c7 !important;
+  }
+
+  .dm-head .dm-close-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    background: rgba(15, 23, 42, 0.28) !important;
+    color: #ffffff !important;
+  }
+
+  .dm-head .dm-close-btn:hover {
+    background: rgba(239, 68, 68, 0.55) !important;
+    border-color: #fecaca !important;
+  }
+
+  /* 3. Mobile Pane Switcher chuẩn .sr-po-mobile-switch */
+  .dm-mobile-tabs {
+    display: flex;
+    padding: 8px 12px;
+    gap: 8px;
+    background: rgba(9, 20, 16, 0.96);
+    border-bottom: 1px solid rgba(52, 211, 153, 0.22);
+    flex-shrink: 0;
+  }
+
+  .qlbg-overlay.theme-light-blue .dm-mobile-tabs {
+    background: #f8fafc;
+    border-bottom-color: #bae6fd;
+  }
+
+  .dm-mob-tab {
+    flex: 1 1 0%;
+    min-width: 0;
+    margin: 0;
+    height: 36px;
+    padding: 0 8px;
+    border-radius: 9px;
+    border: 1px solid rgba(52, 211, 153, 0.24);
+    background: rgba(15, 29, 25, 0.78);
+    color: #94a3b8;
+    font-size: 11.5px;
+    font-weight: 800;
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
+
   .dm-mob-tab.active {
-    background: var(--sky-bg);
-    color: var(--sky-text);
-    border-color: var(--sky-border);
+    background: rgba(16, 185, 129, 0.22);
+    border-color: #34d399;
+    color: #ffffff;
   }
+
+  .qlbg-overlay.theme-light-blue .dm-mob-tab {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    color: #475569;
+  }
+
+  .qlbg-overlay.theme-light-blue .dm-mob-tab.active {
+    background: #e0f2fe;
+    color: #0284c7;
+    border-color: #0284c7;
+    box-shadow: 0 2px 6px rgba(2, 132, 199, 0.14);
+  }
+
   .mob-hidden {
     display: none !important;
   }
+
+  /* 4. Option A Body Workspace (Cuộn 1 mạch, không lồng scroll) */
+  .dm-body {
+    display: flex;
+    flex-direction: column;
+    grid-template-columns: none;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    padding: 10px 12px 16px;
+    gap: 0;
+    background: rgba(8, 17, 15, 0.96);
+  }
+
+  .qlbg-overlay.theme-light-blue .dm-body {
+    background: #eef4fb;
+  }
+
+  /* Overview Card chuẩn .sr-po-overview-card */
+  .dm-mob-overview-card {
+    position: relative;
+    background: linear-gradient(165deg, rgba(15, 29, 25, 0.94) 0%, rgba(10, 20, 17, 0.98) 100%);
+    border: 1px solid rgba(52, 211, 153, 0.26);
+    border-radius: 14px;
+    padding: 11px 12px 12px;
+    margin-bottom: 10px;
+    box-shadow: 0 8px 22px -10px rgba(0, 0, 0, 0.5);
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+
+  .qlbg-overlay.theme-light-blue .dm-mob-overview-card {
+    background: #ffffff;
+    border-color: #bae6fd;
+    box-shadow: 0 8px 22px -8px rgba(2, 132, 199, 0.1);
+  }
+
+  .dm-mob-overview-accent {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, #10b981, #34d399, #38bdf8);
+  }
+
+  .qlbg-overlay.theme-light-blue .dm-mob-overview-accent {
+    background: linear-gradient(90deg, #0284c7, #2563eb, #059669);
+  }
+
+  .dm-mob-overview-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding-bottom: 7px;
+    margin-bottom: 8px;
+    border-bottom: 1px dashed rgba(52, 211, 153, 0.24);
+  }
+
+  .qlbg-overlay.theme-light-blue .dm-mob-overview-head {
+    border-bottom-color: #dbeafe;
+  }
+
+  .dm-mob-overview-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #34d399;
+  }
+
+  .qlbg-overlay.theme-light-blue .dm-mob-overview-title {
+    color: #0284c7;
+  }
+
+  .dm-mob-overview-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px 9px;
+  }
+
+  .dm-mob-ov-field {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  .dm-mob-ov-field.is-full {
+    grid-column: 1 / -1;
+  }
+
+  .dm-mob-ov-lbl {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--ink-muted);
+  }
+
+  .dm-mob-ov-val {
+    min-height: 28px;
+    padding: 5px 8px;
+    border-radius: 7px;
+    background: var(--bg-well);
+    border: 1px solid var(--border-subtle);
+    color: var(--ink-strong);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.35;
+    word-break: break-word;
+  }
+
+  .dm-mob-ov-val.is-empty {
+    color: var(--ink-faint);
+    font-weight: 500;
+  }
+
+  /* Card 2 Chrome (.sr-po-tabs-card parity: Price Mode Bar + Utility Strip + Inner Sub-tabs) */
+  .dm-mob-tabs-chrome {
+    border-radius: 14px 14px 0 0;
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    border-bottom: none;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: linear-gradient(165deg, rgba(12, 31, 52, 0.94) 0%, rgba(9, 20, 36, 0.97) 100%);
+  }
+
+  .dm-mob-tabs-chrome.is-mode-khach {
+    border-color: rgba(52, 211, 153, 0.36);
+    background: linear-gradient(165deg, rgba(10, 35, 28, 0.94) 0%, rgba(8, 24, 19, 0.97) 100%);
+  }
+
+  .dm-mob-tabs-chrome.is-mode-noibo {
+    border-color: rgba(245, 158, 11, 0.36);
+    background: linear-gradient(165deg, rgba(35, 24, 10, 0.94) 0%, rgba(22, 16, 8, 0.97) 100%);
+  }
+
+  .qlbg-overlay.theme-light-blue .dm-mob-tabs-chrome {
+    background: #ffffff;
+    border-color: #93c5fd;
+  }
+
+  .qlbg-overlay.theme-light-blue .dm-mob-tabs-chrome.is-mode-khach {
+    border-color: #6ee7b7;
+  }
+
+  .qlbg-overlay.theme-light-blue .dm-mob-tabs-chrome.is-mode-noibo {
+    border-color: #fcd34d;
+  }
+
+  .dm-mob-price-bar {
+    padding: 8px 10px;
+    background: rgba(15, 23, 42, 0.55);
+    border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+  }
+
+  .qlbg-overlay.theme-light-blue .dm-mob-tabs-chrome.is-mode-hd .dm-mob-price-bar {
+    background: linear-gradient(180deg, #e0f2fe 0%, #f0f9ff 100%);
+    border-bottom-color: #bae6fd;
+  }
+
+  .qlbg-overlay.theme-light-blue .dm-mob-tabs-chrome.is-mode-khach .dm-mob-price-bar {
+    background: linear-gradient(180deg, #d1fae5 0%, #ecfdf5 100%);
+    border-bottom-color: #a7f3d0;
+  }
+
+  .qlbg-overlay.theme-light-blue .dm-mob-tabs-chrome.is-mode-noibo .dm-mob-price-bar {
+    background: linear-gradient(180deg, #fef3c7 0%, #fffbeb 100%);
+    border-bottom-color: #fde68a;
+  }
+
+  .dm-mob-price-seg {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+    padding: 3px;
+    border-radius: 9px;
+    background: rgba(9, 14, 26, 0.78);
+    border: 1px solid rgba(148, 163, 184, 0.25);
+  }
+
+  .qlbg-overlay.theme-light-blue .dm-mob-price-seg {
+    background: #ffffff;
+    border-color: #cbd5e1;
+  }
+
+  .dm-mob-price-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    width: 100%;
+    height: 30px;
+    margin: 0;
+    padding: 0 6px;
+    border-radius: 6.5px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: #94a3b8;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.16s ease;
+  }
+
+  .dm-mob-price-btn.is-hd:not(.active) {
+    color: #7dd3fc;
+  }
+  .dm-mob-price-btn.is-khach:not(.active) {
+    color: #6ee7b7;
+  }
+  .dm-mob-price-btn.is-noibo:not(.active) {
+    color: #fcd34d;
+  }
+
+  .qlbg-overlay.theme-light-blue .dm-mob-price-btn.is-hd:not(.active) {
+    color: #0369a1;
+  }
+  .qlbg-overlay.theme-light-blue .dm-mob-price-btn.is-khach:not(.active) {
+    color: #047857;
+  }
+  .qlbg-overlay.theme-light-blue .dm-mob-price-btn.is-noibo:not(.active) {
+    color: #b45309;
+  }
+
+  .dm-mob-price-btn.is-hd.active {
+    background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+    border-color: rgba(125, 211, 252, 0.55);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(2, 132, 199, 0.34);
+  }
+  .dm-mob-price-btn.is-khach.active {
+    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+    border-color: rgba(110, 231, 183, 0.55);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.34);
+  }
+  .dm-mob-price-btn.is-noibo.active {
+    background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%);
+    border-color: rgba(252, 211, 77, 0.55);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(217, 119, 6, 0.32);
+  }
+
+  .dm-mob-util-strip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 7px;
+  }
+
+  .dm-mob-currency-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .dm-mob-currency-seg {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px;
+    gap: 2px;
+    border-radius: 7px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-control);
+  }
+
+  .dm-mob-cur-btn {
+    height: 24px;
+    margin: 0;
+    padding: 0 9px;
+    border: none;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--ink-muted);
+    font-size: 11px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  .dm-mob-cur-btn.active {
+    background: var(--sky-bg);
+    color: var(--sky-text);
+    box-shadow: inset 0 0 0 1px var(--sky-border);
+  }
+
+  .dm-mob-rate-note {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--ink-muted);
+  }
+
+  .dm-mob-active-total {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 5px;
+    font-size: 12px;
+  }
+
+  .dm-mob-total-lbl {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--ink-muted);
+  }
+
+  .dm-mob-total-val {
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--emerald-text);
+  }
+  .dm-mob-total-val.is-profit {
+    color: var(--emerald-text);
+  }
+  .dm-mob-total-val.is-warn {
+    color: var(--rose-text);
+  }
+
+  /* Row 2 Inner Tabs (.sr-po-tabs-head parity) */
+  .dm-mob-tabs-head {
+    padding: 7px 10px 8px;
+    background: rgba(15, 23, 42, 0.38);
+    border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+  }
+
+  .qlbg-overlay.theme-light-blue .dm-mob-tabs-head {
+    background: #ffffff;
+    border-bottom-color: #e2e8f0;
+  }
+
+  .dm-mob-tabs-btn-group {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
+  }
+
+  .dm-mob-inner-tab {
+    height: 35px;
+    width: 100%;
+    margin: 0;
+    padding: 0 8px;
+    border-radius: 8px;
+    border: 1px solid rgba(148, 163, 184, 0.24);
+    background: rgba(15, 23, 42, 0.68);
+    color: #94a3b8;
+    font-size: 11.5px;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    transition: all 0.16s ease;
+  }
+
+  .dm-mob-tabs-chrome.is-mode-hd .dm-mob-inner-tab.active {
+    background: rgba(2, 132, 199, 0.24);
+    border: 1.5px solid #38bdf8;
+    color: #f0f9ff;
+    box-shadow: inset 0 -2.5px 0 #0284c7, 0 2px 8px rgba(2, 132, 199, 0.22);
+  }
+  .dm-mob-tabs-chrome.is-mode-khach .dm-mob-inner-tab.active {
+    background: rgba(5, 150, 105, 0.24);
+    border: 1.5px solid #34d399;
+    color: #ecfdf5;
+    box-shadow: inset 0 -2.5px 0 #10b981, 0 2px 8px rgba(16, 185, 129, 0.22);
+  }
+  .dm-mob-tabs-chrome.is-mode-noibo .dm-mob-inner-tab.active {
+    background: rgba(217, 119, 6, 0.24);
+    border: 1.5px solid #fbbf24;
+    color: #fffbeb;
+    box-shadow: inset 0 -2.5px 0 #f59e0b, 0 2px 8px rgba(217, 119, 6, 0.22);
+  }
+
+  .qlbg-overlay.theme-light-blue .dm-mob-inner-tab {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    color: #475569;
+  }
+
+  .qlbg-overlay.theme-light-blue .dm-mob-tabs-chrome.is-mode-hd .dm-mob-inner-tab.active {
+    background: #e0f2fe;
+    border-color: #0284c7;
+    color: #0369a1;
+    box-shadow: inset 0 -2.5px 0 #0284c7, 0 2px 6px rgba(2, 132, 199, 0.14);
+  }
+  .qlbg-overlay.theme-light-blue .dm-mob-tabs-chrome.is-mode-khach .dm-mob-inner-tab.active {
+    background: #d1fae5;
+    border-color: #059669;
+    color: #047857;
+    box-shadow: inset 0 -2.5px 0 #059669, 0 2px 6px rgba(5, 150, 105, 0.14);
+  }
+  .qlbg-overlay.theme-light-blue .dm-mob-tabs-chrome.is-mode-noibo .dm-mob-inner-tab.active {
+    background: #fef3c7;
+    border-color: #d97706;
+    color: #b45309;
+    box-shadow: inset 0 -2.5px 0 #d97706, 0 2px 6px rgba(217, 119, 6, 0.14);
+  }
+
+  /* Seamless Connected Lower Half inside Card 2 */
+  .dm-main-col.is-mob-tab-panel,
+  .dm-side-col.is-mob-metrics {
+    flex: none !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    border-radius: 0 0 14px 14px;
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    border-top: none !important;
+    padding: 10px 10px 12px;
+    background: linear-gradient(165deg, rgba(12, 31, 52, 0.9) 0%, rgba(9, 20, 36, 0.96) 100%);
+  }
+
+  .dm-body.is-mode-khach .dm-main-col.is-mob-tab-panel,
+  .dm-body.is-mode-khach .dm-side-col.is-mob-metrics {
+    border-color: rgba(52, 211, 153, 0.36);
+    background: linear-gradient(165deg, rgba(10, 35, 28, 0.9) 0%, rgba(8, 24, 19, 0.96) 100%);
+  }
+
+  .dm-body.is-mode-noibo .dm-main-col.is-mob-tab-panel,
+  .dm-body.is-mode-noibo .dm-side-col.is-mob-metrics {
+    border-color: rgba(245, 158, 11, 0.36);
+    background: linear-gradient(165deg, rgba(35, 24, 10, 0.9) 0%, rgba(22, 16, 8, 0.96) 100%);
+  }
+
+  .qlbg-overlay.theme-light-blue .dm-main-col.is-mob-tab-panel,
+  .qlbg-overlay.theme-light-blue .dm-side-col.is-mob-metrics {
+    background: #ffffff;
+    border-color: #93c5fd;
+  }
+
+  .qlbg-overlay.theme-light-blue .dm-body.is-mode-khach .dm-main-col.is-mob-tab-panel,
+  .qlbg-overlay.theme-light-blue .dm-body.is-mode-khach .dm-side-col.is-mob-metrics {
+    border-color: #6ee7b7;
+  }
+
+  .qlbg-overlay.theme-light-blue .dm-body.is-mode-noibo .dm-main-col.is-mob-tab-panel,
+  .qlbg-overlay.theme-light-blue .dm-body.is-mode-noibo .dm-side-col.is-mob-metrics {
+    border-color: #fcd34d;
+  }
+
+  /* Quick Goods Totals Strip */
+  .dm-mob-goods-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    padding: 8px;
+    margin-bottom: 10px;
+    border-radius: 10px;
+    background: var(--bg-well);
+    border: 1px solid var(--border-subtle);
+  }
+
+  .dm-mob-gs-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .dm-mob-gs-cell span {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+  }
+
+  .dm-mob-gs-cell strong {
+    font-size: 11.5px;
+    font-weight: 800;
+    color: var(--ink-strong);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .dm-mob-gs-cell strong.is-sky {
+    color: var(--sky-text);
+  }
+  .dm-mob-gs-cell strong.is-emerald {
+    color: var(--emerald-text);
+  }
+  .dm-mob-gs-cell strong.is-rose {
+    color: var(--rose-text);
+  }
+
+  /* Metrics + Dock inside Mobile (No trapped height or inner scrollbars!) */
   .dm-side-col {
     border-left: none;
+    overflow: visible !important;
+  }
+
+  .dm-side-col .cmp-sr-po1-blocks,
+  .dm-side-col .cmp-sr-blocks-scroll {
+    overflow: visible !important;
+    padding: 0;
+  }
+
+  .dm-side-col.is-mob-metrics .cmp-sr-source-bar {
+    border-radius: 9px;
+    margin-bottom: 8px;
+    border: 1px solid var(--sky-border);
+  }
+
+  .dm-side-col.is-mob-metrics .pc-right-finance-dock {
+    margin-top: 10px;
+    background: transparent !important;
+    border-top: none !important;
+    gap: 10px;
+  }
+
+  .dm-side-col.is-mob-metrics .dock-tab-panel {
+    max-height: none !important;
+    overflow: visible !important;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 11px;
+    padding: 10px 12px;
+  }
+
+  /* Tab 2: Hồ sơ File & Tổng kết (Mobile Option A) */
+  .dm-side-col.is-mob-tongket {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .dm-side-col.is-mob-tongket .pc-right-finance-dock {
+    background: transparent !important;
+    border-top: none !important;
+    gap: 10px;
+  }
+
+  .dm-side-col.is-mob-tongket .dock-tab-panel {
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 12px 13px !important;
+    border-radius: 14px !important;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    box-shadow: 0 8px 22px -10px rgba(0, 0, 0, 0.35);
+    gap: 8px;
+  }
+
+  .qlbg-overlay.theme-light-blue .dm-side-col.is-mob-tongket .dock-tab-panel {
+    border-color: #bae6fd;
+    box-shadow: 0 8px 22px -8px rgba(2, 132, 199, 0.1);
+  }
+
+  .dm-mob-dock-sec-head {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding-bottom: 7px;
+    margin-bottom: 2px;
+    border-bottom: 1px dashed var(--border-subtle);
+    font-size: 11.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .dm-mob-dock-sec-head.is-sky {
+    color: var(--sky-text);
+  }
+  .dm-mob-dock-sec-head.is-amber {
+    color: var(--amber-text);
+  }
+  .dm-mob-dock-sec-head.is-emerald {
+    color: var(--emerald-text);
   }
 }
 
 @media (max-width: 768px) {
   .qlbg-page {
-    padding: 10px 10px 32px;
+    padding: 10px 10px calc(158px + env(safe-area-inset-bottom, 0px));
   }
 
   .hide-xs {
     display: none !important;
-  }
-  .show-xs-flex {
-    display: inline-flex !important;
-    gap: 5px;
-  }
-
-  .bg-topbar {
-    padding: 10px 12px;
-  }
-  .bg-title {
-    font-size: 15px;
-  }
-  .bg-topbar-right {
-    width: 100%;
-    justify-content: space-between;
   }
 
   .qlbg-kpi-grid {
@@ -9776,30 +11550,399 @@ onUnmounted(() => {
     gap: 8px;
   }
   .qlbg-kpi-card {
-    padding: 10px 11px;
+    padding: 12px 13px;
+  }
+  .qlbg-kpi-card.is-sky {
+    grid-column: 1 / -1;
+  }
+  .kpi-label {
+    font-size: 12.5px;
   }
   .kpi-val {
-    font-size: 18px;
-  }
-  .kpi-val.is-money {
-    font-size: 15.5px;
+    font-size: 20px;
   }
 
-  .qlbg-picker-btn,
-  .qlbg-select-wrap {
-    flex: 1 1 calc(50% - 6px);
+  .qlbg-filter-row-main {
+    gap: 8px;
+  }
+  .qlbg-search-box {
+    order: 1;
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  .qlbg-filter-left {
+    order: 2;
+    width: 100%;
+  }
+  /* Ẩn cụm Hiển thị & Tạo báo giá ở thanh trên vì đã chuyển xuống Floating Bottom Sub-Dock (.bg-mobile-dock) */
+  .qlbg-filter-right {
+    display: none !important;
+  }
+
+  /* =========================================================
+     FLOATING GLASS BOTTOM SUB-DOCK (.bg-mobile-dock — ĐỒNG BỘ APP.VUE, CF & SR)
+     ========================================================= */
+  .bg-mobile-dock {
+    position: fixed;
+    left: 10px;
+    right: 10px;
+    bottom: calc(74px + env(safe-area-inset-bottom, 0px));
+    width: auto;
+    max-width: 420px;
+    margin: 0 auto;
+    z-index: 955;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 6px;
+    padding: 6px;
+    border-radius: 20px;
+    background: rgba(15, 23, 42, 0.92);
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    box-shadow:
+      0 14px 36px rgba(2, 6, 23, 0.62),
+      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(22px) saturate(165%);
+    -webkit-backdrop-filter: blur(22px) saturate(165%);
+    transform: translate3d(0, 0, 0);
+    will-change: bottom, transform;
+    transition:
+      bottom 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+      visibility 0.24s ease,
+      box-shadow 0.3s ease;
+  }
+
+  .qlbg-page.theme-light-blue .bg-mobile-dock {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: rgba(2, 132, 199, 0.28);
+    box-shadow:
+      0 14px 34px rgba(15, 23, 42, 0.16),
+      inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  }
+
+  :global(.app-layout.mobile-nav-hidden .bg-mobile-dock) {
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .bg-mobile-dock.is-modal-hidden,
+  :global(.app-layout.has-open-modal .bg-mobile-dock),
+  :global(body.app-has-open-modal .bg-mobile-dock) {
+    transform: translateY(calc(100% + 96px + env(safe-area-inset-bottom, 0px))) scale(0.96) !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  .bg-dock-btn {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+    min-height: 48px;
+    margin: 0;
+    padding: 5px 4px 4px;
+    border-radius: 14px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: #94a3b8;
+    font-family: var(--font-sans);
+    font-size: 10.5px;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    transition: all 0.16s ease;
+  }
+
+  .bg-dock-btn > span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .bg-dock-btn:active:not(:disabled) {
+    transform: scale(0.95);
+  }
+
+  .bg-dock-btn:disabled {
+    opacity: 0.6;
+    cursor: wait;
+  }
+
+  .bg-dock-btn.active {
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.14);
+    border-color: rgba(56, 189, 248, 0.3);
+  }
+
+  .qlbg-page.theme-light-blue .bg-dock-btn {
+    color: #475569;
+  }
+
+  .qlbg-page.theme-light-blue .bg-dock-btn.active {
+    color: #0284c7;
+    background: #e0f2fe;
+    border-color: #7dd3fc;
+  }
+
+  .bg-dock-btn.is-primary.is-center-cta {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: #042f2e;
+    font-weight: 800;
+    border-color: rgba(110, 231, 183, 0.48);
+    box-shadow: 0 6px 18px -4px rgba(16, 185, 129, 0.52);
+  }
+
+  .qlbg-page.theme-light-blue .bg-dock-btn.is-primary.is-center-cta {
+    background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+    color: #ffffff;
+    border-color: #38bdf8;
+    box-shadow: 0 6px 18px -4px rgba(2, 132, 199, 0.42);
+  }
+
+  .bg-dock-icon-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 20px;
+  }
+
+  .bg-dock-badge {
+    position: absolute;
+    top: -5px;
+    right: -15px;
+    min-width: 17px;
+    height: 15px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: #0ea5e9;
+    color: #ffffff;
+    font-size: 9px;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid #0f172a;
+    white-space: nowrap;
+  }
+
+  .bg-dock-badge.is-mode {
+    background: rgba(56, 189, 248, 0.22);
+    color: #38bdf8;
+    right: -22px;
+  }
+
+  .qlbg-page.theme-light-blue .bg-dock-badge {
+    border-color: #ffffff;
+  }
+
+  .qlbg-page.theme-light-blue .bg-dock-badge.is-mode {
+    background: #e0f2fe;
+    color: #0369a1;
+  }
+
+  /* Popover Thiết lập hiển thị nổi ngay trên Dock */
+  .bg-mob-display-popover {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: calc(138px + env(safe-area-inset-bottom, 0px));
+    max-width: 380px;
+    margin: 0 auto;
+    z-index: 980;
+    padding: 12px;
+    border-radius: 16px;
+    background: rgba(15, 23, 42, 0.97);
+    border: 1px solid rgba(56, 189, 248, 0.34);
+    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.68);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-family: var(--font-sans);
+    transition: bottom 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .qlbg-page.theme-light-blue .bg-mob-display-popover {
+    background: #ffffff;
+    border-color: #93c5fd;
+    box-shadow: 0 20px 44px rgba(15, 23, 42, 0.2);
+  }
+
+  :global(.app-layout.mobile-nav-hidden .bg-mob-display-popover) {
+    bottom: calc(74px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .bg-ds-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .bg-ds-title {
+    font-size: 12.5px;
+    font-weight: 800;
+    color: var(--ink-strong);
+  }
+
+  .bg-ds-close {
+    width: 26px;
+    height: 26px;
+    margin: 0;
+    padding: 0;
+    border-radius: 7px;
+    border: 1px solid var(--border-control);
+    background: var(--bg-input);
+    color: var(--ink-muted);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .bg-ds-section {
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .bg-ds-section.is-last {
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+
+  .bg-ds-label {
+    font-size: 10.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ink-muted);
+  }
+
+  .bg-ds-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .bg-ds-opt-btn {
+    height: 34px;
+    width: 100%;
+    margin: 0;
+    padding: 0 8px;
+    border-radius: 8px;
+    border: 1px solid var(--border-control);
+    background: var(--bg-input);
+    color: var(--ink-secondary);
+    font-family: var(--font-sans);
+    font-size: 11.5px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .bg-ds-opt-btn.active {
+    background: var(--sky-bg);
+    border-color: var(--sky-border);
+    color: var(--sky-text);
+    font-weight: 800;
+  }
+
+  .bg-ds-reset-btn {
+    height: 34px;
+    width: 100%;
+    margin: 0;
+    padding: 0 10px;
+    border-radius: 8px;
+    border: 1px solid var(--rose-border);
+    background: var(--rose-bg);
+    color: var(--rose-text);
+    font-family: var(--font-sans);
+    font-size: 11.5px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    cursor: pointer;
+  }
+  .qlbg-filter-left > .qlbg-picker-btn {
+    flex: 1 1 calc(50% - 4px);
     max-width: none;
+  }
+  .qlbg-filter-left > .qlbg-sort-root {
+    flex: 1 1 100%;
+    max-width: none;
+  }
+  .qlbg-sort-trigger {
+    max-width: none;
+  }
+  .qlbg-sort-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 10028;
+    background: rgba(2, 6, 23, 0.65);
+    backdrop-filter: blur(3px);
+  }
+  .qlbg-pop-menu {
+    position: fixed;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10030;
+    min-width: 0;
+    border-radius: 18px 18px 0 0;
+    border-bottom: none;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  }
+  .qlbg-pop-close {
+    display: inline-flex;
+  }
+  .qlbg-pop-opt {
+    min-height: 46px;
+  }
+  .dm-preset-grid {
+    grid-template-columns: 1fr;
+  }
+  .dm-custom-range-inputs {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .dm-date-arrow {
+    display: none;
   }
 
   .qlbg-group-header {
-    flex-direction: column;
-    align-items: flex-start;
     padding: 11px 12px;
+    align-items: flex-start;
   }
   .gh-right {
-    width: 100%;
-    justify-content: flex-start;
-    padding-left: 26px;
+    flex-wrap: nowrap;
+    gap: 6px;
+    padding-top: 2px;
   }
 
   .qlbg-cards-grid {
@@ -9809,8 +11952,8 @@ onUnmounted(() => {
     padding: 10px;
   }
 
-  /* Bottom-Sheet Modals on Mobile (except compact confirm/async cards) */
-  .qlbg-overlay {
+  /* Bottom-Sheet Modals on Mobile (Picker modals keep bottom-sheet; Detail & Customer modals stay 100dvh fullscreen) */
+  .qlbg-overlay:not(.qlbg-detail-overlay) {
     padding: 0;
     align-items: flex-end;
   }
@@ -9818,13 +11961,19 @@ onUnmounted(() => {
   .qlbg-async-card {
     margin: auto 14px;
   }
-  .qlbg-detail-modal,
-  .qlbg-picker-modal,
-  .qlbg-cust-modal {
+  .qlbg-picker-modal {
     width: 100%;
     max-height: 94vh;
     border-radius: 18px 18px 0 0;
     border-bottom: none;
+  }
+  .qlbg-cust-modal {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    border: none !important;
   }
   .mob-sheet-grabber {
     display: block;
@@ -9834,6 +11983,31 @@ onUnmounted(() => {
     background: var(--border-control);
     margin: 8px auto 2px;
     flex-shrink: 0;
+  }
+
+  /* Ngăn iOS / Chrome Mobile auto-zoom khi chạm vào input trong modal */
+  .qlbg-detail-modal input:not([type="checkbox"]):not([type="radio"]),
+  .qlbg-detail-modal select,
+  .qlbg-detail-modal textarea {
+    font-size: 16px !important;
+  }
+
+  /* Touch targets dễ bấm hơn cho File Slots trên Mobile */
+  .dm-file-slot {
+    padding: 8px 0;
+    gap: 8px;
+  }
+  .slot-upload-btn {
+    min-height: 28px;
+    padding: 4px 10px;
+  }
+  .slot-file-actions .qc-file-act-btn {
+    min-height: 28px;
+    padding: 0 9px;
+  }
+  .slot-file-del {
+    width: 28px;
+    height: 28px;
   }
 
   /* Responsive Mobile Line-Item Cards inside Detail Modal */
@@ -9894,20 +12068,205 @@ onUnmounted(() => {
     text-align: left !important;
   }
 
-  .cm-grid {
+  .cm-2col,
+  .cm-grid,
+  .cm-debt-stats {
     grid-template-columns: 1fr;
   }
 
+  /* Sticky 2-Row Mobile Footer chuẩn .sr-po-modal-footer */
+  .dm-lbl-dt {
+    display: none !important;
+  }
+  .dm-lbl-mob {
+    display: inline !important;
+  }
+  .is-mob-inline-close {
+    display: inline-flex !important;
+  }
+
   .dm-foot {
-    padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 6px !important;
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px)) !important;
+    background: rgba(9, 18, 15, 0.98) !important;
+    border-top: 1px solid rgba(52, 211, 153, 0.24) !important;
   }
-  .dm-foot-right {
-    width: 100%;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+
+  .qlbg-overlay.theme-light-blue .dm-foot {
+    background: #f8fafc !important;
+    border-top-color: #bae6fd !important;
   }
-  .dm-foot-right > button:last-child {
-    grid-column: 1 / -1;
+
+  .dm-foot-sec-row,
+  .dm-foot-cta-row {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    justify-content: stretch !important;
+    gap: 6px !important;
+  }
+
+  .dm-foot-sec-row .dm-btn-delete {
+    margin-right: 0 !important;
+  }
+
+  .dm-foot-sec-row > button,
+  .dm-foot-cta-row > button {
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    justify-content: center !important;
+    text-align: center !important;
+    padding: 0 7px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .dm-foot-sec-row > button {
+    height: 35px !important;
+    font-size: 11.5px !important;
+  }
+
+  .dm-foot-cta-row > button {
+    height: 38px !important;
+    font-size: 12px !important;
+    font-weight: 800 !important;
+  }
+
+  .dm-foot-cta-row .dm-btn-sr-craft {
+    background: var(--sky-bg) !important;
+    border-color: var(--sky-border) !important;
+    color: var(--sky-text) !important;
+  }
+}
+
+/* ==========================================================================
+   FLOATING SELECTION BAR FOR QUOTE COMPARE (100% SALEREPORT PARITY)
+   ========================================================================== */
+.sr-selection-floating-bar,
+.sr-selection-floating-bar * {
+  box-sizing: border-box;
+  font-family: 'Inter', 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+
+.sr-selection-floating-bar {
+  position: fixed;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  z-index: 9500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 10px 16px;
+  width: max-content;
+  max-width: calc(100vw - 24px);
+  background: rgba(15, 23, 42, 0.94);
+  border: 1px solid rgba(16, 185, 129, 0.45);
+  border-radius: 16px;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(16, 185, 129, 0.15);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  color: #f8fafc;
+  animation: qlbgFloatBarUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes qlbgFloatBarUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 16px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.sr-sel-bar-info {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.sr-sel-count-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.35);
+}
+
+.sr-sel-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sr-sel-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 13px;
+  border-radius: 9px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.sr-sel-btn-ghost {
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #38bdf8;
+}
+.sr-sel-btn-ghost:hover {
+  background: rgba(56, 189, 248, 0.22);
+}
+
+.sr-sel-btn-clear {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.32);
+  color: #f87171;
+}
+.sr-sel-btn-clear:hover {
+  background: rgba(239, 68, 68, 0.22);
+}
+
+.sr-sel-btn-compare {
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+  border: 1px solid #38bdf8;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.36);
+}
+.sr-sel-btn-compare:hover:not(:disabled) {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+@media (max-width: 768px) {
+  .sr-selection-floating-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    bottom: 12px;
+    padding: 12px 14px;
+  }
+  .sr-sel-bar-actions {
+    justify-content: flex-end;
   }
 }
 </style>

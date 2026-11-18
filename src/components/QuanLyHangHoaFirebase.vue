@@ -1,1579 +1,1767 @@
 <template>
-  <div class="quan-ly-hang-hoa">
-    <div class="page-header">
-      <h1 class="page-title">Quản lý Hàng Hóa</h1>
-      <div class="actions">
-        <!-- CỤM IMPORT SOPHOS: NÚT IMPORT + NÚT MẪU + FILE ĐÃ UP -->
-        <div class="vendor-import-group vendor-import-group--sophos">
-          <label class="btn btn-outline" style="cursor: pointer; border-color: #3b82f6; color: #3b82f6;" title="Import từ file_trung_gian_SOPHOS.xlsx hoặc sophos-pricelist-reseller_SKU_list.xlsb">
-            <input type="file" accept=".xlsx,.xlsb" style="display:none" @change="handleFileUpload" />
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-            Import Sophos
-          </label>
-          <a href="/template_excel/file_trung_gian_SOPHOS.xlsx" download="file_trung_gian_SOPHOS.xlsx" class="btn btn-outline vendor-template-btn" style="border-color: rgba(59,130,246,0.45); color: #93c5fd;" title="Tải file mẫu Sophos (file_trung_gian_SOPHOS.xlsx)">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-            Mẫu Sophos
-          </a>
-          <div class="vendor-uploaded-file-box">
-            <template v-if="getVendorImportFileMeta('sophos')">
-              <div class="vendor-uploaded-file-box__row">
-                <span class="vendor-uploaded-file-box__line" :title="`Click mở ViewOffice: ${getVendorImportFileMeta('sophos').name}`">
-                  File đã up:
-                  <a
-                    :href="getVendorOfficeViewUrl(getVendorImportFileMeta('sophos'))"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="vendor-uploaded-file-box__link"
-                    style="color: #60a5fa;"
-                    @click="handleOpenVendorOfficeView($event, 'sophos', 'import', getVendorImportFileMeta('sophos'))"
-                  >
-                    {{ getVendorImportFileMeta('sophos').name }}
-                  </a>
-                </span>
-                <button
-                  type="button"
-                  class="vendor-file-download-btn"
-                  title="Tải file đã up về máy"
-                  @click.stop.prevent="handleDownloadVendorUploadedFile('sophos', 'import', getVendorImportFileMeta('sophos'))"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                  <span>Tải về</span>
-                </button>
-              </div>
-              <span class="vendor-uploaded-file-box__time">
-                Thời gian: {{ formatRefTimestamp(getVendorImportFileMeta('sophos').updatedAt) }}
-              </span>
-            </template>
-            <span v-else class="vendor-uploaded-file-box__empty">File đã up: Chưa có</span>
-          </div>
-          <button
-            type="button"
-            class="btn btn-outline"
-            style="border-color: rgba(245, 158, 11, 0.5); color: #fbbf24; background: rgba(245, 158, 11, 0.08); font-size: 12.5px; padding: 6px 10px;"
-            @click="openSophosStandardizedReimportModal('bom')"
-            title="Xóa dữ liệu Sophos cũ và nạp lại theo chuẩn Mã hàng = SKU, tách Volume (range users), License (months) và Trạng thái (New/Renewal) từ SKU_List"
-          >
-            🔄 Chuẩn hóa DB Sophos (SKU)
-          </button>
+  <div class="quan-ly-hang-hoa qlhh-page" :class="{ 'theme-light-blue': uiTheme === 'light' }">
+    <!-- =========================================================
+         1. DẢI 3 THẺ BENTO KPI (TỔNG QUAN & LỌC NHANH)
+    ========================================================== -->
+    <section class="qlhh-kpi-grid" aria-label="Tổng quan danh mục hàng hóa">
+      <!-- KPI 1: TỔNG DANH MỤC HÀNG HÓA (Sky) -->
+      <div
+        role="button"
+        tabindex="0"
+        class="qlhh-kpi-card is-sky"
+        :class="{ active: !selectedBrandFilter && !selectedPriceListId && !hasActiveSearchOrFilter }"
+        @click="resetAllSearchAndFilters(); selectedPriceListId = ''"
+        @keydown.enter.prevent="resetAllSearchAndFilters(); selectedPriceListId = ''"
+        title="Bấm để xem toàn bộ danh mục hàng hóa"
+      >
+        <div class="kpi-head">
+          <span class="kpi-label">Tổng Kho Danh Mục</span>
+          <span class="kpi-icon is-sky">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+          </span>
         </div>
-
-        <!-- CỤM IMPORT KASPERSKY: NÚT IMPORT + NÚT MẪU + FILE ĐÃ UP -->
-        <div class="vendor-import-group vendor-import-group--kas">
-          <label class="btn btn-outline" style="border-color: rgba(56, 189, 248, 0.4); color: #38bdf8; cursor: pointer;">
-            <input type="file" accept=".xlsx,.xls" style="display:none" @change="handleKasperskyUpload" />
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-            Import Kaspersky
-          </label>
-          <a href="/template_excel/KASPERSKY_file_mau_import.xlsx" download="KASPERSKY_file_mau_import.xlsx" class="btn btn-outline vendor-template-btn" style="border-color: rgba(16,185,129,0.45); color: #6ee7b7;" title="Tải file mẫu Kaspersky (KASPERSKY_file_mau_import.xlsx)">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-            Mẫu Kaspersky
-          </a>
-          <div class="vendor-uploaded-file-box">
-            <template v-if="getVendorImportFileMeta('kaspersky')">
-              <div class="vendor-uploaded-file-box__row">
-                <span class="vendor-uploaded-file-box__line" :title="`Click mở ViewOffice: ${getVendorImportFileMeta('kaspersky').name}`">
-                  File đã up:
-                  <a
-                    :href="getVendorOfficeViewUrl(getVendorImportFileMeta('kaspersky'))"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="vendor-uploaded-file-box__link"
-                    style="color: #38bdf8;"
-                    @click="handleOpenVendorOfficeView($event, 'kaspersky', 'import', getVendorImportFileMeta('kaspersky'))"
-                  >
-                    {{ getVendorImportFileMeta('kaspersky').name }}
-                  </a>
-                </span>
-                <button
-                  type="button"
-                  class="vendor-file-download-btn"
-                  title="Tải file đã up về máy"
-                  @click.stop.prevent="handleDownloadVendorUploadedFile('kaspersky', 'import', getVendorImportFileMeta('kaspersky'))"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                  <span>Tải về</span>
-                </button>
-              </div>
-              <span class="vendor-uploaded-file-box__time">
-                Thời gian: {{ formatRefTimestamp(getVendorImportFileMeta('kaspersky').updatedAt) }}
-              </span>
-            </template>
-            <span v-else class="vendor-uploaded-file-box__empty">File đã up: Chưa có</span>
+        <div class="kpi-main-row">
+          <div class="kpi-val tabular-nums">
+            {{ items.length }}
+            <span class="kpi-unit">SKU</span>
+          </div>
+          <div class="kpi-sub-pills">
+            <span class="kpi-mini-pill tabular-nums">{{ allCategoriesTotalCount }} danh mục</span>
+            <span class="kpi-mini-pill tabular-nums">{{ supplierFilterOptions.length }} NCC</span>
           </div>
         </div>
-
-        <!-- CỤM IMPORT ACRONIS: NÚT IMPORT + NÚT MẪU + FILE ĐÃ UP -->
-        <div class="vendor-import-group vendor-import-group--acronis">
-          <label class="btn btn-outline" style="border-color: rgba(99, 102, 241, 0.5); color: #818cf8; cursor: pointer;">
-            <input type="file" accept=".xlsx,.xls" style="display:none" @change="handleAcronisUpload" />
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-            Import Acronis
-          </label>
-          <a href="/template_excel/ACRONIS_file_mau_import.xlsx" download="ACRONIS_file_mau_import.xlsx" class="btn btn-outline vendor-template-btn" style="border-color: rgba(99,102,241,0.45); color: #a5b4fc;" title="Tải file mẫu Acronis (ACRONIS_file_mau_import.xlsx)">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-            Mẫu Acronis
-          </a>
-          <div class="vendor-uploaded-file-box">
-            <template v-if="getVendorImportFileMeta('acronis')">
-              <div class="vendor-uploaded-file-box__row">
-                <span class="vendor-uploaded-file-box__line" :title="`Click mở ViewOffice: ${getVendorImportFileMeta('acronis').name}`">
-                  File đã up:
-                  <a
-                    :href="getVendorOfficeViewUrl(getVendorImportFileMeta('acronis'))"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="vendor-uploaded-file-box__link"
-                    style="color: #a5b4fc;"
-                    @click="handleOpenVendorOfficeView($event, 'acronis', 'import', getVendorImportFileMeta('acronis'))"
-                  >
-                    {{ getVendorImportFileMeta('acronis').name }}
-                  </a>
-                </span>
-                <button
-                  type="button"
-                  class="vendor-file-download-btn"
-                  title="Tải file đã up về máy"
-                  @click.stop.prevent="handleDownloadVendorUploadedFile('acronis', 'import', getVendorImportFileMeta('acronis'))"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                  <span>Tải về</span>
-                </button>
-              </div>
-              <span class="vendor-uploaded-file-box__time">
-                Thời gian: {{ formatRefTimestamp(getVendorImportFileMeta('acronis').updatedAt) }}
-              </span>
-            </template>
-            <span v-else class="vendor-uploaded-file-box__empty">File đã up: Chưa có</span>
-          </div>
-        </div>
-
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <label class="btn btn-outline" style="border-color: rgba(167, 139, 250, 0.4); color: #a78bfa; cursor: pointer;">
-            <input type="file" accept="image/*,.pdf" style="display:none" @change="handleGiaOffUpload" />
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-            Import Mức Off
-          </label>
-          <div v-if="latestFileGiaOff" style="display: flex; flex-direction: column; font-size: 11px; color: #94a3b8; max-width: 250px; line-height: 1.2;">
-            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" :title="latestFileGiaOff.ten_file">
-              File: <a :href="latestFileGiaOff.link_file" target="_blank" style="color: #a78bfa; text-decoration: underline; font-weight: bold;">{{ latestFileGiaOff.ten_file }}</a>
-            </span>
-            <span>Thời gian: {{ formatGiaOffDate(latestFileGiaOff.thoi_gian) }}</span>
-          </div>
-        </div>
-        <label
-          class="btn btn-outline"
-          style="border-color: rgba(192, 132, 252, 0.55); color: #e9d5ff; background: rgba(168, 85, 247, 0.14); font-weight: 700; cursor: pointer;"
-          title="Import file báo giá mua hàng (PDF / Excel) để lấy đơn giá sau thuế làm Giá vốn / Giá off hãng"
-        >
-          <input type="file" accept=".pdf,.xlsx,.xls" style="display:none" @change="handlePurchaseQuoteUpload" />
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
-          Import Mua Hàng (Giá vốn)
-        </label>
-        <!-- CỤM ĐỐI CHIẾU SOPHOS + UPLOAD FILE GỐC, FILE TRUNG GIAN & FILE CALCULATOR + FILE ĐÃ UP TƯƠNG ỨNG -->
-        <div class="vendor-compare-group vendor-compare-group--sophos">
-          <button class="btn btn-image-check" @click="openImageCheckModal" title="Quét ảnh chụp bảng giá Sophos để bóc tách và đối chiếu với File Calculator (calculate_sophos), File Gốc & File Trung Gian trên Cloudinary">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
-            Đối chiếu Sophos (Ảnh)
-          </button>
-          <div class="vendor-ref-slot">
-            <label
-              class="vendor-ref-upload-btn vendor-ref-upload-btn--sophos-calc"
-              :title="`Upload File Calculator Sophos (calculate_sophos.xlsx) mới lên Cloudinary (Đang dùng: ${vendorRefFilesMeta.sophos?.calc_file_name || 'Chưa có'}${vendorRefFilesMeta.sophos?.calc_version ? ' • v' + vendorRefFilesMeta.sophos.calc_version : ''})`"
-            >
-              <input type="file" accept=".xlsx,.xlsb,.xls" style="display: none" @change="handleCustomSophosExcelUpload($event, 'calc')" />
-              <span>☁️ File Calculator</span>
-            </label>
-            <div class="vendor-uploaded-file-box vendor-uploaded-file-box--compact">
-              <template v-if="getVendorCompareFileMeta('sophos', 'calc')">
-                <div class="vendor-uploaded-file-box__row">
-                  <span class="vendor-uploaded-file-box__line" :title="`Click mở ViewOffice: ${getVendorCompareFileMeta('sophos', 'calc').name}${getVendorCompareFileMeta('sophos', 'calc').version ? ' (v' + getVendorCompareFileMeta('sophos', 'calc').version + ')' : ''}`">
-                    File đã up:
-                    <a
-                      :href="getVendorOfficeViewUrl(getVendorCompareFileMeta('sophos', 'calc'))"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="vendor-uploaded-file-box__link"
-                      style="color: #5eead4;"
-                      @click="handleOpenVendorOfficeView($event, 'sophos', 'calc', getVendorCompareFileMeta('sophos', 'calc'))"
-                    >
-                      {{ getVendorCompareFileMeta('sophos', 'calc').name }}
-                    </a>
-                    <span
-                      v-if="getVendorCompareFileMeta('sophos', 'calc').version"
-                      style="margin-left: 4px; padding: 1px 5px; border-radius: 4px; background: rgba(20, 184, 166, 0.22); color: #5eead4; font-size: 9.5px; font-weight: 800;"
-                    >v{{ getVendorCompareFileMeta('sophos', 'calc').version }}</span>
-                  </span>
-                  <button
-                    type="button"
-                    class="vendor-file-download-btn"
-                    title="Tải File Calculator Sophos nguyên bản về máy"
-                    @click.stop.prevent="handleDownloadVendorUploadedFile('sophos', 'calc', getVendorCompareFileMeta('sophos', 'calc'))"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                    <span>Tải về</span>
-                  </button>
-                </div>
-                <span class="vendor-uploaded-file-box__time">
-                  {{ formatRefTimestamp(getVendorCompareFileMeta('sophos', 'calc').updatedAt) }}
-                </span>
-              </template>
-              <span v-else class="vendor-uploaded-file-box__empty">File đã up: Chưa có</span>
-            </div>
-            <button
-              type="button"
-              class="vendor-ref-sync-btn vendor-ref-sync-btn--calc-db"
-              title="Đối chiếu toàn bộ mặt hàng Sophos trong Database với File Calculator và đồng bộ List Price vào DB"
-              @click="openSophosDbListPriceSyncModal"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
-              <span>Đồng bộ ListPrice (DB)</span>
-            </button>
-          </div>
-          <div class="vendor-ref-slot">
-            <label
-              class="vendor-ref-upload-btn vendor-ref-upload-btn--sophos-goc"
-              :title="`Upload File Gốc Sophos mới lên Cloudinary (Đang dùng: ${vendorRefFilesMeta.sophos?.goc_file_name || 'Chưa có'})`"
-            >
-              <input type="file" accept=".xlsx,.xlsb,.xls" style="display: none" @change="handleCustomSophosExcelUpload($event, 'goc')" />
-              <span>☁️ File Gốc</span>
-            </label>
-            <div class="vendor-uploaded-file-box vendor-uploaded-file-box--compact">
-              <template v-if="getVendorCompareFileMeta('sophos', 'goc')">
-                <div class="vendor-uploaded-file-box__row">
-                  <span class="vendor-uploaded-file-box__line" :title="`Click mở ViewOffice: ${getVendorCompareFileMeta('sophos', 'goc').name}`">
-                    File đã up:
-                    <a
-                      :href="getVendorOfficeViewUrl(getVendorCompareFileMeta('sophos', 'goc'))"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="vendor-uploaded-file-box__link"
-                      style="color: #7dd3fc;"
-                      @click="handleOpenVendorOfficeView($event, 'sophos', 'goc', getVendorCompareFileMeta('sophos', 'goc'))"
-                    >
-                      {{ getVendorCompareFileMeta('sophos', 'goc').name }}
-                    </a>
-                  </span>
-                  <button
-                    type="button"
-                    class="vendor-file-download-btn"
-                    title="Tải File Gốc Sophos về máy"
-                    @click.stop.prevent="handleDownloadVendorUploadedFile('sophos', 'goc', getVendorCompareFileMeta('sophos', 'goc'))"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                    <span>Tải về</span>
-                  </button>
-                </div>
-                <span class="vendor-uploaded-file-box__time">
-                  {{ formatRefTimestamp(getVendorCompareFileMeta('sophos', 'goc').updatedAt) }}
-                </span>
-              </template>
-              <span v-else class="vendor-uploaded-file-box__empty">File đã up: Chưa có</span>
-            </div>
-          </div>
-          <div class="vendor-ref-slot">
-            <label
-              class="vendor-ref-upload-btn vendor-ref-upload-btn--sophos-tg"
-              :title="`Upload File Trung Gian Sophos mới lên Cloudinary (Đang dùng: ${vendorRefFilesMeta.sophos?.tg_file_name || 'Chưa có'})`"
-            >
-              <input type="file" accept=".xlsx,.xlsb,.xls" style="display: none" @change="handleCustomSophosExcelUpload($event, 'tg')" />
-              <span>☁️ File Trung Gian</span>
-            </label>
-            <div class="vendor-uploaded-file-box vendor-uploaded-file-box--compact">
-              <template v-if="getVendorCompareFileMeta('sophos', 'tg')">
-                <div class="vendor-uploaded-file-box__row">
-                  <span class="vendor-uploaded-file-box__line" :title="`Click mở ViewOffice: ${getVendorCompareFileMeta('sophos', 'tg').name}`">
-                    File đã up:
-                    <a
-                      :href="getVendorOfficeViewUrl(getVendorCompareFileMeta('sophos', 'tg'))"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="vendor-uploaded-file-box__link"
-                      style="color: #d8b4fe;"
-                      @click="handleOpenVendorOfficeView($event, 'sophos', 'tg', getVendorCompareFileMeta('sophos', 'tg'))"
-                    >
-                      {{ getVendorCompareFileMeta('sophos', 'tg').name }}
-                    </a>
-                  </span>
-                  <button
-                    type="button"
-                    class="vendor-file-download-btn"
-                    title="Tải File Trung Gian Sophos về máy"
-                    @click.stop.prevent="handleDownloadVendorUploadedFile('sophos', 'tg', getVendorCompareFileMeta('sophos', 'tg'))"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                    <span>Tải về</span>
-                  </button>
-                </div>
-                <span class="vendor-uploaded-file-box__time">
-                  {{ formatRefTimestamp(getVendorCompareFileMeta('sophos', 'tg').updatedAt) }}
-                </span>
-              </template>
-              <span v-else class="vendor-uploaded-file-box__empty">File đã up: Chưa có</span>
-            </div>
-            <button
-              type="button"
-              class="vendor-ref-sync-btn vendor-ref-sync-btn--tg-calc"
-              title="Đồng bộ giá cột F (GIÁ THAM KHẢO USD) & bảng LP Sophos của File Trung Gian hiện tại theo File Calculator rồi lưu lên Cloudinary"
-              @click="openSophosTrungGianCalcSyncModal"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
-              <span>Đồng bộ giá theo Calc</span>
-            </button>
-            <button
-              type="button"
-              class="vendor-ref-sync-btn vendor-ref-sync-btn--tg-export"
-              :disabled="exportingSophosTgFromCalc"
-              title="Lấy File Trung Gian hiện tại làm khung (giữ nguyên màu sắc, công thức, cột Nhập khẩu), cập nhật Giá MSRP & SKU mới từ File Calculator cho cả 5 sheet BOM + sheet LP Sophos rồi xuất .xlsx về máy"
-              @click="exportSophosTrungGianFromCalc()"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-              <span>{{ exportingSophosTgFromCalc ? 'Đang xuất...' : 'Xuất File Trung Gian (Calc)' }}</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- CỤM ĐỐI CHIẾU KASPERSKY + UPLOAD FILE GỐC & FILE TRUNG GIAN + FILE ĐÃ UP TƯƠNG ỨNG -->
-        <div class="vendor-compare-group vendor-compare-group--kas">
-          <button
-            class="btn btn-outline"
-            style="border-color: rgba(16, 185, 129, 0.55); color: #34d399; background: rgba(16, 185, 129, 0.1); font-weight: 700;"
-            @click="openKasImageCheckModal"
-            title="Quét ảnh bảng giá Kaspersky để bóc tách và đối chiếu với File Gốc & File Trung Gian trên Cloudinary"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            Đối chiếu Kaspersky (Ảnh)
-          </button>
-          <div class="vendor-ref-slot">
-            <label
-              class="vendor-ref-upload-btn vendor-ref-upload-btn--kas-goc"
-              :title="`Upload File Gốc Kaspersky mới lên Cloudinary (Đang dùng: ${vendorRefFilesMeta.kaspersky?.goc_file_name || 'Chưa có'})`"
-            >
-              <input type="file" accept=".xlsx,.xls" style="display: none" @change="handleCustomKasExcelUpload($event, 'goc')" />
-              <span>☁️ File Gốc</span>
-            </label>
-            <div class="vendor-uploaded-file-box vendor-uploaded-file-box--compact">
-              <template v-if="getVendorCompareFileMeta('kaspersky', 'goc')">
-                <div class="vendor-uploaded-file-box__row">
-                  <span class="vendor-uploaded-file-box__line" :title="`Click mở ViewOffice: ${getVendorCompareFileMeta('kaspersky', 'goc').name}`">
-                    File đã up:
-                    <a
-                      :href="getVendorOfficeViewUrl(getVendorCompareFileMeta('kaspersky', 'goc'))"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="vendor-uploaded-file-box__link"
-                      style="color: #6ee7b7;"
-                      @click="handleOpenVendorOfficeView($event, 'kaspersky', 'goc', getVendorCompareFileMeta('kaspersky', 'goc'))"
-                    >
-                      {{ getVendorCompareFileMeta('kaspersky', 'goc').name }}
-                    </a>
-                  </span>
-                  <button
-                    type="button"
-                    class="vendor-file-download-btn"
-                    title="Tải File Gốc Kaspersky về máy"
-                    @click.stop.prevent="handleDownloadVendorUploadedFile('kaspersky', 'goc', getVendorCompareFileMeta('kaspersky', 'goc'))"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                    <span>Tải về</span>
-                  </button>
-                </div>
-                <span class="vendor-uploaded-file-box__time">
-                  {{ formatRefTimestamp(getVendorCompareFileMeta('kaspersky', 'goc').updatedAt) }}
-                </span>
-              </template>
-              <span v-else class="vendor-uploaded-file-box__empty">File đã up: Chưa có</span>
-            </div>
-          </div>
-          <div class="vendor-ref-slot">
-            <label
-              class="vendor-ref-upload-btn vendor-ref-upload-btn--kas-tg"
-              :title="`Upload File Trung Gian Kaspersky mới lên Cloudinary (Đang dùng: ${vendorRefFilesMeta.kaspersky?.mau_file_name || 'Chưa có'})`"
-            >
-              <input type="file" accept=".xlsx,.xls" style="display: none" @change="handleCustomKasExcelUpload($event, 'mau')" />
-              <span>☁️ File Trung Gian</span>
-            </label>
-            <div class="vendor-uploaded-file-box vendor-uploaded-file-box--compact">
-              <template v-if="getVendorCompareFileMeta('kaspersky', 'tg')">
-                <div class="vendor-uploaded-file-box__row">
-                  <span class="vendor-uploaded-file-box__line" :title="`Click mở ViewOffice: ${getVendorCompareFileMeta('kaspersky', 'tg').name}`">
-                    File đã up:
-                    <a
-                      :href="getVendorOfficeViewUrl(getVendorCompareFileMeta('kaspersky', 'tg'))"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="vendor-uploaded-file-box__link"
-                      style="color: #7dd3fc;"
-                      @click="handleOpenVendorOfficeView($event, 'kaspersky', 'mau', getVendorCompareFileMeta('kaspersky', 'tg'))"
-                    >
-                      {{ getVendorCompareFileMeta('kaspersky', 'tg').name }}
-                    </a>
-                  </span>
-                  <button
-                    type="button"
-                    class="vendor-file-download-btn"
-                    title="Tải File Trung Gian Kaspersky về máy"
-                    @click.stop.prevent="handleDownloadVendorUploadedFile('kaspersky', 'mau', getVendorCompareFileMeta('kaspersky', 'tg'))"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                    <span>Tải về</span>
-                  </button>
-                </div>
-                <span class="vendor-uploaded-file-box__time">
-                  {{ formatRefTimestamp(getVendorCompareFileMeta('kaspersky', 'tg').updatedAt) }}
-                </span>
-              </template>
-              <span v-else class="vendor-uploaded-file-box__empty">File đã up: Chưa có</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- CỤM ĐỐI CHIẾU ACRONIS + UPLOAD FILE GỐC + FILE ĐÃ UP TƯƠNG ỨNG -->
-        <div class="vendor-compare-group vendor-compare-group--acronis">
-          <button
-            class="btn btn-outline"
-            style="border-color: rgba(129, 140, 248, 0.55); color: #a5b4fc; background: rgba(99, 102, 241, 0.14); font-weight: 700;"
-            @click="openAcronisCompareModal"
-            title="Đối chiếu bảng giá gốc Acronis trên Cloudinary với Database"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-            Đối chiếu Acronis
-          </button>
-          <div class="vendor-ref-slot">
-            <label
-              class="vendor-ref-upload-btn vendor-ref-upload-btn--acronis-goc"
-              :title="`Upload File Gốc Acronis mới lên Cloudinary (Đang dùng: ${vendorRefFilesMeta.acronis?.goc_file_name || 'Chưa có'})`"
-            >
-              <input type="file" accept=".xlsx,.xls" style="display: none" @change="handleCustomAcronisExcelUpload($event, 'goc')" />
-              <span>☁️ File Gốc</span>
-            </label>
-            <div class="vendor-uploaded-file-box vendor-uploaded-file-box--compact">
-              <template v-if="getVendorCompareFileMeta('acronis', 'goc')">
-                <div class="vendor-uploaded-file-box__row">
-                  <span class="vendor-uploaded-file-box__line" :title="`Click mở ViewOffice: ${getVendorCompareFileMeta('acronis', 'goc').name}`">
-                    File đã up:
-                    <a
-                      :href="getVendorOfficeViewUrl(getVendorCompareFileMeta('acronis', 'goc'))"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="vendor-uploaded-file-box__link"
-                      style="color: #c7d2fe;"
-                      @click="handleOpenVendorOfficeView($event, 'acronis', 'goc', getVendorCompareFileMeta('acronis', 'goc'))"
-                    >
-                      {{ getVendorCompareFileMeta('acronis', 'goc').name }}
-                    </a>
-                  </span>
-                  <button
-                    type="button"
-                    class="vendor-file-download-btn"
-                    title="Tải File Gốc Acronis về máy"
-                    @click.stop.prevent="handleDownloadVendorUploadedFile('acronis', 'goc', getVendorCompareFileMeta('acronis', 'goc'))"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                    <span>Tải về</span>
-                  </button>
-                </div>
-                <span class="vendor-uploaded-file-box__time">
-                  {{ formatRefTimestamp(getVendorCompareFileMeta('acronis', 'goc').updatedAt) }}
-                </span>
-              </template>
-              <span v-else class="vendor-uploaded-file-box__empty">File đã up: Chưa có</span>
-            </div>
-          </div>
-        </div>
-        <button class="btn btn-usd-rate" @click="openUsdRateModal" title="Thay đổi tỉ giá đồng loạt cho các sản phẩm USD">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
-          Đổi Tỉ Giá (USD)
-          <span v-if="currentSystemUsdRate > 1" class="usd-rate-btn-badge">{{ formatNumberPlain(currentSystemUsdRate) }}₫</span>
-        </button>
-        <button class="btn btn-pricelist" @click="openCreatePriceListModal">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
-          Tạo Bảng Giá
-        </button>
-        <button class="btn btn-primary" @click="openAddModal">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-          Thêm mới
-        </button>
-        <button class="btn btn-secondary" @click="fetchData" :disabled="loading">
-          <svg v-if="!loading" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
-          <span v-else class="spinner"></span>
-          Làm mới
-        </button>
-      </div>
-    </div>
-
-    <!-- Filters & Price List Selector -->
-    <div class="filters" style="display: flex; flex-direction: column; gap: 12px;">
-      <!-- Dòng 1: Tìm kiếm, Volume, Sắp xếp, Hãng, Danh mục, Nhà cung cấp -->
-      <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-        <!-- Ô Tìm kiếm từ khóa -->
-        <div style="flex: 1; min-width: 220px; max-width: 320px; position: relative;">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-          <input type="text" v-model="searchQuery" placeholder="Tìm mã / tên hàng / NCC..." class="search-input" style="padding-left: 36px; max-width: 100%;" />
-        </div>
-
-        <!-- Ô lọc Volume -->
-        <div style="min-width: 175px; max-width: 210px; position: relative;">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); pointer-events: none;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-          <input type="number" v-model="userVolumeFilter" placeholder="Số user (Volume)..." class="search-input" style="padding-left: 36px; max-width: 100%;" />
-        </div>
-
-        <!-- Bộ lọc Sắp xếp: Cũ nhất ➔ Mới nhất và ngược lại -->
-        <div class="hh-filter-sort-group">
-          <select v-model="sortOrder" class="hh-filter-select" title="Sắp xếp thứ tự sản phẩm">
-            <option value="default">🕒 Sắp xếp: Mặc định</option>
-            <option value="newest">⬇️ Mới nhất ➔ Cũ nhất</option>
-            <option value="oldest">⬆️ Cũ nhất ➔ Mới nhất</option>
-          </select>
-        </div>
-
-        <!-- Bộ lọc theo Hãng (Lazy Loading + Tìm nhanh) -->
-        <div class="hh-lazy-dropdown" @click.stop>
-          <button
-            type="button"
-            class="hh-lazy-dropdown__trigger"
-            :class="{ active: Boolean(selectedBrandFilter) }"
-            @click="toggleFilterDropdown('brand')"
-          >
-            <span>🏷️ {{ selectedBrandFilter ? `Hãng: ${selectedBrandFilter}` : `Tất cả Hãng (${brandFilterOptions.length})` }}</span>
-            <span class="hh-lazy-dropdown__caret">▾</span>
-          </button>
-          <div v-if="openDropdownType === 'brand'" class="hh-lazy-dropdown__menu">
-            <div class="hh-lazy-dropdown__search-wrap">
-              <input
-                type="text"
-                v-model="brandDropdownSearch"
-                placeholder="Tìm nhanh hãng..."
-                class="hh-lazy-dropdown__search"
-              />
-            </div>
-            <div class="hh-lazy-dropdown__list" @scroll="onFilterDropdownScroll($event, 'brand')">
-              <div
-                class="hh-lazy-dropdown__item"
-                :class="{ selected: !selectedBrandFilter }"
-                @click="selectFilterOption('brand', '')"
-              >
-                <span>Tất cả Hãng</span>
-                <span class="hh-lazy-dropdown__count">{{ items.length }}</span>
-              </div>
-              <div
-                v-for="opt in displayedBrandOptions"
-                :key="opt.value"
-                class="hh-lazy-dropdown__item"
-                :class="{ selected: selectedBrandFilter === opt.value }"
-                @click="selectFilterOption('brand', opt.value)"
-              >
-                <span>{{ opt.label }}</span>
-                <span class="hh-lazy-dropdown__count">{{ opt.count }}</span>
-              </div>
-              <div v-if="!filteredBrandOptions.length" class="hh-lazy-dropdown__empty">
-                Không tìm thấy hãng phù hợp
-              </div>
-              <div
-                v-if="displayedBrandOptions.length < filteredBrandOptions.length"
-                class="hh-lazy-dropdown__more"
-                @click="brandDropdownLimit += FILTER_DROPDOWN_PAGE_SIZE"
-              >
-                Đang hiện {{ displayedBrandOptions.length }}/{{ filteredBrandOptions.length }} — Cuộn hoặc bấm để tải thêm...
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Bộ lọc theo Danh mục (Lazy Loading + Tìm nhanh) -->
-        <div class="hh-lazy-dropdown" @click.stop>
-          <button
-            type="button"
-            class="hh-lazy-dropdown__trigger"
-            :class="{ active: Boolean(selectedCategoryFilter) }"
-            @click="toggleFilterDropdown('category')"
-          >
-            <span style="max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-              📂 {{ selectedCategoryFilter ? `DM: ${selectedCategoryFilter}` : `Tất cả Danh mục (${categoryFilterOptions.length})` }}
-            </span>
-            <span class="hh-lazy-dropdown__caret">▾</span>
-          </button>
-          <div v-if="openDropdownType === 'category'" class="hh-lazy-dropdown__menu hh-lazy-dropdown__menu--wide">
-            <div class="hh-lazy-dropdown__search-wrap">
-              <input
-                type="text"
-                v-model="categoryDropdownSearch"
-                placeholder="Tìm nhanh danh mục..."
-                class="hh-lazy-dropdown__search"
-              />
-            </div>
-            <div class="hh-lazy-dropdown__list" @scroll="onFilterDropdownScroll($event, 'category')">
-              <div
-                class="hh-lazy-dropdown__item"
-                :class="{ selected: !selectedCategoryFilter }"
-                @click="selectFilterOption('category', '')"
-              >
-                <span>Tất cả Danh mục</span>
-                <span class="hh-lazy-dropdown__count">{{ categoryFilterTotalItems }}</span>
-              </div>
-              <div
-                v-for="opt in displayedCategoryOptions"
-                :key="opt.value"
-                class="hh-lazy-dropdown__item"
-                :class="{ selected: selectedCategoryFilter === opt.value }"
-                @click="selectFilterOption('category', opt.value)"
-              >
-                <span :title="opt.label">{{ opt.label }}</span>
-                <span class="hh-lazy-dropdown__count">{{ opt.count }}</span>
-              </div>
-              <div v-if="!filteredCategoryOptions.length" class="hh-lazy-dropdown__empty">
-                Không tìm thấy danh mục phù hợp
-              </div>
-              <div
-                v-if="displayedCategoryOptions.length < filteredCategoryOptions.length"
-                class="hh-lazy-dropdown__more"
-                @click="categoryDropdownLimit += FILTER_DROPDOWN_PAGE_SIZE"
-              >
-                Đang hiện {{ displayedCategoryOptions.length }}/{{ filteredCategoryOptions.length }} — Cuộn hoặc bấm để tải thêm...
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Bộ lọc theo Nhà cung cấp (Lazy Loading + Tìm nhanh) -->
-        <div class="hh-lazy-dropdown" @click.stop>
-          <button
-            type="button"
-            class="hh-lazy-dropdown__trigger"
-            :class="{ active: Boolean(selectedSupplierFilter) }"
-            @click="toggleFilterDropdown('supplier')"
-          >
-            <span style="max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-              🏢 {{ selectedSupplierFilter ? `NCC: ${selectedSupplierFilter}` : `Tất cả Nhà cung cấp (${supplierFilterOptions.length})` }}
-            </span>
-            <span class="hh-lazy-dropdown__caret">▾</span>
-          </button>
-          <div v-if="openDropdownType === 'supplier'" class="hh-lazy-dropdown__menu hh-lazy-dropdown__menu--wide">
-            <div class="hh-lazy-dropdown__search-wrap">
-              <input
-                type="text"
-                v-model="supplierDropdownSearch"
-                placeholder="Tìm nhanh nhà cung cấp..."
-                class="hh-lazy-dropdown__search"
-              />
-            </div>
-            <div class="hh-lazy-dropdown__list" @scroll="onFilterDropdownScroll($event, 'supplier')">
-              <div
-                class="hh-lazy-dropdown__item"
-                :class="{ selected: !selectedSupplierFilter }"
-                @click="selectFilterOption('supplier', '')"
-              >
-                <span>Tất cả Nhà cung cấp</span>
-                <span class="hh-lazy-dropdown__count">{{ items.length }}</span>
-              </div>
-              <div
-                v-for="opt in displayedSupplierOptions"
-                :key="opt.value"
-                class="hh-lazy-dropdown__item"
-                :class="{ selected: selectedSupplierFilter === opt.value }"
-                @click="selectFilterOption('supplier', opt.value)"
-              >
-                <span :title="opt.label">{{ opt.label }}</span>
-                <span class="hh-lazy-dropdown__count">{{ opt.count }}</span>
-              </div>
-              <div v-if="!filteredSupplierOptions.length" class="hh-lazy-dropdown__empty">
-                Không tìm thấy nhà cung cấp phù hợp
-              </div>
-              <div
-                v-if="displayedSupplierOptions.length < filteredSupplierOptions.length"
-                class="hh-lazy-dropdown__more"
-                @click="supplierDropdownLimit += FILTER_DROPDOWN_PAGE_SIZE"
-              >
-                Đang hiện {{ displayedSupplierOptions.length }}/{{ filteredSupplierOptions.length }} — Cuộn hoặc bấm để tải thêm...
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Nút xóa nhanh bộ lọc & Thống kê kết quả -->
-        <button
-          v-if="hasActiveSearchOrFilter"
-          type="button"
-          class="hh-clear-filter-btn"
-          @click="resetAllSearchAndFilters"
-          title="Đặt lại toàn bộ tìm kiếm, bộ lọc và sắp xếp"
-        >
-          ✕ Xóa lọc ({{ totalProductsCount }} SP)
-        </button>
       </div>
 
-      <!-- Dòng 2: Khung chọn Bảng Giá -->
-      <div class="pricelist-bar">
-        <div class="pricelist-select-wrap">
-          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
-          <select v-model="selectedPriceListId" class="pricelist-select">
-            <option value="">📋 Giá gốc hệ thống ({{ items.length }} SP)</option>
-            <option v-for="pl in priceLists" :key="pl._firebaseKey" :value="pl._firebaseKey">
-              🏷️ {{ pl.ten_bang_gia }} ({{ (pl.items || []).length }} SP){{ formatPriceListPeriodInline(pl) }}
-            </option>
-          </select>
+      <!-- KPI 2: PHÂN BỔ HÃNG CHỦ LỰC (Emerald) -->
+      <div
+        role="button"
+        tabindex="0"
+        class="qlhh-kpi-card is-emerald"
+        :class="{ active: Boolean(selectedBrandFilter) }"
+        @click="selectedBrandFilter = ''"
+        @keydown.enter.prevent="selectedBrandFilter = ''"
+        title="Bấm vào từng hãng để lọc nhanh, hoặc bấm nền thẻ để bỏ lọc hãng"
+      >
+        <div class="kpi-head">
+          <span class="kpi-label">Phân Bổ Hãng Chủ Lực</span>
+          <span class="kpi-icon is-emerald">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </span>
+        </div>
+        <div class="kpi-brand-chips" @click.stop>
+          <button
+            type="button"
+            class="kpi-brand-chip"
+            :class="{ active: selectedBrandFilter === 'SOPHOS' }"
+            @click.stop="toggleBrandQuickFilter('SOPHOS')"
+          >
+            <span>Sophos</span>
+            <strong class="tabular-nums">{{ brandKpiCounts.sophos }}</strong>
+          </button>
+          <button
+            type="button"
+            class="kpi-brand-chip"
+            :class="{ active: selectedBrandFilter === 'KASPERSKY' }"
+            @click.stop="toggleBrandQuickFilter('KASPERSKY')"
+          >
+            <span>Kaspersky</span>
+            <strong class="tabular-nums">{{ brandKpiCounts.kaspersky }}</strong>
+          </button>
+          <button
+            type="button"
+            class="kpi-brand-chip"
+            :class="{ active: selectedBrandFilter === 'ACRONIS' }"
+            @click.stop="toggleBrandQuickFilter('ACRONIS')"
+          >
+            <span>Acronis</span>
+            <strong class="tabular-nums">{{ brandKpiCounts.acronis }}</strong>
+          </button>
+          <button
+            type="button"
+            class="kpi-brand-chip"
+            :class="{ active: selectedBrandFilter === '__OTHER_BRANDS__' }"
+            @click.stop="toggleBrandQuickFilter('__OTHER_BRANDS__')"
+          >
+            <span>Khác</span>
+            <strong class="tabular-nums">{{ brandKpiCounts.others }}</strong>
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI 3: BẢNG GIÁ & TỈ GIÁ USD (Amber) -->
+      <div
+        role="button"
+        tabindex="0"
+        class="qlhh-kpi-card is-amber"
+        :class="{ active: Boolean(selectedPriceListId) }"
+        @click.stop="toggleFilterDropdown('pricelist')"
+        @keydown.enter.prevent="toggleFilterDropdown('pricelist')"
+        title="Quản lý bảng giá áp dụng và tỉ giá quy đổi USD"
+      >
+        <div class="kpi-head">
+          <span class="kpi-label">Bảng Giá &amp; Tỉ Giá USD</span>
+          <span class="kpi-icon is-amber">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+          </span>
+        </div>
+        <div class="kpi-main-row kpi-main-row--wrap">
+          <div class="kpi-pl-name" :title="activePriceList ? activePriceList.ten_bang_gia : 'Giá gốc hệ thống'">
+            {{ activePriceList ? activePriceList.ten_bang_gia : 'Giá gốc hệ thống' }}
+          </div>
+          <div class="kpi-sub-pills" @click.stop>
+            <button
+              type="button"
+              class="kpi-action-pill is-amber tabular-nums"
+              title="Thay đổi tỉ giá đồng loạt cho các sản phẩm USD"
+              @click.stop="openUsdRateModal"
+            >
+              USD: {{ currentSystemUsdRate > 1 ? formatNumberPlain(currentSystemUsdRate) + ' ₫' : 'Đặt tỉ giá' }}
+            </button>
+            <button
+              type="button"
+              class="kpi-action-pill is-sky"
+              title="Tạo bảng giá tùy chỉnh mới"
+              @click.stop="openCreatePriceListModal"
+            >
+              + Bảng giá ({{ priceLists.length }})
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================
+         2. THANH BỘ LỌC, TÌM KIẾM BO TRÒN & THAO TÁC HỢP NHẤT
+    ========================================================== -->
+    <section class="qlhh-filter-bar">
+      <div class="qlhh-filter-row-main">
+        <!-- BÊN TRÁI: CÁC PICKER BỘ LỌC GỌN GÀNG -->
+        <div class="qlhh-filter-left">
+          <!-- 1. Lọc Hãng -->
+          <div class="qlhh-picker-root" @click.stop>
+            <button
+              type="button"
+              class="qlhh-picker-btn"
+              :class="{ 'is-active': Boolean(selectedBrandFilter), 'is-open': openDropdownType === 'brand' }"
+              @click="toggleFilterDropdown('brand')"
+              title="Lọc theo hãng sản xuất"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              <span class="picker-btn-text">{{ selectedBrandBtnLabel }}</span>
+              <span
+                v-if="selectedBrandFilter"
+                class="picker-clear-dot"
+                title="Bỏ lọc hãng"
+                @click.stop="selectedBrandFilter = ''"
+              >✕</span>
+              <svg v-else width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="picker-chev"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+
+            <div v-if="openDropdownType === 'brand'" class="qlhh-pop-backdrop" @click="openDropdownType = ''"></div>
+            <div v-if="openDropdownType === 'brand'" class="qlhh-pop-menu" :class="{ 'theme-light-blue': uiTheme === 'light' }">
+              <div class="mob-sheet-grabber"></div>
+              <div class="qlhh-pop-head">
+                <span>Chọn Hãng sản xuất</span>
+                <button type="button" class="qlhh-pop-close" @click="openDropdownType = ''">✕</button>
+              </div>
+              <div class="qlhh-pop-search-wrap">
+                <input
+                  type="text"
+                  v-model="brandDropdownSearch"
+                  placeholder="Tìm nhanh hãng..."
+                  class="qlhh-pop-search"
+                />
+              </div>
+              <div class="qlhh-pop-list" @scroll="onFilterDropdownScroll($event, 'brand')">
+                <button
+                  type="button"
+                  class="qlhh-pop-item"
+                  :class="{ active: !selectedBrandFilter }"
+                  @click="selectFilterOption('brand', '')"
+                >
+                  <span>Tất cả Hãng</span>
+                  <span class="qlhh-pop-count tabular-nums">{{ items.length }}</span>
+                </button>
+                <button
+                  v-for="opt in displayedBrandOptions"
+                  :key="opt.value"
+                  type="button"
+                  class="qlhh-pop-item"
+                  :class="{ active: selectedBrandFilter === opt.value }"
+                  @click="selectFilterOption('brand', opt.value)"
+                >
+                  <span>{{ opt.label }}</span>
+                  <span class="qlhh-pop-count tabular-nums">{{ opt.count }}</span>
+                </button>
+                <div v-if="!filteredBrandOptions.length" class="qlhh-pop-empty">Không tìm thấy hãng phù hợp</div>
+                <button
+                  v-if="displayedBrandOptions.length < filteredBrandOptions.length"
+                  type="button"
+                  class="qlhh-pop-more"
+                  @click="brandDropdownLimit += FILTER_DROPDOWN_PAGE_SIZE"
+                >
+                  Đang hiện {{ displayedBrandOptions.length }}/{{ filteredBrandOptions.length }} — Bấm tải thêm
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Lọc Danh mục -->
+          <div class="qlhh-picker-root" @click.stop>
+            <button
+              type="button"
+              class="qlhh-picker-btn"
+              :class="{ 'is-active': Boolean(selectedCategoryFilter), 'is-open': openDropdownType === 'category' }"
+              @click="toggleFilterDropdown('category')"
+              title="Lọc theo danh mục sản phẩm"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+              <span class="picker-btn-text">{{ selectedCategoryFilter ? 'DM: ' + selectedCategoryFilter : `Danh mục (${categoryFilterOptions.length})` }}</span>
+              <span
+                v-if="selectedCategoryFilter"
+                class="picker-clear-dot"
+                title="Bỏ lọc danh mục"
+                @click.stop="selectedCategoryFilter = ''"
+              >✕</span>
+              <svg v-else width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="picker-chev"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+
+            <div v-if="openDropdownType === 'category'" class="qlhh-pop-backdrop" @click="openDropdownType = ''"></div>
+            <div v-if="openDropdownType === 'category'" class="qlhh-pop-menu is-wide" :class="{ 'theme-light-blue': uiTheme === 'light' }">
+              <div class="mob-sheet-grabber"></div>
+              <div class="qlhh-pop-head">
+                <span>Chọn Danh mục</span>
+                <button type="button" class="qlhh-pop-close" @click="openDropdownType = ''">✕</button>
+              </div>
+              <div class="qlhh-pop-search-wrap">
+                <input
+                  type="text"
+                  v-model="categoryDropdownSearch"
+                  placeholder="Tìm nhanh danh mục..."
+                  class="qlhh-pop-search"
+                />
+              </div>
+              <div class="qlhh-pop-list" @scroll="onFilterDropdownScroll($event, 'category')">
+                <button
+                  type="button"
+                  class="qlhh-pop-item"
+                  :class="{ active: !selectedCategoryFilter }"
+                  @click="selectFilterOption('category', '')"
+                >
+                  <span>Tất cả Danh mục</span>
+                  <span class="qlhh-pop-count tabular-nums">{{ categoryFilterTotalItems }}</span>
+                </button>
+                <button
+                  v-for="opt in displayedCategoryOptions"
+                  :key="opt.value"
+                  type="button"
+                  class="qlhh-pop-item"
+                  :class="{ active: selectedCategoryFilter === opt.value }"
+                  @click="selectFilterOption('category', opt.value)"
+                >
+                  <span :title="opt.label">{{ opt.label }}</span>
+                  <span class="qlhh-pop-count tabular-nums">{{ opt.count }}</span>
+                </button>
+                <div v-if="!filteredCategoryOptions.length" class="qlhh-pop-empty">Không tìm thấy danh mục phù hợp</div>
+                <button
+                  v-if="displayedCategoryOptions.length < filteredCategoryOptions.length"
+                  type="button"
+                  class="qlhh-pop-more"
+                  @click="categoryDropdownLimit += FILTER_DROPDOWN_PAGE_SIZE"
+                >
+                  Đang hiện {{ displayedCategoryOptions.length }}/{{ filteredCategoryOptions.length }} — Bấm tải thêm
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. Lọc Nhà cung cấp -->
+          <div class="qlhh-picker-root" @click.stop>
+            <button
+              type="button"
+              class="qlhh-picker-btn"
+              :class="{ 'is-active': Boolean(selectedSupplierFilter), 'is-open': openDropdownType === 'supplier' }"
+              @click="toggleFilterDropdown('supplier')"
+              title="Lọc theo nhà cung cấp"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+              <span class="picker-btn-text">{{ selectedSupplierFilter ? 'NCC: ' + selectedSupplierFilter : `NCC (${supplierFilterOptions.length})` }}</span>
+              <span
+                v-if="selectedSupplierFilter"
+                class="picker-clear-dot"
+                title="Bỏ lọc nhà cung cấp"
+                @click.stop="selectedSupplierFilter = ''"
+              >✕</span>
+              <svg v-else width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="picker-chev"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+
+            <div v-if="openDropdownType === 'supplier'" class="qlhh-pop-backdrop" @click="openDropdownType = ''"></div>
+            <div v-if="openDropdownType === 'supplier'" class="qlhh-pop-menu is-wide" :class="{ 'theme-light-blue': uiTheme === 'light' }">
+              <div class="mob-sheet-grabber"></div>
+              <div class="qlhh-pop-head">
+                <span>Chọn Nhà cung cấp</span>
+                <button type="button" class="qlhh-pop-close" @click="openDropdownType = ''">✕</button>
+              </div>
+              <div class="qlhh-pop-search-wrap">
+                <input
+                  type="text"
+                  v-model="supplierDropdownSearch"
+                  placeholder="Tìm nhanh nhà cung cấp..."
+                  class="qlhh-pop-search"
+                />
+              </div>
+              <div class="qlhh-pop-list" @scroll="onFilterDropdownScroll($event, 'supplier')">
+                <button
+                  type="button"
+                  class="qlhh-pop-item"
+                  :class="{ active: !selectedSupplierFilter }"
+                  @click="selectFilterOption('supplier', '')"
+                >
+                  <span>Tất cả Nhà cung cấp</span>
+                  <span class="qlhh-pop-count tabular-nums">{{ items.length }}</span>
+                </button>
+                <button
+                  v-for="opt in displayedSupplierOptions"
+                  :key="opt.value"
+                  type="button"
+                  class="qlhh-pop-item"
+                  :class="{ active: selectedSupplierFilter === opt.value }"
+                  @click="selectFilterOption('supplier', opt.value)"
+                >
+                  <span :title="opt.label">{{ opt.label }}</span>
+                  <span class="qlhh-pop-count tabular-nums">{{ opt.count }}</span>
+                </button>
+                <div v-if="!filteredSupplierOptions.length" class="qlhh-pop-empty">Không tìm thấy nhà cung cấp phù hợp</div>
+                <button
+                  v-if="displayedSupplierOptions.length < filteredSupplierOptions.length"
+                  type="button"
+                  class="qlhh-pop-more"
+                  @click="supplierDropdownLimit += FILTER_DROPDOWN_PAGE_SIZE"
+                >
+                  Đang hiện {{ displayedSupplierOptions.length }}/{{ filteredSupplierOptions.length }} — Bấm tải thêm
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. Lọc Số User (Volume) -->
+          <div class="qlhh-vol-pill" :class="{ 'is-active': userVolumeFilter !== '' }" title="Nhập số user / thiết bị để lọc dải Volume tương ứng">
+            <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <input
+              type="number"
+              min="1"
+              v-model="userVolumeFilter"
+              placeholder="Volume (user)..."
+              class="qlhh-vol-input tabular-nums"
+            />
+            <button
+              v-if="userVolumeFilter !== ''"
+              type="button"
+              class="picker-clear-dot"
+              title="Xóa lọc Volume"
+              @click="userVolumeFilter = ''"
+            >✕</button>
+          </div>
+
+          <!-- 5. Chọn Bảng Giá -->
+          <div class="qlhh-picker-root" @click.stop>
+            <button
+              type="button"
+              class="qlhh-picker-btn"
+              :class="{ 'is-active': Boolean(selectedPriceListId), 'is-open': openDropdownType === 'pricelist' }"
+              @click="toggleFilterDropdown('pricelist')"
+              title="Chọn bảng giá hiển thị"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+              <span class="picker-btn-text">{{ activePriceList ? activePriceList.ten_bang_gia : 'Giá gốc' }}</span>
+              <span
+                v-if="selectedPriceListId"
+                class="picker-clear-dot"
+                title="Quay về Giá gốc hệ thống"
+                @click.stop="selectedPriceListId = ''"
+              >✕</span>
+              <svg v-else width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="picker-chev"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+
+            <div v-if="openDropdownType === 'pricelist'" class="qlhh-pop-backdrop" @click="openDropdownType = ''"></div>
+            <div v-if="openDropdownType === 'pricelist'" class="qlhh-pop-menu is-wide" :class="{ 'theme-light-blue': uiTheme === 'light' }">
+              <div class="mob-sheet-grabber"></div>
+              <div class="qlhh-pop-head">
+                <span>Chọn Bảng giá áp dụng</span>
+                <button type="button" class="qlhh-pop-close" @click="openDropdownType = ''">✕</button>
+              </div>
+              <div class="qlhh-pop-list">
+                <button
+                  type="button"
+                  class="qlhh-pop-item"
+                  :class="{ active: !selectedPriceListId }"
+                  @click="selectedPriceListId = ''; openDropdownType = ''"
+                >
+                  <span>Giá gốc hệ thống</span>
+                  <span class="qlhh-pop-count tabular-nums">{{ items.length }} SP</span>
+                </button>
+                <button
+                  v-for="pl in priceLists"
+                  :key="pl._firebaseKey"
+                  type="button"
+                  class="qlhh-pop-item"
+                  :class="{ active: selectedPriceListId === pl._firebaseKey }"
+                  @click="selectedPriceListId = pl._firebaseKey; openDropdownType = ''"
+                >
+                  <span :title="pl.ten_bang_gia + formatPriceListPeriodInline(pl)">
+                    {{ pl.ten_bang_gia }}{{ formatPriceListPeriodInline(pl) }}
+                  </span>
+                  <span class="qlhh-pop-count tabular-nums">{{ (pl.items || []).length }} SP</span>
+                </button>
+              </div>
+              <div class="qlhh-pop-foot">
+                <button
+                  type="button"
+                  class="qlhh-pop-create-btn"
+                  @click="openDropdownType = ''; openCreatePriceListModal()"
+                >
+                  + Tạo bảng giá mới
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 6. Sắp xếp -->
+          <div class="qlhh-picker-root" @click.stop>
+            <button
+              type="button"
+              class="qlhh-picker-btn"
+              :class="{ 'is-active': sortOrder !== 'default', 'is-open': openDropdownType === 'sort' }"
+              @click="toggleFilterDropdown('sort')"
+              title="Chọn thứ tự sắp xếp"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+              <span class="picker-btn-text">{{ sortOrderLabel }}</span>
+              <span
+                v-if="sortOrder !== 'default'"
+                class="picker-clear-dot"
+                title="Về sắp xếp mặc định"
+                @click.stop="sortOrder = 'default'"
+              >✕</span>
+              <svg v-else width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="picker-chev"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+
+            <div v-if="openDropdownType === 'sort'" class="qlhh-pop-backdrop" @click="openDropdownType = ''"></div>
+            <div v-if="openDropdownType === 'sort'" class="qlhh-pop-menu" :class="{ 'theme-light-blue': uiTheme === 'light' }">
+              <div class="mob-sheet-grabber"></div>
+              <div class="qlhh-pop-head">
+                <span>Sắp xếp danh sách</span>
+                <button type="button" class="qlhh-pop-close" @click="openDropdownType = ''">✕</button>
+              </div>
+              <div class="qlhh-pop-list">
+                <button
+                  type="button"
+                  class="qlhh-pop-item"
+                  :class="{ active: sortOrder === 'default' }"
+                  @click="sortOrder = 'default'; openDropdownType = ''"
+                >
+                  <span>Mặc định (theo danh mục)</span>
+                  <span v-if="sortOrder === 'default'" class="qlhh-pop-check">✓</span>
+                </button>
+                <button
+                  type="button"
+                  class="qlhh-pop-item"
+                  :class="{ active: sortOrder === 'newest' }"
+                  @click="sortOrder = 'newest'; openDropdownType = ''"
+                >
+                  <span>Mới cập nhật → Cũ nhất</span>
+                  <span v-if="sortOrder === 'newest'" class="qlhh-pop-check">✓</span>
+                </button>
+                <button
+                  type="button"
+                  class="qlhh-pop-item"
+                  :class="{ active: sortOrder === 'oldest' }"
+                  @click="sortOrder = 'oldest'; openDropdownType = ''"
+                >
+                  <span>Cũ nhất → Mới cập nhật</span>
+                  <span v-if="sortOrder === 'oldest'" class="qlhh-pop-check">✓</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <button
+            v-if="hasActiveSearchOrFilter || selectedPriceListId"
+            type="button"
+            class="qlhh-reset-btn"
+            @click="resetAllSearchAndFilters(); selectedPriceListId = ''"
+            title="Đặt lại toàn bộ bộ lọc & tìm kiếm"
+          >
+            <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            <span>Đặt lại</span>
+          </button>
         </div>
 
-        <template v-if="activePriceList">
-          <span class="pricelist-period-badge" v-if="activePriceList.ngay_bat_dau || activePriceList.ngay_ket_thuc">
-            🗓️ {{ formatPriceListPeriod(activePriceList) }}
+        <!-- Ở GIỮA: KHUNG TÌM KIẾM BO TRÒN VIỀN XANH NHẸ -->
+        <div class="qlhh-search-box">
+          <svg class="qlhh-search-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input
+            v-model="searchQuery"
+            type="text"
+            class="qlhh-search-input"
+            placeholder="Tìm mã hàng, SKU, tên hàng, danh mục, nhà cung cấp..."
+          />
+          <span v-if="hasActiveSearchOrFilter || selectedPriceListId" class="qlhh-search-count tabular-nums">
+            {{ totalProductsCount }} SP
+          </span>
+          <button
+            v-if="searchQuery"
+            type="button"
+            class="qlhh-search-clear"
+            @click="searchQuery = ''"
+          >
+            Xóa
+          </button>
+        </div>
+
+        <!-- BÊN PHẢI: CHUYỂN CHẾ ĐỘ XEM · NHÓM · THEME · IMPORT HUB · THÊM MỚI -->
+        <div class="qlhh-filter-right">
+          <!-- Segmented Switcher: Thẻ ↔ Bảng -->
+          <div class="qlhh-view-seg hide-mob-dock" role="group" aria-label="Chế độ hiển thị danh sách">
+            <button
+              type="button"
+              class="qlhh-view-seg-btn"
+              :class="{ active: viewMode === 'card' }"
+              @click="setViewMode('card')"
+              title="Hiển thị dạng Lưới Thẻ 4 tầng"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+              <span>Thẻ</span>
+            </button>
+            <button
+              type="button"
+              class="qlhh-view-seg-btn"
+              :class="{ active: viewMode === 'table' }"
+              @click="setViewMode('table')"
+              title="Hiển thị dạng Bảng dữ liệu mật độ cao"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+              <span>Bảng</span>
+            </button>
+          </div>
+
+          <button
+            v-if="totalGroupsCount > 0"
+            type="button"
+            class="qlhh-ghost-btn hide-mob-dock"
+            @click="toggleAllCategoriesCollapse"
+            :title="areAllCategoriesCollapsed ? 'Mở rộng toàn bộ nhóm danh mục' : 'Thu gọn toàn bộ nhóm danh mục'"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+              <polyline v-if="areAllCategoriesCollapsed" points="6 9 12 15 18 9"/>
+              <polyline v-else points="18 15 12 9 6 15"/>
+            </svg>
+            <span>{{ areAllCategoriesCollapsed ? 'Mở rộng nhóm' : 'Thu gọn nhóm' }}</span>
+          </button>
+
+          <button
+            type="button"
+            class="qlhh-icon-btn hide-mob-dock"
+            :disabled="loading"
+            @click="fetchData"
+            title="Đồng bộ lại dữ liệu"
+          >
+            <svg :class="{ 'is-spin': loading }" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          </button>
+
+          <button
+            type="button"
+            class="qlhh-icon-btn hide-mob-dock"
+            @click="toggleUiTheme"
+            :title="uiTheme === 'dark' ? 'Chuyển sang giao diện Sáng (Light Blue)' : 'Chuyển sang giao diện Tối (Dark Navy)'"
+          >
+            <svg v-if="uiTheme === 'dark'" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            <svg v-else width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </button>
+
+          <button
+            type="button"
+            class="qlhh-ghost-btn is-hub-btn hide-mob-dock"
+            @click="openVendorToolsHub()"
+            title="Mở Trung tâm Import Excel/PDF, File Tham Chiếu Hãng & Đối chiếu Bảng giá"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span>Import &amp; Đối chiếu</span>
+          </button>
+
+          <button
+            type="button"
+            class="qlhh-btn-primary hide-mob-dock"
+            @click="openAddModal"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span>Thêm mới</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- DẢI PHỤ NGỮ CẢNH: CHỈ HIỆN KHI ĐANG CHỌN BẢNG GIÁ TÙY CHỈNH -->
+      <div v-if="activePriceList" class="qlhh-pricelist-context-bar">
+        <div class="pl-ctx-left">
+          <span class="pl-ctx-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+            <strong>{{ activePriceList.ten_bang_gia }}</strong>
+          </span>
+          <span v-if="activePriceList.ngay_bat_dau || activePriceList.ngay_ket_thuc" class="pricelist-period-badge tabular-nums">
+            {{ formatPriceListPeriod(activePriceList) }}
           </span>
           <span class="pricelist-status-badge" :class="getPriceListStatusInfo(activePriceList).cls">
             {{ getPriceListStatusInfo(activePriceList).label }}
           </span>
+          <span v-if="activePriceList.default_rule && activePriceList.default_rule.value" class="pricelist-rule-badge tabular-nums">
+            {{ activePriceList.default_rule.direction === 'decrease' ? 'Giảm (-)' : 'Tăng (+)' }}
+            {{ activePriceList.default_rule.type === 'percent' ? activePriceList.default_rule.value + '%' : formatNumberPlain(activePriceList.default_rule.value) }}
+          </span>
+        </div>
+
+        <div class="pl-ctx-right">
           <button
             type="button"
             class="pricelist-autosync-btn"
             :class="activePriceList.auto_sync_base_price ? 'on' : 'off'"
             @click="togglePriceListAutoSync(activePriceList)"
-            :title="activePriceList.auto_sync_base_price ? 'Đang BẬT: Khi giá gốc thay đổi, bảng giá này sẽ tự động tính lại theo % / số tiền tăng giảm. Nhấn để TẮT.' : 'Đang TẮT: Giữ cố định giá bán hiện tại dù giá gốc thay đổi. Nhấn để BẬT tự động cập nhật.'"
+            :title="activePriceList.auto_sync_base_price ? 'Đang BẬT: Khi giá gốc thay đổi, bảng giá này tự động tính lại. Nhấn để TẮT.' : 'Đang TẮT: Giữ cố định giá bán hiện tại. Nhấn để BẬT tự động cập nhật.'"
           >
-            <span v-if="activePriceList.auto_sync_base_price">🔄 Tự động theo giá gốc: BẬT</span>
-            <span v-else>🔒 Giá cố định (Tắt tự động)</span>
+            <span>{{ activePriceList.auto_sync_base_price ? 'Auto-sync giá gốc: BẬT' : 'Giá cố định (Tắt Auto-sync)' }}</span>
           </button>
-          <span class="pricelist-rule-badge" v-if="activePriceList.default_rule && activePriceList.default_rule.value">
-            {{ activePriceList.default_rule.direction === 'decrease' ? 'Giảm (-)' : 'Tăng (+)' }}
-            {{ activePriceList.default_rule.type === 'percent' ? activePriceList.default_rule.value + '%' : formatNumberPlain(activePriceList.default_rule.value) }}
-          </span>
-          <button type="button" class="pricelist-action-btn edit" @click="openEditPriceListModal(activePriceList)" title="Chỉnh sửa bảng giá">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-            Sửa
+          <button type="button" class="pricelist-action-btn edit" @click="openEditPriceListModal(activePriceList)">
+            <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            <span>Sửa</span>
           </button>
-          <button type="button" class="pricelist-action-btn export" @click="exportPriceListToExcel(activePriceList)" title="Xuất Excel bảng giá">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-            Xuất Excel
+          <button type="button" class="pricelist-action-btn export" @click="exportPriceListToExcel(activePriceList)">
+            <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span>Xuất Excel</span>
           </button>
-          <button type="button" class="pricelist-action-btn delete" @click="requestDeletePriceList(activePriceList)" title="Xóa bảng giá">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+          <button type="button" class="pricelist-action-btn delete" @click="requestDeletePriceList(activePriceList)" title="Xóa bảng giá này">
+            <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
           </button>
-        </template>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================
+         3. DANH SÁCH SẢN PHẨM (NHÓM THU GỌN + THẺ 4 TẦNG ↔ BẢNG)
+    ========================================================== -->
+    <div v-if="loading && !items.length" class="qlhh-skeleton-wrap">
+      <div class="qlhh-skeleton-bar"></div>
+      <div class="qlhh-cards-grid">
+        <div v-for="i in 6" :key="'skeleton-' + i" class="qlhh-skeleton-card">
+          <div class="sk-row-top">
+            <div class="skeleton sk-pill"></div>
+            <div class="skeleton sk-pill w60"></div>
+          </div>
+          <div class="skeleton sk-code"></div>
+          <div class="skeleton sk-title"></div>
+          <div class="skeleton sk-title w70"></div>
+          <div class="sk-chips">
+            <div class="skeleton sk-chip"></div>
+            <div class="skeleton sk-chip"></div>
+          </div>
+          <div class="sk-footer">
+            <div class="skeleton sk-price"></div>
+            <div class="skeleton sk-btn"></div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- Main Grid -->
-    <div class="products-grid">
-      <!-- Skeleton Loading -->
-      <template v-if="loading && !items.length">
-        <div v-for="i in 8" :key="'skeleton-' + i" class="product-card skeleton-card">
-          <div class="card-body">
-            <div class="card-top">
-              <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                <div class="skeleton skeleton-badge"></div>
-                <div class="skeleton skeleton-badge" style="width: 120px;"></div>
-              </div>
-            </div>
-            <div class="skeleton skeleton-title" style="margin-top: 12px;"></div>
-            <div class="skeleton skeleton-title" style="width: 70%; margin-top: 8px;"></div>
-            <div class="skeleton skeleton-desc" style="margin-top: 16px;"></div>
-            <div class="skeleton skeleton-desc" style="width: 80%;"></div>
-            
-            <div class="price-info-box" style="border-color: rgba(255,255,255,0.05);">
-              <div class="skeleton skeleton-text"></div>
-              <div class="skeleton skeleton-text" style="width: 60%;"></div>
-              <div class="skeleton skeleton-text" style="width: 50%;"></div>
-              
-              <div style="height: 1px; background: rgba(255,255,255,0.05); margin: 6px 0; width: 100%;"></div>
-              
-              <div class="skeleton skeleton-text" style="width: 70%;"></div>
-              <div class="skeleton skeleton-text" style="width: 80%;"></div>
-              <div class="skeleton skeleton-price" style="margin-top: 8px;"></div>
-            </div>
-          </div>
-        </div>
-      </template>
-      <div v-else-if="!filteredItems.length" class="empty-state text-center py-8 text-muted">
-        Không có hàng hóa nào.
+    <div v-else-if="!filteredItems.length" class="qlhh-empty-state">
+      <div class="empty-ico">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
       </div>
-      
-      <template v-else v-for="(groupItems, category) in groupedItems" :key="category">
-        <!-- Category Group Header (Folder Style) -->
-        <div class="folder-header">
-          <div class="folder-tab">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-            <span>
-              SỐ LƯỢNG: {{ categoryTotalCounts[category] || groupItems.length }}
-              <template v-if="(categoryTotalCounts[category] || 0) > groupItems.length">
-                (đang hiện {{ groupItems.length }})
-              </template>
+      <h3>Không tìm thấy hàng hóa phù hợp</h3>
+      <p>Thử điều chỉnh từ khóa, bộ lọc Hãng/Danh mục hoặc thêm sản phẩm mới vào kho.</p>
+      <div class="empty-actions">
+        <button
+          v-if="hasActiveSearchOrFilter || selectedPriceListId"
+          type="button"
+          class="qlhh-ghost-btn"
+          @click="resetAllSearchAndFilters(); selectedPriceListId = ''"
+        >
+          Xóa toàn bộ bộ lọc
+        </button>
+        <button type="button" class="qlhh-btn-primary" @click="openAddModal">+ Thêm hàng hóa mới</button>
+      </div>
+    </div>
+
+    <div v-else class="qlhh-groups-stack">
+      <section
+        v-for="(groupItems, category) in groupedItems"
+        :key="category"
+        class="qlhh-group-block"
+        :class="{ 'is-collapsed': Boolean(collapsedCategories[category]) }"
+      >
+        <!-- HEADER NHÓM DANH MỤC (BẤM THU GỌN / MỞ RỘNG) -->
+        <div class="qlhh-group-header" @click="toggleCategoryCollapse(category)">
+          <div class="gh-left">
+            <span class="gh-folder-ico">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
             </span>
+            <div class="gh-title-wrap">
+              <h3 class="gh-title" :title="category">{{ category }}</h3>
+              <span
+                v-if="!collapsedCategories[category] && (categoryTotalCounts[category] || 0) > groupItems.length"
+                class="gh-sub-hint tabular-nums"
+              >
+                Đang hiển thị {{ groupItems.length }}/{{ categoryTotalCounts[category] }}
+              </span>
+            </div>
           </div>
-          <div class="folder-body">
-            <h3 class="folder-title" :title="category">{{ category }}</h3>
+
+          <div class="gh-right">
+            <span class="gh-count-pill tabular-nums">
+              {{ categoryTotalCounts[category] || groupItems.length }} SP
+            </span>
+            <button
+              type="button"
+              class="gh-toggle-btn"
+              :aria-expanded="!collapsedCategories[category]"
+              :title="collapsedCategories[category] ? 'Mở rộng nhóm danh mục' : 'Thu gọn nhóm danh mục'"
+              @click.stop="toggleCategoryCollapse(category)"
+            >
+              <svg
+                class="gh-chevron"
+                :class="{ 'is-collapsed': Boolean(collapsedCategories[category]) }"
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.4"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
           </div>
         </div>
-        
-        <div v-for="(item, index) in groupItems" :key="item.Ma_hang || index" class="product-card" :class="{ 'in-quote-cart': isInQuoteCart(item) }" @click="openEditModal(item)" style="cursor: pointer;">
-          <div class="card-body">
-            <div class="card-top">
-              <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
-                <span class="brand-badge" v-if="item.Ten_nha_cung_cap">
-                  {{ item.Ten_nha_cung_cap }}
-                </span>
-                <span class="category-badge" v-if="item.Danh_muc">
-                  {{ item.Danh_muc }}
-                </span>
-                <span
-                  v-if="item.Type"
-                  :style="{
-                    fontSize: '10.5px',
-                    fontWeight: '700',
-                    padding: '2px 8px',
-                    borderRadius: '999px',
-                    background: String(item.Type).toLowerCase().includes('renewal') ? 'rgba(245, 158, 11, 0.16)' : 'rgba(16, 185, 129, 0.16)',
-                    color: String(item.Type).toLowerCase().includes('renewal') ? '#fbbf24' : '#34d399',
-                    border: String(item.Type).toLowerCase().includes('renewal') ? '1px solid rgba(245, 158, 11, 0.35)' : '1px solid rgba(16, 185, 129, 0.35)'
-                  }"
+
+        <!-- NỘI DUNG NHÓM KHI MỞ RỘNG -->
+        <template v-if="!collapsedCategories[category] && groupItems.length > 0">
+          <!-- CHẾ ĐỘ BẢNG DỮ LIỆU (TABLE VIEW — DESKTOP / TABLET) -->
+          <div v-if="viewMode === 'table' && !isCompactPhoneViewport" class="qlhh-table-wrap">
+            <table class="qlhh-data-table">
+              <thead>
+                <tr>
+                  <th class="col-code">Mã / SKU</th>
+                  <th class="col-name">Tên hàng hóa</th>
+                  <th class="col-spec">Volume &amp; Thời hạn</th>
+                  <th class="col-cur text-center">Tiền tệ</th>
+                  <th class="col-cost text-right">Giá vốn / Off</th>
+                  <th class="col-price text-right">{{ activePriceList ? 'Giá bảng giá' : 'Giá bán' }}</th>
+                  <th class="col-act text-right">Giỏ &amp; Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="(item, index) in groupItems"
+                  :key="item._firebaseKey || item.Ma_hang || index"
+                  class="qlhh-table-row"
+                  :class="{ 'in-quote-cart': isInQuoteCart(item) }"
+                  @click="openEditModal(item)"
                 >
-                  {{ item.Type }}
-                </span>
-              </div>
-              <div class="card-actions">
-                <button
-                  v-if="getCardVendorType(item)"
-                  class="btn-icon"
-                  :style="getCardVendorType(item) === 'sophos'
-                    ? 'color: #38bdf8; border-color: rgba(56, 189, 248, 0.45); background: rgba(56, 189, 248, 0.14);'
-                    : (getCardVendorType(item) === 'acronis'
-                        ? 'color: #a5b4fc; border-color: rgba(129, 140, 248, 0.45); background: rgba(99, 102, 241, 0.16);'
-                        : 'color: #34d399; border-color: rgba(16, 185, 129, 0.45); background: rgba(16, 185, 129, 0.14);')"
-                  :title="getCardVendorType(item) === 'sophos'
-                    ? 'Đối chiếu file gốc Sophos'
-                    : (getCardVendorType(item) === 'acronis'
-                        ? 'Đối chiếu file gốc Acronis (file_goc_acronis.xlsx)'
-                        : 'Đối chiếu file gốc Kaspersky')"
-                  @click.stop="openCardOriginalFileCompare(item)"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg>
-                </button>
-                <button class="btn-icon text-primary" title="Sửa" @click.stop="openEditModal(item)">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                </button>
-                <button class="btn-icon text-danger" title="Xóa" @click.stop="requestDelete(item)">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                </button>
-              </div>
-            </div>
-            <div v-if="item.sku_code" style="font-family: monospace; font-size: 11.5px; font-weight: 700; color: #a78bfa; margin-top: 6px;">
-              SKU Code: <span v-html="highlightText(item.sku_code, searchQuery)"></span>
-            </div>
-            <div v-if="item.Ma_hang" style="font-family: monospace; font-size: 11.5px; font-weight: 700; color: #38bdf8; margin-top: 4px;">
-              Mã hàng: <span v-html="highlightText(item.Ma_hang, searchQuery)"></span>
-            </div>
-            <h3 class="product-name" :title="item.Ten_hang" v-html="highlightText(item.Ten_hang, searchQuery)"></h3>
-            <div v-if="item.Ten_hang_bao_gia" style="font-size: 12px; color: #34d399; font-weight: 600; margin-bottom: 4px;" :title="item.Ten_hang_bao_gia">
-              Tên báo giá: <span v-html="highlightText(item.Ten_hang_bao_gia, searchQuery)"></span>
-            </div>
-            <div class="product-desc text-muted" v-if="item.Description" style="color: #cbd5e1; font-size: 12px; margin-bottom: 4px;" v-html="item.Description"></div>
-            <p class="product-desc text-muted" v-else-if="item.Mo_ta_chung" :title="item.Mo_ta_chung">{{ item.Mo_ta_chung }}</p>
-            <div class="price-info-box">
-              <p v-if="item.Type">Type: <span :style="{ color: String(item.Type).toLowerCase().includes('renewal') ? '#fbbf24' : '#34d399', fontWeight: 700 }">{{ item.Type }}</span></p>
-              <p>License duration: <span>{{ item.License_duration || '-' }}</span></p>
-              <p>Thời hạn bảo hành: <span>{{ item.thoi_han_bao_hanh || '-' }}</span></p>
-              <p>Volume: <span>{{ item.volume || '-' }}</span></p>
-              <p>Đơn vị tiền tệ: <span>{{ item.Don_vi_tien_te || '-' }}</span></p>
-              <p style="display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: wrap;">
-                <span>Tỉ giá: <span style="font-weight: 700; color: #f8fafc;">{{ item.Ti_gia ? formatCurrency(item.Ti_gia, 'VND') : '-' }}</span></span>
-                <button
-                  v-if="String(item.Don_vi_tien_te || '').trim().toUpperCase() === 'USD'"
-                  type="button"
-                  class="card-usd-rate-quick-btn"
-                  title="Thay đổi tỉ giá USD"
-                  @click.stop="openUsdRateModal"
-                >
-                  💱 Đổi tỉ giá
-                </button>
-              </p>
-              
-              <div style="height: 1px; background: rgba(255,255,255,0.1); margin: 6px 0; width: 100%;"></div>
-              
-              <p style="color: #c084fc; font-weight: 600;">
-                Giá vốn/off hãng:
-                <span style="color: #e9d5ff; font-weight: 700;">{{ formatCurrency(item.Gia_tieu_chuan || 0, item.Don_vi_tien_te) }}</span>
-              </p>
-              <p style="color: #fbbf24;">Giá nhập: <span style="color: #fcd34d;">{{ formatCurrency(item.gia_nhap || 0, item.Don_vi_tien_te) }}</span></p>
-              <p>Thuế VAT: <span style="color: #facc15;">{{ item.Thue_VAT ? item.Thue_VAT + '%' : '0%' }}</span></p>
-              <template v-if="getPriceListEntry(item)">
-                <p style="font-size: 12px; color: #94a3b8; margin-top: 2px;">
-                  Giá bán gốc:
-                  <span style="text-decoration: line-through; color: #64748b;">
-                    {{ formatCurrency(activePriceList?.auto_sync_base_price ? item.Don_gia : getPriceListEntry(item).gia_goc, item.Don_vi_tien_te) }}
-                  </span>
-                </p>
-                <p class="highlight" style="margin-top: 4px;">
-                  <span style="display: inline-flex; align-items: center; gap: 6px;">
-                    Giá bảng giá:
-                    <span class="pl-card-diff-badge" :class="getPriceListDiffClass(getPriceListEntry(item), activePriceList?.auto_sync_base_price ? item.Don_gia : getPriceListEntry(item).gia_goc)">
-                      {{ formatPriceListRuleShort(getPriceListEntry(item), activePriceList?.auto_sync_base_price ? item.Don_gia : getPriceListEntry(item).gia_goc) }}
-                    </span>
-                  </span>
-                  <span style="color: #34d399; font-weight: 700;">
-                    {{ formatCurrency(getPriceListEntry(item).gia_ban_moi, item.Don_vi_tien_te) }}
-                    <small v-if="item.DVT" style="font-size: 11px; color: #64748b; font-weight: 500;">/ {{ item.DVT }}</small>
-                  </span>
-                </p>
-              </template>
-              <p v-else class="highlight" style="margin-top: 4px;">
-                <span style="display: inline-flex; align-items: center; gap: 6px;">
-                  Giá bán:
-                  <span
-                    v-if="toNum(item.Gia_tieu_chuan) > 0 && toNum(item.Don_gia) > 0 && toNum(item.Don_gia) !== toNum(item.Gia_tieu_chuan)"
-                    class="pl-card-diff-badge"
-                    :class="toNum(item.Don_gia) > toNum(item.Gia_tieu_chuan) ? 'up' : 'down'"
-                    title="Chênh lệch Giá bán so với Giá vốn/off hãng"
-                  >
-                    {{ formatCardMarkupBadge(item) }}
-                  </span>
-                </span>
-                <span>
-                  {{ formatCurrency(item.Don_gia, item.Don_vi_tien_te) }}
-                  <small v-if="item.DVT" style="font-size: 11px; color: #64748b; font-weight: 500;">/ {{ item.DVT }}</small>
-                </span>
-              </p>
-              <div
-                style="margin-top: 6px; padding-top: 6px; border-top: 1px dashed rgba(255,255,255,0.08); display: flex; flex-direction: column; gap: 4px;"
-              >
-                <div
-                  v-if="getProductFileHistory(item).length"
-                  style="background: rgba(15, 23, 42, 0.72); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 7px; padding: 6px 8px; display: flex; flex-direction: column; gap: 3px;"
-                  @click.stop="openProductFilesModal(item)"
-                  title="Click để xem toàn bộ lịch sử File/Ảnh & biến động giá của sản phẩm này"
-                >
-                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
-                    <span style="font-size: 11px; color: #38bdf8; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                      📎 {{ getProductFileHistory(item)[0].file_name }}
-                    </span>
-                    <span
-                      v-if="getProductFileHistory(item).length > 1"
-                      style="font-size: 10px; background: rgba(168, 85, 247, 0.2); color: #e9d5ff; border: 1px solid rgba(192, 132, 252, 0.4); padding: 1px 6px; border-radius: 99px; font-weight: 700; flex-shrink: 0;"
+                  <td class="col-code">
+                    <div class="tbl-code-stack">
+                      <span
+                        v-if="item.sku_code"
+                        class="qlhh-code-pill is-sku tabular-nums"
+                        v-html="highlightText(item.sku_code, searchQuery)"
+                      ></span>
+                      <span
+                        v-if="item.Ma_hang && item.Ma_hang !== item.sku_code"
+                        class="qlhh-code-pill is-ma tabular-nums"
+                        v-html="highlightText(item.Ma_hang, searchQuery)"
+                      ></span>
+                      <span v-if="!item.sku_code && !item.Ma_hang" class="text-muted">—</span>
+                    </div>
+                  </td>
+
+                  <td class="col-name">
+                    <div class="tbl-name-main" :title="item.Ten_hang" v-html="highlightText(item.Ten_hang, searchQuery)"></div>
+                    <div class="tbl-name-badges">
+                      <span class="qlhh-brand-tag">{{ getItemBrand(item) }}</span>
+                      <span
+                        v-if="item.Type"
+                        class="qlhh-type-tag"
+                        :class="String(item.Type).toLowerCase().includes('renewal') ? 'is-amber' : 'is-emerald'"
+                      >
+                        {{ item.Type }}
+                      </span>
+                      <span v-if="item.DVT" class="qlhh-dvt-tag">ĐVT: {{ item.DVT }}</span>
+                    </div>
+                  </td>
+
+                  <td class="col-spec">
+                    <div class="tbl-spec-stack">
+                      <span v-if="item.volume" class="qlhh-spec-chip is-sky tabular-nums">{{ item.volume }}</span>
+                      <span v-if="item.License_duration || item.thoi_han_bao_hanh" class="qlhh-spec-chip tabular-nums">
+                        {{ item.License_duration || item.thoi_han_bao_hanh }}
+                      </span>
+                      <span v-if="!item.volume && !item.License_duration && !item.thoi_han_bao_hanh" class="text-muted">—</span>
+                    </div>
+                  </td>
+
+                  <td class="col-cur text-center">
+                    <span class="qlhh-cur-pill tabular-nums">{{ item.Don_vi_tien_te || 'VND' }}</span>
+                    <div
+                      v-if="String(item.Don_vi_tien_te || '').trim().toUpperCase() === 'USD' && item.Ti_gia"
+                      class="tbl-rate-sub tabular-nums"
                     >
-                      +{{ getProductFileHistory(item).length - 1 }} file
-                    </span>
-                  </div>
-                  <div style="font-size: 10.5px; color: #94a3b8; display: flex; align-items: center; justify-content: space-between; gap: 4px; flex-wrap: wrap;">
-                    <span>🕒 Up file: <strong style="color: #cbd5e1;">{{ formatLastUpdated(getProductFileHistory(item)[0].file_uploaded_at) }}</strong></span>
-                    <span style="color: #60a5fa; text-decoration: underline; font-weight: 600;">Lịch sử file ({{ getProductFileHistory(item).length }})</span>
-                  </div>
+                      {{ formatNumberPlain(item.Ti_gia) }} ₫
+                    </div>
+                  </td>
+
+                  <td class="col-cost text-right tabular-nums">
+                    <span class="qlhh-cost-val">{{ formatCurrency(item.Gia_tieu_chuan || 0, item.Don_vi_tien_te) }}</span>
+                  </td>
+
+                  <td class="col-price text-right tabular-nums">
+                    <template v-if="getPriceListEntry(item)">
+                      <div class="qlhh-price-strike">
+                        {{ formatCurrency(activePriceList?.auto_sync_base_price ? item.Don_gia : getPriceListEntry(item).gia_goc, item.Don_vi_tien_te) }}
+                      </div>
+                      <div class="qlhh-price-main-line is-right">
+                        <span
+                          class="pl-card-diff-badge"
+                          :class="getPriceListDiffClass(getPriceListEntry(item), activePriceList?.auto_sync_base_price ? item.Don_gia : getPriceListEntry(item).gia_goc)"
+                        >
+                          {{ formatPriceListRuleShort(getPriceListEntry(item), activePriceList?.auto_sync_base_price ? item.Don_gia : getPriceListEntry(item).gia_goc) }}
+                        </span>
+                        <strong class="qlhh-sell-val">{{ formatCurrency(getPriceListEntry(item).gia_ban_moi, item.Don_vi_tien_te) }}</strong>
+                      </div>
+                    </template>
+                    <template v-else>
+                      <div class="qlhh-price-main-line is-right">
+                        <span
+                          v-if="toNum(item.Gia_tieu_chuan) > 0 && toNum(item.Don_gia) > 0 && toNum(item.Don_gia) !== toNum(item.Gia_tieu_chuan)"
+                          class="pl-card-diff-badge"
+                          :class="toNum(item.Don_gia) > toNum(item.Gia_tieu_chuan) ? 'up' : 'down'"
+                        >
+                          {{ formatCardMarkupBadge(item) }}
+                        </span>
+                        <strong class="qlhh-sell-val">{{ formatCurrency(item.Don_gia, item.Don_vi_tien_te) }}</strong>
+                      </div>
+                    </template>
+                  </td>
+
+                  <td class="col-act text-right" @click.stop>
+                    <div class="tbl-act-cluster">
+                      <button
+                        v-if="!isInQuoteCart(item)"
+                        type="button"
+                        class="qlhh-add-cart-btn is-compact"
+                        @click.stop="addToQuoteCart(item)"
+                      >
+                        + Giỏ
+                      </button>
+                      <div v-else class="qlhh-capsule-stepper" @click.stop>
+                        <button type="button" class="step-cir minus" @click.stop="updateQuoteCartQty(item, -1, false)">−</button>
+                        <input
+                          type="number"
+                          min="1"
+                          inputmode="numeric"
+                          class="step-num tabular-nums"
+                          :value="getCartItemQty(item)"
+                          @click.stop
+                          @change="onCardCartQtyInputChange(item, $event)"
+                        />
+                        <button type="button" class="step-cir plus" @click.stop="updateQuoteCartQty(item, 1, false)">+</button>
+                      </div>
+
+                      <div class="qlhh-row-icons">
+                        <button
+                          v-if="getCardVendorType(item)"
+                          type="button"
+                          class="qlhh-ico-act is-sky"
+                          title="Đối chiếu file gốc hãng"
+                          @click.stop="openCardOriginalFileCompare(item)"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                        </button>
+                        <button
+                          type="button"
+                          class="qlhh-ico-act"
+                          :class="{ 'has-files': getProductFileHistory(item).length > 0 }"
+                          :title="`Lịch sử file đính kèm (${getProductFileHistory(item).length})`"
+                          @click.stop="openProductFilesModal(item)"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                          <span v-if="getProductFileHistory(item).length" class="ico-mini-dot tabular-nums">{{ getProductFileHistory(item).length }}</span>
+                        </button>
+                        <button type="button" class="qlhh-ico-act is-edit" title="Chỉnh sửa chi tiết" @click.stop="openEditModal(item)">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        </button>
+                        <button type="button" class="qlhh-ico-act is-del" title="Xóa hàng hóa" @click.stop="requestDelete(item)">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        </button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- CHẾ ĐỘ LƯỚI THẺ 4 TẦNG TINH GỌN (CARD VIEW) -->
+          <div v-else class="qlhh-cards-grid is-inside-group">
+            <article
+              v-for="(item, index) in groupItems"
+              :key="item._firebaseKey || item.Ma_hang || index"
+              class="qlhh-card"
+              :class="{ 'in-quote-cart': isInQuoteCart(item) }"
+              @click="openEditModal(item)"
+            >
+              <!-- Tầng 1: Hãng + Type + Giỏ đã chọn + Cụm icon thao tác -->
+              <div class="qlhh-card-top">
+                <div class="qlhh-card-badges">
+                  <span class="qlhh-brand-tag">{{ item.Ten_nha_cung_cap || getItemBrand(item) }}</span>
+                  <span
+                    v-if="item.Type"
+                    class="qlhh-type-tag"
+                    :class="String(item.Type).toLowerCase().includes('renewal') ? 'is-amber' : 'is-emerald'"
+                  >
+                    {{ item.Type }}
+                  </span>
+                  <span v-if="isInQuoteCart(item)" class="qlhh-selected-tag tabular-nums">
+                    ✓ x{{ getCartItemQty(item) }}
+                  </span>
                 </div>
-                <div
-                  v-else
-                  style="display: flex; align-items: center; justify-content: space-between; gap: 6px;"
-                >
-                  <span style="font-size: 11px; color: #64748b;">📎 File: Chưa đính kèm</span>
+
+                <div class="qlhh-row-icons" @click.stop>
+                  <button
+                    v-if="getCardVendorType(item)"
+                    type="button"
+                    class="qlhh-ico-act is-sky"
+                    title="Đối chiếu file gốc hãng"
+                    @click.stop="openCardOriginalFileCompare(item)"
+                  >
+                    <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                  </button>
                   <button
                     type="button"
-                    style="background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.35); color: #38bdf8; border-radius: 5px; padding: 1px 7px; font-size: 10.5px; font-weight: 600; cursor: pointer;"
+                    class="qlhh-ico-act"
+                    :class="{ 'has-files': getProductFileHistory(item).length > 0 }"
+                    :title="`Lịch sử file đính kèm (${getProductFileHistory(item).length})`"
                     @click.stop="openProductFilesModal(item)"
-                  >+ Gắn file</button>
+                  >
+                    <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                    <span v-if="getProductFileHistory(item).length" class="ico-mini-dot tabular-nums">{{ getProductFileHistory(item).length }}</span>
+                  </button>
+                  <button type="button" class="qlhh-ico-act is-edit" title="Chỉnh sửa chi tiết" @click.stop="openEditModal(item)">
+                    <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  </button>
+                  <button type="button" class="qlhh-ico-act is-del" title="Xóa hàng hóa" @click.stop="requestDelete(item)">
+                    <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  </button>
                 </div>
-                <p style="font-size: 11.5px; color: #64748b; margin: 0;">
-                  Cập nhật SP: <span style="color: #94a3b8; font-weight: 500;">{{ formatLastUpdated(item.last_updated) }}</span>
-                </p>
-              </div>
-              <div v-if="getCardVendorType(item)" style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1);">
-                <button
-                  type="button"
-                  class="card-ref-compare-btn"
-                  :class="getCardVendorType(item) === 'sophos'
-                    ? 'card-ref-compare-btn--sophos'
-                    : (getCardVendorType(item) === 'acronis' ? 'card-ref-compare-btn--acronis' : 'card-ref-compare-btn--kas')"
-                  @click.stop="openCardOriginalFileCompare(item)"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                  <span>Đối chiếu file gốc</span>
-                </button>
               </div>
 
-              <!-- NÚT THÊM VÀO GIỎ & CỤM SỐ LƯỢNG TRỰC TIẾP TRÊN CARD -->
-              <div class="card-cart-action-box" @click.stop>
-                <button
-                  v-if="!isInQuoteCart(item)"
-                  type="button"
-                  class="card-add-cart-btn"
-                  @click.stop="addToQuoteCart(item)"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path><line x1="12" y1="9" x2="12" y2="15"></line><line x1="9" y1="12" x2="15" y2="12"></line></svg>
-                  <span>Thêm vào giỏ</span>
-                </button>
+              <!-- Tầng 2: Pill Mã/SKU + Tên hàng hóa 2 dòng -->
+              <div class="qlhh-card-identity">
+                <div v-if="item.sku_code || (item.Ma_hang && item.Ma_hang !== item.Ten_hang)" class="qlhh-code-row">
+                  <span
+                    v-if="item.sku_code"
+                    class="qlhh-code-pill is-sku tabular-nums"
+                    :title="'SKU: ' + item.sku_code"
+                    v-html="highlightText(item.sku_code, searchQuery)"
+                  ></span>
+                  <span
+                    v-if="item.Ma_hang && item.Ma_hang !== item.sku_code && String(item.Ma_hang).toLowerCase() !== String(item.Ten_hang || '').toLowerCase()"
+                    class="qlhh-code-pill is-ma tabular-nums"
+                    :title="'Mã hàng: ' + item.Ma_hang"
+                    v-html="highlightText(item.Ma_hang, searchQuery)"
+                  ></span>
+                </div>
+                <h4 class="qlhh-card-title" :title="item.Ten_hang" v-html="highlightText(item.Ten_hang, searchQuery)"></h4>
+              </div>
 
-                <div v-else class="card-cart-qty-cluster" @click.stop>
-                  <span class="card-cart-selected-label">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                    <span>Đã thêm</span>
-                  </span>
-                  <div class="card-cart-stepper">
+              <!-- Tầng 3: Chip thông số ngang -->
+              <div class="qlhh-spec-row">
+                <span v-if="item.License_duration || item.thoi_han_bao_hanh" class="qlhh-spec-chip tabular-nums">
+                  {{ item.License_duration || item.thoi_han_bao_hanh }}
+                </span>
+                <span v-if="item.volume" class="qlhh-spec-chip is-sky tabular-nums">
+                  {{ item.volume }}
+                </span>
+                <span class="qlhh-spec-chip is-cur tabular-nums">
+                  {{ item.Don_vi_tien_te || 'VND' }}<template v-if="String(item.Don_vi_tien_te || '').trim().toUpperCase() === 'USD' && item.Ti_gia"> · {{ formatNumberPlain(item.Ti_gia) }}₫</template>
+                </span>
+              </div>
+
+              <!-- Tầng 4: Giá vốn vs Giá bán & Nút + Giỏ / Stepper -->
+              <div class="qlhh-card-footer">
+                <div class="qlhh-price-stack tabular-nums">
+                  <div class="qlhh-cost-line">
+                    <span>Giá vốn:</span>
+                    <strong class="qlhh-cost-val">{{ formatCurrency(item.Gia_tieu_chuan || 0, item.Don_vi_tien_te) }}</strong>
+                  </div>
+
+                  <template v-if="getPriceListEntry(item)">
+                    <div class="qlhh-price-strike">
+                      Gốc: {{ formatCurrency(activePriceList?.auto_sync_base_price ? item.Don_gia : getPriceListEntry(item).gia_goc, item.Don_vi_tien_te) }}
+                    </div>
+                    <div class="qlhh-price-main-line">
+                      <strong class="qlhh-sell-val">{{ formatCurrency(getPriceListEntry(item).gia_ban_moi, item.Don_vi_tien_te) }}</strong>
+                      <small v-if="item.DVT" class="qlhh-sell-dvt">/ {{ item.DVT }}</small>
+                      <span
+                        class="pl-card-diff-badge"
+                        :class="getPriceListDiffClass(getPriceListEntry(item), activePriceList?.auto_sync_base_price ? item.Don_gia : getPriceListEntry(item).gia_goc)"
+                      >
+                        {{ formatPriceListRuleShort(getPriceListEntry(item), activePriceList?.auto_sync_base_price ? item.Don_gia : getPriceListEntry(item).gia_goc) }}
+                      </span>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <div class="qlhh-price-main-line">
+                      <strong class="qlhh-sell-val">{{ formatCurrency(item.Don_gia, item.Don_vi_tien_te) }}</strong>
+                      <small v-if="item.DVT" class="qlhh-sell-dvt">/ {{ item.DVT }}</small>
+                      <span
+                        v-if="toNum(item.Gia_tieu_chuan) > 0 && toNum(item.Don_gia) > 0 && toNum(item.Don_gia) !== toNum(item.Gia_tieu_chuan)"
+                        class="pl-card-diff-badge"
+                        :class="toNum(item.Don_gia) > toNum(item.Gia_tieu_chuan) ? 'up' : 'down'"
+                        title="Chênh lệch Giá bán so với Giá vốn/off hãng"
+                      >
+                        {{ formatCardMarkupBadge(item) }}
+                      </span>
+                    </div>
+                  </template>
+                </div>
+
+                <div class="qlhh-cart-ctrl" @click.stop>
+                  <button
+                    v-if="!isInQuoteCart(item)"
+                    type="button"
+                    class="qlhh-add-cart-btn"
+                    @click.stop="addToQuoteCart(item)"
+                  >
+                    <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    <span>Giỏ</span>
+                  </button>
+
+                  <div v-else class="qlhh-capsule-stepper" @click.stop>
                     <button
                       type="button"
-                      class="card-cart-step-btn minus"
+                      class="step-cir minus"
                       title="Giảm số lượng (về 0 sẽ bỏ khỏi giỏ)"
                       @click.stop="updateQuoteCartQty(item, -1, false)"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                    </button>
+                    >−</button>
                     <input
                       type="number"
                       min="1"
-                      class="card-cart-qty-input"
+                      inputmode="numeric"
+                      class="step-num tabular-nums"
                       :value="getCartItemQty(item)"
                       @click.stop
                       @change="onCardCartQtyInputChange(item, $event)"
                     />
                     <button
                       type="button"
-                      class="card-cart-step-btn plus"
+                      class="step-cir plus"
                       title="Tăng số lượng"
                       @click.stop="updateQuoteCartQty(item, 1, false)"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                    </button>
+                    >+</button>
                   </div>
-                  <button
-                    type="button"
-                    class="card-cart-remove-btn"
-                    title="Xóa khỏi giỏ"
-                    @click.stop="removeFromQuoteCart(item)"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                  </button>
                 </div>
               </div>
-            </div>
+            </article>
           </div>
-        </div>
-      </template>
-      
-      <!-- LAZY LOADING SENTINEL & NÚT TẢI THÊM (20 SẢN PHẨM / TRANG) -->
+        </template>
+      </section>
+
+      <!-- LAZY LOADING SENTINEL & NÚT TẢI THÊM -->
       <div
-        v-if="!loading && totalProductsCount > 0"
+        v-if="!loading && uncollapsedProductsCount > 0"
         ref="lazyLoadSentinelRef"
-        style="grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 16px; padding: 12px 0;"
+        class="qlhh-lazy-footer"
       >
-        <div style="font-size: 12.5px; color: #94a3b8; font-weight: 600;">
-          Đang hiển thị <strong style="color: #38bdf8;">{{ displayedProductsCount }}</strong> / <strong style="color: #f8fafc;">{{ totalProductsCount }}</strong> sản phẩm
+        <div class="qlhh-lazy-status tabular-nums">
+          Đang hiển thị <strong>{{ displayedProductsCount }}</strong> / <strong>{{ uncollapsedProductsCount }}</strong> sản phẩm đang mở
+          <template v-if="uncollapsedProductsCount < totalProductsCount">
+            (Tổng lọc: {{ totalProductsCount }} SP)
+          </template>
         </div>
         <button
           v-if="hasMoreProducts"
           type="button"
+          class="qlhh-load-more-btn tabular-nums"
           @click="loadMoreProducts"
-          style="width: 100%; padding: 14px; background: rgba(56, 189, 248, 0.1); border: 1px dashed rgba(56, 189, 248, 0.4); color: #38bdf8; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s;"
-          onmouseover="this.style.background='rgba(56, 189, 248, 0.2)';"
-          onmouseout="this.style.background='rgba(56, 189, 248, 0.1)';"
         >
-          ⏳ Tự động tải khi cuộn xuống hoặc bấm để xem thêm (+{{ Math.min(PRODUCT_PAGE_SIZE, totalProductsCount - displayedProductsCount) }} sản phẩm — còn {{ totalProductsCount - displayedProductsCount }} sản phẩm)
+          Tải thêm +{{ Math.min(PRODUCT_PAGE_SIZE, uncollapsedProductsCount - displayedProductsCount) }} sản phẩm (còn {{ uncollapsedProductsCount - displayedProductsCount }} SP)
         </button>
       </div>
     </div>
 
-    <!-- Modal Form -->
-    <div class="modal-overlay" v-if="showModal" @click.self="closeModal">
-      <div class="modal-content large-modal">
-        <div class="modal-header">
-          <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-            <h2>{{ isEditing ? 'Cập nhật hàng hóa' : 'Thêm hàng hóa mới' }}</h2>
-            <span v-if="isEditing && formData.last_updated" style="font-size: 12px; color: #94a3b8; background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 99px;">
-              🕒 Cập nhật cuối: <strong style="color: #38bdf8;">{{ formatLastUpdated(formData.last_updated) }}</strong>
+    <!-- =========================================================
+         MODAL FULLSCREEN 100%: THÊM MỚI / CẬP NHẬT HÀNG HÓA (BENTO CHUẨN TEMPLATE)
+    ========================================================== -->
+    <div
+      v-if="showModal"
+      class="qlhh-modal-backdrop qlhh-fm-overlay"
+      :class="{ 'theme-light-blue': uiTheme === 'light' }"
+      @click.self="closeModal"
+    >
+      <div class="qlhh-fm-modal" :class="{ 'theme-light-blue': uiTheme === 'light' }">
+        <!-- HEADER STICKY -->
+        <header class="qlhh-fm-head">
+          <div class="qlhh-fm-head-left">
+            <span class="qlhh-fm-head-ico" :class="isEditing ? 'is-sky' : 'is-emerald'">
+              <svg v-if="isEditing" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             </span>
-            <span v-if="isEditing && activePriceList && formData._has_pl_entry" style="font-size: 12px; color: #fbbf24; background: rgba(245, 158, 11, 0.14); border: 1px solid rgba(245, 158, 11, 0.35); padding: 4px 12px; border-radius: 99px;">
-              🏷️ Đang sửa theo bảng giá: <strong style="color: #fde68a;">{{ activePriceList.ten_bang_gia }}</strong>
-            </span>
-            <button
-              v-if="isEditing && getCardVendorType(formData)"
-              type="button"
-              class="card-ref-compare-btn"
-              style="width: auto; padding: 5px 12px; font-size: 12px;"
-              :class="getCardVendorType(formData) === 'sophos'
-                ? 'card-ref-compare-btn--sophos'
-                : (getCardVendorType(formData) === 'acronis' ? 'card-ref-compare-btn--acronis' : 'card-ref-compare-btn--kas')"
-              @click="openCardOriginalFileCompare(originalItem || formData)"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-              <span>Đối chiếu file gốc</span>
-            </button>
-          </div>
-          <button class="close-btn" @click="closeModal">&times;</button>
-        </div>
-        <div class="modal-body">
-          <form @submit.prevent="saveItem" class="form-grid-2col">
-            <!-- CỘT 1 -->
-            <div class="col-left form-panel">
-              <h3 class="panel-title">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="panel-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                Thông tin chung
-              </h3>
-              <div class="panel-content">
-                <div class="form-group">
-                  <label>Mã hàng <span class="required">*</span></label>
-                  <input v-model="formData.Ma_hang" type="text" required :disabled="isEditing" placeholder="Tự ghép kèm SKU Code (hoặc tự nhập)..." @input="onFormMaHangManualInput" />
-                </div>
-                <div class="form-group">
-                  <label>SKU Code (Mã SKU hãng)</label>
-                  <input v-model="formData.sku_code" type="text" placeholder="VD: XS230012ZZNCAA, KL4867RA*FQ, SSSAEBLOS..." />
-                </div>
-                <div class="form-group col-span-2">
-                  <label>Tên hàng <span class="required">*</span></label>
-                  <input v-model="formData.Ten_hang" type="text" required />
-                </div>
-                <div class="form-group col-span-2">
-                  <label>Tên hàng hóa báo giá</label>
-                  <input v-model="formData.Ten_hang_bao_gia" type="text" placeholder="Nhập tên hàng hóa dùng khi xuất báo giá (tùy chọn)..." />
-                </div>
-                <div class="form-group col-span-2">
-                  <label>Description nội bộ</label>
-                  <ExcelEditor v-model="formData.Description" placeholder="VD: Workspace Protection - 1-9 users - 12 MOS..." class="features-excel-editor" />
-                </div>
-                <div class="form-group">
-                  <label>License duration</label>
-                  <input v-model="formData.License_duration" type="text" placeholder="VD: 12 months, 24 months..." />
-                </div>
-                <div class="form-group">
-                  <label>Thời hạn bảo hành</label>
-                  <input v-model="formData.thoi_han_bao_hanh" type="text" />
-                </div>
-                <div class="form-group">
-                  <label>Volume (Range Users / Blocks)</label>
-                  <input v-model="formData.volume" type="text" placeholder="VD: 1-9 users, 10-24 users..." />
-                </div>
-                <div class="form-group">
-                  <label>Danh mục</label>
-                  <input v-model="formData.Danh_muc" type="text" />
-                </div>
-                <div class="form-group">
-                  <label>Loại hàng (Type — New / Renewal)</label>
-                  <input v-model="formData.Type" type="text" list="type-options" placeholder="New / Renewal..." />
-                  <datalist id="type-options">
-                    <option value="New"></option>
-                    <option value="Renewal"></option>
-                    <option value="Base Plus"></option>
-                    <option value="Renewal Plus"></option>
-                    <option value="Hardware"></option>
-                    <option value="Software"></option>
-                  </datalist>
-                </div>
-                <div class="form-group">
-                  <label>Nhà cung cấp</label>
-                  <input v-model="formData.Ten_nha_cung_cap" type="text" list="ncc-options" />
-                  <datalist id="ncc-options">
-                    <option value="SOPHOS"></option>
-                    <option value="KASPERSKY"></option>
-                    <option value="ACRONIS"></option>
-                  </datalist>
-                </div>
-                <!--
-                <div class="form-group">
-                  <label>Mã NCC</label>
-                  <input v-model="formData.Ma_nha_cung_cap" type="text" />
-                </div>
-                -->
-                <div class="form-group">
-                  <label>Đơn vị tính</label>
-                  <input v-model="formData.DVT" type="text" />
-                </div>
-                <div class="form-group col-span-2">
-                  <label>Diễn giải nội bộ</label>
-                  <ExcelEditor v-model="formData.Features" placeholder="Nhập diễn giải nội bộ..." class="features-excel-editor" />
-                </div>
-                <div class="form-group col-span-2">
-                  <label>Diễn giải báo giá</label>
-                  <ExcelEditor v-model="formData.Dien_giai_bao_gia" placeholder="Nhập diễn giải tùy chỉnh dùng khi xuất báo giá (tùy chọn)..." class="features-excel-editor" />
-                </div>
-                <div class="form-group col-span-2">
-                  <label>Ghi chú</label>
-                  <textarea v-model="formData.Ghi_chu" rows="2"></textarea>
-                </div>
+
+            <div class="qlhh-fm-title-block">
+              <div class="qlhh-fm-title-row">
+                <h2>{{ isEditing ? 'Cập Nhật Hàng Hóa' : 'Thêm Hàng Hóa Mới' }}</h2>
+                <span
+                  v-if="formData.sku_code || formData.Ma_hang"
+                  class="qlhh-code-pill is-sku tabular-nums"
+                >
+                  {{ formData.sku_code || formData.Ma_hang }}
+                </span>
+              </div>
+
+              <div v-if="isEditing && (formData.last_updated || (activePriceList && formData._has_pl_entry))" class="qlhh-fm-meta-row">
+                <span v-if="formData.last_updated" class="qlhh-fm-meta-pill tabular-nums">
+                  <svg width="12.5" height="12.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  <span>Cập nhật: <strong>{{ formatLastUpdated(formData.last_updated) }}</strong></span>
+                </span>
+                <span v-if="activePriceList && formData._has_pl_entry" class="qlhh-fm-meta-pill is-amber">
+                  <svg width="12.5" height="12.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                  <span>Đang sửa theo bảng giá: <strong>{{ activePriceList.ten_bang_gia }}</strong></span>
+                </span>
               </div>
             </div>
+          </div>
 
-            <!-- CỘT 2 -->
-            <div class="col-right form-panel">
-              <h3 class="panel-title">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="panel-icon"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
-                Thông tin giá cả
-              </h3>
-              <div class="panel-content">
-                <div class="form-group" :class="{'col-span-2': formData.Don_vi_tien_te === 'VND'}">
-                  <label>Tiền tệ</label>
-                  <select v-model="formData.Don_vi_tien_te" class="select-input">
-                    <option value="VND">VND</option>
-                    <option value="USD">USD</option>
-                  </select>
-                </div>
-                <div class="form-group" v-if="formData.Don_vi_tien_te !== 'VND'">
-                  <label>Tỉ giá</label>
-                  <NumberInput v-model="formData.Ti_gia" :decimals="0" />
+          <div class="qlhh-fm-head-right">
+            <div class="qlhh-fm-live-pills hide-sm-head tabular-nums">
+              <span class="fm-live-pill is-violet">
+                <small>Giá vốn:</small>
+                <strong>{{ formatCurrency(formData.Gia_tieu_chuan || 0, formData.Don_vi_tien_te) }}</strong>
+              </span>
+              <span class="fm-live-pill is-emerald">
+                <small>{{ isEditing && activePriceList && formData._has_pl_entry ? 'Giá bảng giá:' : 'Giá List:' }}</small>
+                <strong>{{ formatCurrency(formData.Don_gia || 0, formData.Don_vi_tien_te) }}</strong>
+              </span>
+            </div>
+
+            <button type="button" class="qlhh-fm-close" @click="closeModal" aria-label="Đóng">✕</button>
+          </div>
+        </header>
+
+        <!-- BODY 2 CỘT BENTO RỘNG 100% -->
+        <div class="qlhh-fm-body">
+          <form @submit.prevent="saveItem" class="qlhh-fm-2col">
+            <!-- CỘT TRÁI: ĐỊNH DANH & MÔ TẢ KỸ THUẬT -->
+            <div class="qlhh-fm-col">
+              <!-- BENTO 1: ĐỊNH DANH & PHÂN LOẠI -->
+              <section class="qlhh-bento-box">
+                <div class="qlhh-bento-head is-sky">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                  <span>Định Danh &amp; Phân Loại Sản Phẩm</span>
                 </div>
 
-                <!-- GIÁ VỐN / OFF HÃNG -->
-                <div class="form-group col-span-2">
-                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 4px; flex-wrap: wrap;">
-                    <label style="margin-bottom: 0; color: #e9d5ff; font-weight: 700;">
-                      Giá vốn/off hãng
-                    </label>
-                    <span style="font-size: 11px; color: #94a3b8;">
-                      Giá mua sau thuế từ NCC / Hãng
-                    </span>
+                <div class="qlhh-fm-grid">
+                  <div class="qlhh-field">
+                    <label>Mã hàng <span class="required">*</span></label>
+                    <input
+                      v-model="formData.Ma_hang"
+                      type="text"
+                      required
+                      :disabled="isEditing"
+                      class="qlhh-fm-input is-mono tabular-nums"
+                      placeholder="Tự ghép kèm SKU Code (hoặc tự nhập)..."
+                      @input="onFormMaHangManualInput"
+                    />
                   </div>
-                  <NumberInput v-model="formData.Gia_tieu_chuan" :decimals="String(formData.Don_vi_tien_te || 'VND').toUpperCase() === 'USD' ? 2 : 0" @update:modelValue="onModalGiaVonChange" />
 
-                  <!-- KHUNG ĐIỀU CHỈNH ĐƠN GIÁ BÁN TỪ GIÁ VỐN (% HOẶC SỐ TIỀN CỤ THỂ) -->
-                  <div
-                    style="margin-top: 8px; padding: 8px 10px; background: rgba(168, 85, 247, 0.08); border: 1px dashed rgba(192, 132, 252, 0.4); border-radius: 8px; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;"
-                  >
-                    <span style="font-size: 12px; color: #e9d5ff; font-weight: 600;">
-                      ⚡ Tính Đơn giá bán từ Giá vốn:
-                    </span>
-                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                  <div class="qlhh-field">
+                    <label>SKU Code (Mã SKU hãng)</label>
+                    <input
+                      v-model="formData.sku_code"
+                      type="text"
+                      class="qlhh-fm-input is-mono tabular-nums"
+                      placeholder="VD: XS230012ZZNCAA, KL4867RA*FQ..."
+                    />
+                  </div>
+
+                  <div class="qlhh-field col-span-2">
+                    <label>Tên hàng hóa <span class="required">*</span></label>
+                    <input
+                      v-model="formData.Ten_hang"
+                      type="text"
+                      required
+                      class="qlhh-fm-input"
+                      placeholder="Nhập tên chính thức của sản phẩm / dịch vụ..."
+                    />
+                  </div>
+
+                  <div class="qlhh-field col-span-2">
+                    <label>Tên hàng hóa khi xuất báo giá</label>
+                    <input
+                      v-model="formData.Ten_hang_bao_gia"
+                      type="text"
+                      class="qlhh-fm-input"
+                      placeholder="Tên tùy chỉnh hiển thị trên bảng báo giá khách hàng (tùy chọn)..."
+                    />
+                  </div>
+
+                  <div class="qlhh-field">
+                    <label>Nhà cung cấp / Hãng</label>
+                    <input
+                      v-model="formData.Ten_nha_cung_cap"
+                      type="text"
+                      list="ncc-options"
+                      class="qlhh-fm-input"
+                      placeholder="VD: SOPHOS, KASPERSKY, ACRONIS..."
+                    />
+                    <datalist id="ncc-options">
+                      <option value="SOPHOS"></option>
+                      <option value="KASPERSKY"></option>
+                      <option value="ACRONIS"></option>
+                    </datalist>
+                  </div>
+
+                  <div class="qlhh-field">
+                    <label>Danh mục</label>
+                    <input
+                      v-model="formData.Danh_muc"
+                      type="text"
+                      class="qlhh-fm-input"
+                      placeholder="VD: ENDPOINT PROTECTION, FIREWALL..."
+                    />
+                  </div>
+
+                  <div class="qlhh-field">
+                    <label>Loại hàng (New / Renewal)</label>
+                    <input
+                      v-model="formData.Type"
+                      type="text"
+                      list="type-options"
+                      class="qlhh-fm-input"
+                      placeholder="New / Renewal / Hardware..."
+                    />
+                    <datalist id="type-options">
+                      <option value="New"></option>
+                      <option value="Renewal"></option>
+                      <option value="Base Plus"></option>
+                      <option value="Renewal Plus"></option>
+                      <option value="Hardware"></option>
+                      <option value="Software"></option>
+                    </datalist>
+                  </div>
+
+                  <div class="qlhh-field">
+                    <label>Đơn vị tính</label>
+                    <input
+                      v-model="formData.DVT"
+                      type="text"
+                      class="qlhh-fm-input"
+                      placeholder="VD: License, Thiết bị, Gói, Năm..."
+                    />
+                  </div>
+
+                  <div class="qlhh-fm-grid-3 col-span-2">
+                    <div class="qlhh-field">
+                      <label>Volume (Users / Blocks)</label>
+                      <input
+                        v-model="formData.volume"
+                        type="text"
+                        class="qlhh-fm-input tabular-nums"
+                        placeholder="VD: 1-9 users, 10-24 users..."
+                      />
+                    </div>
+
+                    <div class="qlhh-field">
+                      <label>License duration</label>
+                      <input
+                        v-model="formData.License_duration"
+                        type="text"
+                        class="qlhh-fm-input tabular-nums"
+                        placeholder="VD: 12 months, 36 months..."
+                      />
+                    </div>
+
+                    <div class="qlhh-field">
+                      <label>Thời hạn bảo hành</label>
+                      <input
+                        v-model="formData.thoi_han_bao_hanh"
+                        type="text"
+                        class="qlhh-fm-input tabular-nums"
+                        placeholder="VD: 12 tháng..."
+                      />
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- BENTO 2: MÔ TẢ & DIỄN GIẢI BÁO GIÁ -->
+              <section class="qlhh-bento-box">
+                <div class="qlhh-bento-head is-slate">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                  <span>Mô Tả Kỹ Thuật &amp; Diễn Giải Báo Giá</span>
+                </div>
+
+                <div class="qlhh-fm-stack">
+                  <div class="qlhh-field">
+                    <label>Description nội bộ</label>
+                    <ExcelEditor
+                      v-model="formData.Description"
+                      placeholder="VD: Workspace Protection - 1-9 users - 12 MOS..."
+                      class="features-excel-editor"
+                    />
+                  </div>
+
+                  <div class="qlhh-field">
+                    <label>Diễn giải kỹ thuật nội bộ</label>
+                    <ExcelEditor
+                      v-model="formData.Features"
+                      placeholder="Nhập thông số kỹ thuật / tính năng chi tiết..."
+                      class="features-excel-editor"
+                    />
+                  </div>
+
+                  <div class="qlhh-field">
+                    <label>Diễn giải hiển thị trên báo giá</label>
+                    <ExcelEditor
+                      v-model="formData.Dien_giai_bao_gia"
+                      placeholder="Nhập diễn giải tùy chỉnh khi xuất báo giá cho khách (tùy chọn)..."
+                      class="features-excel-editor"
+                    />
+                  </div>
+
+                  <div class="qlhh-field">
+                    <label>Ghi chú nội bộ</label>
+                    <textarea
+                      v-model="formData.Ghi_chu"
+                      rows="2"
+                      class="qlhh-fm-textarea"
+                      placeholder="Ghi chú lưu ý riêng cho sale / mua hàng..."
+                    ></textarea>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <!-- CỘT PHẢI: CẤU TRÚC GIÁ & HỒ SƠ FILE LỊCH SỬ GIÁ -->
+            <div class="qlhh-fm-col">
+              <!-- BENTO 3: CẤU TRÚC GIÁ & QUY ĐỔI TIỀN TỆ -->
+              <section class="qlhh-bento-box">
+                <div class="qlhh-bento-head is-emerald">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                  <span>Cấu Trúc Giá &amp; Quy Đổi Tiền Tệ</span>
+                </div>
+
+                <div class="qlhh-fm-grid">
+                  <div class="qlhh-field" :class="{ 'col-span-2': formData.Don_vi_tien_te === 'VND' }">
+                    <label>Đơn vị tiền tệ</label>
+                    <select v-model="formData.Don_vi_tien_te" class="qlhh-fm-select">
+                      <option value="VND">VND — Việt Nam Đồng</option>
+                      <option value="USD">USD — Đô la Mỹ</option>
+                    </select>
+                  </div>
+
+                  <div v-if="formData.Don_vi_tien_te !== 'VND'" class="qlhh-field">
+                    <label>Tỉ giá quy đổi (VND)</label>
+                    <NumberInput v-model="formData.Ti_gia" :decimals="0" class="qlhh-fm-input tabular-nums" />
+                  </div>
+
+                  <div class="qlhh-field">
+                    <label>Thuế VAT (%)</label>
+                    <NumberInput v-model="formData.Thue_VAT" :decimals="2" class="qlhh-fm-input tabular-nums" />
+                  </div>
+
+                  <div class="qlhh-field">
+                    <label>Giá nhập tham chiếu</label>
+                    <NumberInput
+                      v-model="formData.gia_nhap"
+                      :decimals="String(formData.Don_vi_tien_te || 'VND').toUpperCase() === 'USD' ? 2 : 0"
+                      class="qlhh-fm-input tabular-nums"
+                    />
+                  </div>
+                </div>
+
+                <!-- KHỐI 1: GIÁ VỐN / OFF HÃNG + CÔNG THỨC TÍNH GIÁ BÁN -->
+                <div class="qlhh-price-calc-card is-violet">
+                  <div class="pcc-top-row">
+                    <label class="pcc-label is-violet">Giá vốn / Off hãng</label>
+                    <span class="pcc-caption">Đơn giá mua sau thuế từ NCC / Hãng</span>
+                  </div>
+
+                  <NumberInput
+                    v-model="formData.Gia_tieu_chuan"
+                    :decimals="String(formData.Don_vi_tien_te || 'VND').toUpperCase() === 'USD' ? 2 : 0"
+                    class="qlhh-fm-input is-hero-num is-cost-hero tabular-nums"
+                    @update:modelValue="onModalGiaVonChange"
+                  />
+
+                  <div class="qlhh-formula-bar">
+                    <button
+                      type="button"
+                      class="formula-title qlhh-flow-toggle-btn"
+                      :class="{ 'is-reverse': modalCostMarkup.flow === 'sell_to_cost' }"
+                      @click.stop="toggleModalCostMarkupFlow"
+                      :title="modalCostMarkup.flow === 'sell_to_cost' ? 'Đang tính ngược: giữ Giá List → tính Giá vốn (nhấn để đảo chiều)' : 'Đang tính xuôi: giữ Giá vốn → tính Giá List (nhấn để đảo chiều)'"
+                    >
+                      <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 16V4M7 4L3 8M7 4L11 8M17 8v12m0 0 4-4m-4 4-4-4"/></svg>
+                      <span>{{ modalCostMarkup.flow === 'sell_to_cost' ? 'Giá List → Giá vốn' : 'Giá vốn → Giá List' }}</span>
+                    </button>
+
+                    <div class="formula-controls">
                       <select
                         v-model="modalCostMarkup.direction"
-                        @change="applyModalCostMarkupToDonGia"
-                        class="pl-row-select"
-                        :class="modalCostMarkup.direction === 'decrease' ? 'down' : 'up'"
-                        style="height: 32px; font-size: 12px;"
+                        class="qlhh-mini-select"
+                        :class="modalCostMarkup.direction === 'decrease' ? 'is-rose' : 'is-emerald'"
+                        @change="applyModalCostMarkup"
                       >
-                        <option value="increase">+ Tăng (Lãi)</option>
-                        <option value="decrease">- Giảm (Off)</option>
+                        <option value="increase">Tăng (+)</option>
+                        <option value="decrease">Giảm (-)</option>
                       </select>
+
                       <select
                         v-model="modalCostMarkup.type"
-                        @change="applyModalCostMarkupToDonGia"
-                        class="pl-row-select"
-                        style="height: 32px; font-size: 12px;"
+                        class="qlhh-mini-select"
+                        @change="applyModalCostMarkup"
                       >
-                        <option value="percent">% (Phần trăm)</option>
-                        <option value="amount">Số tiền cụ thể</option>
+                        <option value="percent">Theo %</option>
+                        <option value="amount">Số tiền</option>
                       </select>
-                      <div v-if="modalCostMarkup.type === 'percent'" style="position: relative; display: inline-flex; align-items: center;">
+
+                      <div v-if="modalCostMarkup.type === 'percent'" class="qlhh-unit-input-wrap">
                         <NumberInput
                           v-model="modalCostMarkup.value"
                           :decimals="2"
-                          @update:modelValue="applyModalCostMarkupToDonGia"
-                          style="width: 86px; height: 32px; padding: 4px 24px 4px 8px; border-radius: 6px; border: 1px solid rgba(192, 132, 252, 0.45); background: #0f172a; color: #34d399; font-weight: 700; font-size: 13px; text-align: right;"
+                          class="qlhh-mini-num tabular-nums"
+                          @update:modelValue="applyModalCostMarkup"
                         />
-                        <span style="position: absolute; right: 7px; font-size: 12px; color: #94a3b8; font-weight: 700; pointer-events: none;">%</span>
+                        <span class="unit-suffix">%</span>
                       </div>
-                      <div v-else style="width: 140px;">
+                      <div v-else class="qlhh-unit-input-wrap is-amount">
                         <NumberInput
                           v-model="modalCostMarkup.value"
                           :decimals="String(formData.Don_vi_tien_te || 'VND').toUpperCase() === 'USD' ? 2 : 0"
-                          @update:modelValue="applyModalCostMarkupToDonGia"
+                          class="qlhh-mini-num is-wide tabular-nums"
+                          @update:modelValue="applyModalCostMarkup"
                         />
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div class="form-group col-span-2">
-                  <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; margin-bottom: 4px;">
-                    <label style="margin-bottom: 0; display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                      <span>{{ isEditing && activePriceList && formData._has_pl_entry ? `Đơn giá (${activePriceList.ten_bang_gia})` : 'Đơn giá (Giá bán)' }}</span>
+                <!-- KHỐI 2: GIÁ LIST / ĐƠN GIÁ BẢNG GIÁ -->
+                <div class="qlhh-price-calc-card is-emerald">
+                  <div class="pcc-top-row">
+                    <div class="pcc-label-cluster">
+                      <label class="pcc-label is-emerald">
+                        {{ isEditing && activePriceList && formData._has_pl_entry ? `Đơn giá (${activePriceList.ten_bang_gia})` : 'Giá List' }}
+                      </label>
                       <span
                         v-if="isEditing && activePriceList && formData._has_pl_entry"
-                        class="pl-card-diff-badge"
+                        class="pl-card-diff-badge tabular-nums"
                         :class="toNum(formData.Don_gia) > toNum(formData._gia_goc_he_thong) ? 'up' : (toNum(formData.Don_gia) < toNum(formData._gia_goc_he_thong) ? 'down' : 'neutral')"
                       >
                         {{ formatModalPriceListBadge() }}
                       </span>
                       <span
                         v-else-if="toNum(formData.Gia_tieu_chuan) > 0 && toNum(formData.Don_gia) > 0"
-                        class="pl-card-diff-badge"
+                        class="pl-card-diff-badge tabular-nums"
                         :class="toNum(formData.Don_gia) > toNum(formData.Gia_tieu_chuan) ? 'up' : (toNum(formData.Don_gia) < toNum(formData.Gia_tieu_chuan) ? 'down' : 'neutral')"
                       >
                         {{ formatModalCostDiffBadge() }}
                       </span>
-                    </label>
-                    <span v-if="isEditing && activePriceList && formData._has_pl_entry" style="font-size: 11.5px; color: #94a3b8;">
-                      Giá gốc hệ thống: <strong style="color: #cbd5e1;">{{ formatCurrency(formData._gia_goc_he_thong, formData.Don_vi_tien_te) }}</strong>
-                    </span>
+                    </div>
+
+                    <div class="pcc-right-cluster">
+                      <span v-if="isEditing && activePriceList && formData._has_pl_entry" class="pcc-caption tabular-nums">
+                        Giá gốc HT: <strong>{{ formatCurrency(formData._gia_goc_he_thong, formData.Don_vi_tien_te) }}</strong>
+                      </span>
+                      <button
+                        v-if="isEditing && getCardVendorType(formData)"
+                        type="button"
+                        class="qlhh-ghost-btn is-xs is-sky-tint"
+                        @click="openCardOriginalFileCompare(originalItem || formData)"
+                        title="Đối chiếu thông số & giá với file gốc của hãng"
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                        <span>Đối chiếu file gốc</span>
+                      </button>
+                    </div>
                   </div>
-                  <NumberInput v-model="formData.Don_gia" :decimals="String(formData.Don_vi_tien_te || 'VND').toUpperCase() === 'USD' ? 2 : 0" @update:modelValue="onModalDonGiaChange" />
-                  <div
-                    v-if="isEditing && activePriceList && formData._has_pl_entry"
-                    style="margin-top: 8px; padding: 8px 10px; background: rgba(245, 158, 11, 0.08); border: 1px dashed rgba(245, 158, 11, 0.35); border-radius: 8px; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;"
-                  >
-                    <span style="font-size: 12px; color: #fcd34d; font-weight: 600;">
-                      ⚡ Chỉnh % theo giá gốc:
+
+                  <NumberInput
+                    v-model="formData.Don_gia"
+                    :decimals="String(formData.Don_vi_tien_te || 'VND').toUpperCase() === 'USD' ? 2 : 0"
+                    class="qlhh-fm-input is-hero-num is-sell-hero tabular-nums"
+                    @update:modelValue="onModalDonGiaChange"
+                  />
+
+                  <div v-if="isEditing && activePriceList && formData._has_pl_entry" class="qlhh-formula-bar is-amber">
+                    <span class="formula-title">
+                      <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                      <span>Chỉnh % theo giá gốc hệ thống</span>
                     </span>
-                    <div style="display: flex; align-items: center; gap: 6px;">
+
+                    <div class="formula-controls">
                       <select
                         v-model="formData._pl_direction"
+                        class="qlhh-mini-select"
+                        :class="formData._pl_direction === 'decrease' ? 'is-rose' : 'is-emerald'"
                         @change="onModalPriceListPctChange"
-                        class="pl-row-select"
-                        :class="formData._pl_direction === 'decrease' ? 'down' : 'up'"
-                        style="height: 32px; font-size: 12px;"
                       >
-                        <option value="increase">+ Tăng</option>
-                        <option value="decrease">- Giảm</option>
+                        <option value="increase">Tăng (+)</option>
+                        <option value="decrease">Giảm (-)</option>
                       </select>
-                      <div style="position: relative; display: inline-flex; align-items: center;">
+
+                      <div class="qlhh-unit-input-wrap">
                         <NumberInput
                           v-model="formData._pl_pct"
                           :decimals="2"
+                          class="qlhh-mini-num tabular-nums"
                           @update:modelValue="onModalPriceListPctChange"
-                          style="width: 86px; height: 32px; padding: 4px 24px 4px 8px; border-radius: 6px; border: 1px solid rgba(245, 158, 11, 0.4); background: #0f172a; color: #34d399; font-weight: 700; font-size: 13px; text-align: right;"
                         />
-                        <span style="position: absolute; right: 7px; font-size: 12px; color: #94a3b8; font-weight: 700; pointer-events: none;">%</span>
+                        <span class="unit-suffix">%</span>
                       </div>
                     </div>
                   </div>
                 </div>
-                <div class="form-group col-span-2">
-                  <label>Thuế VAT (%)</label>
-                  <NumberInput v-model="formData.Thue_VAT" :decimals="2" />
-                </div>
-                <div class="form-group col-span-2">
-                  <label>Giá nhập</label>
-                  <NumberInput v-model="formData.gia_nhap" :decimals="String(formData.Don_vi_tien_te || 'VND').toUpperCase() === 'USD' ? 2 : 0" />
+              </section>
+
+              <!-- BENTO 4: TỆP ĐÍNH KÈM & LỊCH SỬ BÁO GIÁ (CHUẨN UNIFIED FILE-ACTION PALETTE) -->
+              <section class="qlhh-bento-box is-files-box">
+                <div class="qlhh-bento-head is-sky is-between">
+                  <div class="bento-head-title">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                    <span>Tệp Đính Kèm &amp; Lịch Sử Giá</span>
+                    <span class="bento-count-pill tabular-nums">{{ getProductFileHistory(formData).length }}</span>
+                  </div>
+
+                  <label
+                    class="qlhh-ghost-btn is-xs is-sky-tint"
+                    style="cursor: pointer;"
+                    title="Tải lên chứng từ, file báo giá hoặc ảnh chụp kèm bộ giá hiện tại"
+                  >
+                    <input
+                      type="file"
+                      multiple
+                      style="display: none;"
+                      @change="handleAttachFileToFormData($event)"
+                    />
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <span>Đính kèm file / ảnh</span>
+                  </label>
                 </div>
 
-                <!-- LỊCH SỬ FILE ĐÍNH KÈM & MỐC THỜI GIAN UPLOAD FILE (ĐỘC LẬP VỚI LAST_UPDATED CỦA HÀNG HÓA) -->
-                <div class="form-group col-span-2" style="margin-top: 6px;">
-                  <div style="background: rgba(15, 23, 42, 0.78); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 10px;">
-                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
-                      <div style="display: flex; align-items: center; gap: 6px;">
-                        <span style="font-size: 13px; font-weight: 800; color: #38bdf8;">
-                          📎 Danh sách File / Ảnh báo giá ({{ getProductFileHistory(formData).length }})
+                <p class="qlhh-files-hint">
+                  Mốc thời gian bên dưới lưu độc lập theo lúc tải từng tệp lên, không bị thay đổi khi chỉnh sửa thông tin hàng hóa.
+                </p>
+
+                <div v-if="!getProductFileHistory(formData).length" class="qlhh-files-empty">
+                  Chưa có tệp đính kèm. Khi bạn Import Excel / Mua hàng / Đối chiếu ảnh hoặc bấm <strong>"Đính kèm file / ảnh"</strong>, tệp kèm lịch sử giá sẽ được lưu tại đây.
+                </div>
+
+                <div v-else class="qlhh-file-list">
+                  <div
+                    v-for="(fEntry, fIdx) in getProductFileHistory(formData)"
+                    :key="fEntry.id || fIdx"
+                    class="qlhh-file-card"
+                  >
+                    <div class="qlhh-file-card-top">
+                      <div class="qlhh-file-name-wrap">
+                        <span class="qlhh-file-rank tabular-nums" :class="{ 'is-latest': fIdx === 0 }">
+                          {{ fIdx === 0 ? 'Mới nhất' : `#${getProductFileHistory(formData).length - fIdx}` }}
                         </span>
-                        <span style="font-size: 11px; color: #94a3b8;" title="Mốc thời gian này tính riêng theo thời điểm upload từng file, không bị đổi khi sửa thông tin hàng hóa">
-                          • Thời gian tính theo lúc up file
-                        </span>
+                        <a
+                          v-if="fEntry.file_url"
+                          :href="getAttachedFileViewHref(fEntry)"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="qlhh-file-link"
+                          :title="fEntry.file_name"
+                        >
+                          {{ fEntry.file_name }}
+                        </a>
+                        <strong v-else class="qlhh-file-plain" :title="fEntry.file_name">{{ fEntry.file_name }}</strong>
                       </div>
-                      <label
-                        style="background: rgba(56, 189, 248, 0.16); border: 1px solid rgba(56, 189, 248, 0.45); color: #38bdf8; border-radius: 6px; padding: 4px 10px; font-size: 11.5px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;"
-                        title="Upload bất kỳ định dạng file hoặc ảnh nào kèm bộ giá hiện tại vào lịch sử file của sản phẩm này"
-                      >
-                        <input
-                          type="file"
-                          multiple
-                          style="display: none;"
-                          @change="handleAttachFileToFormData($event)"
-                        />
-                        <span>☁️ + Up File / Ảnh kèm giá này</span>
-                      </label>
+
+                      <div class="qlhh-file-acts">
+                        <button
+                          type="button"
+                          class="qlhh-fbtn-primary"
+                          title="Áp dụng lại mức Giá vốn, Giá bán và Giá nhập từ tệp này vào biểu mẫu"
+                          @click="applyFileHistoryPriceToFormData(fEntry)"
+                        >
+                          Áp giá
+                        </button>
+                        <a
+                          v-if="fEntry.file_url"
+                          :href="getAttachedFileViewHref(fEntry)"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="qlhh-fbtn-neutral"
+                        >
+                          {{ isExcelAttachedFile(fEntry) ? 'ViewOffice' : 'Xem' }}
+                        </a>
+                        <a
+                          v-if="fEntry.file_url"
+                          :href="fEntry.file_url"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          download
+                          class="qlhh-fbtn-neutral"
+                        >
+                          Tải về
+                        </a>
+                        <button
+                          type="button"
+                          class="qlhh-fbtn-delete"
+                          title="Xóa tệp này khỏi lịch sử sản phẩm"
+                          @click="removeFileEntryFromFormData(fIdx)"
+                        >
+                          ✕
+                        </button>
+                      </div>
                     </div>
 
-                    <div
-                      v-if="!getProductFileHistory(formData).length"
-                      style="font-size: 12px; color: #64748b; text-align: center; padding: 10px 6px; border: 1px dashed rgba(148, 163, 184, 0.2); border-radius: 8px;"
-                    >
-                      Chưa có file đính kèm. Khi bạn Import Excel / Mua hàng / Check giá qua ảnh hoặc bấm "+ Up File / Ảnh" ở trên, file kèm mốc thời gian upload sẽ được lưu tại đây.
-                    </div>
+                    <div class="qlhh-file-card-meta tabular-nums">
+                      <span class="file-time-tag">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        <span>{{ formatLastUpdated(fEntry.file_uploaded_at) }}</span>
+                        <span v-if="fEntry.ghi_chu_file" class="file-note-inline">· {{ fEntry.ghi_chu_file }}</span>
+                      </span>
 
-                    <div
-                      v-else
-                      style="display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto; padding-right: 2px;"
-                    >
-                      <div
-                        v-for="(fEntry, fIdx) in getProductFileHistory(formData)"
-                        :key="fEntry.id || fIdx"
-                        style="background: rgba(30, 41, 59, 0.72); border: 1px solid rgba(148, 163, 184, 0.22); border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 5px;"
-                      >
-                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
-                          <div style="display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1;">
-                            <span
-                              style="font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 700; flex-shrink: 0;"
-                              :style="fIdx === 0 ? 'background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);' : 'background: rgba(100, 116, 139, 0.25); color: #cbd5e1;'"
-                            >
-                              {{ fIdx === 0 ? 'MỚI NHẤT' : `#${getProductFileHistory(formData).length - fIdx}` }}
-                            </span>
-                            <a
-                              v-if="fEntry.file_url"
-                              :href="getAttachedFileViewHref(fEntry)"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              style="font-size: 12px; font-weight: 700; color: #38bdf8; text-decoration: underline; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
-                              :title="`Click để mở xem: ${fEntry.file_name}`"
-                            >{{ fEntry.file_name }}</a>
-                            <strong
-                              v-else
-                              style="font-size: 12px; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
-                            >{{ fEntry.file_name }}</strong>
-                          </div>
-                          <div style="display: flex; align-items: center; gap: 5px; flex-shrink: 0;">
-                            <a
-                              v-if="fEntry.file_url"
-                              :href="getAttachedFileViewHref(fEntry)"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              class="vendor-file-office-btn"
-                              style="text-decoration: none; padding: 2px 7px; font-size: 10.5px;"
-                            >
-                              {{ isExcelAttachedFile(fEntry) ? '👁️ ViewOffice' : '👁️ Xem file' }}
-                            </a>
-                            <a
-                              v-if="fEntry.file_url"
-                              :href="fEntry.file_url"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              download
-                              class="vendor-file-download-btn"
-                              style="text-decoration: none; padding: 2px 7px; font-size: 10.5px;"
-                            >⬇ Tải</a>
-                            <button
-                              type="button"
-                              style="background: rgba(168, 85, 247, 0.16); border: 1px solid rgba(192, 132, 252, 0.4); color: #e9d5ff; border-radius: 5px; padding: 2px 6px; font-size: 10.5px; font-weight: 600; cursor: pointer;"
-                              title="Áp dụng lại mức Giá vốn/off hãng, Giá bán, Giá nhập từ file này vào sản phẩm"
-                              @click="applyFileHistoryPriceToFormData(fEntry)"
-                            >⚡ Áp giá</button>
-                            <button
-                              type="button"
-                              style="background: rgba(239, 68, 68, 0.14); border: 1px solid rgba(239, 68, 68, 0.35); color: #fca5a5; border-radius: 5px; padding: 2px 6px; font-size: 10.5px; font-weight: 700; cursor: pointer;"
-                              title="Xóa file này khỏi lịch sử của sản phẩm"
-                              @click="removeFileEntryFromFormData(fIdx)"
-                            >✕</button>
-                          </div>
-                        </div>
-                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 11px; color: #94a3b8;">
-                          <span>
-                            🕒 Thời gian up file: <strong style="color: #f8fafc;">{{ formatLastUpdated(fEntry.file_uploaded_at) }}</strong>
-                            <span v-if="fEntry.ghi_chu_file" style="color: #64748b;"> · {{ fEntry.ghi_chu_file }}</span>
-                          </span>
-                          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                            <span style="color: #c084fc;">
-                              Giá vốn/off hãng: <strong style="color: #e9d5ff;">{{ formatCurrency(fEntry.gia_von || 0, fEntry.don_vi_tien_te || formData.Don_vi_tien_te) }}</strong>
-                            </span>
-                            <span style="color: #34d399;">
-                              Giá bán: <strong>{{ formatCurrency(fEntry.don_gia || 0, fEntry.don_vi_tien_te || formData.Don_vi_tien_te) }}</strong>
-                            </span>
-                            <span v-if="toNum(fEntry.gia_nhap, 0) > 0" style="color: #fbbf24;">
-                              Giá nhập: <strong>{{ formatCurrency(fEntry.gia_nhap, fEntry.don_vi_tien_te || formData.Don_vi_tien_te) }}</strong>
-                            </span>
-                          </div>
-                        </div>
+                      <div class="file-prices-inline">
+                        <span class="fp-violet">Vốn: <strong>{{ formatCurrency(fEntry.gia_von || 0, fEntry.don_vi_tien_te || formData.Don_vi_tien_te) }}</strong></span>
+                        <span class="fp-emerald">Bán: <strong>{{ formatCurrency(fEntry.don_gia || 0, fEntry.don_vi_tien_te || formData.Don_vi_tien_te) }}</strong></span>
+                        <span v-if="toNum(fEntry.gia_nhap, 0) > 0" class="fp-amber">Nhập: <strong>{{ formatCurrency(fEntry.gia_nhap, fEntry.don_vi_tien_te || formData.Don_vi_tien_te) }}</strong></span>
                       </div>
                     </div>
                   </div>
                 </div>
-                <!--
-                <div class="form-group col-span-2">
-                  <label>Mức % Off</label>
-                  <input v-model="formData.muc_phan_tram_off" type="number" step="0.1" />
-                </div>
-                -->
-              </div>
-
-              <!-- HIDDEN FIELDS -->
-              <!--
-              <div class="form-group">
-                <label>Trạng thái</label>
-                <input v-model="formData.Trang_thai" type="text" />
-              </div>
-              <div class="form-group">
-                <label>Giá tiêu chuẩn</label>
-                <input v-model="formData.Gia_tieu_chuan" type="number" />
-              </div>
-              <div class="form-group">
-                <label>Giá Hardware</label>
-                <input v-model="formData.gia_hardware" type="number" />
-              </div>
-              <div class="form-group">
-                <label>Mã hàng LK</label>
-                <input v-model="formData.Ma_hang_lien_ket" type="text" />
-              </div>
-              <div class="form-group">
-                <label>Tên hàng LK</label>
-                <input v-model="formData.Ten_hang_lien_ket" type="text" />
-              </div>
-              <div class="form-group">
-                <label>Mô tả chung</label>
-                <textarea v-model="formData.Mo_ta_chung" rows="2"></textarea>
-              </div>
-              <div class="form-group">
-                <label>Mô tả chi tiết</label>
-                <textarea v-model="formData.Mo_ta_chi_tiet" rows="3"></textarea>
-              </div>
-              -->
+              </section>
             </div>
           </form>
         </div>
-        <div class="modal-footer" style="display: flex; justify-content: space-between;">
-          <div>
-            <button v-if="isEditing" type="button" class="btn btn-danger" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: rgba(239, 68, 68, 0.3);" @click="requestDelete(formData)">Xóa</button>
-          </div>
-          <div style="display: flex; gap: 12px;">
-            <button type="button" class="btn btn-secondary" @click="closeModal">Hủy</button>
-            <button v-if="isDirty" type="button" class="btn btn-primary" @click="saveItem" :disabled="saving">
-              <span v-if="saving" class="spinner"></span>
-              {{ saving ? 'Đang lưu...' : 'Lưu lại' }}
+
+        <!-- STICKY FOOTER -->
+        <footer class="qlhh-fm-foot">
+          <div class="qlhh-fm-foot-left">
+            <button
+              v-if="isEditing"
+              type="button"
+              class="qlhh-fm-btn-delete"
+              @click="requestDelete(formData)"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              <span>Xóa hàng hóa</span>
             </button>
           </div>
-        </div>
+
+          <div class="qlhh-fm-foot-right">
+            <button type="button" class="qlhh-ghost-btn" @click="closeModal">Đóng</button>
+            <button
+              type="button"
+              class="qlhh-btn-primary is-save-cta"
+              :disabled="!isDirty || saving"
+              @click="saveItem"
+            >
+              <span v-if="saving" class="spinner"></span>
+              <svg v-else width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              <span>{{ saving ? 'Đang lưu...' : (isEditing ? 'Lưu thay đổi' : 'Thêm hàng hóa') }}</span>
+            </button>
+          </div>
+        </footer>
       </div>
     </div>
 
-    <!-- MODAL LỊCH SỬ FILE & BIẾN ĐỘNG GIÁ CỦA SẢN PHẨM -->
-    <div v-if="productFilesModal.show && productFilesModal.item" class="modal-overlay" @click.self="closeProductFilesModal">
-      <div class="modal-content" style="max-width: 780px; width: 95%;">
-        <div class="modal-header">
-          <div style="display: flex; flex-direction: column; gap: 3px;">
-            <h2 style="font-size: 17px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-              <span>📎 Lịch sử File &amp; Biến động giá:</span>
-              <code style="color: #38bdf8; background: rgba(56, 189, 248, 0.14); padding: 2px 8px; border-radius: 6px;">{{ productFilesModal.item.Ma_hang }}</code>
-            </h2>
-            <span style="font-size: 12.5px; color: #94a3b8;">
-              {{ productFilesModal.item.Ten_hang }} · Mốc thời gian tính riêng theo từng thời điểm upload file
+    <!-- =========================================================
+         MODAL LỊCH SỬ TỆP ĐÍNH KÈM & BIẾN ĐỘNG GIÁ (ĐỒNG BỘ KHÔNG EMOJI)
+    ========================================================== -->
+    <div
+      v-if="productFilesModal.show && productFilesModal.item"
+      class="qlhh-modal-backdrop qlhh-hub-overlay qlhh-files-overlay"
+      :class="{ 'theme-light-blue': uiTheme === 'light' }"
+      @click.self="closeProductFilesModal"
+    >
+      <div class="qlhh-hub-modal" :class="{ 'theme-light-blue': uiTheme === 'light' }" style="max-width: 820px;">
+        <div class="qlhh-hub-head">
+          <div class="qlhh-hub-head-left">
+            <span class="qlhh-hub-head-ico">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
             </span>
+            <div>
+              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <h3 class="qlhh-hub-title">Lịch sử Tệp &amp; Biến động Giá</h3>
+                <span class="qlhh-code-pill is-sku tabular-nums">{{ productFilesModal.item.Ma_hang }}</span>
+              </div>
+              <p class="qlhh-hub-sub">{{ productFilesModal.item.Ten_hang }}</p>
+            </div>
           </div>
-          <button class="close-btn" @click="closeProductFilesModal">&times;</button>
+          <button type="button" class="qlhh-hub-close" @click="closeProductFilesModal" aria-label="Đóng">✕</button>
         </div>
 
-        <div class="modal-body" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 14px;">
-          <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 10px; padding: 10px 14px;">
-            <div style="font-size: 12.5px; color: #cbd5e1; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-              <span>Giá hiện tại trên DB:</span>
-              <span style="color: #c084fc;">Giá vốn/off hãng: <strong style="color: #e9d5ff;">{{ formatCurrency(productFilesModal.item.Gia_tieu_chuan || 0, productFilesModal.item.Don_vi_tien_te) }}</strong></span>
-              <span style="color: #34d399;">Giá bán: <strong>{{ formatCurrency(productFilesModal.item.Don_gia || 0, productFilesModal.item.Don_vi_tien_te) }}</strong></span>
-              <span v-if="toNum(productFilesModal.item.gia_nhap, 0) > 0" style="color: #fbbf24;">Giá nhập: <strong>{{ formatCurrency(productFilesModal.item.gia_nhap, productFilesModal.item.Don_vi_tien_te) }}</strong></span>
+        <div class="qlhh-hub-body" style="display: flex; flex-direction: column; gap: 12px;">
+          <div class="hub-file-slot-row" style="justify-content: space-between;">
+            <div class="file-prices-inline tabular-nums">
+              <span class="hub-slot-label">Giá hiện tại:</span>
+              <span class="fp-violet">Vốn: <strong>{{ formatCurrency(productFilesModal.item.Gia_tieu_chuan || 0, productFilesModal.item.Don_vi_tien_te) }}</strong></span>
+              <span class="fp-emerald">Bán: <strong>{{ formatCurrency(productFilesModal.item.Don_gia || 0, productFilesModal.item.Don_vi_tien_te) }}</strong></span>
+              <span v-if="toNum(productFilesModal.item.gia_nhap, 0) > 0" class="fp-amber">Nhập: <strong>{{ formatCurrency(productFilesModal.item.gia_nhap, productFilesModal.item.Don_vi_tien_te) }}</strong></span>
             </div>
-            <label
-              style="background: rgba(56, 189, 248, 0.18); border: 1px solid rgba(56, 189, 248, 0.5); color: #38bdf8; border-radius: 7px; padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;"
-            >
+
+            <label class="qlhh-btn-primary is-sm" style="cursor: pointer;">
               <input
                 type="file"
                 multiple
                 style="display: none;"
                 @change="handleAttachFileDirectToProduct($event, productFilesModal.item)"
               />
-              <span>☁️ + Upload thêm File / Ảnh cho SP này</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <span>Đính kèm tệp mới</span>
             </label>
           </div>
 
-          <div
-            v-if="!getProductFileHistory(productFilesModal.item).length"
-            style="padding: 32px 16px; text-align: center; color: #64748b; border: 1px dashed rgba(148, 163, 184, 0.25); border-radius: 10px;"
-          >
-            Sản phẩm này chưa có file đính kèm nào trong lịch sử. Bấm <strong>"+ Upload thêm File / Ảnh"</strong> hoặc thực hiện Import / Check giá để lưu lịch sử file.
+          <div v-if="!getProductFileHistory(productFilesModal.item).length" class="qlhh-files-empty">
+            Sản phẩm này chưa có tệp đính kèm nào trong lịch sử. Bấm <strong>"Đính kèm tệp mới"</strong> hoặc thực hiện Import / Đối chiếu để lưu lịch sử giá.
           </div>
 
-          <div v-else style="display: flex; flex-direction: column; gap: 10px; max-height: 420px; overflow-y: auto;">
+          <div v-else class="qlhh-file-list is-tall">
             <div
               v-for="(fEntry, fIdx) in getProductFileHistory(productFilesModal.item)"
               :key="fEntry.id || fIdx"
-              style="background: rgba(30, 41, 59, 0.78); border: 1px solid rgba(148, 163, 184, 0.25); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;"
+              class="qlhh-file-card"
             >
-              <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
-                <div style="display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1;">
-                  <span
-                    style="font-size: 10.5px; padding: 2px 8px; border-radius: 99px; font-weight: 800; flex-shrink: 0;"
-                    :style="fIdx === 0 ? 'background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.45);' : 'background: rgba(100, 116, 139, 0.25); color: #cbd5e1;'"
-                  >
-                    {{ fIdx === 0 ? 'FILE MỚI NHẤT' : `Lần #${getProductFileHistory(productFilesModal.item).length - fIdx}` }}
+              <div class="qlhh-file-card-top">
+                <div class="qlhh-file-name-wrap">
+                  <span class="qlhh-file-rank tabular-nums" :class="{ 'is-latest': fIdx === 0 }">
+                    {{ fIdx === 0 ? 'Mới nhất' : `#${getProductFileHistory(productFilesModal.item).length - fIdx}` }}
                   </span>
                   <a
                     v-if="fEntry.file_url"
                     :href="getAttachedFileViewHref(fEntry)"
                     target="_blank"
                     rel="noopener noreferrer"
-                    style="font-size: 13.5px; font-weight: 700; color: #38bdf8; text-decoration: underline; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
-                  >{{ fEntry.file_name }}</a>
-                  <strong v-else style="font-size: 13.5px; color: #f8fafc;">{{ fEntry.file_name }}</strong>
+                    class="qlhh-file-link"
+                  >
+                    {{ fEntry.file_name }}
+                  </a>
+                  <strong v-else class="qlhh-file-plain">{{ fEntry.file_name }}</strong>
                 </div>
-                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+
+                <div class="qlhh-file-acts">
                   <a
                     v-if="fEntry.file_url"
                     :href="getAttachedFileViewHref(fEntry)"
                     target="_blank"
                     rel="noopener noreferrer"
-                    class="vendor-file-office-btn"
-                    style="text-decoration: none;"
+                    class="qlhh-fbtn-neutral"
                   >
-                    {{ isExcelAttachedFile(fEntry) ? '👁️ Xem bằng ViewOffice' : '👁️ Mở xem File / Ảnh' }}
+                    {{ isExcelAttachedFile(fEntry) ? 'ViewOffice' : 'Xem tệp' }}
                   </a>
                   <a
                     v-if="fEntry.file_url"
@@ -1581,43 +1769,41 @@
                     target="_blank"
                     rel="noopener noreferrer"
                     download
-                    class="vendor-file-download-btn"
-                    style="text-decoration: none;"
-                  >⬇ Tải về</a>
+                    class="qlhh-fbtn-neutral"
+                  >
+                    Tải về
+                  </a>
                   <button
                     type="button"
-                    style="background: rgba(239, 68, 68, 0.14); border: 1px solid rgba(239, 68, 68, 0.35); color: #fca5a5; border-radius: 6px; padding: 3px 8px; font-size: 11px; font-weight: 700; cursor: pointer;"
-                    title="Xóa bản ghi file này khỏi lịch sử sản phẩm"
+                    class="qlhh-fbtn-delete"
+                    title="Xóa bản ghi tệp này khỏi lịch sử sản phẩm"
                     @click="removeFileDirectFromProduct(productFilesModal.item, fIdx)"
-                  >✕ Xóa</button>
+                  >
+                    ✕
+                  </button>
                 </div>
               </div>
 
-              <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 12px; color: #94a3b8; border-top: 1px dashed rgba(255,255,255,0.08); padding-top: 6px;">
-                <div>
-                  🕒 Mốc thời gian upload file:
-                  <strong style="color: #f8fafc;">{{ formatLastUpdated(fEntry.file_uploaded_at) }}</strong>
-                  <span v-if="fEntry.ghi_chu_file" style="color: #64748b;"> · ({{ fEntry.ghi_chu_file }})</span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-                  <span style="color: #c084fc;">
-                    Giá vốn/off hãng: <strong style="color: #e9d5ff;">{{ formatCurrency(fEntry.gia_von || 0, fEntry.don_vi_tien_te || productFilesModal.item.Don_vi_tien_te) }}</strong>
-                  </span>
-                  <span style="color: #34d399;">
-                    Đơn giá bán: <strong>{{ formatCurrency(fEntry.don_gia || 0, fEntry.don_vi_tien_te || productFilesModal.item.Don_vi_tien_te) }}</strong>
-                  </span>
-                  <span v-if="toNum(fEntry.gia_nhap, 0) > 0" style="color: #fbbf24;">
-                    Giá nhập: <strong>{{ formatCurrency(fEntry.gia_nhap, fEntry.don_vi_tien_te || productFilesModal.item.Don_vi_tien_te) }}</strong>
-                  </span>
+              <div class="qlhh-file-card-meta tabular-nums">
+                <span class="file-time-tag">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  <span>{{ formatLastUpdated(fEntry.file_uploaded_at) }}</span>
+                  <span v-if="fEntry.ghi_chu_file" class="file-note-inline">· {{ fEntry.ghi_chu_file }}</span>
+                </span>
+
+                <div class="file-prices-inline">
+                  <span class="fp-violet">Vốn: <strong>{{ formatCurrency(fEntry.gia_von || 0, fEntry.don_vi_tien_te || productFilesModal.item.Don_vi_tien_te) }}</strong></span>
+                  <span class="fp-emerald">Bán: <strong>{{ formatCurrency(fEntry.don_gia || 0, fEntry.don_vi_tien_te || productFilesModal.item.Don_vi_tien_te) }}</strong></span>
+                  <span v-if="toNum(fEntry.gia_nhap, 0) > 0" class="fp-amber">Nhập: <strong>{{ formatCurrency(fEntry.gia_nhap, fEntry.don_vi_tien_te || productFilesModal.item.Don_vi_tien_te) }}</strong></span>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="modal-footer" style="display: flex; justify-content: flex-end;">
-          <button type="button" class="btn btn-secondary" @click="closeProductFilesModal">Đóng</button>
-        </div>
+        <footer class="qlhh-fm-foot" style="justify-content: flex-end;">
+          <button type="button" class="qlhh-ghost-btn" @click="closeProductFilesModal">Đóng</button>
+        </footer>
       </div>
     </div>
 
@@ -1928,13 +2114,32 @@
     </div>
 
     <!-- MODAL CHỈNH SỬA FORMAT DIỄN GIẢI NỘI BỘ / DIỄN GIẢI BÁO GIÁ TRONG BẢNG IMPORT PREVIEW -->
-    <div v-if="importFeaturesEditRow" class="modal-overlay" @click.self="closeImportFeaturesEditor" style="z-index: 10400;">
-      <div class="modal-content" style="max-width: 820px;">
-        <div class="modal-header">
-          <h2>{{ importRichEditField === 'Dien_giai_bao_gia' ? 'Chỉnh sửa Diễn giải báo giá' : 'Chỉnh sửa Diễn giải nội bộ' }} — {{ importFeaturesEditRow.Ma_hang }}</h2>
-          <button class="close-btn" @click="closeImportFeaturesEditor">&times;</button>
+    <div
+      v-if="importFeaturesEditRow"
+      class="qlhh-modal-backdrop"
+      :class="{ 'theme-light-blue': uiTheme === 'light' }"
+      style="z-index: 10400;"
+      @click.self="closeImportFeaturesEditor"
+    >
+      <div class="qlhh-hub-modal" :class="{ 'theme-light-blue': uiTheme === 'light' }" style="max-width: 820px;">
+        <div class="qlhh-hub-head">
+          <div class="qlhh-hub-head-left">
+            <span class="qlhh-hub-head-ico">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </span>
+            <div>
+              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <h3 class="qlhh-hub-title">
+                  {{ importRichEditField === 'Dien_giai_bao_gia' ? 'Chỉnh sửa Diễn giải báo giá' : 'Chỉnh sửa Diễn giải nội bộ' }}
+                </h3>
+                <span class="qlhh-code-pill is-sku tabular-nums">{{ importFeaturesEditRow.Ma_hang }}</span>
+              </div>
+              <p class="qlhh-hub-sub">{{ importFeaturesEditRow.Ten_hang }}</p>
+            </div>
+          </div>
+          <button type="button" class="qlhh-hub-close" @click="closeImportFeaturesEditor" aria-label="Đóng">✕</button>
         </div>
-        <div class="modal-body">
+        <div class="qlhh-hub-body">
           <ExcelEditor
             v-if="importRichEditField === 'Dien_giai_bao_gia'"
             v-model="importFeaturesEditRow.Dien_giai_bao_gia"
@@ -1948,157 +2153,174 @@
             class="features-excel-editor"
           />
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-primary" @click="closeImportFeaturesEditor">Xong</button>
-        </div>
+        <footer class="qlhh-fm-foot" style="justify-content: flex-end;">
+          <button type="button" class="qlhh-btn-primary is-save-cta" @click="closeImportFeaturesEditor">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>Hoàn tất</span>
+          </button>
+        </footer>
       </div>
     </div>
 
     <!-- CONFIRM DELETE MODAL -->
-    <div v-if="confirmDeleteModal.show" class="modal-overlay" @click.self="confirmDeleteModal.show = false" style="z-index: 100010;">
-      <div class="custom-alert-modal">
-        <div class="alert-icon question" style="color: #ef4444; background: rgba(239, 68, 68, 0.1);">
-          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+    <div
+      v-if="confirmDeleteModal.show"
+      class="qlhh-modal-backdrop"
+      :class="{ 'theme-light-blue': uiTheme === 'light' }"
+      style="z-index: 100010;"
+      @click.self="confirmDeleteModal.show = false"
+    >
+      <div class="custom-alert-modal" :class="{ 'theme-light-blue': uiTheme === 'light' }">
+        <div class="alert-icon question is-rose">
+          <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
         </div>
-        <h3 class="alert-title" style="color: #f8fafc; font-size: 18px; margin: 16px 0 8px; font-weight: 700;">Xác nhận Xóa</h3>
-        <p class="alert-desc" style="color: #94a3b8; font-size: 14px; margin-bottom: 24px;">Bạn có chắc muốn xóa hàng hóa <br><span style="color:#ef4444; font-weight: 700;">{{ confirmDeleteModal.item?.Ten_hang }}</span>?</p>
-        <div class="alert-actions" style="display: flex; gap: 12px; justify-content: center;">
-          <button class="btn btn-secondary" @click="confirmDeleteModal.show = false">Hủy</button>
-          <button class="btn btn-primary" style="background: #ef4444; border: none; box-shadow: 0 4px 12px rgba(239,68,68,0.3);" @click="executeDelete">Xóa ngay</button>
+        <h3 class="alert-title">Xác nhận Xóa Hàng Hóa</h3>
+        <p class="alert-desc">
+          Bạn có chắc muốn xóa hàng hóa<br>
+          <strong class="alert-hl-rose">{{ confirmDeleteModal.item?.Ten_hang }}</strong>?
+        </p>
+        <div class="alert-actions">
+          <button type="button" class="qlhh-ghost-btn" @click="confirmDeleteModal.show = false">Hủy</button>
+          <button type="button" class="qlhh-alert-danger-btn" @click="executeDelete">Xóa ngay</button>
         </div>
       </div>
     </div>
 
     <!-- CONFIRM DELETE PRICE LIST MODAL -->
-    <div v-if="confirmDeletePriceListModal.show" class="modal-overlay" @click.self="confirmDeletePriceListModal.show = false" style="z-index: 100010;">
-      <div class="custom-alert-modal">
-        <div class="alert-icon question" style="color: #ef4444; background: rgba(239, 68, 68, 0.1);">
-          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+    <div
+      v-if="confirmDeletePriceListModal.show"
+      class="qlhh-modal-backdrop"
+      :class="{ 'theme-light-blue': uiTheme === 'light' }"
+      style="z-index: 100010;"
+      @click.self="confirmDeletePriceListModal.show = false"
+    >
+      <div class="custom-alert-modal" :class="{ 'theme-light-blue': uiTheme === 'light' }">
+        <div class="alert-icon question is-rose">
+          <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
         </div>
-        <h3 class="alert-title" style="color: #f8fafc; font-size: 18px; margin: 16px 0 8px; font-weight: 700;">Xóa Bảng Giá</h3>
-        <p class="alert-desc" style="color: #94a3b8; font-size: 14px; margin-bottom: 24px;">
-          Bạn có chắc muốn xóa bảng giá <br>
-          <span style="color:#f59e0b; font-weight: 700;">{{ confirmDeletePriceListModal.priceList?.ten_bang_gia }}</span>?
+        <h3 class="alert-title">Xóa Bảng Giá</h3>
+        <p class="alert-desc">
+          Bạn có chắc muốn xóa bảng giá<br>
+          <strong class="alert-hl-amber">{{ confirmDeletePriceListModal.priceList?.ten_bang_gia }}</strong>?
         </p>
-        <div class="alert-actions" style="display: flex; gap: 12px; justify-content: center;">
-          <button class="btn btn-secondary" @click="confirmDeletePriceListModal.show = false">Hủy</button>
-          <button class="btn btn-primary" style="background: #ef4444; border: none; box-shadow: 0 4px 12px rgba(239,68,68,0.3);" @click="executeDeletePriceList">Xóa bảng giá</button>
+        <div class="alert-actions">
+          <button type="button" class="qlhh-ghost-btn" @click="confirmDeletePriceListModal.show = false">Hủy</button>
+          <button type="button" class="qlhh-alert-danger-btn" @click="executeDeletePriceList">Xóa bảng giá</button>
         </div>
       </div>
     </div>
 
     <!-- MODAL THÔNG BÁO DÙNG AI PHÂN TÍCH KHI IMPORT FILE MUA HÀNG SAI ĐỊNH DẠNG / KHÔNG ĐỌC ĐƯỢC GIÁ VỐN -->
-    <div v-if="aiPurchaseFallbackModal.show" class="modal-overlay" @click.self="aiPurchaseFallbackModal.show = false" style="z-index: 100010;">
-      <div class="custom-alert-modal" style="max-width: 520px;">
-        <div class="alert-icon question" style="color: #c084fc; background: rgba(168, 85, 247, 0.14); border: 1px solid rgba(192, 132, 252, 0.35);">
-          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a4 4 0 0 1 4 4v2a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4z"/><path d="M16 14H8a4 4 0 0 0-4 4v2h16v-2a4 4 0 0 0-4-4z"/></svg>
+    <div
+      v-if="aiPurchaseFallbackModal.show"
+      class="qlhh-modal-backdrop"
+      :class="{ 'theme-light-blue': uiTheme === 'light' }"
+      style="z-index: 100010;"
+      @click.self="aiPurchaseFallbackModal.show = false"
+    >
+      <div class="custom-alert-modal" :class="{ 'theme-light-blue': uiTheme === 'light' }" style="max-width: 520px;">
+        <div class="alert-icon question is-violet">
+          <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a4 4 0 0 1 4 4v2a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4z"/><path d="M16 14H8a4 4 0 0 0-4 4v2h16v-2a4 4 0 0 0-4-4z"/></svg>
         </div>
-        <h3 class="alert-title" style="color: #f8fafc; font-size: 18px; margin: 16px 0 8px; font-weight: 700;">
-          Không đọc được Giá vốn hoặc sai định dạng chuẩn
-        </h3>
-        <p class="alert-desc" style="color: #cbd5e1; font-size: 13.5px; margin-bottom: 22px; line-height: 1.55;">
-          File <strong style="color: #e9d5ff;">{{ aiPurchaseFallbackModal.fileName }}</strong> có bố cục khác định dạng chuẩn hoặc không nhận diện được cột Giá vốn sau thuế.<br><br>
-          Bạn có muốn dùng <strong style="color: #38bdf8;">AI (DeepSeek)</strong> để tự động phân tích cấu trúc file và đọc <strong>Giá vốn / Giá off hãng</strong> không?
+        <h3 class="alert-title">Không đọc được Giá vốn hoặc sai định dạng chuẩn</h3>
+        <p class="alert-desc">
+          File <strong class="alert-hl-violet">{{ aiPurchaseFallbackModal.fileName }}</strong> có bố cục khác định dạng chuẩn hoặc không nhận diện được cột Giá vốn sau thuế.<br><br>
+          Bạn có muốn dùng <strong class="alert-hl-sky">AI (DeepSeek)</strong> để tự động phân tích cấu trúc file và đọc <strong>Giá vốn / Giá off hãng</strong> không?
         </p>
-        <div class="alert-actions" style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-          <button class="btn btn-secondary" @click="aiPurchaseFallbackModal.show = false">Hủy bỏ</button>
-          <button
-            class="btn btn-primary"
-            style="background: linear-gradient(135deg, #8b5cf6, #3b82f6); border: none; box-shadow: 0 4px 14px rgba(139, 92, 246, 0.4); font-weight: 700;"
-            @click="confirmAiPurchaseFallback"
-          >
-            ✨ Dùng AI phân tích ngay
+        <div class="alert-actions">
+          <button type="button" class="qlhh-ghost-btn" @click="aiPurchaseFallbackModal.show = false">Hủy bỏ</button>
+          <button type="button" class="qlhh-btn-primary is-save-cta" @click="confirmAiPurchaseFallback">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            <span>Dùng AI phân tích ngay</span>
           </button>
         </div>
       </div>
     </div>
 
-    <!-- MODAL THAY ĐỔI TỈ GIÁ (DÀNH CHO USD) -->
-    <div v-if="showUsdRateModal" class="modal-overlay" @click.self="closeUsdRateModal" style="z-index: 10050;">
-      <div class="modal-content" style="max-width: 520px; border: 1px solid rgba(16, 185, 129, 0.45); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);">
-        <div class="modal-header" style="background: linear-gradient(135deg, rgba(6, 78, 59, 0.55), rgba(15, 23, 42, 0.95)); border-bottom: 1px solid rgba(16, 185, 129, 0.3);">
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <div style="width: 36px; height: 36px; border-radius: 10px; background: rgba(16, 185, 129, 0.2); border: 1px solid rgba(52, 211, 153, 0.4); display: flex; align-items: center; justify-content: center; color: #34d399; font-size: 18px; font-weight: 800;">
-              $
-            </div>
+    <!-- MODAL THAY ĐỔI TỈ GIÁ (DÀNH CHO USD) — ĐỒNG BỘ DUAL-THEME KHÔNG EMOJI -->
+    <div
+      v-if="showUsdRateModal"
+      class="qlhh-modal-backdrop qlhh-hub-overlay qlhh-usd-overlay"
+      :class="{ 'theme-light-blue': uiTheme === 'light' }"
+      @click.self="closeUsdRateModal"
+    >
+      <div class="qlhh-hub-modal qlhh-usd-modal" :class="{ 'theme-light-blue': uiTheme === 'light' }">
+        <div class="qlhh-hub-head">
+          <div class="qlhh-hub-head-left">
+            <span class="qlhh-fm-head-ico is-emerald">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            </span>
             <div>
-              <h2 style="margin: 0; font-size: 17px; font-weight: 800; color: #ecfdf5;">Thay Đổi Tỉ Giá (Dành Cho USD)</h2>
-              <div style="font-size: 12px; color: #6ee7b7; margin-top: 2px;">
-                Cập nhật đồng loạt trường <strong>Tỉ giá (VNĐ)</strong> cho các mặt hàng USD
-              </div>
+              <h3 class="qlhh-hub-title">Thay Đổi Tỉ Giá Hệ Thống (USD)</h3>
+              <p class="qlhh-hub-sub">Cập nhật đồng loạt trường <strong>Tỉ giá (VNĐ)</strong> cho các mặt hàng USD</p>
             </div>
           </div>
-          <button class="btn-close" @click="closeUsdRateModal">&times;</button>
+          <button type="button" class="qlhh-hub-close" @click="closeUsdRateModal" aria-label="Đóng">✕</button>
         </div>
 
-        <div class="modal-body" style="padding: 20px; display: flex; flex-direction: column; gap: 16px;">
+        <div class="qlhh-hub-body qlhh-usd-body">
           <!-- Thông tin hiện tại -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <div style="padding: 12px; border-radius: 10px; background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(148, 163, 184, 0.2);">
-              <div style="font-size: 11.5px; color: #94a3b8; font-weight: 600;">Tỉ giá USD hiện tại</div>
-              <div style="font-size: 18px; font-weight: 800; color: #38bdf8; margin-top: 4px;">
-                {{ formatCurrency(currentSystemUsdRate, 'VND') }}
-              </div>
+          <div class="qlhh-usd-kpi-grid tabular-nums">
+            <div class="qlhh-usd-kpi-box">
+              <span class="usd-kpi-lbl">Tỉ giá USD hiện tại</span>
+              <strong class="usd-kpi-val is-sky">{{ formatCurrency(currentSystemUsdRate, 'VND') }}</strong>
             </div>
-            <div style="padding: 12px; border-radius: 10px; background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(148, 163, 184, 0.2);">
-              <div style="font-size: 11.5px; color: #94a3b8; font-weight: 600;">Số sản phẩm USD</div>
-              <div style="font-size: 18px; font-weight: 800; color: #34d399; margin-top: 4px;">
-                {{ usdRateScope === 'filtered' ? filteredUsdItems.length : usdItems.length }} <span style="font-size: 12px; font-weight: 600; color: #94a3b8;">sản phẩm</span>
-              </div>
+            <div class="qlhh-usd-kpi-box">
+              <span class="usd-kpi-lbl">Số sản phẩm USD</span>
+              <strong class="usd-kpi-val is-emerald">
+                {{ usdRateScope === 'filtered' ? filteredUsdItems.length : usdItems.length }}
+                <small>sản phẩm</small>
+              </strong>
             </div>
           </div>
 
           <!-- Phạm vi áp dụng -->
-          <div class="form-group" style="margin-bottom: 0;">
-            <label style="font-size: 12.5px; font-weight: 700; color: #cbd5e1; margin-bottom: 8px; display: block;">Phạm vi áp dụng:</label>
-            <div style="display: flex; flex-direction: column; gap: 8px;">
-              <label
-                style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 9px; cursor: pointer; transition: all 0.15s;"
-                :style="usdRateScope === 'all'
-                  ? 'background: rgba(16, 185, 129, 0.14); border: 1px solid rgba(52, 211, 153, 0.5); color: #ecfdf5;'
-                  : 'background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(148, 163, 184, 0.2); color: #94a3b8;'"
-              >
-                <input type="radio" v-model="usdRateScope" value="all" style="accent-color: #10b981; width: 16px; height: 16px;" />
-                <div style="flex: 1; font-size: 13px; font-weight: 600;">
+          <div class="qlhh-field">
+            <label>Phạm vi áp dụng</label>
+            <div class="qlhh-usd-scope-list">
+              <label class="qlhh-usd-scope-opt" :class="{ active: usdRateScope === 'all' }">
+                <input type="radio" v-model="usdRateScope" value="all" />
+                <span>
                   Tất cả sản phẩm có đơn vị tiền tệ USD trên hệ thống
-                  <span style="color: #34d399; font-weight: 800;">({{ usdItems.length }} SP)</span>
-                </div>
+                  <strong class="is-emerald tabular-nums">({{ usdItems.length }} SP)</strong>
+                </span>
               </label>
 
               <label
                 v-if="filteredUsdItems.length > 0 && filteredUsdItems.length !== usdItems.length"
-                style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 9px; cursor: pointer; transition: all 0.15s;"
-                :style="usdRateScope === 'filtered'
-                  ? 'background: rgba(56, 189, 248, 0.14); border: 1px solid rgba(56, 189, 248, 0.5); color: #f0f9ff;'
-                  : 'background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(148, 163, 184, 0.2); color: #94a3b8;'"
+                class="qlhh-usd-scope-opt is-sky"
+                :class="{ active: usdRateScope === 'filtered' }"
               >
-                <input type="radio" v-model="usdRateScope" value="filtered" style="accent-color: #38bdf8; width: 16px; height: 16px;" />
-                <div style="flex: 1; font-size: 13px; font-weight: 600;">
+                <input type="radio" v-model="usdRateScope" value="filtered" />
+                <span>
                   Chỉ các sản phẩm USD trong danh sách đang lọc hiện tại
-                  <span style="color: #38bdf8; font-weight: 800;">({{ filteredUsdItems.length }} SP)</span>
-                </div>
+                  <strong class="is-sky tabular-nums">({{ filteredUsdItems.length }} SP)</strong>
+                </span>
               </label>
             </div>
           </div>
 
           <!-- Nhập tỉ giá mới -->
-          <div class="form-group" style="margin-bottom: 0;">
-            <label style="font-size: 13px; font-weight: 700; color: #f8fafc; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
-              <span>Nhập tỉ giá mới (1 USD = ? VNĐ) <span class="required">*</span></span>
-              <span v-if="Number(newUsdExchangeRate) > 0 && Number(newUsdExchangeRate) !== currentSystemUsdRate" :style="{ color: Number(newUsdExchangeRate) > currentSystemUsdRate ? '#fbbf24' : '#38bdf8', fontSize: '12px', fontWeight: 700 }">
+          <div class="qlhh-field">
+            <div class="qlhh-usd-lbl-row">
+              <label>Nhập tỉ giá mới (1 USD = ? VNĐ) <span class="required">*</span></label>
+              <span
+                v-if="Number(newUsdExchangeRate) > 0 && Number(newUsdExchangeRate) !== currentSystemUsdRate"
+                class="qlhh-usd-delta-tag tabular-nums"
+                :class="Number(newUsdExchangeRate) > currentSystemUsdRate ? 'is-amber' : 'is-sky'"
+              >
                 {{ Number(newUsdExchangeRate) > currentSystemUsdRate ? '▲ Tăng' : '▼ Giảm' }}
                 {{ formatNumberPlain(Math.abs(Number(newUsdExchangeRate) - currentSystemUsdRate)) }} ₫
               </span>
-            </label>
+            </div>
             <NumberInput
               v-model="newUsdExchangeRate"
               :decimals="0"
               placeholder="Ví dụ: 26.200"
-              style="font-size: 18px; font-weight: 800; color: #34d399; border-color: rgba(16, 185, 129, 0.5); background: rgba(6, 78, 59, 0.2);"
+              class="qlhh-fm-input is-hero-num is-sell-hero tabular-nums"
             />
-            <!-- Nút điều chỉnh nhanh -->
-            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 8px;">
-              <span style="font-size: 11.5px; color: #94a3b8; margin-right: 2px;">Chọn / cộng trừ nhanh:</span>
+            <div class="qlhh-usd-presets tabular-nums">
+              <span class="usd-preset-caption">Chọn nhanh:</span>
               <button type="button" class="usd-quick-step-btn" @click="newUsdExchangeRate = Math.max(1, (Number(newUsdExchangeRate) || 0) - 500)">-500</button>
               <button type="button" class="usd-quick-step-btn" @click="newUsdExchangeRate = Math.max(1, (Number(newUsdExchangeRate) || 0) - 100)">-100</button>
               <button type="button" class="usd-quick-step-btn" @click="newUsdExchangeRate = (Number(newUsdExchangeRate) || 0) + 100">+100</button>
@@ -2111,46 +2333,46 @@
           </div>
 
           <!-- Bảng quy đổi minh họa -->
-          <div v-if="Number(newUsdExchangeRate) > 0" style="padding: 12px 14px; border-radius: 10px; background: rgba(16, 185, 129, 0.08); border: 1px dashed rgba(16, 185, 129, 0.35); font-size: 12.5px; color: #cbd5e1;">
-            <div style="font-weight: 700; color: #6ee7b7; margin-bottom: 6px;">💡 Quy đổi tham khảo theo tỉ giá mới:</div>
-            <div style="display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.06);">
+          <div v-if="Number(newUsdExchangeRate) > 0" class="qlhh-usd-preview tabular-nums">
+            <div class="usd-prev-head">Quy đổi tham khảo theo tỉ giá mới</div>
+            <div class="usd-prev-row">
               <span>1 USD</span>
-              <strong style="color: #f8fafc;">= {{ formatCurrency(Number(newUsdExchangeRate), 'VND') }}</strong>
+              <strong>= {{ formatCurrency(Number(newUsdExchangeRate), 'VND') }}</strong>
             </div>
-            <div style="display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.06);">
+            <div class="usd-prev-row">
               <span>100 USD</span>
-              <strong style="color: #f8fafc;">= {{ formatCurrency(Number(newUsdExchangeRate) * 100, 'VND') }}</strong>
+              <strong>= {{ formatCurrency(Number(newUsdExchangeRate) * 100, 'VND') }}</strong>
             </div>
-            <div style="display: flex; justify-content: space-between; padding: 3px 0;">
+            <div class="usd-prev-row is-total">
               <span>1,000 USD</span>
-              <strong style="color: #34d399;">= {{ formatCurrency(Number(newUsdExchangeRate) * 1000, 'VND') }}</strong>
+              <strong>= {{ formatCurrency(Number(newUsdExchangeRate) * 1000, 'VND') }}</strong>
             </div>
           </div>
         </div>
 
-        <div class="modal-footer" style="padding: 14px 20px; border-top: 1px solid rgba(255, 255, 255, 0.08); display: flex; justify-content: flex-end; gap: 10px;">
-          <button type="button" class="btn btn-secondary" @click="closeUsdRateModal" :disabled="updatingUsdRate">Hủy</button>
+        <footer class="qlhh-fm-foot" style="justify-content: flex-end;">
+          <button type="button" class="qlhh-ghost-btn" @click="closeUsdRateModal" :disabled="updatingUsdRate">Hủy</button>
           <button
             type="button"
-            class="btn btn-primary"
-            style="background: linear-gradient(135deg, #10b981, #059669); border: none; font-weight: 700; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);"
+            class="qlhh-btn-primary is-save-cta"
             :disabled="updatingUsdRate || !(Number(newUsdExchangeRate) > 0)"
             @click="applyUsdExchangeRateUpdate"
           >
-            <span v-if="updatingUsdRate" class="spinner" style="margin-right: 6px;"></span>
-            💱 Lưu & Cập Nhật Tỉ Giá ({{ usdRateScope === 'filtered' ? filteredUsdItems.length : usdItems.length }} SP)
+            <span v-if="updatingUsdRate" class="spinner"></span>
+            <svg v-else width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>Lưu &amp; Cập nhật tỉ giá ({{ usdRateScope === 'filtered' ? filteredUsdItems.length : usdItems.length }} SP)</span>
           </button>
-        </div>
+        </footer>
       </div>
     </div>
 
     <!-- MODAL TẠO / CẬP NHẬT BẢNG GIÁ -->
-    <div v-if="showPriceListModal" class="import-overlay" @click.self="showPriceListModal = false" style="z-index: 10050;">
+    <div v-if="showPriceListModal" class="import-overlay" @click.self="showPriceListModal = false" style="z-index: 10060;">
       <div class="import-modal pricelist-modal">
         <!-- Header -->
         <div class="import-modal__header">
-          <div class="import-modal__title-group">
-            <div class="import-modal__icon" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border-color: rgba(245, 158, 11, 0.3);">
+          <div class="import-modal__header-left">
+            <div class="import-modal__icon is-amber-icon">
               <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
             </div>
             <div>
@@ -2483,11 +2705,11 @@
     </div>
 
     <!-- ═══ MODAL ĐỐI CHIẾU GIÁ TỪ ẢNH (BƯỚC 1 & BƯỚC 2) ═══ -->
-    <div v-if="showImageCheckModal" class="import-overlay" @click.self="closeImageCheckModal">
+    <div v-if="showImageCheckModal" class="import-overlay" style="z-index: 10060;" @click.self="closeImageCheckModal">
       <div class="import-modal pricelist-modal imgcheck-modal">
         <!-- Header -->
         <div class="import-modal__header">
-          <div class="import-modal__title-group">
+          <div class="import-modal__header-left">
             <div class="import-modal__icon" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(6, 182, 212, 0.2)); border-color: rgba(16, 185, 129, 0.45); color: #34d399;">
               <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
             </div>
@@ -4975,1440 +5197,1213 @@
       </div>
     </div>
 
-    <!-- MODAL ĐỐI CHIẾU TRỰC TIẾP CARD HÀNG HÓA (SOPHOS / KASPERSKY / ACRONIS) VỚI FILE EXCEL GỐC & CALCULATOR -->
-    <div v-if="showCardRefCompareModal" class="import-overlay" style="z-index: 10300;" @click.self="showCardRefCompareModal = false">
-      <div class="import-modal" style="max-width: 1280px; width: 97vw; max-height: 92vh; display: flex; flex-direction: column; overflow: hidden;">
-        <!-- Header -->
-        <div class="import-modal__header" style="padding: 16px 22px; border-bottom: 1px solid rgba(148,163,184,0.18);">
-          <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+    <!-- MODAL ĐỐI CHIẾU FILE GỐC & CALCULATOR TRÊN TỪNG HÀNG HÓA (CHUẨN TEMPLATE DUAL-THEME) -->
+    <div
+      v-if="showCardRefCompareModal"
+      class="qlhh-modal-backdrop qlhh-cmp-overlay"
+      :class="{ 'theme-light-blue': uiTheme === 'light' }"
+      @click.self="showCardRefCompareModal = false"
+    >
+      <div class="qlhh-fm-modal qlhh-cmp-modal" :class="{ 'theme-light-blue': uiTheme === 'light' }">
+        <!-- Sticky Template Header -->
+        <header class="qlhh-fm-head qlhh-cmp-head">
+          <div class="qlhh-fm-head-left">
             <span
-              :style="{
-                padding: '4px 12px',
-                borderRadius: '999px',
-                fontSize: '12px',
-                fontWeight: '800',
-                letterSpacing: '0.5px',
-                background: cardRefCompareData?.vendor === 'sophos'
-                  ? 'rgba(56, 189, 248, 0.18)'
-                  : (cardRefCompareData?.vendor === 'acronis' ? 'rgba(99, 102, 241, 0.2)' : 'rgba(16, 185, 129, 0.18)'),
-                color: cardRefCompareData?.vendor === 'sophos'
-                  ? '#38bdf8'
-                  : (cardRefCompareData?.vendor === 'acronis' ? '#a5b4fc' : '#34d399'),
-                border: cardRefCompareData?.vendor === 'sophos'
-                  ? '1px solid rgba(56, 189, 248, 0.45)'
-                  : (cardRefCompareData?.vendor === 'acronis' ? '1px solid rgba(129, 140, 248, 0.5)' : '1px solid rgba(16, 185, 129, 0.45)')
-              }"
+              class="qlhh-fm-head-ico"
+              :class="cardRefCompareData?.vendor === 'sophos' ? 'is-sky' : (cardRefCompareData?.vendor === 'acronis' ? 'is-violet' : 'is-emerald')"
             >
-              {{ cardRefCompareData?.vendor === 'sophos'
-                ? '🛡️ SOPHOS — ĐỐI CHIẾU CALCULATOR & FILE GỐC'
-                : (cardRefCompareData?.vendor === 'acronis'
-                    ? '🟣 ACRONIS — ĐỐI CHIẾU FILE GỐC'
-                    : '🟢 KASPERSKY — ĐỐI CHIẾU FILE GỐC') }}
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
             </span>
-            <h2 class="import-modal__title" style="margin: 0; font-size: 16.5px;">
-              {{ cardRefCompareData?.item?.Ten_hang || 'Đang đối chiếu...' }}
-            </h2>
+
+            <div class="qlhh-fm-title-block">
+              <div class="qlhh-fm-title-row">
+                <span
+                  class="qlhh-cmp-vendor-tag"
+                  :class="`is-${cardRefCompareData?.vendor || 'sophos'}`"
+                >
+                  {{ (cardRefCompareData?.vendor || 'FILE GỐC').toUpperCase() }}
+                </span>
+                <h2>{{ cardRefCompareData?.item?.Ten_hang || 'Đối chiếu File Gốc' }}</h2>
+                <span
+                  v-if="cardRefCompareData?.sku || cardRefCompareData?.item?.Ma_hang"
+                  class="qlhh-code-pill is-sku tabular-nums"
+                >
+                  {{ cardRefCompareData?.sku || cardRefCompareData?.item?.Ma_hang }}
+                </span>
+              </div>
+
+              <div class="qlhh-cmp-subline tabular-nums">
+                <span>{{ cardRefCompareData?.vendor === 'sophos' ? 'Đối chiếu Calculator & File Gốc' : 'Đối chiếu File Gốc Hãng' }}</span>
+                <template v-if="cardRefCompareData?.vendor && vendorRefFilesMeta[cardRefCompareData.vendor]?.updated_at">
+                  <span>·</span>
+                  <span>Cập nhật: <strong>{{ formatRefTimestamp(vendorRefFilesMeta[cardRefCompareData.vendor].updated_at) }}</strong></span>
+                </template>
+              </div>
+            </div>
+          </div>
+
+          <div class="qlhh-fm-head-right">
             <span
               v-if="cardRefCompareData && !cardRefCompareLoading"
-              :style="{
-                padding: '4px 12px',
-                borderRadius: '999px',
-                fontSize: '12px',
-                fontWeight: '800',
-                background: cardRefCompareData.status === 'match'
-                  ? 'rgba(16, 185, 129, 0.18)'
-                  : (cardRefCompareData.status === 'diff' ? 'rgba(245, 158, 11, 0.18)' : 'rgba(239, 68, 68, 0.18)'),
-                color: cardRefCompareData.status === 'match'
-                  ? '#34d399'
-                  : (cardRefCompareData.status === 'diff' ? '#fbbf24' : '#f87171'),
-                border: cardRefCompareData.status === 'match'
-                  ? '1px solid rgba(16, 185, 129, 0.45)'
-                  : (cardRefCompareData.status === 'diff' ? '1px solid rgba(245, 158, 11, 0.45)' : '1px solid rgba(239, 68, 68, 0.45)')
-              }"
+              class="qlhh-cmp-status-pill tabular-nums"
+              :class="cardRefCompareData.status === 'match' ? 'is-match' : (cardRefCompareData.status === 'diff' ? 'is-diff' : 'is-miss')"
             >
-              <template v-if="cardRefCompareData.status === 'match'">✓ Khớp giá {{ cardRefCompareData.refSourceLabel || 'File Gốc' }}</template>
-              <template v-else-if="cardRefCompareData.status === 'diff'">
-                ⚠️ Lệch giá so với {{ cardRefCompareData.refSourceLabel || 'File Gốc' }} ({{ cardRefCompareData.priceDiff > 0 ? '+' : '' }}{{ cardRefCompareData.vendor === 'sophos' ? formatUsdPrice(cardRefCompareData.priceDiff) : formatVndPrice(cardRefCompareData.priceDiff) }})
-              </template>
-              <template v-else>ℹ️ Chưa tìm thấy mã SKU tương ứng trong File Tham Chiếu</template>
+              <svg v-if="cardRefCompareData.status === 'match'" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              <svg v-else-if="cardRefCompareData.status === 'diff'" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              <svg v-else width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <span v-if="cardRefCompareData.status === 'match'">Khớp giá</span>
+              <span v-else-if="cardRefCompareData.status === 'diff'">
+                Lệch {{ cardRefCompareData.priceDiff > 0 ? '+' : '' }}{{ cardRefCompareData.vendor === 'sophos' ? formatUsdPrice(cardRefCompareData.priceDiff) : formatVndPrice(cardRefCompareData.priceDiff) }}
+              </span>
+              <span v-else>Chưa khớp SKU</span>
             </span>
-          </div>
-          <button type="button" class="import-modal__close" @click="showCardRefCompareModal = false">✕</button>
-        </div>
 
-        <!-- Body -->
-        <div style="padding: 18px 22px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 16px;">
-          <!-- Thanh trạng thái File Tham Chiếu trên Cloudinary -->
-          <div
-            v-if="cardRefCompareData?.vendor"
-            style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding: 9px 14px; background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(56, 189, 248, 0.28); border-radius: 10px;"
-          >
-            <div style="font-size: 12px; color: #94a3b8; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-              <span>☁️ Nguồn đối chiếu Cloudinary ({{ cardRefCompareData.vendor.toUpperCase() }}):</span>
-              <template v-if="vendorRefFilesMeta[cardRefCompareData.vendor]">
-                <template v-if="cardRefCompareData.vendor === 'sophos'">
-                  <strong style="color: #5eead4; display: inline-flex; align-items: center; gap: 5px;">
-                    Calculator:
-                    <template v-if="getVendorCompareFileMeta('sophos', 'calc')">
-                      <a
-                        :href="getVendorOfficeViewUrl(getVendorCompareFileMeta('sophos', 'calc'))"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style="color: #5eead4; text-decoration: underline;"
-                        title="Click để mở xem trên ViewOffice (Tab mới)"
-                        @click="handleOpenVendorOfficeView($event, 'sophos', 'calc', getVendorCompareFileMeta('sophos', 'calc'))"
-                      >{{ getVendorCompareFileMeta('sophos', 'calc').name }}</a>
-                      <span v-if="getVendorCompareFileMeta('sophos', 'calc').version" style="font-size: 10.5px; color: #99f6e4;">(v{{ getVendorCompareFileMeta('sophos', 'calc').version }})</span>
-                      <button
-                        type="button"
-                        class="vendor-file-office-btn"
-                        title="Mở ViewOffice bằng calculate_sophos (đã điền sẵn mã SKU & công thức) trong tab mới"
-                        @click.stop="openCompareOfficePreview({ vendor: 'sophos', role: 'calc', sheet: sophosCardActiveCalcSummary.sheetName || cardRefCompareData.calcNativeSheet || 'Firewall', rowNum: sophosCardActiveCalcSummary.sheetRowNum || cardRefCompareData.calcSheetRowNum || cardRefCompareData.calcFirewallRowNum || 29, colLetter: sophosCardActiveCalcSummary.sheetColLetter || cardRefCompareData.calcSheetColLetter || 'H', sku: sophosCardActiveCalcSummary.sku || cardRefCompareData.sku, itemName: cardRefCompareData.item?.Ten_hang })"
-                      >👁️ Xem bằng ViewOffice</button>
-                      <button
-                        type="button"
-                        class="vendor-file-download-btn"
-                        title="Tải File Calculator Sophos nguyên bản về máy"
-                        @click.stop="handleDownloadVendorUploadedFile('sophos', 'calc', getVendorCompareFileMeta('sophos', 'calc'))"
-                      >⬇ Tải về</button>
-                    </template>
-                    <span v-else>Chưa có</span>
-                  </strong>
-                  <span>·</span>
-                </template>
-                <strong style="color: #34d399; display: inline-flex; align-items: center; gap: 5px;">
-                  File Gốc:
-                  <template v-if="getVendorCompareFileMeta(cardRefCompareData.vendor, 'goc')">
+            <button
+              type="button"
+              class="qlhh-fm-close"
+              @click="showCardRefCompareModal = false"
+              aria-label="Đóng"
+            >✕</button>
+          </div>
+        </header>
+
+        <!-- Scrollable Body -->
+        <div class="qlhh-fm-body qlhh-cmp-body">
+          <!-- Loading -->
+          <div v-if="cardRefCompareLoading" class="qlhh-bento-box qlhh-cmp-loading">
+            <svg class="is-spin" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+            <span>Đang tra cứu dữ liệu đối chiếu từ File Gốc...</span>
+          </div>
+
+          <template v-else-if="cardRefCompareData">
+            <!-- Lỗi tải file tham chiếu (nếu có) -->
+            <div
+              v-if="cardRefCompareData.vendor && vendorRefLoadError[cardRefCompareData.vendor]"
+              class="qlhh-cmp-alert is-rose"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <span>{{ vendorRefLoadError[cardRefCompareData.vendor] }}</span>
+            </div>
+
+            <!-- 1. NGUỒN FILE THAM CHIẾU & ĐIỀU HƯỚNG ĐỐI CHIẾU -->
+            <section class="qlhh-bento-box qlhh-cmp-files-card">
+              <div class="qlhh-cmp-file-grid">
+                <!-- Nguồn Calculator (Sophos) -->
+                <div v-if="cardRefCompareData.vendor === 'sophos'" class="qlhh-cmp-file-row">
+                  <div class="qlhh-cmp-file-text">
+                    <span class="qlhh-cmp-file-lbl">Nguồn (Calculator):</span>
                     <a
+                      v-if="getVendorCompareFileMeta('sophos', 'calc')"
+                      :href="getVendorOfficeViewUrl(getVendorCompareFileMeta('sophos', 'calc'))"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="qlhh-cmp-file-name"
+                      @click="handleOpenVendorOfficeView($event, 'sophos', 'calc', getVendorCompareFileMeta('sophos', 'calc'))"
+                    >{{ getVendorCompareFileMeta('sophos', 'calc').name }}<template v-if="getVendorCompareFileMeta('sophos', 'calc').version"> (v{{ getVendorCompareFileMeta('sophos', 'calc').version }})</template></a>
+                    <span v-else class="hub-file-empty">Chưa có file</span>
+                  </div>
+                  <div class="qlhh-cmp-file-icons">
+                    <button
+                      v-if="getVendorCompareFileMeta('sophos', 'calc')"
+                      type="button"
+                      class="qlhh-cmp-ico-btn"
+                      title="Tải file Calculator về máy"
+                      aria-label="Tải file Calculator về máy"
+                      @click.stop="handleDownloadVendorUploadedFile('sophos', 'calc', getVendorCompareFileMeta('sophos', 'calc'))"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    </button>
+                    <label class="qlhh-ghost-btn is-xs qlhh-cmp-change-btn" title="Upload file Calculator mới">
+                      <input type="file" accept=".xlsx,.xlsb,.xls" style="display: none;" @change="handleCustomSophosExcelUpload($event, 'calc')" />
+                      <span>Đổi file</span>
+                    </label>
+                  </div>
+                </div>
+
+                <!-- Nguồn File Gốc (Cả 3 hãng) -->
+                <div class="qlhh-cmp-file-row">
+                  <div class="qlhh-cmp-file-text">
+                    <span class="qlhh-cmp-file-lbl">{{ cardRefCompareData.vendor === 'acronis' ? 'Nguồn:' : 'Nguồn (File gốc):' }}</span>
+                    <a
+                      v-if="getVendorCompareFileMeta(cardRefCompareData.vendor, 'goc')"
                       :href="getVendorOfficeViewUrl(getVendorCompareFileMeta(cardRefCompareData.vendor, 'goc'))"
                       target="_blank"
                       rel="noopener noreferrer"
-                      style="color: #34d399; text-decoration: underline;"
-                      title="Click để mở xem trên ViewOffice (Tab mới)"
+                      class="qlhh-cmp-file-name"
                       @click="handleOpenVendorOfficeView($event, cardRefCompareData.vendor, 'goc', getVendorCompareFileMeta(cardRefCompareData.vendor, 'goc'))"
                     >{{ getVendorCompareFileMeta(cardRefCompareData.vendor, 'goc').name }}</a>
+                    <span v-else class="hub-file-empty">Chưa có file</span>
+                  </div>
+                  <div class="qlhh-cmp-file-icons">
                     <button
+                      v-if="getVendorCompareFileMeta(cardRefCompareData.vendor, 'goc')"
                       type="button"
-                      class="vendor-file-office-btn"
-                      title="Mở ViewOffice trong tab mới và nhảy trực tiếp tới ô chứa sản phẩm này"
-                      @click.stop="openCompareOfficePreview({ vendor: cardRefCompareData.vendor, role: 'goc', sheet: cardRefCompareData.vendor === 'sophos' ? 'SKU_Tab' : (cardRefCompareData.sheet || (cardRefCompareData.vendor === 'kaspersky' ? 'SMB+Enterprise (License)' : 'MSRPs&BuyCost')), rowNum: cardRefCompareData.vendor === 'sophos' ? (cardRefCompareData.skuListRowNum || cardRefCompareData.gocRowNum || 8) : (cardRefCompareData.gocRowNum || cardRefCompareData.gocPivotRow || 4), colLetter: cardRefCompareData.vendor === 'sophos' ? 'G' : (cardRefCompareData.gocPivotColLetter || (cardRefCompareData.vendor === 'acronis' ? 'D' : 'B')), sku: cardRefCompareData.sku || cardRefCompareData.skuFor, itemName: cardRefCompareData.item?.Ten_hang })"
-                    >👁️ Xem bằng ViewOffice</button>
-                    <button
-                      type="button"
-                      class="vendor-file-download-btn"
+                      class="qlhh-cmp-ico-btn"
                       title="Tải File Gốc về máy"
+                      aria-label="Tải File Gốc về máy"
                       @click.stop="handleDownloadVendorUploadedFile(cardRefCompareData.vendor, 'goc', getVendorCompareFileMeta(cardRefCompareData.vendor, 'goc'))"
-                    >⬇ Tải về</button>
-                  </template>
-                  <span v-else>Chưa có</span>
-                </strong>
-                <template v-if="cardRefCompareData.vendor !== 'acronis'">
-                  <span>·</span>
-                  <strong style="color: #a5b4fc; display: inline-flex; align-items: center; gap: 5px;">
-                    File Trung Gian:
-                    <template v-if="getVendorCompareFileMeta(cardRefCompareData.vendor, 'tg')">
-                      <a
-                        :href="getVendorOfficeViewUrl(getVendorCompareFileMeta(cardRefCompareData.vendor, 'tg'))"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style="color: #a5b4fc; text-decoration: underline;"
-                        title="Click để mở xem trên ViewOffice (Tab mới)"
-                        @click="handleOpenVendorOfficeView($event, cardRefCompareData.vendor, cardRefCompareData.vendor === 'sophos' ? 'tg' : 'mau', getVendorCompareFileMeta(cardRefCompareData.vendor, 'tg'))"
-                      >{{ getVendorCompareFileMeta(cardRefCompareData.vendor, 'tg').name }}</a>
-                      <button
-                        type="button"
-                        class="vendor-file-office-btn"
-                        title="Mở ViewOffice trong tab mới và nhảy trực tiếp tới ô chứa sản phẩm này"
-                        @click.stop="openCompareOfficePreview({ vendor: cardRefCompareData.vendor, role: cardRefCompareData.vendor === 'sophos' ? 'tg' : 'mau', sheet: cardRefCompareData.tgSheet || 'SMB+Enterprise (License)', rowNum: cardRefCompareData.tgRowNum || cardRefCompareData.mauPivotRow || 6, colLetter: cardRefCompareData.vendor === 'kaspersky' ? 'I' : 'B', sku: cardRefCompareData.sku, itemName: cardRefCompareData.item?.Ten_hang })"
-                      >👁️ Xem bằng ViewOffice</button>
-                      <button
-                        type="button"
-                        class="vendor-file-download-btn"
-                        title="Tải File Trung Gian về máy"
-                        @click.stop="handleDownloadVendorUploadedFile(cardRefCompareData.vendor, cardRefCompareData.vendor === 'sophos' ? 'tg' : 'mau', getVendorCompareFileMeta(cardRefCompareData.vendor, 'tg'))"
-                      >⬇ Tải về</button>
-                    </template>
-                    <span v-else>Chưa có</span>
-                  </strong>
-                </template>
-                <span style="color: #64748b;">
-                  (Cập nhật: {{ formatRefTimestamp(vendorRefFilesMeta[cardRefCompareData.vendor]?.updated_at) }})
-                </span>
-              </template>
-              <span v-else style="color: #f87171; font-weight: 700;">Chưa có file trên Cloudinary</span>
-            </div>
-
-            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-              <template v-if="cardRefCompareData.vendor === 'sophos'">
-                <label
-                  class="pl-mini-btn"
-                  style="cursor: pointer; border-color: rgba(20, 184, 166, 0.55); color: #5eead4;"
-                >
-                  <input type="file" accept=".xlsx,.xlsb,.xls" style="display: none;" @change="handleCustomSophosExcelUpload($event, 'calc')" />
-                  ☁️ Up File Calculator
-                </label>
-                <label
-                  class="pl-mini-btn"
-                  style="cursor: pointer; border-color: rgba(56, 189, 248, 0.45); color: #38bdf8;"
-                >
-                  <input type="file" accept=".xlsx,.xlsb,.xls" style="display: none;" @change="handleCustomSophosExcelUpload($event, 'goc')" />
-                  ☁️ Up File Gốc Sophos
-                </label>
-                <label
-                  class="pl-mini-btn"
-                  style="cursor: pointer; border-color: rgba(168, 85, 247, 0.45); color: #c084fc;"
-                >
-                  <input type="file" accept=".xlsx,.xlsb,.xls" style="display: none;" @change="handleCustomSophosExcelUpload($event, 'tg')" />
-                  ☁️ Up File Trung Gian Sophos
-                </label>
-              </template>
-              <template v-else-if="cardRefCompareData.vendor === 'kaspersky'">
-                <label
-                  class="pl-mini-btn"
-                  style="cursor: pointer; border-color: rgba(16, 185, 129, 0.45); color: #34d399;"
-                >
-                  <input type="file" accept=".xlsx,.xls" style="display: none;" @change="handleCustomKasExcelUpload($event, 'goc')" />
-                  ☁️ Up File Gốc Kaspersky
-                </label>
-                <label
-                  class="pl-mini-btn"
-                  style="cursor: pointer; border-color: rgba(56, 189, 248, 0.45); color: #38bdf8;"
-                >
-                  <input type="file" accept=".xlsx,.xls" style="display: none;" @change="handleCustomKasExcelUpload($event, 'mau')" />
-                  ☁️ Up File Trung Gian Kaspersky
-                </label>
-              </template>
-              <template v-else-if="cardRefCompareData.vendor === 'acronis'">
-                <label
-                  class="pl-mini-btn"
-                  style="cursor: pointer; border-color: rgba(129, 140, 248, 0.45); color: #a5b4fc;"
-                >
-                  <input type="file" accept=".xlsx,.xls" style="display: none;" @change="handleCustomAcronisExcelUpload($event, 'both')" />
-                  ☁️ Up File Gốc Acronis
-                </label>
-              </template>
-            </div>
-          </div>
-
-          <div
-            v-if="cardRefCompareData?.vendor && vendorRefLoadError[cardRefCompareData.vendor]"
-            style="padding: 10px 14px; border-radius: 8px; background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.45); color: #fca5a5; font-size: 12.5px; font-weight: 700;"
-          >
-            ⚠️ {{ vendorRefLoadError[cardRefCompareData.vendor] }}
-          </div>
-
-          <!-- Khung ViewOffice nhúng trực tiếp ngay trong Modal Đối Chiếu Card -->
-          <div v-if="compareOfficePreview.show && cardRefCompareData?.vendor && compareOfficePreview.vendor === cardRefCompareData.vendor" class="compare-office-embed-panel">
-            <div class="compare-office-embed-header">
-              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                <span style="font-weight: 800; color: #38bdf8;">👁️ Microsoft ViewOffice ({{ cardRefCompareData.vendor.toUpperCase() }}):</span>
-                <button
-                  v-if="cardRefCompareData.vendor === 'sophos' && getVendorCompareFileMeta('sophos', 'calc')"
-                  type="button"
-                  class="compare-office-role-btn"
-                  :class="{ active: compareOfficePreview.role === 'calc' }"
-                  @click="openCompareOfficePreview({ vendor: 'sophos', role: 'calc', sheet: sophosCardActiveCalcSummary.sheetName || cardRefCompareData.calcNativeSheet || 'Firewall', rowNum: sophosCardActiveCalcSummary.sheetRowNum || cardRefCompareData.calcSheetRowNum || cardRefCompareData.calcFirewallRowNum || 29, colLetter: sophosCardActiveCalcSummary.sheetColLetter || cardRefCompareData.calcSheetColLetter || 'H', sku: sophosCardActiveCalcSummary.sku || cardRefCompareData.sku, itemName: cardRefCompareData.item?.Ten_hang })"
-                >🧮 Calculator ({{ getVendorCompareFileMeta('sophos', 'calc').name }})</button>
-                <button
-                  v-if="getVendorCompareFileMeta(cardRefCompareData.vendor, 'goc')"
-                  type="button"
-                  class="compare-office-role-btn"
-                  :class="{ active: compareOfficePreview.role === 'goc' }"
-                  @click="openCompareOfficePreview({ vendor: cardRefCompareData.vendor, role: 'goc', sheet: cardRefCompareData.sheet || 'MSRPs&BuyCost', rowNum: cardRefCompareData.gocRowNum || cardRefCompareData.gocPivotRow || 4, colLetter: cardRefCompareData.gocPivotColLetter || 'B', sku: cardRefCompareData.sku || cardRefCompareData.skuFor })"
-                >📗 File Gốc ({{ getVendorCompareFileMeta(cardRefCompareData.vendor, 'goc').name }})</button>
-                <button
-                  v-if="cardRefCompareData.vendor !== 'acronis' && getVendorCompareFileMeta(cardRefCompareData.vendor, 'tg')"
-                  type="button"
-                  class="compare-office-role-btn"
-                  :class="{ active: compareOfficePreview.role === 'tg' || compareOfficePreview.role === 'mau' }"
-                  @click="openCompareOfficePreview({ vendor: cardRefCompareData.vendor, role: cardRefCompareData.vendor === 'sophos' ? 'tg' : 'mau', sheet: cardRefCompareData.tgSheet || 'SMB+Enterprise (License)', rowNum: cardRefCompareData.tgRowNum || cardRefCompareData.mauPivotRow || 6, colLetter: 'B', sku: cardRefCompareData.sku })"
-                >📘 File Trung Gian ({{ getVendorCompareFileMeta(cardRefCompareData.vendor, 'tg').name }})</button>
-                <span v-if="compareOfficePreview.sku" class="compare-office-target-badge">
-                  SKU: <strong>{{ compareOfficePreview.sku }}</strong>
-                </span>
-                <span v-if="compareOfficePreview.sheet && compareOfficePreview.rowNum" class="compare-office-target-badge">
-                  📍 Sheet <strong>{{ compareOfficePreview.sheet }}</strong> • Ô {{ compareOfficePreview.colLetter }}{{ compareOfficePreview.rowNum }} (Dòng {{ compareOfficePreview.rowNum }})
-                </span>
-                <span v-if="compareOfficePreview.copiedLabel" style="color: #34d399; font-weight: 700; font-size: 11.5px;">
-                  ✓ {{ compareOfficePreview.copiedLabel }} (Bấm Ctrl+F → Ctrl+V trong bảng để tìm nhanh)
-                </span>
-              </div>
-              <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                <button
-                  v-if="compareOfficePreview.sku"
-                  type="button"
-                  class="vendor-file-office-btn"
-                  @click="copyCompareOfficeQuickText(compareOfficePreview.sku, `Đã copy SKU: ${compareOfficePreview.sku}`)"
-                >📋 Copy SKU</button>
-                <a
-                  v-if="compareOfficePreview.viewUrl"
-                  :href="compareOfficePreview.viewUrl"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  class="vendor-file-office-btn"
-                  style="text-decoration: none;"
-                >🌐 Mở Tab Mới</a>
-                <button
-                  type="button"
-                  class="vendor-file-download-btn"
-                  @click="handleDownloadVendorUploadedFile(cardRefCompareData.vendor, compareOfficePreview.role, getVendorCompareFileMeta(cardRefCompareData.vendor, compareOfficePreview.role === 'calc' ? 'calc' : (compareOfficePreview.role === 'goc' ? 'goc' : 'tg')))"
-                >⬇ Tải về</button>
-                <button type="button" class="compare-office-close-btn" @click="closeCompareOfficePreview">✕ Đóng ViewOffice</button>
-              </div>
-            </div>
-            <div class="compare-office-embed-body">
-              <div v-if="compareOfficePreview.loading" class="compare-office-loading">
-                ⏳ Đang chuẩn bị file Excel trên Microsoft ViewOffice...
-              </div>
-              <iframe
-                v-else-if="compareOfficePreview.embedUrl"
-                :src="compareOfficePreview.embedUrl"
-                class="compare-office-iframe"
-                allowfullscreen
-              ></iframe>
-            </div>
-          </div>
-
-          <div v-if="cardRefCompareLoading" style="padding: 40px; text-align: center; color: #94a3b8; font-size: 14px;">
-            ⏳ Đang tra cứu dữ liệu từ File Excel Gốc trên Cloudinary...
-          </div>
-
-          <!-- ==================== GIAO DIỆN ĐỐI CHIẾU SOPHOS (ĐÚNG CHUẨN BẢNG TÍNH CALCULATE_SOPHOS.XLSX) ==================== -->
-          <template v-else-if="cardRefCompareData && cardRefCompareData.vendor === 'sophos'">
-            <!-- 1. Thanh mở nhanh sang các Sheet Excel gốc & tóm tắt Card DB ⇄ Calculator đang tính -->
-            <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 12px; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px;">
-              <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
-                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: #e2e8f0; font-weight: 700;">
-                  <span>🧮 Mở đúng Sheet tính toán trong File Excel:</span>
-                  <button
-                    type="button"
-                    class="excel-jump-chip excel-jump-chip--calc"
-                    style="padding: 6px 12px; font-size: 12.5px; font-weight: 800;"
-                    @click="openExcelNavigator({ fileType: 'calc', sheet: sophosCardActiveCalcSummary.sheetName, rowNum: sophosCardActiveCalcSummary.sheetRowNum, colLetter: sophosCardActiveCalcSummary.sheetColLetter, sku: sophosCardActiveCalcSummary.sku || cardRefCompareData.sku, itemName: cardRefCompareData.item.Ten_hang })"
-                  >
-                    ↗ Mở <strong>{{ getVendorCompareFileMeta('sophos', 'calc')?.name || 'calculate_sophos.xlsx' }}</strong> — Sheet <code>{{ sophosCardActiveCalcSummary.sheetName }}</code> (Ô {{ sophosCardActiveCalcSummary.sheetColLetter }}{{ sophosCardActiveCalcSummary.sheetRowNum }})
-                  </button>
-                  <button
-                    v-if="getVendorCompareFileMeta('sophos', 'calc')"
-                    type="button"
-                    class="vendor-file-office-btn"
-                    style="padding: 6px 11px; font-size: 12px;"
-                    @click="openCompareOfficePreview({ vendor: 'sophos', role: 'calc', sheet: sophosCardActiveCalcSummary.sheetName, rowNum: sophosCardActiveCalcSummary.sheetRowNum, colLetter: sophosCardActiveCalcSummary.sheetColLetter, sku: sophosCardActiveCalcSummary.sku || cardRefCompareData.sku, itemName: cardRefCompareData.item.Ten_hang })"
-                  >
-                    👁️ Xem ViewOffice ({{ sophosCardActiveCalcSummary.sheetName }})
-                  </button>
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    </button>
+                    <label v-if="cardRefCompareData.vendor === 'sophos'" class="qlhh-ghost-btn is-xs qlhh-cmp-change-btn" title="Upload File Gốc Sophos mới">
+                      <input type="file" accept=".xlsx,.xlsb,.xls" style="display: none;" @change="handleCustomSophosExcelUpload($event, 'goc')" />
+                      <span>Đổi file</span>
+                    </label>
+                    <label v-else-if="cardRefCompareData.vendor === 'kaspersky'" class="qlhh-ghost-btn is-xs qlhh-cmp-change-btn" title="Upload File Gốc Kaspersky mới">
+                      <input type="file" accept=".xlsx,.xls" style="display: none;" @change="handleCustomKasExcelUpload($event, 'goc')" />
+                      <span>Đổi file</span>
+                    </label>
+                    <label v-else-if="cardRefCompareData.vendor === 'acronis'" class="qlhh-ghost-btn is-xs qlhh-cmp-change-btn" title="Upload File Gốc Acronis mới">
+                      <input type="file" accept=".xlsx,.xls" style="display: none;" @change="handleCustomAcronisExcelUpload($event, 'both')" />
+                      <span>Đổi file</span>
+                    </label>
+                  </div>
                 </div>
 
-                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                <!-- Nguồn File Trung Gian (Sophos & Kaspersky) -->
+                <div v-if="cardRefCompareData.vendor !== 'acronis'" class="qlhh-cmp-file-row">
+                  <div class="qlhh-cmp-file-text">
+                    <span class="qlhh-cmp-file-lbl">Nguồn (File trung gian):</span>
+                    <a
+                      v-if="getVendorCompareFileMeta(cardRefCompareData.vendor, 'tg')"
+                      :href="getVendorOfficeViewUrl(getVendorCompareFileMeta(cardRefCompareData.vendor, 'tg'))"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="qlhh-cmp-file-name"
+                      @click="handleOpenVendorOfficeView($event, cardRefCompareData.vendor, cardRefCompareData.vendor === 'sophos' ? 'tg' : 'mau', getVendorCompareFileMeta(cardRefCompareData.vendor, 'tg'))"
+                    >{{ getVendorCompareFileMeta(cardRefCompareData.vendor, 'tg').name }}</a>
+                    <span v-else class="hub-file-empty">Chưa có file</span>
+                  </div>
+                  <div class="qlhh-cmp-file-icons">
+                    <button
+                      v-if="getVendorCompareFileMeta(cardRefCompareData.vendor, 'tg')"
+                      type="button"
+                      class="qlhh-cmp-ico-btn"
+                      title="Tải File Trung Gian về máy"
+                      aria-label="Tải File Trung Gian về máy"
+                      @click.stop="handleDownloadVendorUploadedFile(cardRefCompareData.vendor, cardRefCompareData.vendor === 'sophos' ? 'tg' : 'mau', getVendorCompareFileMeta(cardRefCompareData.vendor, 'tg'))"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    </button>
+                    <label v-if="cardRefCompareData.vendor === 'sophos'" class="qlhh-ghost-btn is-xs qlhh-cmp-change-btn" title="Upload File Trung Gian Sophos mới">
+                      <input type="file" accept=".xlsx,.xlsb,.xls" style="display: none;" @change="handleCustomSophosExcelUpload($event, 'tg')" />
+                      <span>Đổi file</span>
+                    </label>
+                    <label v-else-if="cardRefCompareData.vendor === 'kaspersky'" class="qlhh-ghost-btn is-xs qlhh-cmp-change-btn" title="Upload File Mẫu Kaspersky mới">
+                      <input type="file" accept=".xlsx,.xls" style="display: none;" @change="handleCustomKasExcelUpload($event, 'mau')" />
+                      <span>Đổi file</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Các nút điều hướng đối chiếu -->
+              <div class="qlhh-cmp-nav-bar">
+                <template v-if="cardRefCompareData.vendor === 'sophos'">
+                  <button
+                    type="button"
+                    class="qlhh-ghost-btn is-xs is-emerald-tint"
+                    @click="openExcelNavigator({ fileType: 'calc', sheet: sophosCardActiveCalcSummary.sheetName, rowNum: sophosCardActiveCalcSummary.sheetRowNum, colLetter: sophosCardActiveCalcSummary.sheetColLetter, sku: sophosCardActiveCalcSummary.sku || cardRefCompareData.sku, itemName: cardRefCompareData.item.Ten_hang })"
+                  >Đối chiếu Calculator ({{ sophosCardActiveCalcSummary.sheetColLetter }}{{ sophosCardActiveCalcSummary.sheetRowNum }})</button>
                   <button
                     v-if="cardRefCompareData.gocFirewallRowNum || cardRefCompareData.gocRowNum"
                     type="button"
-                    class="excel-jump-chip excel-jump-chip--goc"
-                    style="padding: 5px 10px; font-size: 11.5px;"
+                    class="qlhh-ghost-btn is-xs"
                     @click="openExcelNavigator({ fileType: 'goc', sheet: cardRefCompareData.gocFirewallRowNum ? 'Firewall' : 'MSRPs&BuyCost', rowNum: cardRefCompareData.gocFirewallRowNum || cardRefCompareData.gocRowNum, colLetter: cardRefCompareData.gocFirewallRowNum ? 'H' : 'B', sku: cardRefCompareData.sku, itemName: cardRefCompareData.item.Ten_hang })"
-                  >
-                    📗 file_goc_SOPHOS
-                  </button>
+                  >Đối chiếu File Gốc</button>
                   <button
                     v-if="cardRefCompareData.skuListRowNum"
                     type="button"
-                    class="excel-jump-chip excel-jump-chip--skulist"
-                    style="padding: 5px 10px; font-size: 11.5px;"
+                    class="qlhh-ghost-btn is-xs"
                     @click="openExcelNavigator({ fileType: 'skulist', sheet: 'SKU_Tab', rowNum: cardRefCompareData.skuListRowNum, colLetter: 'G', sku: cardRefCompareData.sku, itemName: cardRefCompareData.item.Ten_hang })"
-                  >
-                    📙 SKU_List (#{{ cardRefCompareData.skuListRowNum }})
-                  </button>
+                  >Đối chiếu SKU_List #{{ cardRefCompareData.skuListRowNum }}</button>
                   <button
                     v-for="(loc, lIdx) in cardRefCompareData.tgLocations"
                     :key="'tg-loc-' + lIdx"
                     type="button"
-                    class="excel-jump-chip excel-jump-chip--tg"
-                    style="padding: 5px 10px; font-size: 11.5px;"
+                    class="qlhh-ghost-btn is-xs"
                     @click="openExcelNavigator({ fileType: 'tg', sheet: loc.sheet, rowNum: loc.rowNum, colLetter: loc.colLetter || 'B', sku: cardRefCompareData.sku, itemName: cardRefCompareData.item.Ten_hang })"
-                  >
-                    📘 File TG ({{ loc.sheet }} #{{ loc.rowNum }})
-                  </button>
+                  >Đối chiếu {{ loc.sheet }} #{{ loc.rowNum }}</button>
                   <button
                     v-if="sophosCardActiveCalcSummary.calcRowNum || cardRefCompareData.calcRowNum"
                     type="button"
-                    class="excel-jump-chip"
-                    style="padding: 5px 10px; font-size: 11px; opacity: 0.78; background: rgba(30, 41, 59, 0.85); border: 1px dashed rgba(148, 163, 184, 0.35); color: #94a3b8;"
+                    class="qlhh-ghost-btn is-xs"
                     @click="showCalcHiddenSheets = true; openExcelNavigator({ fileType: 'calc', sheet: 'MSRPs&BuyCost', rowNum: sophosCardActiveCalcSummary.calcRowNum || cardRefCompareData.calcRowNum, colLetter: 'B', sku: sophosCardActiveCalcSummary.sku || cardRefCompareData.sku, itemName: cardRefCompareData.item.Ten_hang })"
-                    title="Mở bảng dữ liệu nguồn ẩn MSRPs&BuyCost của calculate_sophos.xlsx"
-                  >
-                    🗄️ Sheet ẩn MSRPs&amp;BuyCost (#{{ sophosCardActiveCalcSummary.calcRowNum || cardRefCompareData.calcRowNum }})
-                  </button>
+                  >Đối chiếu MSRPs&amp;BuyCost #{{ sophosCardActiveCalcSummary.calcRowNum || cardRefCompareData.calcRowNum }}</button>
+                  <button
+                    v-if="getVendorCompareFileMeta('sophos', 'calc') || getVendorCompareFileMeta('sophos', 'goc')"
+                    type="button"
+                    class="qlhh-ghost-btn is-xs is-sky-tint"
+                    :class="{ 'is-active': compareOfficePreview.show && compareOfficePreview.vendor === 'sophos' }"
+                    @click.stop="openCompareOfficePreview({ vendor: 'sophos', role: getVendorCompareFileMeta('sophos', 'calc') ? 'calc' : 'goc', sheet: sophosCardActiveCalcSummary.sheetName || cardRefCompareData.calcNativeSheet || 'Firewall', rowNum: sophosCardActiveCalcSummary.sheetRowNum || cardRefCompareData.calcSheetRowNum || cardRefCompareData.calcFirewallRowNum || 29, colLetter: sophosCardActiveCalcSummary.sheetColLetter || cardRefCompareData.calcSheetColLetter || 'H', sku: sophosCardActiveCalcSummary.sku || cardRefCompareData.sku, itemName: cardRefCompareData.item?.Ten_hang })"
+                  >Đối chiếu ViewOffice</button>
+                </template>
+
+                <template v-else-if="cardRefCompareData.vendor === 'kaspersky'">
+                  <button
+                    type="button"
+                    class="qlhh-ghost-btn is-xs is-emerald-tint"
+                    @click="openKasExcelNavigator({ fileType: 'kas_goc', sheet: 'SMB+Enterprise (License)', rowNum: cardRefCompareData.gocPivotRow || 11, colLetter: cardRefCompareData.gocPivotColLetter || 'I', sku: cardRefCompareData.sku, band: cardRefCompareData.band, itemName: cardRefCompareData.item.Ten_hang })"
+                  >Đối chiếu File Gốc{{ cardRefCompareData.gocPivotRow ? ` (#${cardRefCompareData.gocPivotRow})` : '' }}</button>
+                  <button
+                    v-if="cardRefCompareData.mauPivotRow"
+                    type="button"
+                    class="qlhh-ghost-btn is-xs"
+                    @click="openKasExcelNavigator({ fileType: 'kas_mau', sheet: 'SMB+Enterprise (License)', rowNum: cardRefCompareData.mauPivotRow, colLetter: cardRefCompareData.mauPivotColLetter, sku: cardRefCompareData.sku, band: cardRefCompareData.band, itemName: cardRefCompareData.item.Ten_hang })"
+                  >Đối chiếu File Mẫu (#{{ cardRefCompareData.mauPivotRow }})</button>
+                  <button
+                    v-if="getVendorCompareFileMeta('kaspersky', 'goc')"
+                    type="button"
+                    class="qlhh-ghost-btn is-xs is-sky-tint"
+                    @click.stop="openCompareOfficePreview({ vendor: 'kaspersky', role: 'goc', sheet: cardRefCompareData.gocPivotRow ? 'SMB+Enterprise (License)' : 'SaleListSMB+Enterprise', rowNum: cardRefCompareData.gocPivotRow || cardRefCompareData.gocSaleRow || 11, colLetter: cardRefCompareData.gocPivotColLetter || 'I', sku: cardRefCompareData.sku, itemName: cardRefCompareData.item?.Ten_hang })"
+                  >Đối chiếu ViewOffice</button>
+                </template>
+
+                <template v-else>
+                  <button
+                    type="button"
+                    class="qlhh-ghost-btn is-xs is-emerald-tint"
+                    @click="openAcronisExcelNavigator({ fileType: 'acronis_goc', sheet: cardRefCompareData.gocRowNum ? cardRefCompareData.sheet : 'Protect Standard', rowNum: cardRefCompareData.gocRowNum || 4, colLetter: cardRefCompareData.gocRowNum ? 'D' : 'B', sku: cardRefCompareData.sku || cardRefCompareData.skuFor, itemName: cardRefCompareData.item.Ten_hang })"
+                  >Đối chiếu File Gốc{{ cardRefCompareData.gocRowNum ? ` (#${cardRefCompareData.gocRowNum})` : '' }}</button>
+                  <button
+                    v-if="getVendorCompareFileMeta('acronis', 'goc')"
+                    type="button"
+                    class="qlhh-ghost-btn is-xs is-sky-tint"
+                    @click.stop="openCompareOfficePreview({ vendor: 'acronis', role: 'goc', sheet: cardRefCompareData.sheet || 'Protect Standard', rowNum: cardRefCompareData.gocRowNum || 4, colLetter: 'D', sku: cardRefCompareData.sku || cardRefCompareData.skuFor, itemName: cardRefCompareData.item?.Ten_hang })"
+                  >Đối chiếu ViewOffice</button>
+                  <button
+                    type="button"
+                    class="qlhh-ghost-btn is-xs"
+                    @click="showCardRefCompareModal = false; openAcronisCompareModal(cardRefCompareData.sheet, cardRefCompareData.sku || cardRefCompareData.skuFor)"
+                  >Đối chiếu toàn bộ (221 mã)</button>
+                </template>
+              </div>
+            </section>
+
+            <!-- KHỐI VIEWOFFICE NHÚNG TRỰC TIẾP (KHI BẬT) -->
+            <div
+              v-if="compareOfficePreview.show && cardRefCompareData.vendor && compareOfficePreview.vendor === cardRefCompareData.vendor"
+              class="compare-office-embed-panel qlhh-cmp-office"
+            >
+              <div class="compare-office-embed-header">
+                <div class="qlhh-cmp-office-left">
+                  <span class="qlhh-cmp-office-brand">Đối chiếu ViewOffice</span>
+                  <button
+                    v-if="cardRefCompareData.vendor === 'sophos' && getVendorCompareFileMeta('sophos', 'calc')"
+                    type="button"
+                    class="compare-office-role-btn"
+                    :class="{ active: compareOfficePreview.role === 'calc' }"
+                    @click="openCompareOfficePreview({ vendor: 'sophos', role: 'calc', sheet: sophosCardActiveCalcSummary.sheetName || cardRefCompareData.calcNativeSheet || 'Firewall', rowNum: sophosCardActiveCalcSummary.sheetRowNum || cardRefCompareData.calcSheetRowNum || cardRefCompareData.calcFirewallRowNum || 29, colLetter: sophosCardActiveCalcSummary.sheetColLetter || cardRefCompareData.calcSheetColLetter || 'H', sku: sophosCardActiveCalcSummary.sku || cardRefCompareData.sku, itemName: cardRefCompareData.item?.Ten_hang })"
+                  >Calculator</button>
+                  <button
+                    v-if="getVendorCompareFileMeta(cardRefCompareData.vendor, 'goc')"
+                    type="button"
+                    class="compare-office-role-btn"
+                    :class="{ active: compareOfficePreview.role === 'goc' }"
+                    @click="openCompareOfficePreview({ vendor: cardRefCompareData.vendor, role: 'goc', sheet: cardRefCompareData.sheet || 'MSRPs&BuyCost', rowNum: cardRefCompareData.gocRowNum || cardRefCompareData.gocPivotRow || 4, colLetter: cardRefCompareData.gocPivotColLetter || 'B', sku: cardRefCompareData.sku || cardRefCompareData.skuFor })"
+                  >File Gốc</button>
+                  <button
+                    v-if="cardRefCompareData.vendor !== 'acronis' && getVendorCompareFileMeta(cardRefCompareData.vendor, 'tg')"
+                    type="button"
+                    class="compare-office-role-btn"
+                    :class="{ active: compareOfficePreview.role === 'tg' || compareOfficePreview.role === 'mau' }"
+                    @click="openCompareOfficePreview({ vendor: cardRefCompareData.vendor, role: cardRefCompareData.vendor === 'sophos' ? 'tg' : 'mau', sheet: cardRefCompareData.tgSheet || 'SMB+Enterprise (License)', rowNum: cardRefCompareData.tgRowNum || cardRefCompareData.mauPivotRow || 6, colLetter: 'B', sku: cardRefCompareData.sku })"
+                  >File Trung Gian</button>
+                  <span v-if="compareOfficePreview.sku" class="qlhh-cmp-plain-meta tabular-nums">SKU: {{ compareOfficePreview.sku }}</span>
+                  <span v-if="compareOfficePreview.sheet && compareOfficePreview.rowNum" class="qlhh-cmp-plain-meta tabular-nums">
+                    {{ compareOfficePreview.sheet }} • {{ compareOfficePreview.colLetter }}{{ compareOfficePreview.rowNum }}
+                  </span>
+                  <span v-if="compareOfficePreview.copiedLabel" class="qlhh-cmp-copied-msg">{{ compareOfficePreview.copiedLabel }}</span>
+                </div>
+                <div class="qlhh-cmp-office-right">
+                  <button
+                    v-if="compareOfficePreview.sku"
+                    type="button"
+                    class="qlhh-ghost-btn is-xs"
+                    @click="copyCompareOfficeQuickText(compareOfficePreview.sku, `Đã copy: ${compareOfficePreview.sku}`)"
+                  >Copy SKU</button>
+                  <a
+                    v-if="compareOfficePreview.viewUrl"
+                    :href="compareOfficePreview.viewUrl"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="qlhh-ghost-btn is-xs is-sky-tint"
+                    style="text-decoration: none;"
+                  >Tab mới</a>
+                  <button
+                    type="button"
+                    class="qlhh-ghost-btn is-xs"
+                    @click="handleDownloadVendorUploadedFile(cardRefCompareData.vendor, compareOfficePreview.role, getVendorCompareFileMeta(cardRefCompareData.vendor, compareOfficePreview.role === 'calc' ? 'calc' : (compareOfficePreview.role === 'goc' ? 'goc' : 'tg')))"
+                  >Tải về</button>
+                  <button type="button" class="compare-office-close-btn" @click="closeCompareOfficePreview">Đóng</button>
                 </div>
               </div>
+              <div class="compare-office-embed-body">
+                <div v-if="compareOfficePreview.loading" class="compare-office-loading">
+                  Đang chuẩn bị ViewOffice...
+                </div>
+                <iframe
+                  v-else-if="compareOfficePreview.embedUrl"
+                  :src="compareOfficePreview.embedUrl"
+                  class="compare-office-iframe"
+                  allowfullscreen
+                ></iframe>
+              </div>
+            </div>
 
-              <!-- Khung đối chiếu nhanh Card Database ⇄ Kết quả đang tính trên Calculator -->
-              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px; padding: 10px 12px; background: linear-gradient(90deg, rgba(15, 23, 42, 0.95), rgba(20, 184, 166, 0.1)); border: 1px solid rgba(20, 184, 166, 0.38); border-radius: 10px; align-items: center;">
-                <div>
-                  <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 700;">Card Hiện Tại Trong Database (hang_hoa)</div>
-                  <div style="font-size: 13.5px; font-weight: 800; color: #f8fafc; margin-top: 2px;">{{ cardRefCompareData.item.Ten_hang }}</div>
-                  <div style="font-size: 12px; color: #cbd5e1; margin-top: 2px; display: flex; gap: 10px; flex-wrap: wrap;">
-                    <span>Mã/SKU DB: <code style="color: #38bdf8; font-weight: 700;">{{ cardRefCompareData.sku || cardRefCompareData.item.Ma_hang }}</code></span>
-                    <span>Đơn giá DB: <strong style="color: #38bdf8; font-size: 14px;">{{ formatUsdPrice(cardRefCompareData.dbPrice) }}</strong></span>
+            <!-- 2. BÊN DƯỚI LÀ CÁC KHỐI ĐỐI CHIẾU: HERO SO SÁNH + CHI TIẾT -->
+            <section class="qlhh-bento-box qlhh-cmp-hero-card">
+              <div class="qlhh-cmp-hero-grid">
+                <!-- Cột DB -->
+                <div class="qlhh-cmp-hero-side">
+                  <span class="qlhh-cmp-eyebrow is-sky">Database (hang_hoa)</span>
+                  <div class="qlhh-cmp-hero-price is-sky tabular-nums">
+                    {{ cardRefCompareData.vendor === 'sophos' ? formatUsdPrice(cardRefCompareData.dbPrice) : formatVndPrice(cardRefCompareData.dbPrice) }}
+                  </div>
+                  <div class="qlhh-cmp-hero-sub tabular-nums">
+                    <span>SKU: <strong>{{ cardRefCompareData.sku || cardRefCompareData.item?.Ma_hang || '-' }}</strong></span>
+                    <span v-if="cardRefCompareData.vendor === 'sophos' && cardRefCompareData.dbGiaNhap > 0">
+                      Giá nhập: <strong>{{ formatUsdPrice(cardRefCompareData.dbGiaNhap) }}</strong>
+                    </span>
+                    <span v-else-if="cardRefCompareData.vendor === 'kaspersky' && cardRefCompareData.band">
+                      Band: <strong>{{ cardRefCompareData.band }}</strong>
+                    </span>
+                    <span v-else-if="cardRefCompareData.vendor === 'acronis' && cardRefCompareData.sheet">
+                      Sheet: <strong>{{ cardRefCompareData.sheet }}</strong>
+                    </span>
                   </div>
                 </div>
 
-                <div>
-                  <div style="font-size: 11px; color: #5eead4; text-transform: uppercase; font-weight: 700;">
-                    Kết Quả Đang Tính Từ File Calculator (v{{ cardRefCompareData.calcVersion || '2026-4.0.2-1' }})
-                  </div>
-                  <template v-if="sophosCardActiveCalcSummary.available">
-                    <div style="font-size: 13px; font-weight: 700; color: #99f6e4; margin-top: 2px;">
-                      {{ sophosCardActiveCalcSummary.label }}
-                    </div>
-                    <div style="font-size: 12px; color: #e2e8f0; margin-top: 2px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-                      <span>SKU: <code style="color: #5eead4; font-weight: 800;">{{ sophosCardActiveCalcSummary.sku }}</code></span>
-                      <span>Unit MSRP: <strong style="color: #2dd4bf; font-size: 14.5px;">{{ formatUsdPrice(sophosCardActiveCalcSummary.unitMsrp) }}</strong></span>
-                      <span>Disc: <strong style="color: #fde68a;">{{ sophosCardActiveCalcSummary.resellerDiscPct }}%</strong></span>
-                      <span>Buy Cost: <strong style="color: #34d399;">{{ formatUsdPrice(sophosCardActiveCalcSummary.buyCost) }}</strong></span>
-                    </div>
-                  </template>
-                  <div v-else style="font-size: 12.5px; color: #fca5a5; margin-top: 4px;">
-                    Chưa có cấu hình khả dụng cho tùy chọn đang chọn (Not Available).
-                  </div>
-                </div>
-
-                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
-                  <template v-if="sophosCardActiveCalcSummary.available && sophosCardActiveCalcSummary.unitMsrp > 0">
+                <!-- Trạng thái & Nút cập nhật 1-click -->
+                <div class="qlhh-cmp-hero-mid">
+                  <template v-if="cardRefCompareData.vendor === 'sophos' && sophosCardActiveCalcSummary.available && sophosCardActiveCalcSummary.unitMsrp > 0">
                     <span
                       v-if="Math.abs(cardRefCompareData.dbPrice - sophosCardActiveCalcSummary.unitMsrp) < 0.05"
-                      class="cmp-badge cmp-badge--match"
-                      style="font-size: 12px;"
+                      class="qlhh-cmp-status-pill is-match tabular-nums"
                     >
-                      🟢 Khớp chính xác Unit MSRP trên Calculator
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                      <span>Khớp Unit MSRP Calculator</span>
                     </span>
                     <template v-else>
-                      <span class="cmp-badge cmp-badge--diff" style="font-size: 12px;">
-                        🟡 Lệch {{ (cardRefCompareData.dbPrice - sophosCardActiveCalcSummary.unitMsrp) > 0 ? '+' : '' }}{{ formatUsdPrice(cardRefCompareData.dbPrice - sophosCardActiveCalcSummary.unitMsrp) }} so với dòng đang tính
+                      <span class="qlhh-cmp-status-pill is-diff tabular-nums">
+                        Lệch {{ (cardRefCompareData.dbPrice - sophosCardActiveCalcSummary.unitMsrp) > 0 ? '+' : '' }}{{ formatUsdPrice(cardRefCompareData.dbPrice - sophosCardActiveCalcSummary.unitMsrp) }}
                       </span>
                       <button
                         type="button"
-                        class="btn btn-primary"
+                        class="qlhh-btn-primary is-sm"
                         :disabled="syncingCardRefToDb"
-                        style="padding: 6px 12px; font-size: 12px; background: linear-gradient(135deg, #0d9488, #0284c7); border: none; font-weight: 700;"
                         @click="syncCardFromActiveCalculator"
                       >
-                        🔄 Cập nhật Card theo dòng đang tính ({{ formatUsdPrice(sophosCardActiveCalcSummary.unitMsrp) }})
+                        <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                        <span>{{ syncingCardRefToDb ? 'Đang cập nhật...' : `Cập nhật (${formatUsdPrice(sophosCardActiveCalcSummary.unitMsrp)})` }}</span>
                       </button>
                     </template>
                   </template>
+
+                  <template v-else>
+                    <span
+                      class="qlhh-cmp-status-pill tabular-nums"
+                      :class="cardRefCompareData.status === 'match' ? 'is-match' : (cardRefCompareData.status === 'diff' ? 'is-diff' : 'is-miss')"
+                    >
+                      <template v-if="cardRefCompareData.status === 'match'">Khớp File Gốc</template>
+                      <template v-else-if="cardRefCompareData.status === 'diff'">
+                        Lệch {{ cardRefCompareData.priceDiff > 0 ? '+' : '' }}{{ cardRefCompareData.vendor === 'sophos' ? formatUsdPrice(cardRefCompareData.priceDiff) : formatVndPrice(cardRefCompareData.priceDiff) }}
+                        ({{ cardRefCompareData.priceDiffPct.toFixed(1) }}%)
+                      </template>
+                      <template v-else>Chưa khớp mã SKU</template>
+                    </span>
+                    <button
+                      v-if="cardRefCompareData.refPrice > 0 && cardRefCompareData.status === 'diff'"
+                      type="button"
+                      class="qlhh-btn-primary is-sm"
+                      :disabled="syncingCardRefToDb"
+                      @click="syncCardItemWithOriginalFile"
+                    >
+                      <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                      <span>{{ syncingCardRefToDb ? 'Đang cập nhật...' : `Cập nhật (${cardRefCompareData.vendor === 'sophos' ? formatUsdPrice(cardRefCompareData.refPrice) : formatVndPrice(cardRefCompareData.refPrice)})` }}</span>
+                    </button>
+                  </template>
+                </div>
+
+                <!-- Cột Chuẩn Hãng -->
+                <div class="qlhh-cmp-hero-side is-right">
+                  <template v-if="cardRefCompareData.vendor === 'sophos'">
+                    <span class="qlhh-cmp-eyebrow is-emerald">
+                      Calculator <template v-if="cardRefCompareData.calcVersion">v{{ cardRefCompareData.calcVersion }}</template>
+                    </span>
+                    <template v-if="sophosCardActiveCalcSummary.available">
+                      <div class="qlhh-cmp-hero-price is-emerald tabular-nums">
+                        {{ formatUsdPrice(sophosCardActiveCalcSummary.unitMsrp) }}
+                      </div>
+                      <div class="qlhh-cmp-hero-sub tabular-nums">
+                        <span>SKU: <strong>{{ sophosCardActiveCalcSummary.sku }}</strong></span>
+                        <span>Disc: <strong>{{ sophosCardActiveCalcSummary.resellerDiscPct }}%</strong></span>
+                        <span>Buy Cost: <strong class="is-emerald-txt">{{ formatUsdPrice(sophosCardActiveCalcSummary.buyCost) }}</strong></span>
+                      </div>
+                    </template>
+                    <div v-else class="qlhh-cmp-hero-empty">
+                      Không khả dụng với tùy chọn đang chọn
+                    </div>
+                  </template>
+
+                  <template v-else-if="cardRefCompareData.vendor === 'kaspersky'">
+                    <span class="qlhh-cmp-eyebrow is-emerald">
+                      File Gốc ({{ cardRefCompareData.band || 'Chưa rõ Band' }})
+                    </span>
+                    <div class="qlhh-cmp-hero-price is-emerald tabular-nums">
+                      {{ cardRefCompareData.gocFound ? formatVndPrice(cardRefCompareData.gocPrice) : 'Chưa tìm thấy' }}
+                    </div>
+                    <div v-if="cardRefCompareData.gocFound" class="qlhh-cmp-hero-sub tabular-nums">
+                      <span>Pos: <strong>{{ cardRefCompareData.posCode || '-' }}</strong></span>
+                      <span>Pivot #{{ cardRefCompareData.gocPivotRow || '-' }}</span>
+                    </div>
+                  </template>
+
+                  <template v-else>
+                    <span class="qlhh-cmp-eyebrow is-emerald">
+                      File Gốc Acronis
+                    </span>
+                    <div class="qlhh-cmp-hero-price is-emerald tabular-nums">
+                      {{ cardRefCompareData.gocFound ? formatVndPrice(cardRefCompareData.gocPrice) : 'Chưa tìm thấy' }}
+                    </div>
+                    <div v-if="cardRefCompareData.gocFound" class="qlhh-cmp-hero-sub tabular-nums">
+                      <span>Dòng #{{ cardRefCompareData.gocRowNum || '-' }} (Ô D{{ cardRefCompareData.gocRowNum }})</span>
+                    </div>
+                  </template>
                 </div>
               </div>
-            </div>
+            </section>
 
-            <!-- 2. Tabs chuyển đổi giữa các Sheet tính toán của calculate_sophos.xlsx & Bảng 4 nguồn -->
-            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
-              <div class="pl-view-tabs" style="flex-wrap: wrap;">
+            <!-- ==================== GIAO DIỆN ĐỐI CHIẾU SOPHOS ==================== -->
+            <template v-if="cardRefCompareData.vendor === 'sophos'">
+              <!-- Tabs chuyển Sheet Firewall / Universal Calculator / 4 Nguồn -->
+              <div class="qlhh-hub-tabs qlhh-cmp-tabs" role="tablist">
                 <button
                   type="button"
-                  class="pl-view-tab"
+                  class="qlhh-hub-tab"
                   :class="{ active: sophosCardCalcState.activeTab === 'firewall' }"
-                  style="font-weight: 700;"
                   @click="sophosCardCalcState.activeTab = 'firewall'; sophosCardCalcState.calcMode = 'firewall'"
                 >
-                  🔥 Sheet Firewall (5 Nhóm Model &amp; 15 Hạng Mục)
+                  <span>Sheet Firewall</span>
                 </button>
                 <button
                   type="button"
-                  class="pl-view-tab"
+                  class="qlhh-hub-tab"
                   :class="{ active: sophosCardCalcState.activeTab === 'product' }"
-                  style="font-weight: 700;"
                   @click="sophosCardCalcState.activeTab = 'product'; sophosCardCalcState.calcMode = 'product'"
                 >
-                  🧮 Sheet {{ sophosCardCalcState.nativeSheet && sophosCardCalcState.nativeSheet !== 'Firewall' ? sophosCardCalcState.nativeSheet : 'Universal Calculator' }} (Tất Cả Sản Phẩm)
+                  <span>{{ sophosCardCalcState.nativeSheet && sophosCardCalcState.nativeSheet !== 'Firewall' ? sophosCardCalcState.nativeSheet : 'Universal Calculator' }}</span>
                 </button>
                 <button
                   type="button"
-                  class="pl-view-tab"
+                  class="qlhh-hub-tab"
                   :class="{ active: sophosCardCalcState.activeTab === 'sources' }"
                   @click="sophosCardCalcState.activeTab = 'sources'"
                 >
-                  📊 So Sánh 4 Cột Nguồn (DB · Calculator · Gốc · TG)
+                  <span>So sánh 4 nguồn</span>
                 </button>
               </div>
-              <span style="font-size: 11.5px; color: #94a3b8;">
-                💡 Chọn bất kỳ thông số nào bên dưới — công thức sẽ tự tính SKU, MSRP, Chiết khấu &amp; Buy Cost y hệt trong Excel!
-              </span>
-            </div>
 
-            <!-- ==================== TAB 1: SHEET FIREWALL CALCULATOR (Y HỆT TRONG FILE EXCEL) ==================== -->
-            <div v-if="sophosCardCalcState.activeTab === 'firewall'" style="display: flex; flex-direction: column; gap: 12px;">
-              <!-- Khối Deal Settings + Chọn tối đa 3 Model song song giống Firewall!H18 / V18 / AJ18 -->
-              <div style="background: rgba(15, 23, 42, 0.88); border: 1px solid rgba(56, 189, 248, 0.32); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px;">
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 10px;">
-                  <div class="pl-field">
-                    <label style="color: #5eead4;">Partner Level (Cover!I3)</label>
-                    <select v-model="sophosCardCalcState.partnerLevel" class="pl-row-select" style="width: 100%; font-weight: 700; color: #5eead4;">
-                      <option v-for="pl in sophosPartnerLevelOptions" :key="pl" :value="pl">{{ pl }}</option>
-                    </select>
-                  </div>
-                  <div class="pl-field">
-                    <label>Sector (Firewall!H4)</label>
-                    <select v-model="sophosCardCalcState.sector" class="pl-row-select" style="width: 100%;">
-                      <option v-for="sec in sophosSectorOptions" :key="sec" :value="sec">{{ sec }}</option>
-                    </select>
-                  </div>
-                  <div class="pl-field">
-                    <label>Deal Type (Firewall!V4)</label>
-                    <select v-model="sophosCardCalcState.dealType" class="pl-row-select" style="width: 100%;">
-                      <option v-for="dt in sophosDealTypeOptions" :key="dt" :value="dt">{{ dt }}</option>
-                    </select>
-                  </div>
-                  <div class="pl-field">
-                    <label>Term (HW Bundles • D7)</label>
-                    <select v-model="sophosCardCalcState.termHwBundle" class="pl-row-select" style="width: 100%;">
-                      <option value="">None (Không chọn)</option>
-                      <option value="1-Year">1-Year</option>
-                      <option value="3-Year">3-Year</option>
-                      <option value="5-Year">5-Year</option>
-                    </select>
-                  </div>
-                  <div class="pl-field">
-                    <label>Term (Subscriptions • D9)</label>
-                    <select v-model="sophosCardCalcState.termSubscription" class="pl-row-select" style="width: 100%;">
-                      <option v-for="tm in sophosTermOptions" :key="tm" :value="tm">{{ tm }}</option>
-                    </select>
-                  </div>
-                  <div class="pl-field">
-                    <label>Qty (Firewall!D11)</label>
-                    <input type="number" min="1" v-model.number="sophosCardCalcState.qty" class="imp-input imp-input--num" />
-                  </div>
-                  <div class="pl-field">
-                    <label>Special Attribute (D13)</label>
-                    <select v-model="sophosCardCalcState.specialAttribute" class="pl-row-select" style="width: 100%; color: #fbbf24; font-weight: 700;">
-                      <option v-for="ps in ['AU', 'EU', 'UK', 'US', 'CN', 'IN', 'JP']" :key="ps" :value="ps">{{ ps }}</option>
-                    </select>
-                  </div>
-                </div>
-
-                <!-- Thanh Model đang chọn (tối đa 3 Model như trong Excel) + Bảng 5 nhóm Model -->
-                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding-top: 8px; border-top: 1px dashed rgba(148, 163, 184, 0.2);">
-                  <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                    <span style="font-size: 12px; color: #94a3b8; font-weight: 700;">Model đang tính (Tối đa 3 Model song song như Excel):</span>
-                    <div class="pl-field" style="margin: 0; min-width: 155px;">
-                      <select
-                        :value="sophosCardCalcState.models[0]"
-                        class="pl-row-select"
-                        style="font-weight: 800; color: #38bdf8;"
-                        @change="setPrimarySophosCardFirewallModel($event.target.value)"
-                      >
-                        <optgroup v-for="grp in sophosCalcFirewallGroups" :key="'m1-' + grp.group" :label="grp.group">
-                          <option v-for="m in grp.models" :key="m" :value="m">Model 1: {{ m }}</option>
-                        </optgroup>
-                      </select>
-                    </div>
-                    <span
-                      v-for="(mdl, mIdx) in sophosCardCalcState.models"
-                      :key="'sel-mdl-' + mdl"
-                      style="display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 800;"
-                      :style="{
-                        background: mIdx === 0 ? 'rgba(56, 189, 248, 0.2)' : 'rgba(168, 85, 247, 0.18)',
-                        color: mIdx === 0 ? '#38bdf8' : '#d8b4fe',
-                        border: mIdx === 0 ? '1px solid rgba(56, 189, 248, 0.5)' : '1px solid rgba(168, 85, 247, 0.45)'
-                      }"
-                    >
-                      <span>Model {{ mIdx + 1 }}: {{ mdl }}</span>
-                      <button
-                        v-if="sophosCardCalcState.models.length > 1"
-                        type="button"
-                        style="background: none; border: none; color: inherit; cursor: pointer; font-weight: 900; padding: 0 2px;"
-                        @click="toggleSophosCardFirewallModel(mdl)"
-                        title="Bỏ cột Model này"
-                      >✕</button>
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    class="pl-mini-btn"
-                    style="border-color: rgba(56, 189, 248, 0.45); color: #7dd3fc;"
-                    @click="sophosCardCalcState.showModelPicker = !sophosCardCalcState.showModelPicker"
-                  >
-                    {{ sophosCardCalcState.showModelPicker ? '▲ Thu gọn bảng 5 nhóm Model (Rows 7–15)' : '▼ Mở bảng 5 nhóm Model & So sánh tối đa 3 Model (Rows 7–15)' }}
-                  </button>
-                </div>
-
-                <!-- Bảng 5 nhóm Model y hệt vùng H7:AF15 trên Sheet Firewall -->
-                <div v-if="sophosCardCalcState.showModelPicker" style="display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; background: rgba(2, 6, 23, 0.65); border: 1px solid rgba(56, 189, 248, 0.22); border-radius: 8px;">
-                  <div
-                    v-for="grp in sophosCalcFirewallGroups"
-                    :key="grp.group"
-                    style="display: grid; grid-template-columns: 190px 1fr; gap: 8px; align-items: center; font-size: 12px;"
-                  >
-                    <div style="font-weight: 800; color: #93c5fd;">{{ grp.group }}:</div>
-                    <div style="display: flex; flex-wrap: wrap; gap: 5px;">
-                      <button
-                        v-for="m in grp.models"
-                        :key="m"
-                        type="button"
-                        style="padding: 3px 9px; border-radius: 6px; font-size: 11.5px; font-weight: 700; cursor: pointer; transition: all 0.15s;"
-                        :style="{
-                          background: sophosCardCalcState.models.includes(m) ? '#0284c7' : 'rgba(30, 41, 59, 0.9)',
-                          color: sophosCardCalcState.models.includes(m) ? '#fff' : '#cbd5e1',
-                          border: sophosCardCalcState.models.includes(m) ? '1px solid #38bdf8' : '1px solid rgba(148, 163, 184, 0.25)'
-                        }"
-                        @click="toggleSophosCardFirewallModel(m)"
-                        title="Click để thêm/bớt Model (Tối đa 3 Model song song như trong Excel)"
-                      >
-                        {{ m }}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Bảng tính 15 dòng của Sheet Firewall (Hardware Bundles + Subscriptions) -->
-              <div style="overflow-x: auto; border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 10px;">
-                <table class="import-table" style="min-width: 880px;">
-                  <thead>
-                    <tr style="background: linear-gradient(90deg, #002f6c, #004fb5);">
-                      <th style="min-width: 225px; color: #fff;">Firewall Row (Col C)</th>
-                      <template v-for="(mdl, mIdx) in sophosCardCalcState.models" :key="'hdr-m-' + mdl">
-                        <th style="min-width: 145px; color: #bae6fd; border-left: 2px solid rgba(255,255,255,0.2);">
-                          {{ mdl }} • SKU
-                        </th>
-                        <th style="min-width: 115px; text-align: right; color: #fff;">MSRP</th>
-                        <th style="min-width: 90px; text-align: right; color: #fde68a;">Disc %</th>
-                        <th v-if="mIdx === 0" style="width: 85px; text-align: right; color: #fed7aa;">Promo %</th>
-                        <th v-if="mIdx === 0" style="width: 85px; text-align: right; color: #fed7aa;">Special %</th>
-                        <th style="min-width: 115px; text-align: right; color: #6ee7b7;">Buy Cost</th>
-                      </template>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <template v-for="(rEval, rIdx) in sophosCardFirewallEval.rows" :key="rEval.key">
-                      <tr
-                        v-if="rIdx === 0 || rEval.category !== sophosCardFirewallEval.rows[rIdx - 1]?.category"
-                        style="background: rgba(0, 79, 181, 0.28);"
-                      >
-                        <td
-                          :colspan="1 + sophosCardCalcState.models.length * 4 + 2"
-                          style="padding: 7px 14px; font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: 0.6px; color: #7dd3fc;"
-                        >
-                          {{ rEval.category === 'Hardware Bundles' ? '📦 Hardware Bundles (Rows 25–29)' : '🛡️ Subscriptions (Rows 33–55)' }}
-                        </td>
-                      </tr>
-                      <tr
-                        style="cursor: pointer;"
-                        :style="{
-                          background: sophosCardCalcState.targetFirewallRowKey === rEval.key
-                            ? 'rgba(20, 184, 166, 0.18)'
-                            : (rEval.cells[0]?.available ? 'transparent' : 'rgba(15, 23, 42, 0.45)'),
-                          outline: sophosCardCalcState.targetFirewallRowKey === rEval.key ? '1.5px solid #2dd4bf' : 'none'
-                        }"
-                        @click="sophosCardCalcState.targetFirewallRowKey = rEval.key"
-                        title="Click chọn dòng này để đối chiếu trực tiếp với Card đang mở"
-                      >
-                        <td>
-                          <div style="display: flex; align-items: center; gap: 6px;">
-                            <span
-                              v-if="sophosCardCalcState.targetFirewallRowKey === rEval.key"
-                              style="padding: 1px 6px; border-radius: 4px; background: #14b8a6; color: #042f2e; font-size: 10px; font-weight: 900;"
-                            >ĐANG ĐỐI CHIẾU</span>
-                            <strong style="color: #f8fafc; font-size: 13px;">{{ rEval.label }}</strong>
-                          </div>
-                          <div style="font-size: 10.5px; color: #64748b;">Firewall Row #{{ rEval.sheetRowNum }}</div>
-                        </td>
-
-                        <template v-for="(cEval, mIdx) in rEval.cells" :key="rEval.key + '-' + cEval.model">
-                          <td style="font-family: monospace; border-left: 2px solid rgba(148, 163, 184, 0.14);">
-                            <template v-if="cEval.available">
-                              <code style="color: #38bdf8; font-weight: 800; font-size: 12.5px;">{{ cEval.sku }}</code>
-                              <div v-if="cEval.note" style="font-size: 10px; color: #fbbf24; font-family: sans-serif;">{{ cEval.note }}</div>
-                            </template>
-                            <span v-else style="color: #64748b; font-size: 11.5px;">{{ cEval.note || 'Not Available' }}</span>
-                          </td>
-                          <td style="text-align: right; font-family: monospace;">
-                            <strong v-if="cEval.available" style="color: #2dd4bf; font-size: 13.5px;">{{ formatUsdPrice(cEval.msrp) }}</strong>
-                            <span v-else style="color: #64748b;">NA</span>
-                          </td>
-                          <td style="text-align: right; font-family: monospace; color: #fde68a; font-weight: 700;">
-                            {{ cEval.available ? `${cEval.resellerDiscPct}%` : '0%' }}
-                          </td>
-                          <td v-if="mIdx === 0" style="text-align: right;" @click.stop>
-                            <input
-                              type="number"
-                              min="0"
-                              max="100"
-                              step="0.5"
-                              v-model.number="sophosCardCalcState.promoDiscByRow[rEval.key]"
-                              class="imp-input imp-input--num"
-                              style="padding: 3px 6px; font-size: 11.5px; color: #fdba74;"
-                              placeholder="0"
-                            />
-                          </td>
-                          <td v-if="mIdx === 0" style="text-align: right;" @click.stop>
-                            <input
-                              type="number"
-                              min="0"
-                              max="100"
-                              step="0.5"
-                              v-model.number="sophosCardCalcState.specialDiscByRow[rEval.key]"
-                              class="imp-input imp-input--num"
-                              style="padding: 3px 6px; font-size: 11.5px; color: #fdba74;"
-                              placeholder="0"
-                            />
-                          </td>
-                          <td style="text-align: right; font-family: monospace;">
-                            <strong v-if="cEval.available" style="color: #34d399; font-size: 13.5px;">{{ formatUsdPrice(cEval.buyCost) }}</strong>
-                            <span v-else style="color: #64748b;">0.00$</span>
-                          </td>
-                        </template>
-                      </tr>
-                    </template>
-                  </tbody>
-                </table>
-              </div>
-
-              <!-- Hardware Features & Licensing Notes giống chân Sheet Firewall -->
-              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px;">
-                <div
-                  v-for="mdl in sophosCardCalcState.models"
-                  :key="'feat-' + mdl"
-                  style="padding: 10px 14px; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(56, 189, 248, 0.24); border-radius: 8px; font-size: 12px; color: #cbd5e1;"
-                >
-                  <div style="font-weight: 800; color: #38bdf8; margin-bottom: 4px;">🔧 {{ mdl }} — Hardware Features (Row 57):</div>
-                  <div>{{ sophosCardFirewallEval.modelFeatures[mdl] || 'Virtual / Software Appliance (Không có thông số cổng vật lý)' }}</div>
-                </div>
-                <div
-                  v-if="sophosCardFirewallEval.licensingNotes"
-                  style="padding: 10px 14px; background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 8px; font-size: 11.5px; color: #94a3b8; white-space: pre-line;"
-                >
-                  <div style="font-weight: 800; color: #cbd5e1; margin-bottom: 4px;">📌 Licensing Notes (Sheet Firewall):</div>
-                  <div>{{ sophosCardFirewallEval.licensingNotes }}</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- ==================== TAB 2: UNIVERSAL / PRODUCT CALCULATOR (ENDPOINT, MDR, EMAIL, WORKSPACE, SWITCH, AP...) ==================== -->
-            <div v-else-if="sophosCardCalcState.activeTab === 'product'" style="display: flex; flex-direction: column; gap: 12px;">
-              <!-- Ô tìm kiếm nhanh trong 2,000 sản phẩm Product2 -->
-              <div style="background: rgba(15, 23, 42, 0.88); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 10px; padding: 12px 14px; position: relative;">
-                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                  <span style="font-size: 12.5px; font-weight: 800; color: #7dd3fc;">🔍 Tìm nhanh sản phẩm / SKU trên toàn bộ 23 Sheet:</span>
-                  <input
-                    type="text"
-                    v-model="sophosCardCalcState.productSearch"
-                    class="imp-input"
-                    style="flex: 1; min-width: 260px;"
-                    placeholder="Gõ tên gói (VD: Endpoint, MDR, Email, Workspace, Switch, CS110, AP6...) hoặc mã SKU 14 ký tự..."
-                  />
-                  <span style="font-size: 11.5px; color: #5eead4; font-weight: 700;">
-                    Sheet tương ứng: <code>{{ sophosCardCalcState.nativeSheet || 'Universal Calculator' }}</code>
-                  </span>
-                </div>
-
-                <!-- Dropdown gợi ý kết quả tìm kiếm -->
-                <div
-                  v-if="sophosCardSearchMatchedProducts.length > 0"
-                  style="margin-top: 8px; max-height: 210px; overflow-y: auto; background: #0f172a; border: 1px solid rgba(56, 189, 248, 0.45); border-radius: 8px; padding: 4px;"
-                >
-                  <div
-                    v-for="pItem in sophosCardSearchMatchedProducts"
-                    :key="pItem.pc + pItem.desc"
-                    style="padding: 6px 10px; border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 12.5px;"
-                    class="excel-search-hit-item"
-                    @click="selectSophosCardSearchedProduct(pItem)"
-                  >
-                    <div>
-                      <strong style="color: #f8fafc;">{{ pItem.desc }}</strong>
-                      <span style="color: #94a3b8; margin-left: 8px; font-size: 11.5px;">({{ pItem.prodType || 'Product' }})</span>
-                    </div>
-                    <code style="color: #38bdf8; font-weight: 700;">{{ pItem.pc }} • {{ pItem.partId }}</code>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Bảng tính dạng 2 cột y hệt cấu trúc Universal Calculator / Endpoint & Server / Email / Workspace Protection -->
-              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 14px;">
-                <!-- Khung Trái: Các ô chọn cấu hình (Rows 4–14 trong Excel) -->
-                <div style="background: rgba(15, 23, 42, 0.88); border: 1px solid rgba(56, 189, 248, 0.32); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;">
-                  <div style="font-size: 12.5px; font-weight: 800; color: #38bdf8; text-transform: uppercase; border-bottom: 1px solid rgba(56, 189, 248, 0.2); padding-bottom: 6px;">
-                    ⚙️ Thông Số Đầu Vào (Như Cột C → Cột G trên Sheet {{ sophosCardCalcState.nativeSheet || 'Universal Calculator' }})
-                  </div>
-
-                  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
-                    <div class="pl-field">
-                      <label style="color: #5eead4;">Partner Level (Cover)</label>
-                      <select v-model="sophosCardCalcState.partnerLevel" class="pl-row-select" style="width: 100%; font-weight: 700; color: #5eead4;">
+              <!-- TAB 1: SHEET FIREWALL CALCULATOR -->
+              <div v-if="sophosCardCalcState.activeTab === 'firewall'" class="qlhh-cmp-stack">
+                <section class="qlhh-bento-box">
+                  <div class="qlhh-cmp-params-grid">
+                    <div class="qlhh-field">
+                      <label>Partner Level</label>
+                      <select v-model="sophosCardCalcState.partnerLevel" class="qlhh-fm-select">
                         <option v-for="pl in sophosPartnerLevelOptions" :key="pl" :value="pl">{{ pl }}</option>
                       </select>
                     </div>
-                    <div class="pl-field">
-                      <label>Sector (Row 4)</label>
-                      <select v-model="sophosCardCalcState.sector" class="pl-row-select" style="width: 100%;">
+                    <div class="qlhh-field">
+                      <label>Sector</label>
+                      <select v-model="sophosCardCalcState.sector" class="qlhh-fm-select">
                         <option v-for="sec in sophosSectorOptions" :key="sec" :value="sec">{{ sec }}</option>
                       </select>
                     </div>
-                    <div class="pl-field">
-                      <label>Deal Type (Row 4)</label>
-                      <select v-model="sophosCardCalcState.dealType" class="pl-row-select" style="width: 100%;">
+                    <div class="qlhh-field">
+                      <label>Deal Type</label>
+                      <select v-model="sophosCardCalcState.dealType" class="qlhh-fm-select">
                         <option v-for="dt in sophosDealTypeOptions" :key="dt" :value="dt">{{ dt }}</option>
                       </select>
                     </div>
-                  </div>
-
-                  <div class="pl-field">
-                    <label>Solution Family (Cột C → G9)</label>
-                    <select v-model="sophosCardCalcState.family" class="pl-row-select" style="width: 100%; font-weight: 700;" @change="handleSophosCardFamilyChange">
-                      <option v-for="fam in sophosCardUniversalFamilies" :key="fam" :value="fam">{{ fam }}</option>
-                    </select>
-                  </div>
-
-                  <div class="pl-field">
-                    <label>Product Line (Cột C → G10)</label>
-                    <select v-model="sophosCardCalcState.productLine" class="pl-row-select" style="width: 100%; font-weight: 700;" @change="handleSophosCardLineChange">
-                      <option v-for="ln in sophosCardUniversalLines" :key="ln" :value="ln">{{ ln }}</option>
-                    </select>
-                  </div>
-
-                  <div class="pl-field">
-                    <label>Product *Select from list* (Cột C → G11)</label>
-                    <select v-model="sophosCardCalcState.product" class="pl-row-select" style="width: 100%; font-weight: 800; color: #38bdf8;" @change="handleSophosCardProductChange">
-                      <option v-if="sophosCardCalcState.product && !sophosCardUniversalProducts.includes(sophosCardCalcState.product)" :value="sophosCardCalcState.product">
-                        {{ sophosCardCalcState.product }}
-                      </option>
-                      <option v-for="pr in sophosCardUniversalProducts" :key="pr" :value="pr">{{ pr }}</option>
-                    </select>
-                  </div>
-
-                  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
-                    <div class="pl-field">
-                      <label>Term (G8)</label>
-                      <select
-                        v-if="!sophosCardProductEval || sophosCardProductEval.isTermed && !sophosCardProductEval.fixedTermLabel"
-                        v-model="sophosCardCalcState.termSubscription"
-                        class="pl-row-select"
-                        style="width: 100%;"
-                      >
+                    <div class="qlhh-field">
+                      <label>Term (HW Bundles)</label>
+                      <select v-model="sophosCardCalcState.termHwBundle" class="qlhh-fm-select">
+                        <option value="">None</option>
+                        <option value="1-Year">1-Year</option>
+                        <option value="3-Year">3-Year</option>
+                        <option value="5-Year">5-Year</option>
+                      </select>
+                    </div>
+                    <div class="qlhh-field">
+                      <label>Term (Subscriptions)</label>
+                      <select v-model="sophosCardCalcState.termSubscription" class="qlhh-fm-select">
                         <option v-for="tm in sophosTermOptions" :key="tm" :value="tm">{{ tm }}</option>
                       </select>
-                      <div v-else style="padding: 7px 10px; border-radius: 7px; background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(148, 163, 184, 0.25); font-size: 12px; color: #fbbf24; font-weight: 700;">
-                        {{ sophosCardProductEval.fixedTermLabel || 'One-time (00)' }}
-                      </div>
                     </div>
-
-                    <div class="pl-field">
-                      <label>Qty ***Type in*** (G12)</label>
-                      <input type="number" min="1" v-model.number="sophosCardCalcState.qty" class="imp-input imp-input--num" style="font-weight: 800; color: #f8fafc;" />
+                    <div class="qlhh-field">
+                      <label>Qty</label>
+                      <input type="number" min="1" v-model.number="sophosCardCalcState.qty" class="qlhh-fm-input tabular-nums" />
                     </div>
-
-                    <div class="pl-field">
-                      <label>Special Attribute (G14)</label>
-                      <select v-model="sophosCardCalcState.specialAttribute" class="pl-row-select" style="width: 100%; color: #fbbf24; font-weight: 700;">
-                        <option
-                          v-for="opt in (sophosCardProductEval?.specialAttrOptions || [{ label: 'Standard Pricing', code: 'AA' }])"
-                          :key="opt.code + opt.label"
-                          :value="opt.code"
-                        >
-                          {{ opt.label }}
-                        </option>
+                    <div class="qlhh-field">
+                      <label>Special Attribute</label>
+                      <select v-model="sophosCardCalcState.specialAttribute" class="qlhh-fm-select">
+                        <option v-for="ps in ['AU', 'EU', 'UK', 'US', 'CN', 'IN', 'JP']" :key="ps" :value="ps">{{ ps }}</option>
                       </select>
                     </div>
                   </div>
 
-                  <div v-if="sophosCardProductEval" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; font-size: 11.5px; color: #94a3b8; padding-top: 4px;">
-                    <span>
-                      Volume Band: <strong style="color: #7dd3fc;">{{ sophosCardProductEval.bandCode }}</strong>
-                      <template v-if="sophosCardProductEval.bandMin !== null && sophosCardProductEval.bandCode !== 'ZZ'">
-                        ({{ sophosCardProductEval.bandMin.toLocaleString() }} – {{ sophosCardProductEval.bandMax?.toLocaleString() }} licenses)
+                  <!-- Thanh chọn Model (tối đa 3 Model song song) -->
+                  <div class="qlhh-cmp-model-bar">
+                    <div class="qlhh-cmp-model-left">
+                      <span class="qlhh-cmp-sub-label">Model:</span>
+                      <select
+                        :value="sophosCardCalcState.models[0]"
+                        class="qlhh-fm-select qlhh-cmp-model-sel"
+                        @change="setPrimarySophosCardFirewallModel($event.target.value)"
+                      >
+                        <optgroup v-for="grp in sophosCalcFirewallGroups" :key="'m1-' + grp.group" :label="grp.group">
+                          <option v-for="m in grp.models" :key="m" :value="m">{{ m }}</option>
+                        </optgroup>
+                      </select>
+                      <span
+                        v-for="(mdl, mIdx) in sophosCardCalcState.models"
+                        :key="'sel-mdl-' + mdl"
+                        class="qlhh-cmp-model-chip"
+                        :class="mIdx === 0 ? 'is-primary' : 'is-secondary'"
+                      >
+                        <span>{{ mdl }}</span>
+                        <button
+                          v-if="sophosCardCalcState.models.length > 1"
+                          type="button"
+                          class="qlhh-cmp-chip-x"
+                          @click="toggleSophosCardFirewallModel(mdl)"
+                          title="Bỏ cột Model này"
+                        >✕</button>
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      class="qlhh-ghost-btn is-xs"
+                      :class="{ 'is-sky-tint': sophosCardCalcState.showModelPicker }"
+                      @click="sophosCardCalcState.showModelPicker = !sophosCardCalcState.showModelPicker"
+                    >
+                      <span>{{ sophosCardCalcState.showModelPicker ? 'Ẩn bảng Model' : 'So sánh thêm Model' }}</span>
+                    </button>
+                  </div>
+
+                  <!-- Bảng 5 nhóm Model (khi mở) -->
+                  <div v-if="sophosCardCalcState.showModelPicker" class="qlhh-cmp-model-picker">
+                    <div
+                      v-for="grp in sophosCalcFirewallGroups"
+                      :key="grp.group"
+                      class="qlhh-cmp-model-group"
+                    >
+                      <div class="qlhh-cmp-mg-name">{{ grp.group }}</div>
+                      <div class="qlhh-cmp-mg-chips">
+                        <button
+                          v-for="m in grp.models"
+                          :key="m"
+                          type="button"
+                          class="qlhh-cmp-model-btn"
+                          :class="{ active: sophosCardCalcState.models.includes(m) }"
+                          @click="toggleSophosCardFirewallModel(m)"
+                        >{{ m }}</button>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <!-- Bảng tính 15 dòng Sheet Firewall -->
+                <div class="qlhh-cmp-table-wrap">
+                  <table class="qlhh-cmp-table tabular-nums">
+                    <thead>
+                      <tr>
+                        <th style="min-width: 210px;">Hạng mục Firewall (Col C)</th>
+                        <template v-for="(mdl, mIdx) in sophosCardCalcState.models" :key="'hdr-m-' + mdl">
+                          <th class="col-group-sep" style="min-width: 138px;">{{ mdl }} • SKU</th>
+                          <th class="text-right" style="min-width: 105px;">MSRP</th>
+                          <th class="text-right" style="min-width: 74px;">Disc %</th>
+                          <th v-if="mIdx === 0" class="text-right" style="width: 76px;">Promo %</th>
+                          <th v-if="mIdx === 0" class="text-right" style="width: 78px;">Special %</th>
+                          <th class="text-right" style="min-width: 105px;">Buy Cost</th>
+                        </template>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <template v-for="(rEval, rIdx) in sophosCardFirewallEval.rows" :key="rEval.key">
+                        <tr
+                          v-if="rIdx === 0 || rEval.category !== sophosCardFirewallEval.rows[rIdx - 1]?.category"
+                          class="qlhh-cmp-cat-row"
+                        >
+                          <td :colspan="1 + sophosCardCalcState.models.length * 4 + 2">
+                            {{ rEval.category === 'Hardware Bundles' ? 'Hardware Bundles (Rows 25–29)' : 'Subscriptions (Rows 33–55)' }}
+                          </td>
+                        </tr>
+                        <tr
+                          class="qlhh-cmp-fw-row"
+                          :class="{
+                            'is-selected': sophosCardCalcState.targetFirewallRowKey === rEval.key,
+                            'is-unavail': !rEval.cells[0]?.available
+                          }"
+                          @click="sophosCardCalcState.targetFirewallRowKey = rEval.key"
+                        >
+                          <td>
+                            <div class="qlhh-cmp-row-title">
+                              <span v-if="sophosCardCalcState.targetFirewallRowKey === rEval.key" class="qlhh-cmp-active-dot"></span>
+                              <strong>{{ rEval.label }}</strong>
+                            </div>
+                            <div class="qlhh-cmp-row-sub">Row #{{ rEval.sheetRowNum }}</div>
+                          </td>
+
+                          <template v-for="(cEval, mIdx) in rEval.cells" :key="rEval.key + '-' + cEval.model">
+                            <td class="col-group-sep">
+                              <template v-if="cEval.available">
+                                <code class="qlhh-cmp-sku-code">{{ cEval.sku }}</code>
+                                <div v-if="cEval.note" class="qlhh-cmp-cell-note">{{ cEval.note }}</div>
+                              </template>
+                              <span v-else class="qlhh-cmp-muted">{{ cEval.note || 'NA' }}</span>
+                            </td>
+                            <td class="text-right">
+                              <strong v-if="cEval.available" class="qlhh-cmp-msrp-txt">{{ formatUsdPrice(cEval.msrp) }}</strong>
+                              <span v-else class="qlhh-cmp-muted">NA</span>
+                            </td>
+                            <td class="text-right qlhh-cmp-disc-txt">
+                              {{ cEval.available ? `${cEval.resellerDiscPct}%` : '0%' }}
+                            </td>
+                            <td v-if="mIdx === 0" class="text-right" @click.stop>
+                              <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                step="0.5"
+                                v-model.number="sophosCardCalcState.promoDiscByRow[rEval.key]"
+                                class="qlhh-cmp-pct-input tabular-nums"
+                                placeholder="0"
+                              />
+                            </td>
+                            <td v-if="mIdx === 0" class="text-right" @click.stop>
+                              <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                step="0.5"
+                                v-model.number="sophosCardCalcState.specialDiscByRow[rEval.key]"
+                                class="qlhh-cmp-pct-input tabular-nums"
+                                placeholder="0"
+                              />
+                            </td>
+                            <td class="text-right">
+                              <strong v-if="cEval.available" class="qlhh-cmp-buy-txt">{{ formatUsdPrice(cEval.buyCost) }}</strong>
+                              <span v-else class="qlhh-cmp-muted">0.00$</span>
+                            </td>
+                          </template>
+                        </tr>
                       </template>
-                    </span>
-                    <span v-if="sophosCardProductEval.minQtyWarning" style="color: #fbbf24; font-weight: 700;">
-                      ⚠️ {{ sophosCardProductEval.minQtyWarning }}
-                    </span>
-                  </div>
+                    </tbody>
+                  </table>
                 </div>
 
-                <!-- Khung Phải: Bảng kết quả công thức Excel (SKU, Unit MSRP, MSRP, Promo, Special, Suggested Disc, Buy Cost, Features) -->
-                <div style="background: rgba(20, 184, 166, 0.07); border: 1.5px solid rgba(20, 184, 166, 0.45); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px;">
-                  <div style="font-size: 12.5px; font-weight: 800; color: #2dd4bf; text-transform: uppercase; border-bottom: 1px solid rgba(20, 184, 166, 0.25); padding-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
-                    <span>🧮 Kết Quả Tính Toán (Như Trong File Excel)</span>
-                    <span v-if="sophosCardProductEval?.productCode" style="font-size: 11px; color: #99f6e4;">Code: {{ sophosCardProductEval.productCode }}</span>
-                  </div>
-
-                  <template v-if="sophosCardProductEval">
-                    <div style="display: grid; grid-template-columns: 185px 1fr; row-gap: 8px; column-gap: 10px; align-items: center; font-size: 13px;">
-                      <div style="color: #94a3b8;">Product:</div>
-                      <div style="font-weight: 800; color: #f8fafc;">{{ sophosCardProductEval.productDesc || '-' }}</div>
-
-                      <div style="color: #94a3b8;">SKU (Calculated):</div>
-                      <div>
-                        <code v-if="sophosCardProductEval.available" style="font-size: 14px; font-weight: 800; color: #5eead4; background: rgba(20, 184, 166, 0.16); padding: 2px 8px; border-radius: 6px;">
-                          {{ sophosCardProductEval.sku }}
-                        </code>
-                        <span v-else style="color: #f87171; font-weight: 700;">Not Available in this region ({{ sophosCardProductEval.newSku }})</span>
-                      </div>
-
-                      <div style="color: #94a3b8;">Unit MSRP (1 đơn vị):</div>
-                      <div style="font-family: monospace; font-size: 15px; font-weight: 800; color: #2dd4bf;">
-                        {{ sophosCardProductEval.available ? formatUsdPrice(sophosCardProductEval.unitMsrp) : 'NA' }}
-                      </div>
-
-                      <div style="color: #94a3b8;">Total MSRP (x {{ sophosCardCalcState.qty }}):</div>
-                      <div style="font-family: monospace; font-size: 15px; font-weight: 800; color: #f8fafc;">
-                        {{ sophosCardProductEval.available ? formatUsdPrice(sophosCardProductEval.msrp) : 'NA' }}
-                      </div>
-
-                      <div style="color: #fed7aa;">Promo Disc (%) ***Type in***:</div>
-                      <div style="max-width: 130px;">
-                        <input type="number" min="0" max="100" step="0.5" v-model.number="sophosCardCalcState.productPromoDisc" class="imp-input imp-input--num" style="padding: 4px 8px; color: #fdba74;" />
-                      </div>
-
-                      <div style="color: #fed7aa;">Special Disc (%) ***Type in***:</div>
-                      <div style="max-width: 130px;">
-                        <input type="number" min="0" max="100" step="0.5" v-model.number="sophosCardCalcState.productSpecialDisc" class="imp-input imp-input--num" style="padding: 4px 8px; color: #fdba74;" />
-                      </div>
-
-                      <div style="color: #94a3b8;">Suggested Reseller Disc:</div>
-                      <div style="font-family: monospace; font-weight: 800; color: #fde68a;">
-                        {{ sophosCardProductEval.available ? `${sophosCardProductEval.resellerDiscPct}%` : '0%' }}
-                      </div>
-
-                      <div style="color: #6ee7b7; font-weight: 700;">Buy Cost (USD):</div>
-                      <div style="font-family: monospace; font-size: 16px; font-weight: 900; color: #34d399;">
-                        {{ sophosCardProductEval.available ? formatUsdPrice(sophosCardProductEval.buyCost) : '0.00$' }}
-                      </div>
-                    </div>
-
-                    <div v-if="sophosCardProductEval.features" style="margin-top: 8px; padding: 9px 12px; background: rgba(15, 23, 42, 0.72); border: 1px solid rgba(56, 189, 248, 0.22); border-radius: 8px; font-size: 12px; color: #cbd5e1;">
-                      <strong style="color: #38bdf8;">📋 Features:</strong> {{ sophosCardProductEval.features }}
-                    </div>
-                  </template>
-                </div>
-              </div>
-            </div>
-
-            <!-- ==================== TAB 3: 4 CỘT SO SÁNH CHI TIẾT ĐA NGUỒN ==================== -->
-            <div v-else style="display: grid; grid-template-columns: repeat(auto-fit, minmax(255px, 1fr)); gap: 14px;">
-              <!-- Cột 1: Dữ liệu Card trên Database -->
-              <div style="background: rgba(15, 23, 42, 0.72); border: 1px solid rgba(148, 163, 184, 0.25); border-radius: 12px; padding: 14px 16px;">
-                <div style="font-size: 12.5px; font-weight: 800; color: #38bdf8; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 6px;">
-                  1. Dữ Liệu Card Hiện Tại (Database)
-                </div>
-                <div style="display: flex; flex-direction: column; gap: 7px; font-size: 13px;">
-                  <div><span style="color: #94a3b8;">Mã hàng (DB):</span> <code style="color: #f8fafc; font-weight: 700;">{{ cardRefCompareData.item.Ma_hang }}</code></div>
-                  <div><span style="color: #94a3b8;">SKU Code (DB):</span> <code style="color: #c4b5fd; font-weight: 700;">{{ cardRefCompareData.item.sku_code || '-' }}</code></div>
-                  <div><span style="color: #94a3b8;">Tên hàng:</span> <strong style="color: #f8fafc;">{{ cardRefCompareData.item.Ten_hang }}</strong></div>
-                  <div><span style="color: #94a3b8;">Danh mục:</span> <span style="color: #cbd5e1;">{{ cardRefCompareData.item.Danh_muc || '-' }}</span></div>
-                  <div><span style="color: #94a3b8;">Description:</span> <span style="color: #cbd5e1;">{{ cardRefCompareData.item.Description || '-' }}</span></div>
-                  <div><span style="color: #94a3b8;">Type / Thời hạn:</span> <span style="color: #cbd5e1;">{{ cardRefCompareData.item.Type || '-' }} / {{ cardRefCompareData.item.License_duration || '-' }}</span></div>
-                  <div><span style="color: #94a3b8;">Volume:</span> <span style="color: #cbd5e1;">{{ cardRefCompareData.item.volume || '-' }}</span></div>
-                  <div style="margin-top: 6px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center;">
-                    <span style="color: #94a3b8; font-weight: 600;">Giá bán DB (USD):</span>
-                    <strong style="font-size: 16px; color: #38bdf8;">{{ formatUsdPrice(cardRefCompareData.dbPrice) }}</strong>
-                  </div>
-                  <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="color: #94a3b8;">Giá nhập / Phí NK DB:</span>
-                    <strong style="color: #fbbf24;">{{ formatUsdPrice(cardRefCompareData.dbGiaNhap) }}</strong>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Cột 2: Dữ liệu File Calculator Mới (calculate_sophos.xlsx) - Ưu tiên chuẩn -->
-              <div style="background: rgba(20, 184, 166, 0.08); border: 1.5px solid rgba(20, 184, 166, 0.45); border-radius: 12px; padding: 14px 16px; box-shadow: 0 0 18px rgba(20, 184, 166, 0.08);">
-                <div style="font-size: 12.5px; font-weight: 800; color: #2dd4bf; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid rgba(20,184,166,0.22); padding-bottom: 6px; display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: wrap;">
-                  <span>2. File Calculator (calculate_sophos)</span>
-                  <span v-if="cardRefCompareData.calcVersion" style="font-size: 10.5px; padding: 1px 6px; border-radius: 99px; background: rgba(20,184,166,0.22); color: #99f6e4;">
-                    v{{ cardRefCompareData.calcVersion }} • Ưu tiên
-                  </span>
-                </div>
-                <div v-if="cardRefCompareData.calcFound" style="display: flex; flex-direction: column; gap: 7px; font-size: 13px;">
-                  <div><span style="color: #94a3b8;">Mã SKU Calculator:</span> <code style="color: #5eead4; font-weight: 800;">{{ cardRefCompareData.calcAltSku || cardRefCompareData.sku }}</code></div>
-                  <div><span style="color: #94a3b8;">Product Code:</span> <strong style="color: #f8fafc;">{{ cardRefCompareData.calcEntry?.pc || '-' }}</strong></div>
-                  <div><span style="color: #94a3b8;">Description:</span> <span style="color: #e2e8f0;">{{ cardRefCompareData.calcEntry?.desc || '-' }}</span></div>
-                  <div><span style="color: #94a3b8;">Product Type:</span> <span style="color: #cbd5e1;">{{ cardRefCompareData.calcEntry?.prodType || '-' }}</span></div>
-                  <div v-if="cardRefCompareData.calcEffectiveFrom">
-                    <span style="color: #94a3b8;">Effective from:</span> <span style="color: #99f6e4; font-weight: 600;">{{ cardRefCompareData.calcEffectiveFrom }}</span>
-                  </div>
-                  <div>
-                    <span style="color: #94a3b8;">Tọa độ dòng:</span>
-                    <span style="color: #99f6e4; font-weight: 600;">
-                      MSRPs&amp;BuyCost #{{ cardRefCompareData.calcRowNum || '-' }}
-                      <template v-if="cardRefCompareData.calcFirewallRowNum"> · Firewall #{{ cardRefCompareData.calcFirewallRowNum }}</template>
-                    </span>
-                  </div>
-                  <div style="margin-top: 6px; padding-top: 8px; border-top: 1px dashed rgba(20,184,166,0.3); display: flex; justify-content: space-between; align-items: center;">
-                    <span style="color: #99f6e4; font-weight: 700;">Giá MSRP Calculator:</span>
-                    <strong style="font-size: 16px; color: #2dd4bf;">{{ formatUsdPrice(cardRefCompareData.calcMsrp) }}</strong>
-                  </div>
-                  <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
-                    <span style="color: #94a3b8;">Buy Cost (Std / Reg / Inc):</span>
-                    <span style="color: #cbd5e1; font-weight: 600;">
-                      {{ formatUsdPrice(cardRefCompareData.calcEntry?.stdAuth || 0) }} /
-                      {{ formatUsdPrice(cardRefCompareData.calcEntry?.regAuth || 0) }} /
-                      {{ formatUsdPrice(cardRefCompareData.calcEntry?.incAuth || 0) }}
-                    </span>
+                <!-- Hardware Features & Licensing Notes -->
+                <div class="qlhh-cmp-2col">
+                  <div
+                    v-for="mdl in sophosCardCalcState.models"
+                    :key="'feat-' + mdl"
+                    class="qlhh-bento-box qlhh-cmp-note-box"
+                  >
+                    <div class="qlhh-bento-head is-sky">{{ mdl }} — Hardware Features</div>
+                    <div class="qlhh-cmp-note-text">{{ sophosCardFirewallEval.modelFeatures[mdl] || 'Virtual / Software Appliance' }}</div>
                   </div>
                   <div
-                    v-if="cardRefCompareData.gocFound && Math.abs(cardRefCompareData.calcVsGocDiff) >= 0.05"
-                    style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;"
+                    v-if="sophosCardFirewallEval.licensingNotes"
+                    class="qlhh-bento-box qlhh-cmp-note-box"
                   >
-                    <span style="color: #fbbf24;">Chênh so với File Gốc v3.0:</span>
-                    <strong style="color: #fcd34d;">{{ cardRefCompareData.calcVsGocDiff > 0 ? '+' : '' }}{{ formatUsdPrice(cardRefCompareData.calcVsGocDiff) }}</strong>
-                  </div>
-                </div>
-                <div v-else style="color: #94a3b8; font-size: 13px; padding: 12px 0;">
-                  Không tìm thấy mã SKU này trong <code>calculate_sophos.xlsx</code> (hoặc chưa nạp File Calculator).
-                </div>
-              </div>
-
-              <!-- Cột 3: Dữ liệu File Gốc SOPHOS -->
-              <div style="background: rgba(16, 185, 129, 0.06); border: 1px solid rgba(16, 185, 129, 0.32); border-radius: 12px; padding: 14px 16px;">
-                <div style="font-size: 12.5px; font-weight: 800; color: #34d399; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid rgba(16,185,129,0.18); padding-bottom: 6px;">
-                  3. File Gốc Hãng (file_goc_SOPHOS &amp; SKU_List)
-                </div>
-                <div v-if="cardRefCompareData.gocFound" style="display: flex; flex-direction: column; gap: 7px; font-size: 13px;">
-                  <div><span style="color: #94a3b8;">Mã SKU Gốc:</span> <code style="color: #34d399; font-weight: 800;">{{ cardRefCompareData.sku }}</code></div>
-                  <div><span style="color: #94a3b8;">Product Code:</span> <strong style="color: #f8fafc;">{{ cardRefCompareData.gocEntry?.pc || '-' }}</strong></div>
-                  <div><span style="color: #94a3b8;">Description Gốc:</span> <span style="color: #e2e8f0;">{{ cardRefCompareData.gocEntry?.desc || '-' }}</span></div>
-                  <div><span style="color: #94a3b8;">Product Group:</span> <span style="color: #cbd5e1;">{{ cardRefCompareData.gocEntry?.prodGroup || '-' }}</span></div>
-                  <div><span style="color: #94a3b8;">Term / TransType:</span> <span style="color: #cbd5e1;">{{ cardRefCompareData.gocEntry?.term ? cardRefCompareData.gocEntry.term + ' MOS' : '-' }} / {{ cardRefCompareData.gocEntry?.transType || '-' }}</span></div>
-                  <div>
-                    <span style="color: #94a3b8;">Tọa độ dòng:</span>
-                    <span style="color: #a7f3d0; font-weight: 600;">
-                      MSRPs&amp;BuyCost #{{ cardRefCompareData.gocRowNum || '-' }}
-                      <template v-if="cardRefCompareData.skuListRowNum"> · SKU_Tab #{{ cardRefCompareData.skuListRowNum }}</template>
-                    </span>
-                  </div>
-                  <div style="margin-top: 6px; padding-top: 8px; border-top: 1px dashed rgba(16,185,129,0.25); display: flex; justify-content: space-between; align-items: center;">
-                    <span style="color: #a7f3d0; font-weight: 700;">Giá MSRP File Gốc:</span>
-                    <strong style="font-size: 16px; color: #34d399;">{{ formatUsdPrice(cardRefCompareData.gocMsrp) }}</strong>
-                  </div>
-                  <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
-                    <span style="color: #94a3b8;">Buy Cost (Std / Reg / Inc Auth):</span>
-                    <span style="color: #cbd5e1; font-weight: 600;">
-                      {{ formatUsdPrice(cardRefCompareData.gocEntry?.stdAuth || 0) }} /
-                      {{ formatUsdPrice(cardRefCompareData.gocEntry?.regAuth || 0) }} /
-                      {{ formatUsdPrice(cardRefCompareData.gocEntry?.incAuth || 0) }}
-                    </span>
-                  </div>
-                  <div v-if="cardRefCompareData.gocEntry?.prevPrice" style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
-                    <span style="color: #fbbf24;">Giá cũ trước +10% (Previous Price):</span>
-                    <strong style="color: #fcd34d;">{{ formatUsdPrice(cardRefCompareData.gocEntry.prevPrice) }} ({{ cardRefCompareData.gocEntry.changeKey || 'Price Increase' }})</strong>
-                  </div>
-                </div>
-                <div v-else style="color: #94a3b8; font-size: 13px; padding: 12px 0;">
-                  Không tìm thấy mã SKU này trong bảng <code>MSRPs&amp;BuyCost</code>.
-                </div>
-              </div>
-
-              <!-- Cột 4: Dữ liệu File Trung Gian SOPHOS -->
-              <div style="background: rgba(56, 189, 248, 0.06); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 12px; padding: 14px 16px;">
-                <div style="font-size: 12.5px; font-weight: 800; color: #38bdf8; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid rgba(56,189,248,0.18); padding-bottom: 6px;">
-                  4. File Trung Gian (file_trung_gian_SOPHOS)
-                </div>
-                <div v-if="cardRefCompareData.tgFound" style="display: flex; flex-direction: column; gap: 7px; font-size: 13px;">
-                  <div><span style="color: #94a3b8;">Sheet Trung Gian:</span> <strong style="color: #38bdf8;">{{ cardRefCompareData.tgSheet }}</strong></div>
-                  <div><span style="color: #94a3b8;">Dòng / Ô SKU:</span> <code style="color: #f8fafc; font-weight: 700;">Dòng #{{ cardRefCompareData.tgRowNum }} (Ô B{{ cardRefCompareData.tgRowNum }})</code></div>
-                  <div><span style="color: #94a3b8;">Nhóm sản phẩm:</span> <span style="color: #e2e8f0;">{{ cardRefCompareData.tgGroup || '-' }}</span></div>
-                  <div v-if="cardRefCompareData.lpOldUsd > 0"><span style="color: #94a3b8;">Giá LP Sophos cũ:</span> <span style="color: #fbbf24; font-weight: 700;">{{ formatUsdPrice(cardRefCompareData.lpOldUsd) }}</span></div>
-                  <div style="margin-top: 6px; padding-top: 8px; border-top: 1px dashed rgba(56,189,248,0.25); display: flex; justify-content: space-between; align-items: center;">
-                    <span style="color: #bae6fd; font-weight: 700;">Giá MSRP Trung Gian:</span>
-                    <strong style="font-size: 16px; color: #38bdf8;">{{ formatUsdPrice(cardRefCompareData.tgMsrp) }}</strong>
-                  </div>
-                  <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="color: #94a3b8;">Phí Nhập Khẩu (Cột G):</span>
-                    <strong style="color: #fbbf24;">{{ formatUsdPrice(cardRefCompareData.tgNhapKhau) }}</strong>
-                  </div>
-                </div>
-                <div v-else style="color: #94a3b8; font-size: 13px; padding: 12px 0;">
-                  Mã này không nằm trong các sheet BOM rút gọn của <code>file_trung_gian_SOPHOS.xlsx</code>.
-                </div>
-              </div>
-            </div>
-          </template>
-
-          <!-- ==================== GIAO DIỆN ĐỐI CHIẾU KASPERSKY ==================== -->
-          <template v-else-if="cardRefCompareData && cardRefCompareData.vendor === 'kaspersky'">
-            <!-- Banner mở nhanh File Gốc Excel Kaspersky -->
-            <div style="background: rgba(15, 23, 42, 0.78); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;">
-              <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
-                <div style="font-size: 13px; color: #e2e8f0; font-weight: 700; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                  <span>🎯 Bấm mở xem trực tiếp trong File Excel Gốc Kaspersky (Tự động nhảy tới dòng &amp; tô sáng ô giá theo Band):</span>
-                  <code v-if="cardRefCompareData.sku" style="background: rgba(16, 185, 129, 0.16); color: #34d399; padding: 2px 8px; border-radius: 6px; font-weight: 800;">
-                    SKU: {{ cardRefCompareData.sku }}
-                  </code>
-                  <code v-if="cardRefCompareData.posCode" style="background: rgba(56, 189, 248, 0.16); color: #38bdf8; padding: 2px 8px; border-radius: 6px; font-weight: 800;">
-                    PositionCode: {{ cardRefCompareData.posCode }}
-                  </code>
-                  <span v-if="cardRefCompareData.band" style="background: rgba(245, 158, 11, 0.16); color: #fbbf24; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 700;">
-                    {{ cardRefCompareData.band }}
-                  </span>
-                </div>
-              </div>
-
-              <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                <button
-                  v-if="cardRefCompareData.gocPivotRow"
-                  type="button"
-                  class="excel-jump-chip excel-jump-chip--goc"
-                  style="padding: 7px 12px; font-size: 12.5px;"
-                  @click="openKasExcelNavigator({ fileType: 'kas_goc', sheet: 'SMB+Enterprise (License)', rowNum: cardRefCompareData.gocPivotRow, colLetter: cardRefCompareData.gocPivotColLetter, sku: cardRefCompareData.sku, band: cardRefCompareData.band, itemName: cardRefCompareData.item.Ten_hang })"
-                >
-                  📗 Mở <strong>filegocKas.xlsx</strong> — Sheet <code>SMB+Enterprise (License)</code> (Dòng #{{ cardRefCompareData.gocPivotRow }}, Ô {{ cardRefCompareData.gocPivotColLetter }}{{ cardRefCompareData.gocPivotRow }})
-                </button>
-                <button
-                  v-if="cardRefCompareData.gocPivotRow || cardRefCompareData.gocSaleRow"
-                  type="button"
-                  class="vendor-file-office-btn"
-                  style="padding: 7px 12px; font-size: 12.5px;"
-                  @click="openCompareOfficePreview({ vendor: 'kaspersky', role: 'goc', sheet: cardRefCompareData.gocPivotRow ? 'SMB+Enterprise (License)' : 'SaleListSMB+Enterprise', rowNum: cardRefCompareData.gocPivotRow || cardRefCompareData.gocSaleRow, colLetter: cardRefCompareData.gocPivotRow ? (cardRefCompareData.gocPivotColLetter || 'I') : 'E', sku: cardRefCompareData.sku, itemName: cardRefCompareData.item.Ten_hang })"
-                >
-                  👁️ Xem bằng ViewOffice (File Gốc — Ô {{ cardRefCompareData.gocPivotRow ? (cardRefCompareData.gocPivotColLetter || 'I') + cardRefCompareData.gocPivotRow : 'E' + cardRefCompareData.gocSaleRow }})
-                </button>
-                <button
-                  v-if="cardRefCompareData.mauPivotRow || cardRefCompareData.mauSaleRow"
-                  type="button"
-                  class="vendor-file-office-btn"
-                  style="padding: 7px 12px; font-size: 12.5px;"
-                  @click="openCompareOfficePreview({ vendor: 'kaspersky', role: 'mau', sheet: cardRefCompareData.mauPivotRow ? 'SMB+Enterprise (License)' : 'SaleListSMB+Enterprise', rowNum: cardRefCompareData.mauPivotRow || cardRefCompareData.mauSaleRow, colLetter: cardRefCompareData.mauPivotRow ? (cardRefCompareData.mauPivotColLetter || 'I') : 'E', sku: cardRefCompareData.sku, itemName: cardRefCompareData.item.Ten_hang })"
-                >
-                  👁️ Xem bằng ViewOffice (File TG — Dòng #{{ cardRefCompareData.mauPivotRow || cardRefCompareData.mauSaleRow }})
-                </button>
-                <button
-                  v-if="cardRefCompareData.gocSaleRow"
-                  type="button"
-                  class="excel-jump-chip excel-jump-chip--skulist"
-                  style="padding: 7px 12px; font-size: 12.5px;"
-                  @click="openKasExcelNavigator({ fileType: 'kas_goc', sheet: 'SaleListSMB+Enterprise', rowNum: cardRefCompareData.gocSaleRow, colLetter: 'E', sku: cardRefCompareData.posCode || cardRefCompareData.sku, band: cardRefCompareData.band, itemName: cardRefCompareData.item.Ten_hang })"
-                >
-                  📙 Mở <strong>filegocKas.xlsx</strong> — Sheet <code>SaleListSMB+Enterprise</code> (Dòng #{{ cardRefCompareData.gocSaleRow }}, Ô E{{ cardRefCompareData.gocSaleRow }})
-                </button>
-                <button
-                  v-if="cardRefCompareData.mauPivotRow"
-                  type="button"
-                  class="excel-jump-chip excel-jump-chip--tg"
-                  style="padding: 7px 12px; font-size: 12.5px;"
-                  @click="openKasExcelNavigator({ fileType: 'kas_mau', sheet: 'SMB+Enterprise (License)', rowNum: cardRefCompareData.mauPivotRow, colLetter: cardRefCompareData.mauPivotColLetter, sku: cardRefCompareData.sku, band: cardRefCompareData.band, itemName: cardRefCompareData.item.Ten_hang })"
-                >
-                  📘 Mở <strong>KASPERSKY_file_mau_import.xlsx</strong> — Sheet <code>SMB+Enterprise (License)</code> (Dòng #{{ cardRefCompareData.mauPivotRow }})
-                </button>
-                <button
-                  v-if="cardRefCompareData.mauSaleRow"
-                  type="button"
-                  class="excel-jump-chip excel-jump-chip--lp"
-                  style="padding: 7px 12px; font-size: 12.5px;"
-                  @click="openKasExcelNavigator({ fileType: 'kas_mau', sheet: 'SaleListSMB+Enterprise', rowNum: cardRefCompareData.mauSaleRow, colLetter: 'E', sku: cardRefCompareData.posCode || cardRefCompareData.sku, band: cardRefCompareData.band, itemName: cardRefCompareData.item.Ten_hang })"
-                >
-                  📒 Mở <strong>KASPERSKY_file_mau_import.xlsx</strong> — Sheet <code>SaleListSMB+Enterprise</code> (Dòng #{{ cardRefCompareData.mauSaleRow }})
-                </button>
-                <button
-                  v-if="!cardRefCompareData.gocPivotRow && !cardRefCompareData.gocSaleRow"
-                  type="button"
-                  class="excel-jump-chip excel-jump-chip--goc"
-                  style="padding: 7px 12px; font-size: 12.5px;"
-                  @click="openKasExcelNavigator({ fileType: 'kas_goc', sheet: 'SMB+Enterprise (License)', rowNum: 11, colLetter: 'I', sku: cardRefCompareData.sku, band: cardRefCompareData.band, itemName: cardRefCompareData.item.Ten_hang })"
-                >
-                  📗 Mở trình xem <strong>filegocKas.xlsx</strong>
-                </button>
-              </div>
-            </div>
-
-            <!-- 3 Cột So Sánh Chi Tiết Kaspersky -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 14px;">
-              <!-- Cột 1: Card Hiện Tại (DB) -->
-              <div style="background: rgba(15, 23, 42, 0.72); border: 1px solid rgba(148, 163, 184, 0.25); border-radius: 12px; padding: 14px 16px;">
-                <div style="font-size: 12.5px; font-weight: 800; color: #38bdf8; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 6px;">
-                  1. Dữ Liệu Card Hiện Tại (Database)
-                </div>
-                <div style="display: flex; flex-direction: column; gap: 7px; font-size: 13px;">
-                  <div><span style="color: #94a3b8;">Mã hàng (DB):</span> <code style="color: #f8fafc; font-weight: 700; word-break: break-all;">{{ cardRefCompareData.item.Ma_hang }}</code></div>
-                  <div><span style="color: #94a3b8;">SKU Code (DB):</span> <code style="color: #c4b5fd; font-weight: 700;">{{ cardRefCompareData.item.sku_code || '-' }}</code></div>
-                  <div><span style="color: #94a3b8;">Tên hàng:</span> <strong style="color: #f8fafc;">{{ cardRefCompareData.item.Ten_hang }}</strong></div>
-                  <div><span style="color: #94a3b8;">Danh mục:</span> <span style="color: #cbd5e1;">{{ cardRefCompareData.item.Danh_muc || '-' }}</span></div>
-                  <div><span style="color: #94a3b8;">Type / Thời hạn:</span> <span style="color: #cbd5e1;">{{ cardRefCompareData.item.Type || '-' }} / {{ cardRefCompareData.item.License_duration || '-' }}</span></div>
-                  <div><span style="color: #94a3b8;">Volume (Band):</span> <strong style="color: #fbbf24;">{{ cardRefCompareData.item.volume || '-' }}</strong></div>
-                  <div style="margin-top: 6px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center;">
-                    <span style="color: #94a3b8; font-weight: 600;">Giá bán DB (VNĐ):</span>
-                    <strong style="font-size: 16px; color: #38bdf8;">{{ formatVndPrice(cardRefCompareData.dbPrice) }}</strong>
+                    <div class="qlhh-bento-head is-slate">Licensing Notes</div>
+                    <div class="qlhh-cmp-note-text is-pre">{{ sophosCardFirewallEval.licensingNotes }}</div>
                   </div>
                 </div>
               </div>
 
-              <!-- Cột 2: File Gốc Kaspersky (filegocKas.xlsx) -->
-              <div style="background: rgba(16, 185, 129, 0.06); border: 1px solid rgba(16, 185, 129, 0.32); border-radius: 12px; padding: 14px 16px;">
-                <div style="font-size: 12.5px; font-weight: 800; color: #34d399; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid rgba(16,185,129,0.18); padding-bottom: 6px;">
-                  2. File Gốc Hãng (filegocKas.xlsx)
-                </div>
-                <div v-if="cardRefCompareData.gocFound" style="display: flex; flex-direction: column; gap: 7px; font-size: 13px;">
-                  <div><span style="color: #94a3b8;">PartNumber (SKU):</span> <code style="color: #34d399; font-weight: 800;">{{ cardRefCompareData.sku }}</code></div>
-                  <div><span style="color: #94a3b8;">Position Code:</span> <code style="color: #38bdf8; font-weight: 800;">{{ cardRefCompareData.posCode || '-' }}</code></div>
-                  <div><span style="color: #94a3b8;">Product:</span> <strong style="color: #f8fafc;">{{ cardRefCompareData.gocPivotEntry?.product || cardRefCompareData.item.Danh_muc }}</strong></div>
-                  <div><span style="color: #94a3b8;">Type / Term:</span> <span style="color: #cbd5e1;">{{ cardRefCompareData.gocPivotEntry?.type || cardRefCompareData.item.Type }} / {{ cardRefCompareData.gocPivotEntry?.term || cardRefCompareData.item.License_duration }}</span></div>
-                  <div>
-                    <span style="color: #94a3b8;">Tọa độ dòng:</span>
-                    <span style="color: #a7f3d0; font-weight: 600;">
-                      Pivot #{{ cardRefCompareData.gocPivotRow || '-' }} (Ô {{ cardRefCompareData.gocPivotColLetter }}{{ cardRefCompareData.gocPivotRow }})
-                      <template v-if="cardRefCompareData.gocSaleRow"> · SaleList #{{ cardRefCompareData.gocSaleRow }}</template>
-                    </span>
+              <!-- TAB 2: UNIVERSAL / PRODUCT CALCULATOR -->
+              <div v-else-if="sophosCardCalcState.activeTab === 'product'" class="qlhh-cmp-stack">
+                <section class="qlhh-bento-box">
+                  <div class="qlhh-cmp-search-row">
+                    <input
+                      type="text"
+                      v-model="sophosCardCalcState.productSearch"
+                      class="qlhh-fm-input"
+                      placeholder="Tìm sản phẩm hoặc SKU trên 23 Sheet (VD: Endpoint, MDR, Email, Switch, CS110, AP6...)"
+                    />
+                    <span class="qlhh-cmp-ver-tag">Sheet: {{ sophosCardCalcState.nativeSheet || 'Universal Calculator' }}</span>
                   </div>
-                  <div style="margin-top: 6px; padding-top: 8px; border-top: 1px dashed rgba(16,185,129,0.25); display: flex; justify-content: space-between; align-items: center;">
-                    <span style="color: #a7f3d0; font-weight: 700;">Giá File Gốc ({{ cardRefCompareData.band }}):</span>
-                    <strong style="font-size: 16px; color: #34d399;">{{ formatVndPrice(cardRefCompareData.gocPrice) }}</strong>
+
+                  <div v-if="sophosCardSearchMatchedProducts.length > 0" class="qlhh-cmp-search-drop">
+                    <div
+                      v-for="pItem in sophosCardSearchMatchedProducts"
+                      :key="pItem.pc + pItem.desc"
+                      class="qlhh-cmp-search-hit"
+                      @click="selectSophosCardSearchedProduct(pItem)"
+                    >
+                      <div class="qlhh-cmp-hit-name">
+                        <strong>{{ pItem.desc }}</strong>
+                        <span>({{ pItem.prodType || 'Product' }})</span>
+                      </div>
+                      <code class="qlhh-code-pill is-sku tabular-nums">{{ pItem.pc }} • {{ pItem.partId }}</code>
+                    </div>
                   </div>
-                </div>
-                <div v-else style="color: #94a3b8; font-size: 13px; padding: 12px 0;">
-                  Không tìm thấy mã SKU này trong <code>filegocKas.xlsx</code>.
+                </section>
+
+                <div class="qlhh-cmp-2col">
+                  <!-- Cột Trái: Thông số đầu vào -->
+                  <section class="qlhh-bento-box">
+                    <div class="qlhh-bento-head is-sky">Thông số đầu vào</div>
+                    <div class="qlhh-cmp-3col-fields">
+                      <div class="qlhh-field">
+                        <label>Partner Level</label>
+                        <select v-model="sophosCardCalcState.partnerLevel" class="qlhh-fm-select">
+                          <option v-for="pl in sophosPartnerLevelOptions" :key="pl" :value="pl">{{ pl }}</option>
+                        </select>
+                      </div>
+                      <div class="qlhh-field">
+                        <label>Sector</label>
+                        <select v-model="sophosCardCalcState.sector" class="qlhh-fm-select">
+                          <option v-for="sec in sophosSectorOptions" :key="sec" :value="sec">{{ sec }}</option>
+                        </select>
+                      </div>
+                      <div class="qlhh-field">
+                        <label>Deal Type</label>
+                        <select v-model="sophosCardCalcState.dealType" class="qlhh-fm-select">
+                          <option v-for="dt in sophosDealTypeOptions" :key="dt" :value="dt">{{ dt }}</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div class="qlhh-field">
+                      <label>Solution Family</label>
+                      <select v-model="sophosCardCalcState.family" class="qlhh-fm-select" @change="handleSophosCardFamilyChange">
+                        <option v-for="fam in sophosCardUniversalFamilies" :key="fam" :value="fam">{{ fam }}</option>
+                      </select>
+                    </div>
+                    <div class="qlhh-field">
+                      <label>Product Line</label>
+                      <select v-model="sophosCardCalcState.productLine" class="qlhh-fm-select" @change="handleSophosCardLineChange">
+                        <option v-for="ln in sophosCardUniversalLines" :key="ln" :value="ln">{{ ln }}</option>
+                      </select>
+                    </div>
+                    <div class="qlhh-field">
+                      <label>Product</label>
+                      <select v-model="sophosCardCalcState.product" class="qlhh-fm-select" @change="handleSophosCardProductChange">
+                        <option v-if="sophosCardCalcState.product && !sophosCardUniversalProducts.includes(sophosCardCalcState.product)" :value="sophosCardCalcState.product">
+                          {{ sophosCardCalcState.product }}
+                        </option>
+                        <option v-for="pr in sophosCardUniversalProducts" :key="pr" :value="pr">{{ pr }}</option>
+                      </select>
+                    </div>
+
+                    <div class="qlhh-cmp-3col-fields">
+                      <div class="qlhh-field">
+                        <label>Term</label>
+                        <select
+                          v-if="!sophosCardProductEval || sophosCardProductEval.isTermed && !sophosCardProductEval.fixedTermLabel"
+                          v-model="sophosCardCalcState.termSubscription"
+                          class="qlhh-fm-select"
+                        >
+                          <option v-for="tm in sophosTermOptions" :key="tm" :value="tm">{{ tm }}</option>
+                        </select>
+                        <div v-else class="qlhh-cmp-readonly-box">
+                          {{ sophosCardProductEval.fixedTermLabel || 'One-time (00)' }}
+                        </div>
+                      </div>
+                      <div class="qlhh-field">
+                        <label>Qty</label>
+                        <input type="number" min="1" v-model.number="sophosCardCalcState.qty" class="qlhh-fm-input tabular-nums" />
+                      </div>
+                      <div class="qlhh-field">
+                        <label>Special Attribute</label>
+                        <select v-model="sophosCardCalcState.specialAttribute" class="qlhh-fm-select">
+                          <option
+                            v-for="opt in (sophosCardProductEval?.specialAttrOptions || [{ label: 'Standard Pricing', code: 'AA' }])"
+                            :key="opt.code + opt.label"
+                            :value="opt.code"
+                          >{{ opt.label }}</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div v-if="sophosCardProductEval" class="qlhh-cmp-band-foot tabular-nums">
+                      <span>
+                        Band: <strong>{{ sophosCardProductEval.bandCode }}</strong>
+                        <template v-if="sophosCardProductEval.bandMin !== null && sophosCardProductEval.bandCode !== 'ZZ'">
+                          ({{ sophosCardProductEval.bandMin.toLocaleString() }}–{{ sophosCardProductEval.bandMax?.toLocaleString() }})
+                        </template>
+                      </span>
+                      <span v-if="sophosCardProductEval.minQtyWarning" class="qlhh-cmp-warn-txt">{{ sophosCardProductEval.minQtyWarning }}</span>
+                    </div>
+                  </section>
+
+                  <!-- Cột Phải: Kết quả tính toán -->
+                  <section class="qlhh-bento-box">
+                    <div class="qlhh-bento-head is-emerald is-between">
+                      <span>Kết quả tính toán</span>
+                      <span v-if="sophosCardProductEval?.productCode" class="qlhh-cmp-ver-tag tabular-nums">{{ sophosCardProductEval.productCode }}</span>
+                    </div>
+
+                    <template v-if="sophosCardProductEval">
+                      <div class="qlhh-cmp-kv-list tabular-nums">
+                        <div class="qlhh-cmp-kv-row">
+                          <span>Product</span>
+                          <strong>{{ sophosCardProductEval.productDesc || '-' }}</strong>
+                        </div>
+                        <div class="qlhh-cmp-kv-row">
+                          <span>SKU (Calculated)</span>
+                          <div>
+                            <code v-if="sophosCardProductEval.available" class="qlhh-code-pill is-sku">{{ sophosCardProductEval.sku }}</code>
+                            <span v-else class="qlhh-cmp-err-txt">Not Available ({{ sophosCardProductEval.newSku }})</span>
+                          </div>
+                        </div>
+                        <div class="qlhh-cmp-kv-row">
+                          <span>Unit MSRP</span>
+                          <strong class="qlhh-cmp-price-lg is-emerald">{{ sophosCardProductEval.available ? formatUsdPrice(sophosCardProductEval.unitMsrp) : 'NA' }}</strong>
+                        </div>
+                        <div class="qlhh-cmp-kv-row">
+                          <span>Total MSRP (×{{ sophosCardCalcState.qty }})</span>
+                          <strong>{{ sophosCardProductEval.available ? formatUsdPrice(sophosCardProductEval.msrp) : 'NA' }}</strong>
+                        </div>
+                        <div class="qlhh-cmp-kv-row">
+                          <span>Promo Disc (%)</span>
+                          <input type="number" min="0" max="100" step="0.5" v-model.number="sophosCardCalcState.productPromoDisc" class="qlhh-cmp-pct-input" />
+                        </div>
+                        <div class="qlhh-cmp-kv-row">
+                          <span>Special Disc (%)</span>
+                          <input type="number" min="0" max="100" step="0.5" v-model.number="sophosCardCalcState.productSpecialDisc" class="qlhh-cmp-pct-input" />
+                        </div>
+                        <div class="qlhh-cmp-kv-row">
+                          <span>Reseller Disc</span>
+                          <strong class="qlhh-cmp-disc-txt">{{ sophosCardProductEval.available ? `${sophosCardProductEval.resellerDiscPct}%` : '0%' }}</strong>
+                        </div>
+                        <div class="qlhh-cmp-kv-row is-total">
+                          <span>Buy Cost (USD)</span>
+                          <strong class="qlhh-cmp-price-lg is-sky">{{ sophosCardProductEval.available ? formatUsdPrice(sophosCardProductEval.buyCost) : '0.00$' }}</strong>
+                        </div>
+                      </div>
+
+                      <div v-if="sophosCardProductEval.features" class="qlhh-cmp-note-box">
+                        <strong>Features:</strong> {{ sophosCardProductEval.features }}
+                      </div>
+                    </template>
+                  </section>
                 </div>
               </div>
 
-              <!-- Cột 3: File Mẫu Import Kaspersky -->
-              <div style="background: rgba(56, 189, 248, 0.06); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 12px; padding: 14px 16px;">
-                <div style="font-size: 12.5px; font-weight: 800; color: #38bdf8; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid rgba(56,189,248,0.18); padding-bottom: 6px;">
-                  3. File Mẫu Import (KASPERSKY_file_mau_import)
-                </div>
-                <div v-if="cardRefCompareData.mauFound" style="display: flex; flex-direction: column; gap: 7px; font-size: 13px;">
-                  <div><span style="color: #94a3b8;">Dòng trên Sheet Pivot:</span> <strong style="color: #e2e8f0;">{{ cardRefCompareData.mauPivotRow ? `Dòng #${cardRefCompareData.mauPivotRow}` : 'Chưa có trên Pivot' }}</strong></div>
-                  <div><span style="color: #94a3b8;">Dòng trên Sheet SaleList:</span> <strong style="color: #e2e8f0;">{{ cardRefCompareData.mauSaleRow ? `Dòng #${cardRefCompareData.mauSaleRow}` : 'Chưa có' }}</strong></div>
-                  <div style="margin-top: 6px; padding-top: 8px; border-top: 1px dashed rgba(56,189,248,0.25); display: flex; justify-content: space-between; align-items: center;">
-                    <span style="color: #bae6fd; font-weight: 700;">Giá File Mẫu ({{ cardRefCompareData.band }}):</span>
-                    <strong style="font-size: 16px; color: #38bdf8;">{{ formatVndPrice(cardRefCompareData.mauPrice) }}</strong>
+              <!-- TAB 3: 4 CỘT SO SÁNH ĐA NGUỒN -->
+              <div v-else class="qlhh-cmp-sources-grid is-4col">
+                <!-- 1. Database -->
+                <article class="qlhh-bento-box qlhh-cmp-source-card is-sky">
+                  <div class="qlhh-bento-head is-sky">1. Database (hang_hoa)</div>
+                  <div class="qlhh-cmp-kv-list tabular-nums">
+                    <div class="qlhh-cmp-kv-row"><span>Mã hàng</span><code>{{ cardRefCompareData.item.Ma_hang }}</code></div>
+                    <div class="qlhh-cmp-kv-row"><span>SKU Code</span><code>{{ cardRefCompareData.item.sku_code || '-' }}</code></div>
+                    <div class="qlhh-cmp-kv-row"><span>Tên hàng</span><strong>{{ cardRefCompareData.item.Ten_hang }}</strong></div>
+                    <div class="qlhh-cmp-kv-row"><span>Danh mục</span><span>{{ cardRefCompareData.item.Danh_muc || '-' }}</span></div>
+                    <div class="qlhh-cmp-kv-row"><span>Description</span><span>{{ cardRefCompareData.item.Description || '-' }}</span></div>
+                    <div class="qlhh-cmp-kv-row"><span>Type / Thời hạn</span><span>{{ cardRefCompareData.item.Type || '-' }} / {{ cardRefCompareData.item.License_duration || '-' }}</span></div>
+                    <div class="qlhh-cmp-kv-row"><span>Volume</span><span>{{ cardRefCompareData.item.volume || '-' }}</span></div>
+                    <div class="qlhh-cmp-kv-row is-total">
+                      <span>Giá bán DB</span>
+                      <strong class="qlhh-cmp-price-lg is-sky">{{ formatUsdPrice(cardRefCompareData.dbPrice) }}</strong>
+                    </div>
+                    <div class="qlhh-cmp-kv-row">
+                      <span>Giá nhập / NK</span>
+                      <strong>{{ formatUsdPrice(cardRefCompareData.dbGiaNhap) }}</strong>
+                    </div>
                   </div>
-                  <div v-if="cardRefCompareData.mauIsOldPre10" style="font-size: 12px; color: #fbbf24; margin-top: 4px;">
-                    ⚠️ Giá trong File Mẫu đang là giá cũ trước đợt tăng +10% (Effective July 1, 2026).
-                  </div>
-                </div>
-                <div v-else style="color: #94a3b8; font-size: 13px; padding: 12px 0;">
-                  Chưa có mã này trong <code>KASPERSKY_file_mau_import.xlsx</code>.
-                </div>
-              </div>
-            </div>
+                </article>
 
-            <!-- Bảng toàn bộ các mức Band của cùng SKU Kaspersky trong File Gốc -->
-            <div v-if="cardRefCompareData.gocPivotEntry && cardRefCompareData.gocPivotEntry.prices" style="background: rgba(15, 23, 42, 0.65); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 12px; padding: 12px 16px;">
-              <div style="font-size: 12.5px; font-weight: 700; color: #cbd5e1; margin-bottom: 8px;">
-                📊 Toàn bộ dải Band giá của mã <code>{{ cardRefCompareData.sku }}</code> trên Dòng #{{ cardRefCompareData.gocPivotRow }} (Sheet <code>SMB+Enterprise (License)</code>):
-              </div>
-              <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                <div
-                  v-for="(bPrice, bName) in cardRefCompareData.gocPivotEntry.prices"
-                  :key="bName"
-                  :style="{
-                    padding: '6px 10px',
-                    borderRadius: '8px',
-                    fontSize: '12px',
-                    cursor: 'pointer',
-                    background: bName === cardRefCompareData.band ? 'rgba(16, 185, 129, 0.22)' : 'rgba(30, 41, 59, 0.8)',
-                    border: bName === cardRefCompareData.band ? '1.5px solid #10b981' : '1px solid rgba(148, 163, 184, 0.2)',
-                    color: bName === cardRefCompareData.band ? '#ecfdf5' : '#cbd5e1'
-                  }"
-                  @click="openKasExcelNavigator({ fileType: 'kas_goc', sheet: 'SMB+Enterprise (License)', rowNum: cardRefCompareData.gocPivotRow, colLetter: colIndexToLetter(cardRefCompareData.gocPivotEntry.bandCols?.[bName] ?? 9), sku: cardRefCompareData.sku, band: bName, itemName: cardRefCompareData.item.Ten_hang })"
-                  title="Bấm để mở File Gốc tại ô Band này"
-                >
-                  <div style="font-weight: 700; color: #94a3b8; font-size: 11px;">{{ bName }}</div>
-                  <div style="font-weight: 800; color: #34d399; margin-top: 2px;">{{ formatVndPrice(bPrice) }}</div>
-                </div>
-              </div>
-            </div>
-          </template>
-
-          <!-- ==================== GIAO DIỆN ĐỐI CHIẾU ACRONIS ==================== -->
-          <template v-else-if="cardRefCompareData && cardRefCompareData.vendor === 'acronis'">
-            <!-- Banner mở nhanh File Gốc Excel Acronis -->
-            <div style="background: rgba(15, 23, 42, 0.78); border: 1px solid rgba(129, 140, 248, 0.4); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px;">
-              <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
-                <div style="font-size: 13px; color: #e2e8f0; font-weight: 700; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                  <span>🎯 Bấm mở xem trực tiếp trong File Excel Gốc Acronis (Tự động nhảy tới dòng &amp; tô sáng ô SKU / Đơn giá):</span>
-                  <code v-if="cardRefCompareData.skuFor" style="background: rgba(99, 102, 241, 0.22); color: #a5b4fc; padding: 2px 8px; border-radius: 6px; font-weight: 800;">
-                    SKU For: {{ cardRefCompareData.skuFor }}
-                  </code>
-                  <code v-if="cardRefCompareData.sku" style="background: rgba(16, 185, 129, 0.16); color: #34d399; padding: 2px 8px; border-radius: 6px; font-weight: 800;">
-                    SKU: {{ cardRefCompareData.sku }}
-                  </code>
-                  <span v-if="cardRefCompareData.sheet" style="background: rgba(56, 189, 248, 0.16); color: #38bdf8; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 700;">
-                    Sheet: {{ cardRefCompareData.sheet }}
-                  </span>
-                </div>
-              </div>
-
-              <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                <button
-                  v-if="cardRefCompareData.gocRowNum"
-                  type="button"
-                  class="excel-jump-chip excel-jump-chip--goc"
-                  style="padding: 7px 12px; font-size: 12.5px;"
-                  @click="openAcronisExcelNavigator({ fileType: 'acronis_goc', sheet: cardRefCompareData.sheet, rowNum: cardRefCompareData.gocRowNum, colLetter: 'D', sku: cardRefCompareData.sku || cardRefCompareData.skuFor, itemName: cardRefCompareData.item.Ten_hang })"
-                >
-                  📗 Mở <strong>file_goc_acronis.xlsx</strong> — Sheet <code>{{ cardRefCompareData.sheet }}</code> (Dòng #{{ cardRefCompareData.gocRowNum }}, Ô D{{ cardRefCompareData.gocRowNum }})
-                </button>
-                <button
-                  v-if="cardRefCompareData.gocRowNum"
-                  type="button"
-                  class="vendor-file-office-btn"
-                  style="padding: 7px 12px; font-size: 12.5px;"
-                  @click="openCompareOfficePreview({ vendor: 'acronis', role: 'goc', sheet: cardRefCompareData.sheet, rowNum: cardRefCompareData.gocRowNum, colLetter: 'D', sku: cardRefCompareData.sku || cardRefCompareData.skuFor, itemName: cardRefCompareData.item.Ten_hang })"
-                >
-                  👁️ Xem bằng ViewOffice (File Gốc — Ô D{{ cardRefCompareData.gocRowNum }})
-                </button>
-                <button
-                  v-if="cardRefCompareData.mauRowNum"
-                  type="button"
-                  class="excel-jump-chip excel-jump-chip--tg"
-                  style="padding: 7px 12px; font-size: 12.5px;"
-                  @click="openAcronisExcelNavigator({ fileType: 'acronis_mau', sheet: cardRefCompareData.mauSheet || cardRefCompareData.sheet, rowNum: cardRefCompareData.mauRowNum, colLetter: 'D', sku: cardRefCompareData.sku || cardRefCompareData.skuFor, itemName: cardRefCompareData.item.Ten_hang })"
-                >
-                  📘 Mở <strong>ACRONIS_file_mau_import.xlsx</strong> — Sheet <code>{{ cardRefCompareData.mauSheet || cardRefCompareData.sheet }}</code> (Dòng #{{ cardRefCompareData.mauRowNum }}, Ô D{{ cardRefCompareData.mauRowNum }})
-                </button>
-                <button
-                  v-if="cardRefCompareData.mauRowNum"
-                  type="button"
-                  class="vendor-file-office-btn"
-                  style="padding: 7px 12px; font-size: 12.5px;"
-                  @click="openCompareOfficePreview({ vendor: 'acronis', role: 'mau', sheet: cardRefCompareData.mauSheet || cardRefCompareData.sheet, rowNum: cardRefCompareData.mauRowNum, colLetter: 'D', sku: cardRefCompareData.sku || cardRefCompareData.skuFor, itemName: cardRefCompareData.item.Ten_hang })"
-                >
-                  👁️ Xem bằng ViewOffice (File Mẫu — Ô D{{ cardRefCompareData.mauRowNum }})
-                </button>
-                <button
-                  v-if="!cardRefCompareData.gocRowNum"
-                  type="button"
-                  class="excel-jump-chip excel-jump-chip--goc"
-                  style="padding: 7px 12px; font-size: 12.5px;"
-                  @click="openAcronisExcelNavigator({ fileType: 'acronis_goc', sheet: 'Protect Standard', rowNum: 4, colLetter: 'B', sku: cardRefCompareData.sku || cardRefCompareData.skuFor, itemName: cardRefCompareData.item.Ten_hang })"
-                >
-                  📗 Mở trình xem <strong>file_goc_acronis.xlsx</strong>
-                </button>
-                <button
-                  type="button"
-                  class="excel-jump-chip excel-jump-chip--skulist"
-                  style="padding: 7px 12px; font-size: 12.5px;"
-                  @click="showCardRefCompareModal = false; openAcronisCompareModal(cardRefCompareData.sheet, cardRefCompareData.sku || cardRefCompareData.skuFor)"
-                >
-                  🟣 Mở Bảng Đối Chiếu Toàn Bộ Acronis (221 mã)
-                </button>
-              </div>
-            </div>
-
-            <!-- 3 Cột So Sánh Chi Tiết Acronis -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 14px;">
-              <!-- Cột 1: Card Hiện Tại (DB) -->
-              <div style="background: rgba(15, 23, 42, 0.72); border: 1px solid rgba(148, 163, 184, 0.25); border-radius: 12px; padding: 14px 16px;">
-                <div style="font-size: 12.5px; font-weight: 800; color: #38bdf8; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 6px;">
-                  1. Dữ Liệu Card Hiện Tại (Database)
-                </div>
-                <div style="display: flex; flex-direction: column; gap: 7px; font-size: 13px;">
-                  <div><span style="color: #94a3b8;">Mã hàng (DB):</span> <code style="color: #f8fafc; font-weight: 700; word-break: break-all;">{{ cardRefCompareData.item.Ma_hang }}</code></div>
-                  <div><span style="color: #94a3b8;">SKU Code (DB):</span> <code style="color: #c4b5fd; font-weight: 700;">{{ cardRefCompareData.item.sku_code || '-' }}</code></div>
-                  <div><span style="color: #94a3b8;">Tên hàng:</span> <strong style="color: #f8fafc;">{{ cardRefCompareData.item.Ten_hang }}</strong></div>
-                  <div><span style="color: #94a3b8;">Danh mục:</span> <span style="color: #cbd5e1;">{{ cardRefCompareData.item.Danh_muc || '-' }}</span></div>
-                  <div><span style="color: #94a3b8;">Type / Thời hạn:</span> <span style="color: #cbd5e1;">{{ cardRefCompareData.item.Type || '-' }} / {{ cardRefCompareData.item.License_duration || '-' }}</span></div>
-                  <div><span style="color: #94a3b8;">Volume:</span> <strong style="color: #fbbf24;">{{ cardRefCompareData.item.volume || '-' }}</strong></div>
-                  <div style="margin-top: 6px; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center;">
-                    <span style="color: #94a3b8; font-weight: 600;">Giá bán DB (VNĐ):</span>
-                    <strong style="font-size: 16px; color: #38bdf8;">{{ formatVndPrice(cardRefCompareData.dbPrice) }}</strong>
+                <!-- 2. File Calculator -->
+                <article class="qlhh-bento-box qlhh-cmp-source-card is-emerald">
+                  <div class="qlhh-bento-head is-emerald is-between">
+                    <span>2. File Calculator</span>
+                    <span v-if="cardRefCompareData.calcVersion" class="qlhh-cmp-ver-tag">v{{ cardRefCompareData.calcVersion }}</span>
                   </div>
-                </div>
+                  <div v-if="cardRefCompareData.calcFound" class="qlhh-cmp-kv-list tabular-nums">
+                    <div class="qlhh-cmp-kv-row"><span>SKU Calculator</span><code>{{ cardRefCompareData.calcAltSku || cardRefCompareData.sku }}</code></div>
+                    <div class="qlhh-cmp-kv-row"><span>Product Code</span><strong>{{ cardRefCompareData.calcEntry?.pc || '-' }}</strong></div>
+                    <div class="qlhh-cmp-kv-row"><span>Description</span><span>{{ cardRefCompareData.calcEntry?.desc || '-' }}</span></div>
+                    <div class="qlhh-cmp-kv-row"><span>Product Type</span><span>{{ cardRefCompareData.calcEntry?.prodType || '-' }}</span></div>
+                    <div v-if="cardRefCompareData.calcEffectiveFrom" class="qlhh-cmp-kv-row">
+                      <span>Effective</span><span>{{ cardRefCompareData.calcEffectiveFrom }}</span>
+                    </div>
+                    <div class="qlhh-cmp-kv-row">
+                      <span>Dòng</span>
+                      <span>
+                        #{{ cardRefCompareData.calcRowNum || '-' }}
+                        <template v-if="cardRefCompareData.calcFirewallRowNum"> · FW #{{ cardRefCompareData.calcFirewallRowNum }}</template>
+                      </span>
+                    </div>
+                    <div class="qlhh-cmp-kv-row is-total">
+                      <span>MSRP Calculator</span>
+                      <strong class="qlhh-cmp-price-lg is-emerald">{{ formatUsdPrice(cardRefCompareData.calcMsrp) }}</strong>
+                    </div>
+                    <div class="qlhh-cmp-kv-row">
+                      <span>Buy Cost (S/R/I)</span>
+                      <span>{{ formatUsdPrice(cardRefCompareData.calcEntry?.stdAuth || 0) }} / {{ formatUsdPrice(cardRefCompareData.calcEntry?.regAuth || 0) }} / {{ formatUsdPrice(cardRefCompareData.calcEntry?.incAuth || 0) }}</span>
+                    </div>
+                    <div v-if="cardRefCompareData.gocFound && Math.abs(cardRefCompareData.calcVsGocDiff) >= 0.05" class="qlhh-cmp-kv-row">
+                      <span>Chênh File Gốc</span>
+                      <strong class="qlhh-cmp-disc-txt">{{ cardRefCompareData.calcVsGocDiff > 0 ? '+' : '' }}{{ formatUsdPrice(cardRefCompareData.calcVsGocDiff) }}</strong>
+                    </div>
+                  </div>
+                  <div v-else class="qlhh-cmp-empty-src">Chưa tìm thấy mã SKU trong File Calculator.</div>
+                </article>
+
+                <!-- 3. File Gốc Hãng -->
+                <article class="qlhh-bento-box qlhh-cmp-source-card is-emerald">
+                  <div class="qlhh-bento-head is-emerald">3. File Gốc Hãng</div>
+                  <div v-if="cardRefCompareData.gocFound" class="qlhh-cmp-kv-list tabular-nums">
+                    <div class="qlhh-cmp-kv-row"><span>SKU Gốc</span><code>{{ cardRefCompareData.sku }}</code></div>
+                    <div class="qlhh-cmp-kv-row"><span>Product Code</span><strong>{{ cardRefCompareData.gocEntry?.pc || '-' }}</strong></div>
+                    <div class="qlhh-cmp-kv-row"><span>Description</span><span>{{ cardRefCompareData.gocEntry?.desc || '-' }}</span></div>
+                    <div class="qlhh-cmp-kv-row"><span>Product Group</span><span>{{ cardRefCompareData.gocEntry?.prodGroup || '-' }}</span></div>
+                    <div class="qlhh-cmp-kv-row"><span>Term / Type</span><span>{{ cardRefCompareData.gocEntry?.term ? cardRefCompareData.gocEntry.term + ' MOS' : '-' }} / {{ cardRefCompareData.gocEntry?.transType || '-' }}</span></div>
+                    <div class="qlhh-cmp-kv-row">
+                      <span>Dòng</span>
+                      <span>
+                        #{{ cardRefCompareData.gocRowNum || '-' }}
+                        <template v-if="cardRefCompareData.skuListRowNum"> · SKU #{{ cardRefCompareData.skuListRowNum }}</template>
+                      </span>
+                    </div>
+                    <div class="qlhh-cmp-kv-row is-total">
+                      <span>MSRP File Gốc</span>
+                      <strong class="qlhh-cmp-price-lg is-emerald">{{ formatUsdPrice(cardRefCompareData.gocMsrp) }}</strong>
+                    </div>
+                    <div class="qlhh-cmp-kv-row">
+                      <span>Buy Cost (S/R/I)</span>
+                      <span>{{ formatUsdPrice(cardRefCompareData.gocEntry?.stdAuth || 0) }} / {{ formatUsdPrice(cardRefCompareData.gocEntry?.regAuth || 0) }} / {{ formatUsdPrice(cardRefCompareData.gocEntry?.incAuth || 0) }}</span>
+                    </div>
+                    <div v-if="cardRefCompareData.gocEntry?.prevPrice" class="qlhh-cmp-kv-row">
+                      <span>Giá cũ</span>
+                      <strong class="qlhh-cmp-disc-txt">{{ formatUsdPrice(cardRefCompareData.gocEntry.prevPrice) }}</strong>
+                    </div>
+                  </div>
+                  <div v-else class="qlhh-cmp-empty-src">Chưa tìm thấy mã SKU trong <code>MSRPs&amp;BuyCost</code>.</div>
+                </article>
+
+                <!-- 4. File Trung Gian -->
+                <article class="qlhh-bento-box qlhh-cmp-source-card is-violet">
+                  <div class="qlhh-bento-head is-violet">4. File Trung Gian</div>
+                  <div v-if="cardRefCompareData.tgFound" class="qlhh-cmp-kv-list tabular-nums">
+                    <div class="qlhh-cmp-kv-row"><span>Sheet</span><strong>{{ cardRefCompareData.tgSheet }}</strong></div>
+                    <div class="qlhh-cmp-kv-row"><span>Tọa độ</span><code>Dòng #{{ cardRefCompareData.tgRowNum }} (B{{ cardRefCompareData.tgRowNum }})</code></div>
+                    <div class="qlhh-cmp-kv-row"><span>Nhóm SP</span><span>{{ cardRefCompareData.tgGroup || '-' }}</span></div>
+                    <div v-if="cardRefCompareData.lpOldUsd > 0" class="qlhh-cmp-kv-row">
+                      <span>LP cũ</span><strong class="qlhh-cmp-disc-txt">{{ formatUsdPrice(cardRefCompareData.lpOldUsd) }}</strong>
+                    </div>
+                    <div class="qlhh-cmp-kv-row is-total">
+                      <span>MSRP Trung Gian</span>
+                      <strong class="qlhh-cmp-price-lg is-sky">{{ formatUsdPrice(cardRefCompareData.tgMsrp) }}</strong>
+                    </div>
+                    <div class="qlhh-cmp-kv-row">
+                      <span>Phí Nhập Khẩu</span>
+                      <strong>{{ formatUsdPrice(cardRefCompareData.tgNhapKhau) }}</strong>
+                    </div>
+                  </div>
+                  <div v-else class="qlhh-cmp-empty-src">Không nằm trong sheet BOM của <code>file_trung_gian_SOPHOS.xlsx</code>.</div>
+                </article>
+              </div>
+            </template>
+
+            <!-- ==================== GIAO DIỆN ĐỐI CHIẾU KASPERSKY ==================== -->
+            <template v-else-if="cardRefCompareData.vendor === 'kaspersky'">
+              <div class="qlhh-cmp-sources-grid is-3col">
+                <!-- 1. Database -->
+                <article class="qlhh-bento-box qlhh-cmp-source-card is-sky">
+                  <div class="qlhh-bento-head is-sky">1. Database (hang_hoa)</div>
+                  <div class="qlhh-cmp-kv-list tabular-nums">
+                    <div class="qlhh-cmp-kv-row"><span>Mã hàng</span><code>{{ cardRefCompareData.item.Ma_hang }}</code></div>
+                    <div class="qlhh-cmp-kv-row"><span>SKU Code</span><code>{{ cardRefCompareData.item.sku_code || '-' }}</code></div>
+                    <div class="qlhh-cmp-kv-row"><span>Tên hàng</span><strong>{{ cardRefCompareData.item.Ten_hang }}</strong></div>
+                    <div class="qlhh-cmp-kv-row"><span>Danh mục</span><span>{{ cardRefCompareData.item.Danh_muc || '-' }}</span></div>
+                    <div class="qlhh-cmp-kv-row"><span>Type / Thời hạn</span><span>{{ cardRefCompareData.item.Type || '-' }} / {{ cardRefCompareData.item.License_duration || '-' }}</span></div>
+                    <div class="qlhh-cmp-kv-row"><span>Volume / Band</span><strong>{{ cardRefCompareData.item.volume || '-' }}</strong></div>
+                    <div class="qlhh-cmp-kv-row is-total">
+                      <span>Giá bán DB</span>
+                      <strong class="qlhh-cmp-price-lg is-sky">{{ formatVndPrice(cardRefCompareData.dbPrice) }}</strong>
+                    </div>
+                  </div>
+                </article>
+
+                <!-- 2. File Gốc Kaspersky -->
+                <article class="qlhh-bento-box qlhh-cmp-source-card is-emerald">
+                  <div class="qlhh-bento-head is-emerald is-between">
+                    <span>2. File Gốc (filegocKas)</span>
+                    <button
+                      v-if="cardRefCompareData.gocSaleRow"
+                      type="button"
+                      class="qlhh-ghost-btn is-xs"
+                      @click="openKasExcelNavigator({ fileType: 'kas_goc', sheet: 'SaleListSMB+Enterprise', rowNum: cardRefCompareData.gocSaleRow, colLetter: 'E', sku: cardRefCompareData.posCode || cardRefCompareData.sku, band: cardRefCompareData.band, itemName: cardRefCompareData.item.Ten_hang })"
+                    >Đối chiếu SaleList #{{ cardRefCompareData.gocSaleRow }}</button>
+                  </div>
+                  <div v-if="cardRefCompareData.gocFound" class="qlhh-cmp-kv-list tabular-nums">
+                    <div class="qlhh-cmp-kv-row"><span>PartNumber (SKU)</span><code>{{ cardRefCompareData.sku }}</code></div>
+                    <div class="qlhh-cmp-kv-row"><span>Position Code</span><code>{{ cardRefCompareData.posCode || '-' }}</code></div>
+                    <div class="qlhh-cmp-kv-row"><span>Product</span><strong>{{ cardRefCompareData.gocPivotEntry?.product || cardRefCompareData.item.Danh_muc }}</strong></div>
+                    <div class="qlhh-cmp-kv-row"><span>Type / Term</span><span>{{ cardRefCompareData.gocPivotEntry?.type || cardRefCompareData.item.Type }} / {{ cardRefCompareData.gocPivotEntry?.term || cardRefCompareData.item.License_duration }}</span></div>
+                    <div class="qlhh-cmp-kv-row">
+                      <span>Tọa độ</span>
+                      <span>
+                        Pivot #{{ cardRefCompareData.gocPivotRow || '-' }} ({{ cardRefCompareData.gocPivotColLetter }}{{ cardRefCompareData.gocPivotRow }})
+                        <template v-if="cardRefCompareData.gocSaleRow"> · Sale #{{ cardRefCompareData.gocSaleRow }}</template>
+                      </span>
+                    </div>
+                    <div class="qlhh-cmp-kv-row is-total">
+                      <span>Giá File Gốc ({{ cardRefCompareData.band }})</span>
+                      <strong class="qlhh-cmp-price-lg is-emerald">{{ formatVndPrice(cardRefCompareData.gocPrice) }}</strong>
+                    </div>
+                  </div>
+                  <div v-else class="qlhh-cmp-empty-src">Không tìm thấy mã SKU trong <code>filegocKas.xlsx</code>.</div>
+                </article>
+
+                <!-- 3. File Mẫu Import -->
+                <article class="qlhh-bento-box qlhh-cmp-source-card is-violet">
+                  <div class="qlhh-bento-head is-violet is-between">
+                    <span>3. File Mẫu Import</span>
+                    <button
+                      v-if="cardRefCompareData.mauSaleRow"
+                      type="button"
+                      class="qlhh-ghost-btn is-xs"
+                      @click="openKasExcelNavigator({ fileType: 'kas_mau', sheet: 'SaleListSMB+Enterprise', rowNum: cardRefCompareData.mauSaleRow, colLetter: 'E', sku: cardRefCompareData.posCode || cardRefCompareData.sku, band: cardRefCompareData.band, itemName: cardRefCompareData.item.Ten_hang })"
+                    >Đối chiếu SaleList #{{ cardRefCompareData.mauSaleRow }}</button>
+                  </div>
+                  <div v-if="cardRefCompareData.mauFound" class="qlhh-cmp-kv-list tabular-nums">
+                    <div class="qlhh-cmp-kv-row"><span>Sheet Pivot</span><strong>{{ cardRefCompareData.mauPivotRow ? `Dòng #${cardRefCompareData.mauPivotRow}` : 'Chưa có' }}</strong></div>
+                    <div class="qlhh-cmp-kv-row"><span>Sheet SaleList</span><strong>{{ cardRefCompareData.mauSaleRow ? `Dòng #${cardRefCompareData.mauSaleRow}` : 'Chưa có' }}</strong></div>
+                    <div class="qlhh-cmp-kv-row is-total">
+                      <span>Giá File Mẫu ({{ cardRefCompareData.band }})</span>
+                      <strong class="qlhh-cmp-price-lg is-sky">{{ formatVndPrice(cardRefCompareData.mauPrice) }}</strong>
+                    </div>
+                    <div v-if="cardRefCompareData.mauIsOldPre10" class="qlhh-cmp-note-warn">
+                      Giá File Mẫu đang là giá cũ trước +10% (Effective 01/07/2026).
+                    </div>
+                  </div>
+                  <div v-else class="qlhh-cmp-empty-src">Chưa có mã trong <code>KASPERSKY_file_mau_import.xlsx</code>.</div>
+                </article>
               </div>
 
-              <!-- Cột 2: File Gốc Acronis (file_goc_acronis.xlsx) -->
-              <div style="background: rgba(16, 185, 129, 0.06); border: 1px solid rgba(16, 185, 129, 0.32); border-radius: 12px; padding: 14px 16px;">
-                <div style="font-size: 12.5px; font-weight: 800; color: #34d399; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid rgba(16,185,129,0.18); padding-bottom: 6px;">
-                  2. File Gốc Hãng (file_goc_acronis.xlsx)
+              <!-- Dải giá theo Band của SKU Kaspersky -->
+              <section v-if="cardRefCompareData.gocPivotEntry && cardRefCompareData.gocPivotEntry.prices" class="qlhh-bento-box">
+                <div class="qlhh-bento-head is-emerald is-between">
+                  <span>Dải giá theo Band — <code>{{ cardRefCompareData.sku }}</code></span>
+                  <span class="qlhh-cmp-ver-tag tabular-nums">Pivot #{{ cardRefCompareData.gocPivotRow }}</span>
                 </div>
-                <div v-if="cardRefCompareData.gocFound" style="display: flex; flex-direction: column; gap: 7px; font-size: 13px;">
-                  <div><span style="color: #94a3b8;">SKU For (Cột A):</span> <code style="color: #a5b4fc; font-weight: 800;">{{ cardRefCompareData.skuFor || '-' }}</code></div>
-                  <div><span style="color: #94a3b8;">SKU (Cột B):</span> <code style="color: #34d399; font-weight: 800;">{{ cardRefCompareData.sku || '-' }}</code></div>
-                  <div><span style="color: #94a3b8;">Mô tả sản phẩm (Cột C):</span> <strong style="color: #f8fafc;">{{ cardRefCompareData.gocEntry?.moTa || '-' }}</strong></div>
-                  <div><span style="color: #94a3b8;">Sheet / Danh mục:</span> <span style="color: #cbd5e1;">{{ cardRefCompareData.sheet }} · {{ cardRefCompareData.gocEntry?.category || '-' }}</span></div>
-                  <div>
-                    <span style="color: #94a3b8;">Tọa độ dòng:</span>
-                    <span style="color: #a7f3d0; font-weight: 600;">
-                      Sheet <code>{{ cardRefCompareData.sheet }}</code> — Dòng #{{ cardRefCompareData.gocRowNum }} (Ô B{{ cardRefCompareData.gocRowNum }} / Giá: Ô D{{ cardRefCompareData.gocRowNum }})
-                    </span>
+                <div class="qlhh-cmp-band-grid tabular-nums">
+                  <button
+                    v-for="(bPrice, bName) in cardRefCompareData.gocPivotEntry.prices"
+                    :key="bName"
+                    type="button"
+                    class="qlhh-cmp-band-tile"
+                    :class="{ 'is-active': bName === cardRefCompareData.band }"
+                    @click="openKasExcelNavigator({ fileType: 'kas_goc', sheet: 'SMB+Enterprise (License)', rowNum: cardRefCompareData.gocPivotRow, colLetter: colIndexToLetter(cardRefCompareData.gocPivotEntry.bandCols?.[bName] ?? 9), sku: cardRefCompareData.sku, band: bName, itemName: cardRefCompareData.item.Ten_hang })"
+                    title="Bấm để mở File Gốc tại ô Band này"
+                  >
+                    <span class="qlhh-cmp-bt-name">{{ bName }}</span>
+                    <strong class="qlhh-cmp-bt-price">{{ formatVndPrice(bPrice) }}</strong>
+                  </button>
+                </div>
+              </section>
+            </template>
+
+            <!-- ==================== GIAO DIỆN ĐỐI CHIẾU ACRONIS ==================== -->
+            <template v-else-if="cardRefCompareData.vendor === 'acronis'">
+              <div class="qlhh-cmp-sources-grid is-3col">
+                <!-- 1. Database -->
+                <article class="qlhh-bento-box qlhh-cmp-source-card is-sky">
+                  <div class="qlhh-bento-head is-sky">1. Database (hang_hoa)</div>
+                  <div class="qlhh-cmp-kv-list tabular-nums">
+                    <div class="qlhh-cmp-kv-row"><span>Mã hàng</span><code>{{ cardRefCompareData.item.Ma_hang }}</code></div>
+                    <div class="qlhh-cmp-kv-row"><span>SKU Code</span><code>{{ cardRefCompareData.item.sku_code || '-' }}</code></div>
+                    <div class="qlhh-cmp-kv-row"><span>Tên hàng</span><strong>{{ cardRefCompareData.item.Ten_hang }}</strong></div>
+                    <div class="qlhh-cmp-kv-row"><span>Danh mục</span><span>{{ cardRefCompareData.item.Danh_muc || '-' }}</span></div>
+                    <div class="qlhh-cmp-kv-row"><span>Type / Thời hạn</span><span>{{ cardRefCompareData.item.Type || '-' }} / {{ cardRefCompareData.item.License_duration || '-' }}</span></div>
+                    <div class="qlhh-cmp-kv-row"><span>Volume</span><strong>{{ cardRefCompareData.item.volume || '-' }}</strong></div>
+                    <div class="qlhh-cmp-kv-row is-total">
+                      <span>Giá bán DB</span>
+                      <strong class="qlhh-cmp-price-lg is-sky">{{ formatVndPrice(cardRefCompareData.dbPrice) }}</strong>
+                    </div>
                   </div>
-                  <div style="margin-top: 6px; padding-top: 8px; border-top: 1px dashed rgba(16,185,129,0.25); display: flex; justify-content: space-between; align-items: center;">
-                    <span style="color: #a7f3d0; font-weight: 700;">Unit Price File Gốc (VNĐ):</span>
-                    <strong style="font-size: 16px; color: #34d399;">{{ formatVndPrice(cardRefCompareData.gocPrice) }}</strong>
+                </article>
+
+                <!-- 2. File Gốc Acronis -->
+                <article class="qlhh-bento-box qlhh-cmp-source-card is-emerald">
+                  <div class="qlhh-bento-head is-emerald">2. File Gốc (file_goc_acronis)</div>
+                  <div v-if="cardRefCompareData.gocFound" class="qlhh-cmp-kv-list tabular-nums">
+                    <div class="qlhh-cmp-kv-row"><span>SKU For</span><code>{{ cardRefCompareData.skuFor || '-' }}</code></div>
+                    <div class="qlhh-cmp-kv-row"><span>SKU</span><code>{{ cardRefCompareData.sku || '-' }}</code></div>
+                    <div class="qlhh-cmp-kv-row"><span>Mô tả</span><strong>{{ cardRefCompareData.gocEntry?.moTa || '-' }}</strong></div>
+                    <div class="qlhh-cmp-kv-row"><span>Sheet / Nhóm</span><span>{{ cardRefCompareData.sheet }} · {{ cardRefCompareData.gocEntry?.category || '-' }}</span></div>
+                    <div class="qlhh-cmp-kv-row"><span>Tọa độ</span><span>Dòng #{{ cardRefCompareData.gocRowNum }} (Ô D{{ cardRefCompareData.gocRowNum }})</span></div>
+                    <div class="qlhh-cmp-kv-row is-total">
+                      <span>Unit Price File Gốc</span>
+                      <strong class="qlhh-cmp-price-lg is-emerald">{{ formatVndPrice(cardRefCompareData.gocPrice) }}</strong>
+                    </div>
                   </div>
-                </div>
-                <div v-else style="color: #94a3b8; font-size: 13px; padding: 12px 0;">
-                  Không tìm thấy mã SKU này trong <code>file_goc_acronis.xlsx</code>.
-                </div>
+                  <div v-else class="qlhh-cmp-empty-src">Không tìm thấy mã SKU trong <code>file_goc_acronis.xlsx</code>.</div>
+                </article>
+
+                <!-- 3. File Mẫu Import Acronis -->
+                <article class="qlhh-bento-box qlhh-cmp-source-card is-violet">
+                  <div class="qlhh-bento-head is-violet is-between">
+                    <span>3. File Mẫu Import</span>
+                    <button
+                      v-if="cardRefCompareData.mauRowNum"
+                      type="button"
+                      class="qlhh-ghost-btn is-xs"
+                      @click="openAcronisExcelNavigator({ fileType: 'acronis_mau', sheet: cardRefCompareData.mauSheet || cardRefCompareData.sheet, rowNum: cardRefCompareData.mauRowNum, colLetter: 'D', sku: cardRefCompareData.sku || cardRefCompareData.skuFor, itemName: cardRefCompareData.item.Ten_hang })"
+                    >Đối chiếu File Mẫu (#{{ cardRefCompareData.mauRowNum }})</button>
+                  </div>
+                  <div v-if="cardRefCompareData.mauFound" class="qlhh-cmp-kv-list tabular-nums">
+                    <div class="qlhh-cmp-kv-row"><span>Sheet Mẫu</span><strong>{{ cardRefCompareData.mauSheet }}</strong></div>
+                    <div class="qlhh-cmp-kv-row"><span>Tọa độ</span><strong>Dòng #{{ cardRefCompareData.mauRowNum }} (Ô D{{ cardRefCompareData.mauRowNum }})</strong></div>
+                    <div class="qlhh-cmp-kv-row"><span>Mô tả</span><span>{{ cardRefCompareData.mauEntry?.moTa || '-' }}</span></div>
+                    <div class="qlhh-cmp-kv-row is-total">
+                      <span>Unit Price File Mẫu</span>
+                      <strong class="qlhh-cmp-price-lg is-sky">{{ formatVndPrice(cardRefCompareData.mauPrice) }}</strong>
+                    </div>
+                  </div>
+                  <div v-else class="qlhh-cmp-empty-src">Chưa có mã trong <code>ACRONIS_file_mau_import.xlsx</code>.</div>
+                </article>
               </div>
 
-              <!-- Cột 3: File Mẫu Import Acronis (ACRONIS_file_mau_import.xlsx) -->
-              <div style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(129, 140, 248, 0.32); border-radius: 12px; padding: 14px 16px;">
-                <div style="font-size: 12.5px; font-weight: 800; color: #a5b4fc; text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid rgba(129,140,248,0.2); padding-bottom: 6px;">
-                  3. File Mẫu Import (ACRONIS_file_mau_import)
-                </div>
-                <div v-if="cardRefCompareData.mauFound" style="display: flex; flex-direction: column; gap: 7px; font-size: 13px;">
-                  <div><span style="color: #94a3b8;">Sheet Mẫu:</span> <strong style="color: #e2e8f0;">{{ cardRefCompareData.mauSheet }}</strong></div>
-                  <div><span style="color: #94a3b8;">Tọa độ dòng:</span> <strong style="color: #e2e8f0;">Dòng #{{ cardRefCompareData.mauRowNum }} (Ô D{{ cardRefCompareData.mauRowNum }})</strong></div>
-                  <div><span style="color: #94a3b8;">Mô tả trong File Mẫu:</span> <span style="color: #cbd5e1;">{{ cardRefCompareData.mauEntry?.moTa || '-' }}</span></div>
-                  <div style="margin-top: 6px; padding-top: 8px; border-top: 1px dashed rgba(129,140,248,0.28); display: flex; justify-content: space-between; align-items: center;">
-                    <span style="color: #c7d2fe; font-weight: 700;">Unit Price File Mẫu (VNĐ):</span>
-                    <strong style="font-size: 16px; color: #a5b4fc;">{{ formatVndPrice(cardRefCompareData.mauPrice) }}</strong>
-                  </div>
-                </div>
-                <div v-else style="color: #94a3b8; font-size: 13px; padding: 12px 0;">
-                  Chưa có mã này trong <code>ACRONIS_file_mau_import.xlsx</code>.
-                </div>
-              </div>
-            </div>
-
-            <!-- Danh sách các mã cùng Danh mục trong file_goc_acronis.xlsx -->
-            <div v-if="cardRefCompareData.relatedItems && cardRefCompareData.relatedItems.length > 0" style="background: rgba(15, 23, 42, 0.65); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 12px; padding: 12px 16px;">
-              <div style="font-size: 12.5px; font-weight: 700; color: #cbd5e1; margin-bottom: 8px;">
-                📊 Các gói cùng mục <code>{{ cardRefCompareData.gocEntry?.category || cardRefCompareData.item.Danh_muc }}</code> trên Sheet <code>{{ cardRefCompareData.sheet }}</code> (<code>file_goc_acronis.xlsx</code>):
-              </div>
-              <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                <div
-                  v-for="rel in cardRefCompareData.relatedItems"
-                  :key="rel.maHang"
-                  :style="{
-                    padding: '6px 10px',
-                    borderRadius: '8px',
-                    fontSize: '12px',
-                    cursor: 'pointer',
-                    background: rel.sku === cardRefCompareData.sku ? 'rgba(99, 102, 241, 0.24)' : 'rgba(30, 41, 59, 0.8)',
-                    border: rel.sku === cardRefCompareData.sku ? '1.5px solid #818cf8' : '1px solid rgba(148, 163, 184, 0.2)',
-                    color: rel.sku === cardRefCompareData.sku ? '#e0e7ff' : '#cbd5e1'
-                  }"
-                  @click="openAcronisExcelNavigator({ fileType: 'acronis_goc', sheet: rel.sheet, rowNum: rel.rowNum, colLetter: 'D', sku: rel.sku || rel.skuFor, itemName: rel.moTa })"
-                  :title="`${rel.moTa} — Bấm để mở file_goc_acronis.xlsx tại Dòng #${rel.rowNum}`"
-                >
-                  <div style="font-weight: 700; color: #a5b4fc; font-size: 11px;">
-                    {{ rel.skuFor ? `${rel.skuFor} - ${rel.sku}` : rel.sku }} (Dòng #{{ rel.rowNum }})
-                  </div>
-                  <div style="font-size: 11px; color: #94a3b8; max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px;">
-                    {{ rel.moTa }}
-                  </div>
-                  <div style="font-weight: 800; color: #34d399; margin-top: 2px;">{{ formatVndPrice(rel.price) }}</div>
-                </div>
-              </div>
-            </div>
+            </template>
           </template>
         </div>
 
-        <!-- Footer -->
-        <div class="import-modal__footer" style="padding: 14px 22px; border-top: 1px solid rgba(148,163,184,0.18); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-          <div style="font-size: 12.5px; color: #94a3b8;">
-            <template v-if="cardRefCompareData?.status === 'diff'">
-              💡 Giá trên Card hiện tại đang lệch <strong>{{ cardRefCompareData.priceDiff > 0 ? '+' : '' }}{{ cardRefCompareData.vendor === 'sophos' ? formatUsdPrice(cardRefCompareData.priceDiff) : formatVndPrice(cardRefCompareData.priceDiff) }}</strong> ({{ cardRefCompareData.priceDiffPct.toFixed(1) }}%) so với <strong>{{ cardRefCompareData.refSourceLabel || 'File Gốc' }}</strong>.
-            </template>
-            <template v-else-if="cardRefCompareData?.status === 'match'">
-              ✅ Giá bán trên Card hiện tại khớp hoàn toàn với <strong>{{ cardRefCompareData.refSourceLabel || 'File Excel Gốc' }}</strong> của hãng.
+        <!-- Sticky Footer -->
+        <footer class="qlhh-fm-foot qlhh-cmp-foot">
+          <div class="qlhh-cmp-foot-note tabular-nums">
+            <template v-if="cardRefCompareData && !cardRefCompareLoading">
+              <span v-if="cardRefCompareData.status === 'diff'">
+                Chênh {{ cardRefCompareData.priceDiff > 0 ? '+' : '' }}{{ cardRefCompareData.vendor === 'sophos' ? formatUsdPrice(cardRefCompareData.priceDiff) : formatVndPrice(cardRefCompareData.priceDiff) }}
+                ({{ cardRefCompareData.priceDiffPct.toFixed(1) }}%) so với {{ cardRefCompareData.refSourceLabel || 'File Gốc' }}
+              </span>
+              <span v-else-if="cardRefCompareData.status === 'match'" class="is-emerald-txt">
+                Khớp hoàn toàn với {{ cardRefCompareData.refSourceLabel || 'File Gốc' }}
+              </span>
             </template>
           </div>
-          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+          <div class="qlhh-fm-foot-right">
+            <button type="button" class="qlhh-ghost-btn" @click="showCardRefCompareModal = false">Đóng</button>
             <button
               v-if="cardRefCompareData && cardRefCompareData.refPrice > 0 && cardRefCompareData.status === 'diff'"
               type="button"
-              class="btn btn-primary"
+              class="qlhh-btn-primary is-save-cta"
               :disabled="syncingCardRefToDb"
-              style="background: linear-gradient(135deg, #10b981, #059669); border: none; font-weight: 700;"
               @click="syncCardItemWithOriginalFile"
             >
-              {{ syncingCardRefToDb ? '⏳ Đang cập nhật...' : `🔄 Cập nhật Card theo Giá ${cardRefCompareData.refSourceLabel || 'File Gốc'} (${cardRefCompareData.vendor === 'sophos' ? formatUsdPrice(cardRefCompareData.refPrice) : formatVndPrice(cardRefCompareData.refPrice)})` }}
-            </button>
-            <button type="button" class="btn btn-secondary" @click="showCardRefCompareModal = false">
-              Đóng
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              <span>{{ syncingCardRefToDb ? 'Đang cập nhật...' : `Cập nhật theo ${cardRefCompareData.refSourceLabel || 'File Gốc'} (${cardRefCompareData.vendor === 'sophos' ? formatUsdPrice(cardRefCompareData.refPrice) : formatVndPrice(cardRefCompareData.refPrice)})` }}</span>
             </button>
           </div>
-        </div>
+        </footer>
       </div>
     </div>
 
@@ -7745,6 +7740,785 @@
         </div>
       </aside>
     </template>
+
+    <!-- =========================================================
+         TRUNG TÂM IMPORT & ĐỐI CHIẾU HÃNG (BENTO HUB MODAL)
+    ========================================================== -->
+    <div
+      v-if="showVendorToolsModal"
+      class="qlhh-modal-backdrop qlhh-hub-overlay"
+      :class="{ 'theme-light-blue': uiTheme === 'light' }"
+      @click.self="showVendorToolsModal = false"
+    >
+      <div class="qlhh-hub-modal" :class="{ 'theme-light-blue': uiTheme === 'light' }">
+        <div class="mob-sheet-grabber"></div>
+        <div class="qlhh-hub-head">
+          <div class="qlhh-hub-head-left">
+            <span class="qlhh-hub-head-ico">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            </span>
+            <div>
+              <h3 class="qlhh-hub-title">Trung tâm Import &amp; Đối chiếu Hãng</h3>
+              <p class="qlhh-hub-sub">Quản lý import bảng giá, file mẫu, file tham chiếu Cloudinary và đối chiếu ảnh theo từng hãng</p>
+            </div>
+          </div>
+          <button type="button" class="qlhh-hub-close" @click="showVendorToolsModal = false" aria-label="Đóng">✕</button>
+        </div>
+
+        <!-- 4 TAB CHUYÊN BIỆT -->
+        <div class="qlhh-hub-tabs" role="tablist">
+          <button
+            type="button"
+            class="qlhh-hub-tab"
+            :class="{ active: activeVendorHubTab === 'sophos' }"
+            @click="activeVendorHubTab = 'sophos'"
+          >
+            <span>Sophos</span>
+            <span class="hub-tab-count tabular-nums">{{ brandKpiCounts.sophos }}</span>
+          </button>
+          <button
+            type="button"
+            class="qlhh-hub-tab"
+            :class="{ active: activeVendorHubTab === 'kaspersky' }"
+            @click="activeVendorHubTab = 'kaspersky'"
+          >
+            <span>Kaspersky</span>
+            <span class="hub-tab-count tabular-nums">{{ brandKpiCounts.kaspersky }}</span>
+          </button>
+          <button
+            type="button"
+            class="qlhh-hub-tab"
+            :class="{ active: activeVendorHubTab === 'acronis' }"
+            @click="activeVendorHubTab = 'acronis'"
+          >
+            <span>Acronis</span>
+            <span class="hub-tab-count tabular-nums">{{ brandKpiCounts.acronis }}</span>
+          </button>
+          <button
+            type="button"
+            class="qlhh-hub-tab"
+            :class="{ active: activeVendorHubTab === 'cost_pricing' }"
+            @click="activeVendorHubTab = 'cost_pricing'"
+          >
+            <span>Giá vốn &amp; Bảng giá</span>
+          </button>
+        </div>
+
+        <div class="qlhh-hub-body">
+          <!-- TAB 1: SOPHOS -->
+          <div v-if="activeVendorHubTab === 'sophos'" class="qlhh-hub-pane">
+            <div class="hub-section-card">
+              <div class="hub-sec-head">
+                <div>
+                  <h4>Import &amp; Chuẩn hóa Danh mục Sophos</h4>
+                  <p>Nạp dữ liệu từ <code>file_trung_gian_SOPHOS.xlsx</code> hoặc chuẩn hóa theo <code>SKU_List</code></p>
+                </div>
+                <div class="hub-sec-actions">
+                  <label class="qlhh-btn-primary is-sm" style="cursor: pointer;">
+                    <input type="file" accept=".xlsx,.xlsb" style="display: none" @change="handleFileUpload" />
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <span>Import Sophos</span>
+                  </label>
+                  <a
+                    href="/template_excel/file_trung_gian_SOPHOS.xlsx"
+                    download="file_trung_gian_SOPHOS.xlsx"
+                    class="qlhh-ghost-btn is-sm"
+                    style="text-decoration: none;"
+                  >
+                    <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    <span>Tải file mẫu</span>
+                  </a>
+                  <button
+                    type="button"
+                    class="qlhh-ghost-btn is-sm is-amber-tint"
+                    @click="showVendorToolsModal = false; openSophosStandardizedReimportModal('bom')"
+                    title="Xóa dữ liệu Sophos cũ và nạp lại theo chuẩn Mã hàng = SKU, tách Volume, License và Trạng thái từ SKU_List"
+                  >
+                    <span>Chuẩn hóa DB Sophos (SKU)</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="hub-file-slot-row">
+                <span class="hub-slot-label">File Import gần nhất:</span>
+                <template v-if="getVendorImportFileMeta('sophos')">
+                  <a
+                    :href="getVendorOfficeViewUrl(getVendorImportFileMeta('sophos'))"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="hub-file-link"
+                    @click="handleOpenVendorOfficeView($event, 'sophos', 'import', getVendorImportFileMeta('sophos'))"
+                  >
+                    {{ getVendorImportFileMeta('sophos').name }}
+                  </a>
+                  <span class="hub-file-time tabular-nums">{{ formatRefTimestamp(getVendorImportFileMeta('sophos').updatedAt) }}</span>
+                  <button
+                    type="button"
+                    class="vendor-file-download-btn"
+                    @click.stop.prevent="handleDownloadVendorUploadedFile('sophos', 'import', getVendorImportFileMeta('sophos'))"
+                  >
+                    Tải về
+                  </button>
+                </template>
+                <span v-else class="hub-file-empty">Chưa có file trên hệ thống</span>
+              </div>
+            </div>
+
+            <div class="hub-section-card">
+              <div class="hub-sec-head">
+                <div>
+                  <h4>Đối chiếu Ảnh &amp; Kho File Tham Chiếu Sophos (Cloudinary)</h4>
+                  <p>Quét ảnh bảng giá Sophos và đồng bộ ListPrice từ File Calculator / File Gốc / File Trung Gian</p>
+                </div>
+                <div class="hub-sec-actions">
+                  <button
+                    type="button"
+                    class="qlhh-btn-primary is-sm"
+                    @click="showVendorToolsModal = false; openImageCheckModal()"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+                    <span>Đối chiếu Sophos (Ảnh)</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="hub-ref-list">
+                <!-- Slot Calculator -->
+                <div class="hub-ref-item">
+                  <div class="hub-ref-info">
+                    <div class="hub-ref-title-row">
+                      <strong>File Calculator (<code>calculate_sophos</code>)</strong>
+                      <span
+                        v-if="getVendorCompareFileMeta('sophos', 'calc')?.version"
+                        class="sophos-sync-ver-badge"
+                      >
+                        v{{ getVendorCompareFileMeta('sophos', 'calc').version }}
+                      </span>
+                    </div>
+                    <div class="hub-ref-meta">
+                      <template v-if="getVendorCompareFileMeta('sophos', 'calc')">
+                        <a
+                          :href="getVendorOfficeViewUrl(getVendorCompareFileMeta('sophos', 'calc'))"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="hub-file-link"
+                          @click="handleOpenVendorOfficeView($event, 'sophos', 'calc', getVendorCompareFileMeta('sophos', 'calc'))"
+                        >
+                          {{ getVendorCompareFileMeta('sophos', 'calc').name }}
+                        </a>
+                        <span class="hub-file-time tabular-nums">{{ formatRefTimestamp(getVendorCompareFileMeta('sophos', 'calc').updatedAt) }}</span>
+                      </template>
+                      <span v-else class="hub-file-empty">Chưa upload File Calculator</span>
+                    </div>
+                  </div>
+                  <div class="hub-ref-acts">
+                    <label class="qlhh-ghost-btn is-xs" style="cursor: pointer;">
+                      <input type="file" accept=".xlsx,.xlsb,.xls" style="display: none" @change="handleCustomSophosExcelUpload($event, 'calc')" />
+                      <span>Up File mới</span>
+                    </label>
+                    <button
+                      v-if="getVendorCompareFileMeta('sophos', 'calc')"
+                      type="button"
+                      class="qlhh-ghost-btn is-xs"
+                      @click.stop.prevent="handleDownloadVendorUploadedFile('sophos', 'calc', getVendorCompareFileMeta('sophos', 'calc'))"
+                    >
+                      Tải về
+                    </button>
+                    <button
+                      type="button"
+                      class="qlhh-ghost-btn is-xs is-emerald-tint"
+                      @click="showVendorToolsModal = false; openSophosDbListPriceSyncModal()"
+                    >
+                      Đồng bộ ListPrice (DB)
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Slot File Gốc -->
+                <div class="hub-ref-item">
+                  <div class="hub-ref-info">
+                    <strong>File Gốc Sophos (<code>SKU_List</code>)</strong>
+                    <div class="hub-ref-meta">
+                      <template v-if="getVendorCompareFileMeta('sophos', 'goc')">
+                        <a
+                          :href="getVendorOfficeViewUrl(getVendorCompareFileMeta('sophos', 'goc'))"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="hub-file-link"
+                          @click="handleOpenVendorOfficeView($event, 'sophos', 'goc', getVendorCompareFileMeta('sophos', 'goc'))"
+                        >
+                          {{ getVendorCompareFileMeta('sophos', 'goc').name }}
+                        </a>
+                        <span class="hub-file-time tabular-nums">{{ formatRefTimestamp(getVendorCompareFileMeta('sophos', 'goc').updatedAt) }}</span>
+                      </template>
+                      <span v-else class="hub-file-empty">Chưa upload File Gốc</span>
+                    </div>
+                  </div>
+                  <div class="hub-ref-acts">
+                    <label class="qlhh-ghost-btn is-xs" style="cursor: pointer;">
+                      <input type="file" accept=".xlsx,.xlsb,.xls" style="display: none" @change="handleCustomSophosExcelUpload($event, 'goc')" />
+                      <span>Up File mới</span>
+                    </label>
+                    <button
+                      v-if="getVendorCompareFileMeta('sophos', 'goc')"
+                      type="button"
+                      class="qlhh-ghost-btn is-xs"
+                      @click.stop.prevent="handleDownloadVendorUploadedFile('sophos', 'goc', getVendorCompareFileMeta('sophos', 'goc'))"
+                    >
+                      Tải về
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Slot File Trung Gian -->
+                <div class="hub-ref-item">
+                  <div class="hub-ref-info">
+                    <strong>File Trung Gian Sophos</strong>
+                    <div class="hub-ref-meta">
+                      <template v-if="getVendorCompareFileMeta('sophos', 'tg')">
+                        <a
+                          :href="getVendorOfficeViewUrl(getVendorCompareFileMeta('sophos', 'tg'))"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="hub-file-link"
+                          @click="handleOpenVendorOfficeView($event, 'sophos', 'tg', getVendorCompareFileMeta('sophos', 'tg'))"
+                        >
+                          {{ getVendorCompareFileMeta('sophos', 'tg').name }}
+                        </a>
+                        <span class="hub-file-time tabular-nums">{{ formatRefTimestamp(getVendorCompareFileMeta('sophos', 'tg').updatedAt) }}</span>
+                      </template>
+                      <span v-else class="hub-file-empty">Chưa upload File Trung Gian</span>
+                    </div>
+                  </div>
+                  <div class="hub-ref-acts">
+                    <label class="qlhh-ghost-btn is-xs" style="cursor: pointer;">
+                      <input type="file" accept=".xlsx,.xlsb,.xls" style="display: none" @change="handleCustomSophosExcelUpload($event, 'tg')" />
+                      <span>Up File mới</span>
+                    </label>
+                    <button
+                      v-if="getVendorCompareFileMeta('sophos', 'tg')"
+                      type="button"
+                      class="qlhh-ghost-btn is-xs"
+                      @click.stop.prevent="handleDownloadVendorUploadedFile('sophos', 'tg', getVendorCompareFileMeta('sophos', 'tg'))"
+                    >
+                      Tải về
+                    </button>
+                    <button
+                      type="button"
+                      class="qlhh-ghost-btn is-xs is-sky-tint"
+                      @click="showVendorToolsModal = false; openSophosTrungGianCalcSyncModal()"
+                    >
+                      Đồng bộ giá theo Calc
+                    </button>
+                    <button
+                      type="button"
+                      class="qlhh-ghost-btn is-xs is-emerald-tint"
+                      :disabled="exportingSophosTgFromCalc"
+                      @click="exportSophosTrungGianFromCalc()"
+                    >
+                      {{ exportingSophosTgFromCalc ? 'Đang xuất...' : 'Xuất File TG (Calc)' }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 2: KASPERSKY -->
+          <div v-else-if="activeVendorHubTab === 'kaspersky'" class="qlhh-hub-pane">
+            <div class="hub-section-card">
+              <div class="hub-sec-head">
+                <div>
+                  <h4>Import Danh mục Kaspersky</h4>
+                  <p>Nạp sản phẩm từ file Excel chuẩn Kaspersky vào kho hàng hóa</p>
+                </div>
+                <div class="hub-sec-actions">
+                  <label class="qlhh-btn-primary is-sm" style="cursor: pointer;">
+                    <input type="file" accept=".xlsx,.xls" style="display: none" @change="handleKasperskyUpload" />
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <span>Import Kaspersky</span>
+                  </label>
+                  <a
+                    href="/template_excel/KASPERSKY_file_mau_import.xlsx"
+                    download="KASPERSKY_file_mau_import.xlsx"
+                    class="qlhh-ghost-btn is-sm"
+                    style="text-decoration: none;"
+                  >
+                    <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    <span>Tải file mẫu</span>
+                  </a>
+                </div>
+              </div>
+
+              <div class="hub-file-slot-row">
+                <span class="hub-slot-label">File Import gần nhất:</span>
+                <template v-if="getVendorImportFileMeta('kaspersky')">
+                  <a
+                    :href="getVendorOfficeViewUrl(getVendorImportFileMeta('kaspersky'))"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="hub-file-link"
+                    @click="handleOpenVendorOfficeView($event, 'kaspersky', 'import', getVendorImportFileMeta('kaspersky'))"
+                  >
+                    {{ getVendorImportFileMeta('kaspersky').name }}
+                  </a>
+                  <span class="hub-file-time tabular-nums">{{ formatRefTimestamp(getVendorImportFileMeta('kaspersky').updatedAt) }}</span>
+                  <button
+                    type="button"
+                    class="vendor-file-download-btn"
+                    @click.stop.prevent="handleDownloadVendorUploadedFile('kaspersky', 'import', getVendorImportFileMeta('kaspersky'))"
+                  >
+                    Tải về
+                  </button>
+                </template>
+                <span v-else class="hub-file-empty">Chưa có file trên hệ thống</span>
+              </div>
+            </div>
+
+            <div class="hub-section-card">
+              <div class="hub-sec-head">
+                <div>
+                  <h4>Đối chiếu Ảnh &amp; File Tham Chiếu Kaspersky</h4>
+                  <p>Quét ảnh bảng giá Kaspersky và đối chiếu với File Gốc / File Trung Gian trên Cloudinary</p>
+                </div>
+                <div class="hub-sec-actions">
+                  <button
+                    type="button"
+                    class="qlhh-btn-primary is-sm"
+                    @click="showVendorToolsModal = false; openKasImageCheckModal()"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    <span>Đối chiếu Kaspersky (Ảnh)</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="hub-ref-list">
+                <div class="hub-ref-item">
+                  <div class="hub-ref-info">
+                    <strong>File Gốc Kaspersky</strong>
+                    <div class="hub-ref-meta">
+                      <template v-if="getVendorCompareFileMeta('kaspersky', 'goc')">
+                        <a
+                          :href="getVendorOfficeViewUrl(getVendorCompareFileMeta('kaspersky', 'goc'))"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="hub-file-link"
+                          @click="handleOpenVendorOfficeView($event, 'kaspersky', 'goc', getVendorCompareFileMeta('kaspersky', 'goc'))"
+                        >
+                          {{ getVendorCompareFileMeta('kaspersky', 'goc').name }}
+                        </a>
+                        <span class="hub-file-time tabular-nums">{{ formatRefTimestamp(getVendorCompareFileMeta('kaspersky', 'goc').updatedAt) }}</span>
+                      </template>
+                      <span v-else class="hub-file-empty">Chưa upload File Gốc</span>
+                    </div>
+                  </div>
+                  <div class="hub-ref-acts">
+                    <label class="qlhh-ghost-btn is-xs" style="cursor: pointer;">
+                      <input type="file" accept=".xlsx,.xls" style="display: none" @change="handleCustomKasExcelUpload($event, 'goc')" />
+                      <span>Up File mới</span>
+                    </label>
+                    <button
+                      v-if="getVendorCompareFileMeta('kaspersky', 'goc')"
+                      type="button"
+                      class="qlhh-ghost-btn is-xs"
+                      @click.stop.prevent="handleDownloadVendorUploadedFile('kaspersky', 'goc', getVendorCompareFileMeta('kaspersky', 'goc'))"
+                    >
+                      Tải về
+                    </button>
+                  </div>
+                </div>
+
+                <div class="hub-ref-item">
+                  <div class="hub-ref-info">
+                    <strong>File Trung Gian Kaspersky</strong>
+                    <div class="hub-ref-meta">
+                      <template v-if="getVendorCompareFileMeta('kaspersky', 'tg')">
+                        <a
+                          :href="getVendorOfficeViewUrl(getVendorCompareFileMeta('kaspersky', 'tg'))"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="hub-file-link"
+                          @click="handleOpenVendorOfficeView($event, 'kaspersky', 'mau', getVendorCompareFileMeta('kaspersky', 'tg'))"
+                        >
+                          {{ getVendorCompareFileMeta('kaspersky', 'tg').name }}
+                        </a>
+                        <span class="hub-file-time tabular-nums">{{ formatRefTimestamp(getVendorCompareFileMeta('kaspersky', 'tg').updatedAt) }}</span>
+                      </template>
+                      <span v-else class="hub-file-empty">Chưa upload File Trung Gian</span>
+                    </div>
+                  </div>
+                  <div class="hub-ref-acts">
+                    <label class="qlhh-ghost-btn is-xs" style="cursor: pointer;">
+                      <input type="file" accept=".xlsx,.xls" style="display: none" @change="handleCustomKasExcelUpload($event, 'mau')" />
+                      <span>Up File mới</span>
+                    </label>
+                    <button
+                      v-if="getVendorCompareFileMeta('kaspersky', 'tg')"
+                      type="button"
+                      class="qlhh-ghost-btn is-xs"
+                      @click.stop.prevent="handleDownloadVendorUploadedFile('kaspersky', 'mau', getVendorCompareFileMeta('kaspersky', 'tg'))"
+                    >
+                      Tải về
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 3: ACRONIS -->
+          <div v-else-if="activeVendorHubTab === 'acronis'" class="qlhh-hub-pane">
+            <div class="hub-section-card">
+              <div class="hub-sec-head">
+                <div>
+                  <h4>Import Danh mục Acronis</h4>
+                  <p>Nạp sản phẩm từ file Excel mẫu Acronis vào kho hàng hóa</p>
+                </div>
+                <div class="hub-sec-actions">
+                  <label class="qlhh-btn-primary is-sm" style="cursor: pointer;">
+                    <input type="file" accept=".xlsx,.xls" style="display: none" @change="handleAcronisUpload" />
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <span>Import Acronis</span>
+                  </label>
+                  <a
+                    href="/template_excel/ACRONIS_file_mau_import.xlsx"
+                    download="ACRONIS_file_mau_import.xlsx"
+                    class="qlhh-ghost-btn is-sm"
+                    style="text-decoration: none;"
+                  >
+                    <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    <span>Tải file mẫu</span>
+                  </a>
+                </div>
+              </div>
+
+              <div class="hub-file-slot-row">
+                <span class="hub-slot-label">File Import gần nhất:</span>
+                <template v-if="getVendorImportFileMeta('acronis')">
+                  <a
+                    :href="getVendorOfficeViewUrl(getVendorImportFileMeta('acronis'))"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="hub-file-link"
+                    @click="handleOpenVendorOfficeView($event, 'acronis', 'import', getVendorImportFileMeta('acronis'))"
+                  >
+                    {{ getVendorImportFileMeta('acronis').name }}
+                  </a>
+                  <span class="hub-file-time tabular-nums">{{ formatRefTimestamp(getVendorImportFileMeta('acronis').updatedAt) }}</span>
+                  <button
+                    type="button"
+                    class="vendor-file-download-btn"
+                    @click.stop.prevent="handleDownloadVendorUploadedFile('acronis', 'import', getVendorImportFileMeta('acronis'))"
+                  >
+                    Tải về
+                  </button>
+                </template>
+                <span v-else class="hub-file-empty">Chưa có file trên hệ thống</span>
+              </div>
+            </div>
+
+            <div class="hub-section-card">
+              <div class="hub-sec-head">
+                <div>
+                  <h4>Đối chiếu Bảng giá Gốc Acronis</h4>
+                  <p>So khớp giá bán hiện tại trong Database với File Gốc Acronis trên Cloudinary</p>
+                </div>
+                <div class="hub-sec-actions">
+                  <button
+                    type="button"
+                    class="qlhh-btn-primary is-sm"
+                    @click="showVendorToolsModal = false; openAcronisCompareModal()"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    <span>Đối chiếu Acronis</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="hub-ref-list">
+                <div class="hub-ref-item">
+                  <div class="hub-ref-info">
+                    <strong>File Gốc Acronis</strong>
+                    <div class="hub-ref-meta">
+                      <template v-if="getVendorCompareFileMeta('acronis', 'goc')">
+                        <a
+                          :href="getVendorOfficeViewUrl(getVendorCompareFileMeta('acronis', 'goc'))"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          class="hub-file-link"
+                          @click="handleOpenVendorOfficeView($event, 'acronis', 'goc', getVendorCompareFileMeta('acronis', 'goc'))"
+                        >
+                          {{ getVendorCompareFileMeta('acronis', 'goc').name }}
+                        </a>
+                        <span class="hub-file-time tabular-nums">{{ formatRefTimestamp(getVendorCompareFileMeta('acronis', 'goc').updatedAt) }}</span>
+                      </template>
+                      <span v-else class="hub-file-empty">Chưa upload File Gốc</span>
+                    </div>
+                  </div>
+                  <div class="hub-ref-acts">
+                    <label class="qlhh-ghost-btn is-xs" style="cursor: pointer;">
+                      <input type="file" accept=".xlsx,.xls" style="display: none" @change="handleCustomAcronisExcelUpload($event, 'goc')" />
+                      <span>Up File mới</span>
+                    </label>
+                    <button
+                      v-if="getVendorCompareFileMeta('acronis', 'goc')"
+                      type="button"
+                      class="qlhh-ghost-btn is-xs"
+                      @click.stop.prevent="handleDownloadVendorUploadedFile('acronis', 'goc', getVendorCompareFileMeta('acronis', 'goc'))"
+                    >
+                      Tải về
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 4: GIÁ VỐN, MỨC OFF & BẢNG GIÁ -->
+          <div v-else class="qlhh-hub-pane">
+            <div class="hub-choice-grid">
+              <label class="hub-choice-card is-violet" style="cursor: pointer;">
+                <input type="file" accept=".pdf,.xlsx,.xls" style="display: none" @change="handlePurchaseQuoteUpload" />
+                <div class="hub-choice-ico is-violet">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                </div>
+                <div class="hub-choice-text">
+                  <strong>Import Mua Hàng (Giá vốn PDF / Excel)</strong>
+                  <span>Trích xuất đơn giá mua sau thuế từ báo giá NCC để cập nhật làm Giá vốn / Off hãng</span>
+                </div>
+              </label>
+
+              <div class="hub-choice-card is-sky">
+                <div class="hub-choice-ico is-sky">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                </div>
+                <div class="hub-choice-text">
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+                    <strong>Import Mức Off Hãng (Ảnh / PDF)</strong>
+                    <label class="qlhh-ghost-btn is-xs" style="cursor: pointer;">
+                      <input type="file" accept="image/*,.pdf" style="display: none" @change="handleGiaOffUpload" />
+                      <span>Chọn file Mức Off</span>
+                    </label>
+                  </div>
+                  <span>Cập nhật bảng chiết khấu / mức off từ chứng từ hãng</span>
+                  <div v-if="latestFileGiaOff" class="hub-ref-meta" style="margin-top: 4px;">
+                    <span>File gần nhất:</span>
+                    <a :href="latestFileGiaOff.link_file" target="_blank" rel="noopener noreferrer" class="hub-file-link">{{ latestFileGiaOff.ten_file }}</a>
+                    <span class="hub-file-time tabular-nums">{{ formatGiaOffDate(latestFileGiaOff.thoi_gian) }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                class="hub-choice-card is-amber"
+                @click="showVendorToolsModal = false; openUsdRateModal()"
+              >
+                <div class="hub-choice-ico is-amber">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                </div>
+                <div class="hub-choice-text">
+                  <strong>Đổi Tỉ Giá Hệ Thống (USD)</strong>
+                  <span class="tabular-nums">
+                    Đang áp dụng: {{ currentSystemUsdRate > 1 ? formatCurrency(currentSystemUsdRate, 'VND') : 'Chưa đặt' }} — Cập nhật đồng loạt cho toàn bộ SKU hệ USD
+                  </span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                class="hub-choice-card is-emerald"
+                @click="showVendorToolsModal = false; openCreatePriceListModal()"
+              >
+                <div class="hub-choice-ico is-emerald">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                </div>
+                <div class="hub-choice-text">
+                  <strong>Tạo Bảng Giá Riêng Mới</strong>
+                  <span>Thiết lập bảng giá tăng/giảm theo % hoặc số tiền riêng cho đại lý / dự án (hiện có {{ priceLists.length }} bảng giá)</span>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- =========================================================
+         MOBILE DISPLAY POPOVER & FLOATING GLASS BOTTOM SUB-DOCK
+    ========================================================== -->
+    <div
+      v-if="isMobileDockViewport && showMobileDisplayPopover"
+      class="bg-mob-popover-backdrop"
+      @click="showMobileDisplayPopover = false"
+    ></div>
+
+    <div
+      v-if="isMobileDockViewport && showMobileDisplayPopover"
+      class="bg-mob-display-popover"
+      :class="{ 'theme-light-blue': uiTheme === 'light' }"
+      @click.stop
+    >
+      <div class="bg-ds-head">
+        <span class="bg-ds-title">Thiết lập hiển thị</span>
+        <button type="button" class="bg-ds-close" @click="showMobileDisplayPopover = false" aria-label="Đóng">✕</button>
+      </div>
+
+      <div class="bg-ds-section">
+        <div class="bg-ds-label">Giao diện (Theme)</div>
+        <div class="bg-ds-grid-2">
+          <button
+            type="button"
+            class="bg-ds-opt-btn"
+            :class="{ active: uiTheme === 'dark' }"
+            @click="uiTheme !== 'dark' && toggleUiTheme()"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            <span>Tối (Mặc định)</span>
+          </button>
+          <button
+            type="button"
+            class="bg-ds-opt-btn"
+            :class="{ active: uiTheme === 'light' }"
+            @click="uiTheme !== 'light' && toggleUiTheme()"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            <span>Sáng (Xanh-Trắng)</span>
+          </button>
+        </div>
+      </div>
+
+      <div v-if="!isCompactPhoneViewport" class="bg-ds-section">
+        <div class="bg-ds-label">Kiểu danh sách</div>
+        <div class="bg-ds-grid-2">
+          <button
+            type="button"
+            class="bg-ds-opt-btn"
+            :class="{ active: viewMode === 'card' }"
+            @click="setViewMode('card')"
+          >
+            <span>Lưới Thẻ</span>
+          </button>
+          <button
+            type="button"
+            class="bg-ds-opt-btn"
+            :class="{ active: viewMode === 'table' }"
+            @click="setViewMode('table')"
+          >
+            <span>Bảng Dữ Liệu</span>
+          </button>
+        </div>
+      </div>
+
+      <div v-if="totalGroupsCount > 0" class="bg-ds-section" :class="{ 'is-last': !hasActiveSearchOrFilter && !selectedPriceListId }">
+        <div class="bg-ds-label">Nhóm danh mục</div>
+        <div class="bg-ds-grid-2">
+          <button
+            type="button"
+            class="bg-ds-opt-btn"
+            :class="{ active: !areAllCategoriesCollapsed }"
+            @click="areAllCategoriesCollapsed && toggleAllCategoriesCollapse()"
+          >
+            <span>Mở rộng tất cả</span>
+          </button>
+          <button
+            type="button"
+            class="bg-ds-opt-btn"
+            :class="{ active: areAllCategoriesCollapsed }"
+            @click="!areAllCategoriesCollapsed && toggleAllCategoriesCollapse()"
+          >
+            <span>Thu gọn tất cả</span>
+          </button>
+        </div>
+      </div>
+
+      <div v-if="hasActiveSearchOrFilter || selectedPriceListId" class="bg-ds-section is-last">
+        <button
+          type="button"
+          class="bg-ds-reset-btn"
+          @click="resetAllSearchAndFilters(); selectedPriceListId = ''; showMobileDisplayPopover = false"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          <span>Đặt lại toàn bộ bộ lọc</span>
+        </button>
+      </div>
+    </div>
+
+    <nav
+      v-if="isMobileDockViewport"
+      class="bg-mobile-dock is-4col"
+      :class="{ 'is-modal-hidden': isMobileDockHidden }"
+      aria-label="Thanh thao tác nhanh Quản lý Hàng hóa Mobile"
+    >
+      <!-- 1. Hiển thị -->
+      <button
+        type="button"
+        class="bg-dock-btn"
+        :class="{ active: showMobileDisplayPopover }"
+        @click.stop="showMobileDisplayPopover = !showMobileDisplayPopover"
+      >
+        <div class="bg-dock-icon-wrap">
+          <svg width="17.5" height="17.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+          <span class="bg-dock-badge is-mode">{{ uiTheme === 'dark' ? 'Tối' : 'Sáng' }}</span>
+        </div>
+        <span>Hiển thị</span>
+      </button>
+
+      <!-- 2. Thêm mới (Primary CTA) -->
+      <button
+        type="button"
+        class="bg-dock-btn is-primary is-center-cta"
+        @click="openAddModal"
+      >
+        <div class="bg-dock-icon-wrap">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </div>
+        <span>Thêm mới</span>
+      </button>
+
+      <!-- 3. Trung tâm Import & Hãng -->
+      <button
+        type="button"
+        class="bg-dock-btn"
+        @click="openVendorToolsHub()"
+      >
+        <div class="bg-dock-icon-wrap">
+          <svg width="17.5" height="17.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </div>
+        <span>Import</span>
+      </button>
+
+      <!-- 4. Giỏ báo giá (nếu có hàng) hoặc Đồng bộ -->
+      <button
+        v-if="quoteCart.length > 0"
+        type="button"
+        class="bg-dock-btn active"
+        @click="showQuoteCartDrawer = true"
+      >
+        <div class="bg-dock-icon-wrap">
+          <svg width="17.5" height="17.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+          <span class="bg-dock-badge is-emerald tabular-nums">{{ quoteCartTotalQty }}</span>
+        </div>
+        <span>Giỏ giá</span>
+      </button>
+      <button
+        v-else
+        type="button"
+        class="bg-dock-btn"
+        :disabled="loading"
+        @click="fetchData"
+      >
+        <div class="bg-dock-icon-wrap">
+          <svg :class="{ 'is-spin': loading }" width="17.5" height="17.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          <span v-if="items.length > 0" class="bg-dock-badge tabular-nums">{{ items.length > 999 ? '999+' : items.length }}</span>
+        </div>
+        <span>{{ loading ? 'Đang tải' : 'Đồng bộ' }}</span>
+      </button>
+    </nav>
   </div>
 </template>
 
@@ -11195,9 +11969,14 @@ const onFilterDropdownScroll = (e, type) => {
   }
 }
 
+const showMobileDisplayPopover = ref(false)
+
 const closeFilterDropdownOnOutsideClick = () => {
   if (openDropdownType.value) {
     openDropdownType.value = ''
+  }
+  if (showMobileDisplayPopover.value) {
+    showMobileDisplayPopover.value = false
   }
 }
 
@@ -11255,8 +12034,15 @@ const filteredItems = computed(() => {
       if (hasPriceListFilter && !getPriceListEntry(item)) {
         return false
       }
-      if (hasBrand && getItemBrand(item) !== selectedBrandFilter.value) {
-        return false
+      if (hasBrand) {
+        const itemBrand = getItemBrand(item)
+        if (selectedBrandFilter.value === '__OTHER_BRANDS__') {
+          if (itemBrand === 'SOPHOS' || itemBrand === 'KASPERSKY' || itemBrand === 'ACRONIS') {
+            return false
+          }
+        } else if (itemBrand !== selectedBrandFilter.value) {
+          return false
+        }
       }
       if (hasCategory && getItemCategory(item) !== selectedCategoryFilter.value) {
         return false
@@ -11319,7 +12105,7 @@ function highlightText(text, query) {
   
   const safeWords = words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
   const regex = new RegExp(`(${safeWords.join('|')})`, 'gi')
-  return text.replace(regex, '<span style="background-color: #eab308; color: #0f172a; font-weight: bold; padding: 0 2px; border-radius: 2px;">$1</span>')
+  return String(text).replace(regex, '<mark class="qlhh-hl">$1</mark>')
 }
 
 watch(
@@ -12197,10 +12983,62 @@ const totalProductsCount = computed(() => filteredItems.value.length)
 
 const totalGroupsCount = computed(() => Object.keys(allGroupedItems.value).length)
 
+const collapsedCategories = ref({})
+
+const toggleCategoryCollapse = (cat) => {
+  collapsedCategories.value = {
+    ...collapsedCategories.value,
+    [cat]: !collapsedCategories.value[cat]
+  }
+  nextTick(() => {
+    if (lazyLoadSentinelRef.value) {
+      setupLazyLoadObserver(lazyLoadSentinelRef.value)
+    }
+  })
+}
+
+const areAllCategoriesCollapsed = computed(() => {
+  const keys = Object.keys(allGroupedItems.value)
+  return keys.length > 0 && keys.every(k => Boolean(collapsedCategories.value[k]))
+})
+
+const toggleAllCategoriesCollapse = () => {
+  const keys = Object.keys(allGroupedItems.value)
+  if (!keys.length) return
+  if (areAllCategoriesCollapsed.value) {
+    collapsedCategories.value = {}
+  } else {
+    const next = {}
+    keys.forEach(k => {
+      next[k] = true
+    })
+    collapsedCategories.value = next
+  }
+  nextTick(() => {
+    if (lazyLoadSentinelRef.value) {
+      setupLazyLoadObserver(lazyLoadSentinelRef.value)
+    }
+  })
+}
+
+const uncollapsedProductsCount = computed(() => {
+  let sum = 0
+  for (const [cat, list] of Object.entries(allGroupedItems.value)) {
+    if (!collapsedCategories.value[cat]) {
+      sum += list.length
+    }
+  }
+  return sum
+})
+
 const groupedItems = computed(() => {
   const sortedGroups = {}
   let remaining = displayLimit.value
   for (const [cat, list] of Object.entries(allGroupedItems.value)) {
+    if (collapsedCategories.value[cat]) {
+      sortedGroups[cat] = []
+      continue
+    }
     if (remaining <= 0) break
     const slice = list.slice(0, remaining)
     if (slice.length > 0) {
@@ -12212,15 +13050,15 @@ const groupedItems = computed(() => {
 })
 
 const displayedProductsCount = computed(() => {
-  return Math.min(displayLimit.value, totalProductsCount.value)
+  return Math.min(displayLimit.value, uncollapsedProductsCount.value)
 })
 
 const hasMoreProducts = computed(() => {
-  return displayLimit.value < totalProductsCount.value
+  return displayLimit.value < uncollapsedProductsCount.value
 })
 
 const loadMoreProducts = () => {
-  if (displayLimit.value < totalProductsCount.value) {
+  if (displayLimit.value < uncollapsedProductsCount.value) {
     displayLimit.value = Math.min(totalProductsCount.value, displayLimit.value + PRODUCT_PAGE_SIZE)
   }
 }
@@ -12365,6 +13203,7 @@ const formatGiaOffDate = (d) => {
 }
 
 const modalCostMarkup = ref({
+  flow: 'cost_to_sell',
   direction: 'increase',
   type: 'percent',
   value: 0
@@ -12393,40 +13232,105 @@ const formatCardMarkupBadge = (item) => {
   return `${sign}${pct}% vs Giá vốn`
 }
 
-const syncModalCostMarkupFromPrices = (giaVonVal, donGiaVal) => {
+const syncModalCostMarkupFromPrices = (giaVonVal, donGiaVal, preserveType = false) => {
+  const flow = modalCostMarkup.value?.flow || 'cost_to_sell'
+  const curType = preserveType && modalCostMarkup.value?.type === 'amount' ? 'amount' : 'percent'
   const giaVon = toNum(giaVonVal, 0)
   const donGia = toNum(donGiaVal, 0)
   if (giaVon <= 0 || donGia <= 0 || donGia === giaVon) {
-    modalCostMarkup.value = { direction: 'increase', type: 'percent', value: 0 }
+    modalCostMarkup.value = {
+      flow,
+      direction: flow === 'sell_to_cost' ? 'decrease' : 'increase',
+      type: curType,
+      value: 0
+    }
     return
   }
   const diff = donGia - giaVon
-  const dir = diff < 0 ? 'decrease' : 'increase'
-  const pct = Math.round((Math.abs(diff) / giaVon) * 1000) / 10
+  const dir = flow === 'sell_to_cost'
+    ? (diff > 0 ? 'decrease' : 'increase')
+    : (diff < 0 ? 'decrease' : 'increase')
+  const val = curType === 'amount'
+    ? roundByCurrency(Math.abs(diff), formData.value?.Don_vi_tien_te)
+    : Math.round((Math.abs(diff) / giaVon) * 1000) / 10
   modalCostMarkup.value = {
+    flow,
     direction: dir,
-    type: 'percent',
-    value: pct
+    type: curType,
+    value: val
   }
 }
 
-const applyModalCostMarkupToDonGia = () => {
+const toggleModalCostMarkupFlow = () => {
+  const curFlow = modalCostMarkup.value?.flow || 'cost_to_sell'
+  const nextFlow = curFlow === 'sell_to_cost' ? 'cost_to_sell' : 'sell_to_cost'
+  const giaVon = toNum(formData.value.Gia_tieu_chuan, 0)
+  const donGia = toNum(formData.value.Don_gia, 0)
+  const hasVal = toNum(modalCostMarkup.value?.value, 0) > 0 || (giaVon > 0 && donGia > 0 && giaVon !== donGia)
+  const nextDir = hasVal
+    ? (modalCostMarkup.value.direction === 'decrease' ? 'increase' : 'decrease')
+    : (nextFlow === 'sell_to_cost' ? 'decrease' : 'increase')
+  modalCostMarkup.value = {
+    ...modalCostMarkup.value,
+    flow: nextFlow,
+    direction: nextDir
+  }
+}
+
+const syncModalPriceListMetaFromDonGia = () => {
+  if (!isEditing.value || !activePriceList.value || !formData.value._has_pl_entry) return
+  const giaGoc = toNum(formData.value._gia_goc_he_thong, 0)
+  const giaMoi = Math.max(0, toNum(formData.value.Don_gia, 0))
+  const diff = giaMoi - giaGoc
+  formData.value._pl_direction = diff < 0 ? 'decrease' : 'increase'
+  const pct = giaGoc > 0 ? Math.round((Math.abs(diff) / giaGoc) * 1000) / 10 : 0
+  formData.value._pl_pct = pct
+  formData.value._pl_type = 'percent'
+  formData.value._pl_value = pct
+}
+
+const applyModalCostMarkup = () => {
+  const flow = modalCostMarkup.value?.flow || 'cost_to_sell'
+  const dir = modalCostMarkup.value?.direction || (flow === 'sell_to_cost' ? 'decrease' : 'increase')
+  const type = modalCostMarkup.value?.type || 'percent'
+  const val = Math.max(0, toNum(modalCostMarkup.value?.value, 0))
+
+  if (flow === 'sell_to_cost') {
+    const donGia = toNum(formData.value.Don_gia, 0)
+    if (donGia <= 0) return
+    let rawCost = donGia
+    if (type === 'percent') {
+      if (dir === 'decrease') {
+        rawCost = donGia / (1 + val / 100)
+      } else {
+        const factor = 1 - val / 100
+        rawCost = factor > 1e-6 ? donGia / factor : 0
+      }
+    } else {
+      rawCost = dir === 'decrease' ? donGia - val : donGia + val
+    }
+    formData.value.Gia_tieu_chuan = roundByCurrency(Math.max(0, rawCost), formData.value.Don_vi_tien_te)
+    return
+  }
+
   const giaVon = toNum(formData.value.Gia_tieu_chuan, 0)
   if (giaVon <= 0) return
-  const dir = modalCostMarkup.value.direction || 'increase'
-  const type = modalCostMarkup.value.type || 'percent'
-  const val = Math.max(0, toNum(modalCostMarkup.value.value, 0))
   const delta = type === 'percent' ? (giaVon * val) / 100 : val
   const rawNew = dir === 'decrease' ? giaVon - delta : giaVon + delta
   formData.value.Don_gia = roundByCurrency(Math.max(0, rawNew), formData.value.Don_vi_tien_te)
+  syncModalPriceListMetaFromDonGia()
 }
 
 const onModalGiaVonChange = () => {
+  if (modalCostMarkup.value?.flow === 'sell_to_cost') {
+    syncModalCostMarkupFromPrices(formData.value.Gia_tieu_chuan, formData.value.Don_gia, true)
+    return
+  }
   const giaVon = toNum(formData.value.Gia_tieu_chuan, 0)
   if (giaVon <= 0) return
   const hasRuleVal = toNum(modalCostMarkup.value.value, 0) > 0
   if (hasRuleVal) {
-    applyModalCostMarkupToDonGia()
+    applyModalCostMarkup()
   } else if (!isEditing.value && toNum(formData.value.Don_gia, 0) === 0) {
     formData.value.Don_gia = giaVon
   }
@@ -12545,7 +13449,7 @@ const openAddModal = () => {
   sessionUploadedFileIds.value = []
   isManualMaHangEdited.value = false
   formData.value = { ...defaultForm, danh_sach_file: [] }
-  modalCostMarkup.value = { direction: 'increase', type: 'percent', value: 0 }
+  modalCostMarkup.value = { flow: 'cost_to_sell', direction: 'increase', type: 'percent', value: 0 }
   originalItem.value = null
   isEditing.value = false
   showModal.value = true
@@ -12558,6 +13462,7 @@ const openEditModal = (item) => {
   const normalizedFiles = normalizeProductFileHistory(item.danh_sach_file)
   const plEntry = activePriceList.value ? getPriceListEntry(item) : null
   const giaGocHeThong = toNum(item.Don_gia, 0)
+  modalCostMarkup.value = { flow: 'cost_to_sell', direction: 'increase', type: 'percent', value: 0 }
   syncModalCostMarkupFromPrices(item.Gia_tieu_chuan, item.Don_gia)
 
   if (activePriceList.value && plEntry) {
@@ -12615,16 +13520,12 @@ const formatModalPriceListBadge = () => {
 }
 
 const onModalDonGiaChange = () => {
-  syncModalCostMarkupFromPrices(formData.value.Gia_tieu_chuan, formData.value.Don_gia)
-  if (!isEditing.value || !activePriceList.value || !formData.value._has_pl_entry) return
-  const giaGoc = toNum(formData.value._gia_goc_he_thong, 0)
-  const giaMoi = Math.max(0, toNum(formData.value.Don_gia, 0))
-  const diff = giaMoi - giaGoc
-  formData.value._pl_direction = diff < 0 ? 'decrease' : 'increase'
-  const pct = giaGoc > 0 ? Math.round((Math.abs(diff) / giaGoc) * 1000) / 10 : 0
-  formData.value._pl_pct = pct
-  formData.value._pl_type = 'percent'
-  formData.value._pl_value = pct
+  syncModalPriceListMetaFromDonGia()
+  if (modalCostMarkup.value?.flow === 'sell_to_cost' && toNum(modalCostMarkup.value.value, 0) > 0) {
+    applyModalCostMarkup()
+    return
+  }
+  syncModalCostMarkupFromPrices(formData.value.Gia_tieu_chuan, formData.value.Don_gia, true)
 }
 
 const onModalPriceListPctChange = () => {
@@ -12637,6 +13538,11 @@ const onModalPriceListPctChange = () => {
   formData.value.Don_gia = roundByCurrency(rawNew, formData.value.Don_vi_tien_te)
   formData.value._pl_type = 'percent'
   formData.value._pl_value = pct
+  if (modalCostMarkup.value?.flow === 'sell_to_cost' && toNum(modalCostMarkup.value.value, 0) > 0) {
+    applyModalCostMarkup()
+  } else {
+    syncModalCostMarkupFromPrices(formData.value.Gia_tieu_chuan, formData.value.Don_gia, true)
+  }
 }
 
 const closeModal = () => {
@@ -18932,7 +19838,7 @@ const restoreQuoteCartFromStorage = () => {
     const parsed = JSON.parse(raw)
     if (Array.isArray(parsed)) {
       quoteCart.value = parsed.filter(x => x && x.key && Number(x.qty) > 0)
-      if (quoteCart.value.length > 0) {
+      if (quoteCart.value.length > 0 && (typeof window === 'undefined' || window.innerWidth > 1100)) {
         showQuoteCartDrawer.value = true
       }
     }
@@ -18972,7 +19878,9 @@ const addToQuoteCart = (item) => {
       itemSnapshot: JSON.parse(JSON.stringify(item))
     })
   }
-  showQuoteCartDrawer.value = true
+  if (typeof window === 'undefined' || window.innerWidth > 1100) {
+    showQuoteCartDrawer.value = true
+  }
   saveQuoteCartToStorage()
 }
 
@@ -19151,8 +20059,179 @@ const proceedToCalculateQuote = () => {
   router.push('/baogiafirebase')
 }
 
+// =========================================================================
+// THEME, VIEW MODE, KPI COUNTS, VENDOR HUB & MOBILE SUB-DOCK
+// =========================================================================
+const QUOTE_THEME_MODE_STORAGE_KEY = 'nts_quote_theme_mode_v1'
+const QLHH_VIEW_MODE_STORAGE_KEY = 'nts_qlhh_view_mode_v1'
+
+const loadSavedQlhhTheme = () => {
+  try {
+    return localStorage.getItem(QUOTE_THEME_MODE_STORAGE_KEY) === 'light' ? 'light' : 'dark'
+  } catch {
+    return 'dark'
+  }
+}
+
+const loadSavedQlhhViewMode = () => {
+  try {
+    return localStorage.getItem(QLHH_VIEW_MODE_STORAGE_KEY) === 'table' ? 'table' : 'card'
+  } catch {
+    return 'card'
+  }
+}
+
+const uiTheme = ref(loadSavedQlhhTheme())
+const toggleUiTheme = () => {
+  uiTheme.value = uiTheme.value === 'dark' ? 'light' : 'dark'
+  try {
+    localStorage.setItem(QUOTE_THEME_MODE_STORAGE_KEY, uiTheme.value)
+  } catch {}
+}
+
+const viewMode = ref(loadSavedQlhhViewMode())
+const setViewMode = (mode) => {
+  viewMode.value = mode === 'table' ? 'table' : 'card'
+  try {
+    localStorage.setItem(QLHH_VIEW_MODE_STORAGE_KEY, viewMode.value)
+  } catch {}
+}
+
+const allCategoriesTotalCount = computed(() => {
+  const setCats = new Set()
+  items.value.forEach(item => {
+    setCats.add(getItemCategory(item))
+  })
+  return setCats.size
+})
+
+const brandKpiCounts = computed(() => {
+  let sophos = 0
+  let kaspersky = 0
+  let acronis = 0
+  let others = 0
+  items.value.forEach(item => {
+    const b = getItemBrand(item)
+    if (b === 'SOPHOS') sophos++
+    else if (b === 'KASPERSKY') kaspersky++
+    else if (b === 'ACRONIS') acronis++
+    else others++
+  })
+  return { sophos, kaspersky, acronis, others }
+})
+
+const toggleBrandQuickFilter = (brandKey) => {
+  selectedBrandFilter.value = selectedBrandFilter.value === brandKey ? '' : brandKey
+}
+
+const selectedBrandBtnLabel = computed(() => {
+  if (!selectedBrandFilter.value) {
+    return `Hãng (${brandFilterOptions.value.length})`
+  }
+  if (selectedBrandFilter.value === '__OTHER_BRANDS__') {
+    return 'Hãng: Khác'
+  }
+  return `Hãng: ${selectedBrandFilter.value}`
+})
+
+const sortOrderLabel = computed(() => {
+  if (sortOrder.value === 'newest') return 'Mới → Cũ'
+  if (sortOrder.value === 'oldest') return 'Cũ → Mới'
+  return 'Sắp xếp'
+})
+
+const showVendorToolsModal = ref(false)
+const activeVendorHubTab = ref('sophos')
+
+const openVendorToolsHub = (tab = '') => {
+  if (tab) {
+    activeVendorHubTab.value = tab
+  } else if (selectedBrandFilter.value === 'KASPERSKY') {
+    activeVendorHubTab.value = 'kaspersky'
+  } else if (selectedBrandFilter.value === 'ACRONIS') {
+    activeVendorHubTab.value = 'acronis'
+  } else if (selectedBrandFilter.value === 'SOPHOS') {
+    activeVendorHubTab.value = 'sophos'
+  }
+  showVendorToolsModal.value = true
+}
+
+watch(
+  [
+    showImportModal,
+    showImageCheckModal,
+    showKasImageCheckModal,
+    showAcronisCompareModal,
+    showSophosDbSyncModal,
+    showSophosTgSyncModal,
+    showUsdRateModal,
+    showPriceListModal
+  ],
+  (vals) => {
+    if (vals.some(Boolean) && showVendorToolsModal.value) {
+      showVendorToolsModal.value = false
+    }
+  }
+)
+
+const isMobileDockViewport = ref(typeof window !== 'undefined' ? window.innerWidth <= 1100 : false)
+const isCompactPhoneViewport = ref(typeof window !== 'undefined' ? window.innerWidth <= 768 : false)
+
+const updateQlhhViewportFlags = () => {
+  if (typeof window === 'undefined') return
+  isMobileDockViewport.value = window.innerWidth <= 1100
+  isCompactPhoneViewport.value = window.innerWidth <= 768
+  if (!isMobileDockViewport.value && showMobileDisplayPopover.value) {
+    showMobileDisplayPopover.value = false
+  }
+}
+
+const isAnyPrimaryOverlayOpen = computed(() =>
+  Boolean(
+    showModal.value ||
+    showVendorToolsModal.value ||
+    productFilesModal.value?.show ||
+    showImportModal.value ||
+    Boolean(importFeaturesEditRow.value) ||
+    confirmDeleteModal.value?.show ||
+    confirmDeletePriceListModal.value?.show ||
+    aiPurchaseFallbackModal.value?.show ||
+    showUsdRateModal.value ||
+    showPriceListModal.value ||
+    showImageCheckModal.value ||
+    imageCheckZoomModal.value ||
+    showKasImageCheckModal.value ||
+    kasCheckZoomModal.value ||
+    showExcelNavModal.value ||
+    showCardRefCompareModal.value ||
+    showAcronisCompareModal.value ||
+    showSophosDbSyncModal.value ||
+    showSophosTgSyncModal.value ||
+    asyncResultModal.value?.show ||
+    (isMobileDockViewport.value && showQuoteCartDrawer.value)
+  )
+)
+
+const isMobileDockHidden = computed(() =>
+  Boolean(isAnyPrimaryOverlayOpen.value || Boolean(openDropdownType.value))
+)
+
+watch(
+  isAnyPrimaryOverlayOpen,
+  (open) => {
+    if (typeof document !== 'undefined') {
+      document.body.classList.toggle('app-has-open-modal', open)
+      document.body.classList.toggle('has-open-modal', open)
+    }
+  },
+  { immediate: true }
+)
+
 onMounted(async () => {
+  uiTheme.value = loadSavedQlhhTheme()
+  updateQlhhViewportFlags()
   restoreQuoteCartFromStorage()
+  window.addEventListener('resize', updateQlhhViewportFlags)
   window.addEventListener('paste', handleGlobalPasteForImageCheck)
   window.addEventListener('click', closeFilterDropdownOnOutsideClick)
   fetchLatestGiaOff()
@@ -19162,8 +20241,13 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  window.removeEventListener('resize', updateQlhhViewportFlags)
   window.removeEventListener('paste', handleGlobalPasteForImageCheck)
   window.removeEventListener('click', closeFilterDropdownOnOutsideClick)
+  if (typeof document !== 'undefined') {
+    document.body.classList.remove('app-has-open-modal')
+    document.body.classList.remove('has-open-modal')
+  }
   if (lazyLoadObserver) {
     lazyLoadObserver.disconnect()
     lazyLoadObserver = null
@@ -23902,6 +24986,4616 @@ onUnmounted(() => {
 @media (max-width: 960px) {
   .sophos-sync-kpi-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ==========================================================================
+   PHƯƠNG ÁN A — ĐỒNG BỘ HỆ THỐNG GIAO DIỆN CHUẨN BAOGIA / QUANLYBAOGIA
+   Dual-Theme (Dark Navy & Light Blue), 3-Card Bento KPI, Rounded Search,
+   Collapsible Category Groups, 4-Tier Cards ↔ Data Table, Vendor Hub & Dock
+========================================================================== */
+.qlhh-page,
+.qlhh-modal-backdrop,
+.qlhh-hub-overlay,
+.qlhh-fm-overlay {
+  --font-sans: 'Inter', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Dark Navy Default */
+  --bg-canvas: radial-gradient(ellipse 80% 50% at 10% 0%, rgba(14, 165, 233, 0.11) 0%, transparent 52%),
+    radial-gradient(ellipse 60% 40% at 90% 100%, rgba(16, 185, 129, 0.07) 0%, transparent 52%), #09090b;
+  --bg-surface: #0f172a;
+  --bg-card: rgba(15, 23, 42, 0.78);
+  --bg-card-hover: rgba(20, 31, 56, 0.94);
+  --bg-well: rgba(2, 6, 23, 0.52);
+  --bg-input: #0b1324;
+  --bg-modal: #0b1322;
+  --bg-modal-head: #0f172a;
+  --bg-table-head: #0d1629;
+  --bg-row-hover: rgba(56, 189, 248, 0.06);
+
+  --border-subtle: rgba(148, 163, 184, 0.16);
+  --border-control: rgba(148, 163, 184, 0.24);
+  --border-strong: rgba(56, 189, 248, 0.38);
+
+  --ink-primary: #f8fafc;
+  --ink-strong: #ffffff;
+  --ink-secondary: #cbd5e1;
+  --ink-muted: #94a3b8;
+  --ink-faint: #64748b;
+
+  --sky-text: #38bdf8;
+  --sky-bg: rgba(14, 165, 233, 0.15);
+  --sky-border: rgba(56, 189, 248, 0.38);
+
+  --emerald-text: #34d399;
+  --emerald-bg: rgba(16, 185, 129, 0.14);
+  --emerald-border: rgba(16, 185, 129, 0.36);
+
+  --amber-text: #fbbf24;
+  --amber-bg: rgba(245, 158, 11, 0.13);
+  --amber-border: rgba(245, 158, 11, 0.35);
+
+  --rose-text: #f87171;
+  --rose-bg: rgba(239, 68, 68, 0.14);
+  --rose-border: rgba(239, 68, 68, 0.35);
+
+  --violet-text: #c4b5fd;
+  --violet-bg: rgba(139, 92, 246, 0.14);
+  --violet-border: rgba(167, 139, 250, 0.36);
+
+  --slate-text: #cbd5e1;
+  --slate-bg: rgba(148, 163, 184, 0.12);
+  --slate-border: rgba(148, 163, 184, 0.24);
+
+  --shadow-card: 0 10px 28px -10px rgba(0, 0, 0, 0.55);
+  --shadow-modal: 0 26px 60px -12px rgba(0, 0, 0, 0.78);
+}
+
+/* Enterprise Light Blue Theme */
+.qlhh-page.theme-light-blue,
+.qlhh-modal-backdrop.theme-light-blue,
+.qlhh-hub-overlay.theme-light-blue,
+.qlhh-fm-overlay.theme-light-blue,
+.qlhh-cmp-overlay.theme-light-blue {
+  --bg-canvas: linear-gradient(180deg, #eef4fb 0%, #e2ecf8 100%);
+  --bg-surface: #ffffff;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f8fbff;
+  --bg-well: #f1f5f9;
+  --bg-input: #f8fafc;
+  --bg-modal: #ffffff;
+  --bg-modal-head: #f8fbff;
+  --bg-table-head: #eff6ff;
+  --bg-row-hover: #eff6ff;
+
+  --border-subtle: #dbeafe;
+  --border-control: #cbd5e1;
+  --border-strong: #60a5fa;
+
+  --ink-primary: #0f172a;
+  --ink-strong: #020617;
+  --ink-secondary: #334155;
+  --ink-muted: #475569;
+  --ink-faint: #64748b;
+
+  --sky-text: #0284c7;
+  --sky-bg: #eff6ff;
+  --sky-border: #93c5fd;
+
+  --emerald-text: #059669;
+  --emerald-bg: #ecfdf5;
+  --emerald-border: #6ee7b7;
+
+  --amber-text: #d97706;
+  --amber-bg: #fffbeb;
+  --amber-border: #fcd34d;
+
+  --rose-text: #dc2626;
+  --rose-bg: #fef2f2;
+  --rose-border: #fecaca;
+
+  --violet-text: #6d28d9;
+  --violet-bg: #f5f3ff;
+  --violet-border: #c4b5fd;
+
+  --slate-text: #334155;
+  --slate-bg: #f1f5f9;
+  --slate-border: #cbd5e1;
+
+  --shadow-card: 0 8px 24px -8px rgba(15, 23, 42, 0.08);
+  --shadow-modal: 0 24px 52px -12px rgba(15, 23, 42, 0.22);
+}
+
+.quan-ly-hang-hoa.qlhh-page {
+  max-width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 14px 18px 44px;
+  background: var(--bg-canvas);
+  color: var(--ink-primary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.48;
+  box-sizing: border-box;
+}
+
+.qlhh-page *,
+.qlhh-page .qlhh-modal-backdrop *,
+.qlhh-page .import-overlay *,
+.qlhh-page .quote-cart-right-sidebar * {
+  box-sizing: border-box;
+  font-family: var(--font-sans);
+}
+
+/* Reset global style.css `code` & `h2` collisions inside QuanLyHangHoaFirebase */
+.qlhh-page code,
+.qlhh-modal-backdrop code {
+  display: inline;
+  padding: 1px 6px;
+  border-radius: 5px;
+  font-family: var(--font-mono) !important;
+  font-size: 11.5px;
+  line-height: 1.35;
+  font-weight: 700;
+  background: var(--sky-bg);
+  color: var(--sky-text);
+  border: 1px solid var(--sky-border);
+}
+.qlhh-page .import-overlay code {
+  display: inline;
+  padding: 1px 6px;
+  border-radius: 5px;
+  font-family: var(--font-mono) !important;
+  font-size: 11.5px;
+  line-height: 1.35;
+  font-weight: 700;
+  background: rgba(56, 189, 248, 0.14);
+  color: #7dd3fc;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+/* Fix Import / PriceList / ImageCheck modal header flex & Amber icon */
+.import-modal__title-group {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+.import-modal__icon.is-amber-icon {
+  background: rgba(245, 158, 11, 0.16);
+  border: 1px solid rgba(245, 158, 11, 0.42);
+  color: #fbbf24;
+  box-shadow: 0 6px 18px -6px rgba(245, 158, 11, 0.4);
+}
+.import-overlay {
+  z-index: 10065;
+}
+
+/* Collision-free Modal Backdrop (100% isolated from baogiaFirebase / BaoGia / style.css) */
+.qlhh-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 16px;
+  background: rgba(2, 6, 23, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10060;
+  box-sizing: border-box;
+  overscroll-behavior: contain;
+}
+.qlhh-modal-backdrop.theme-light-blue {
+  background: rgba(15, 23, 42, 0.46);
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+.text-right {
+  text-align: right !important;
+}
+.text-center {
+  text-align: center !important;
+}
+
+:deep(mark.qlhh-hl) {
+  background: rgba(250, 204, 21, 0.28);
+  color: inherit;
+  padding: 0 2px;
+  border-radius: 3px;
+  font-weight: 700;
+}
+.theme-light-blue :deep(mark.qlhh-hl) {
+  background: #fef08a;
+  color: #0f172a;
+}
+
+@keyframes qlhhSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.is-spin {
+  animation: qlhhSpin 0.85s linear infinite;
+}
+
+/* ==========================================================================
+   1. BENTO KPI GRID (3 THẺ ĐỒNG BỘ QUANLYBAOGIAFIREBASE)
+========================================================================== */
+.qlhh-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.qlhh-kpi-card {
+  width: 100%;
+  margin: 0;
+  padding: 14px 16px 13px;
+  border-radius: 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-card);
+  color: var(--ink-primary);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 9px;
+  min-width: 0;
+  transition: all 0.18s ease;
+  user-select: none;
+}
+
+.qlhh-kpi-card:hover {
+  transform: translateY(-1px);
+}
+.qlhh-kpi-card:not(.active):hover {
+  background: var(--bg-card-hover);
+}
+
+.kpi-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.kpi-label {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kpi-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.kpi-icon.is-sky {
+  background: var(--sky-bg);
+  color: var(--sky-text);
+}
+.kpi-icon.is-emerald {
+  background: var(--emerald-bg);
+  color: var(--emerald-text);
+}
+.kpi-icon.is-amber {
+  background: var(--amber-bg);
+  color: var(--amber-text);
+}
+
+.qlhh-kpi-card.is-sky .kpi-label {
+  color: #bae6fd;
+}
+.qlhh-kpi-card.is-sky:not(.active):hover {
+  border-color: #38bdf8;
+}
+.qlhh-kpi-card.is-sky.active {
+  background: linear-gradient(155deg, #0369a1 0%, #075985 55%, #0c4a6e 100%);
+  border-color: #7dd3fc;
+  box-shadow: inset 3px 0 0 #38bdf8, 0 8px 22px -8px rgba(14, 165, 233, 0.45);
+}
+
+.qlhh-kpi-card.is-emerald .kpi-label {
+  color: #a7f3d0;
+}
+.qlhh-kpi-card.is-emerald:not(.active):hover {
+  border-color: #6ee7b7;
+}
+.qlhh-kpi-card.is-emerald.active {
+  background: linear-gradient(155deg, #047857 0%, #065f46 58%, #064e3b 100%);
+  border-color: #6ee7b7;
+  box-shadow: inset 3px 0 0 #34d399, 0 8px 22px -8px rgba(16, 185, 129, 0.45);
+}
+
+.qlhh-kpi-card.is-amber .kpi-label {
+  color: #fde68a;
+}
+.qlhh-kpi-card.is-amber:not(.active):hover {
+  border-color: #fbbf24;
+}
+.qlhh-kpi-card.is-amber.active {
+  background: linear-gradient(155deg, #b45309 0%, #92400e 58%, #78350f 100%);
+  border-color: #fde68a;
+  box-shadow: inset 3px 0 0 #fbbf24, 0 8px 22px -8px rgba(245, 158, 11, 0.45);
+}
+
+.qlhh-kpi-card.active .kpi-icon {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+.qlhh-kpi-card.active .kpi-label,
+.qlhh-kpi-card.active .kpi-val,
+.qlhh-kpi-card.active .kpi-pl-name {
+  color: #ffffff;
+}
+
+.qlhh-page.theme-light-blue .qlhh-kpi-card.is-sky .kpi-label {
+  color: #0369a1;
+}
+.qlhh-page.theme-light-blue .qlhh-kpi-card.is-emerald .kpi-label {
+  color: #047857;
+}
+.qlhh-page.theme-light-blue .qlhh-kpi-card.is-amber .kpi-label {
+  color: #b45309;
+}
+.qlhh-page.theme-light-blue .qlhh-kpi-card.is-sky.active {
+  background: linear-gradient(155deg, #0284c7 0%, #0369a1 58%, #075985 100%);
+  border-color: #0284c7;
+}
+.qlhh-page.theme-light-blue .qlhh-kpi-card.is-emerald.active {
+  background: linear-gradient(155deg, #059669 0%, #047857 58%, #065f46 100%);
+  border-color: #047857;
+}
+.qlhh-page.theme-light-blue .qlhh-kpi-card.is-amber.active {
+  background: linear-gradient(155deg, #d97706 0%, #b45309 58%, #92400e 100%);
+  border-color: #b45309;
+}
+.qlhh-page.theme-light-blue .qlhh-kpi-card.active .kpi-label,
+.qlhh-page.theme-light-blue .qlhh-kpi-card.active .kpi-val,
+.qlhh-page.theme-light-blue .qlhh-kpi-card.active .kpi-pl-name {
+  color: #ffffff;
+}
+
+.kpi-main-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.kpi-val {
+  font-size: 23px;
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--ink-strong);
+  letter-spacing: -0.02em;
+}
+.kpi-unit {
+  font-size: 12px;
+  font-weight: 700;
+  opacity: 0.78;
+  margin-left: 3px;
+}
+
+.kpi-pl-name {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--ink-strong);
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kpi-sub-pills {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.kpi-mini-pill {
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.12);
+  color: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  white-space: nowrap;
+}
+.qlhh-kpi-card:not(.active) .kpi-mini-pill {
+  background: var(--slate-bg);
+  color: var(--ink-secondary);
+  border-color: var(--border-subtle);
+}
+
+.kpi-brand-chips {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.kpi-brand-chip {
+  margin: 0;
+  padding: 5px 7px;
+  border-radius: 8px;
+  border: 1px solid var(--border-control);
+  background: var(--bg-input);
+  color: var(--ink-secondary);
+  font-size: 11.5px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-width: 0;
+}
+.kpi-brand-chip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kpi-brand-chip strong {
+  color: var(--ink-strong);
+  font-weight: 800;
+}
+.kpi-brand-chip:hover {
+  border-color: var(--emerald-border);
+  color: var(--ink-strong);
+}
+.kpi-brand-chip.active {
+  background: #ffffff;
+  color: #064e3b;
+  border-color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+.kpi-brand-chip.active strong {
+  color: #047857;
+}
+.qlhh-kpi-card.is-emerald.active .kpi-brand-chip:not(.active) {
+  background: rgba(0, 0, 0, 0.24);
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #d1fae5;
+}
+.qlhh-kpi-card.is-emerald.active .kpi-brand-chip:not(.active) strong {
+  color: #ffffff;
+}
+
+.kpi-action-pill {
+  margin: 0;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+.kpi-action-pill.is-amber {
+  background: var(--amber-bg);
+  border: 1px solid var(--amber-border);
+  color: var(--amber-text);
+}
+.kpi-action-pill.is-sky {
+  background: var(--sky-bg);
+  border: 1px solid var(--sky-border);
+  color: var(--sky-text);
+}
+.qlhh-kpi-card.active .kpi-action-pill {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.36);
+  color: #ffffff;
+}
+.kpi-action-pill:hover {
+  filter: brightness(1.1);
+}
+
+/* ==========================================================================
+   2. UNIFIED SMART FILTER & SEARCH BAR
+========================================================================== */
+.qlhh-filter-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.qlhh-filter-row-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.qlhh-filter-left,
+.qlhh-filter-right {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.qlhh-picker-root {
+  position: relative;
+}
+
+.qlhh-picker-btn {
+  width: auto;
+  margin: 0;
+  height: 36px;
+  max-width: 205px;
+  padding: 0 10px;
+  border-radius: 9px;
+  border: 1px solid var(--border-control);
+  background: var(--bg-card);
+  color: var(--ink-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.qlhh-picker-btn:hover {
+  border-color: var(--sky-border);
+}
+.qlhh-picker-btn.is-active,
+.qlhh-picker-btn.is-open {
+  background: var(--sky-bg);
+  border-color: var(--sky-border);
+  color: var(--sky-text);
+}
+
+.picker-btn-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.picker-chev {
+  opacity: 0.65;
+  flex-shrink: 0;
+}
+
+.picker-clear-dot {
+  width: 17px;
+  height: 17px;
+  padding: 0;
+  margin: 0;
+  border-radius: 999px;
+  border: none;
+  background: rgba(148, 163, 184, 0.24);
+  color: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.picker-clear-dot:hover {
+  background: var(--rose-bg);
+  color: var(--rose-text);
+}
+
+.qlhh-vol-pill {
+  height: 36px;
+  padding: 0 9px;
+  border-radius: 9px;
+  border: 1px solid var(--border-control);
+  background: var(--bg-card);
+  color: var(--ink-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+.qlhh-vol-pill:focus-within,
+.qlhh-vol-pill.is-active {
+  border-color: var(--sky-border);
+  color: var(--sky-text);
+}
+.qlhh-vol-input {
+  width: 98px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--ink-primary);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.qlhh-vol-input::placeholder {
+  color: var(--ink-faint);
+}
+
+.qlhh-reset-btn {
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 9px;
+  border: 1px solid var(--rose-border);
+  background: var(--rose-bg);
+  color: var(--rose-text);
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.qlhh-reset-btn:hover {
+  filter: brightness(1.08);
+}
+
+/* Rounded Search Capsule with Soft Blue Border */
+.qlhh-search-box {
+  flex: 1 1 250px;
+  min-width: 190px;
+  height: 38px;
+  padding: 0 14px;
+  background: var(--bg-card);
+  border: 1.5px solid var(--sky-border);
+  border-radius: 999px;
+  box-shadow: 0 2px 10px -4px rgba(14, 165, 233, 0.18);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+.qlhh-search-box:focus-within {
+  border-color: var(--border-strong);
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.16);
+}
+.qlhh-search-ico {
+  color: var(--sky-text);
+  opacity: 0.88;
+  flex-shrink: 0;
+}
+.qlhh-search-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--ink-primary);
+  font-size: 13px;
+}
+.qlhh-search-input::placeholder {
+  color: var(--ink-faint);
+}
+.qlhh-search-count {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--sky-bg);
+  color: var(--sky-text);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.qlhh-search-clear {
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border-control);
+  background: var(--slate-bg);
+  color: var(--ink-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.qlhh-search-clear:hover {
+  color: var(--rose-text);
+  border-color: var(--rose-border);
+  background: var(--rose-bg);
+}
+
+/* Right Action Cluster */
+.qlhh-view-seg {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px;
+  border-radius: 9px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-control);
+  gap: 2px;
+}
+.qlhh-view-seg-btn {
+  height: 28px;
+  padding: 0 9px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--ink-muted);
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+.qlhh-view-seg-btn.active {
+  background: var(--sky-bg);
+  color: var(--sky-text);
+  box-shadow: inset 0 0 0 1px var(--sky-border);
+}
+
+.qlhh-icon-btn {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 9px;
+  border: 1px solid var(--border-control);
+  background: var(--bg-card);
+  color: var(--ink-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.qlhh-icon-btn:hover:not(:disabled) {
+  border-color: var(--sky-border);
+  color: var(--sky-text);
+}
+
+.qlhh-ghost-btn {
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 9px;
+  border: 1px solid var(--border-control);
+  background: var(--bg-card);
+  color: var(--ink-primary);
+  font-size: 12.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+.qlhh-ghost-btn:hover:not(:disabled) {
+  border-color: var(--sky-border);
+  color: var(--sky-text);
+}
+.qlhh-ghost-btn.is-hub-btn {
+  background: var(--sky-bg);
+  border-color: var(--sky-border);
+  color: var(--sky-text);
+}
+.qlhh-ghost-btn.is-sm {
+  height: 32px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+.qlhh-ghost-btn.is-xs {
+  height: 28px;
+  padding: 0 9px;
+  font-size: 11.5px;
+  border-radius: 7px;
+}
+.qlhh-ghost-btn.is-amber-tint {
+  background: var(--amber-bg);
+  border-color: var(--amber-border);
+  color: var(--amber-text);
+}
+.qlhh-ghost-btn.is-emerald-tint {
+  background: var(--emerald-bg);
+  border-color: var(--emerald-border);
+  color: var(--emerald-text);
+}
+.qlhh-ghost-btn.is-sky-tint {
+  background: var(--sky-bg);
+  border-color: var(--sky-border);
+  color: var(--sky-text);
+}
+
+.qlhh-btn-primary {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 9px;
+  border: 1px solid rgba(52, 211, 153, 0.48);
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  font-size: 12.5px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px -4px rgba(16, 185, 129, 0.45);
+  transition: all 0.16s ease;
+}
+.qlhh-btn-primary:hover {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+.qlhh-page.theme-light-blue .qlhh-btn-primary,
+.qlhh-hub-modal.theme-light-blue .qlhh-btn-primary,
+.qlhh-fm-modal.theme-light-blue .qlhh-btn-primary {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+  border-color: #38bdf8;
+  box-shadow: 0 4px 12px -4px rgba(2, 132, 199, 0.35);
+}
+.qlhh-btn-primary.is-sm {
+  height: 32px;
+  padding: 0 11px;
+  font-size: 12px;
+}
+
+/* Adaptive Popover Menu (PC Popover ↔ Mobile Bottom Sheet) */
+.qlhh-pop-backdrop {
+  display: none;
+}
+.mob-sheet-grabber {
+  display: none;
+}
+
+.qlhh-pop-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 265px;
+  z-index: 1200;
+  background: var(--bg-modal);
+  border: 1px solid var(--border-strong);
+  border-radius: 13px;
+  box-shadow: var(--shadow-modal);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.qlhh-pop-menu.is-wide {
+  width: 340px;
+}
+
+.qlhh-pop-head {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--ink-strong);
+}
+.qlhh-pop-close {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px solid var(--border-control);
+  background: var(--bg-input);
+  color: var(--ink-muted);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.qlhh-pop-search-wrap {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.qlhh-pop-search {
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-control);
+  background: var(--bg-input);
+  color: var(--ink-primary);
+  font-size: 12.5px;
+}
+.qlhh-pop-search:focus {
+  outline: none;
+  border-color: var(--sky-border);
+}
+
+.qlhh-pop-list {
+  max-height: 290px;
+  overflow-y: auto;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.qlhh-pop-item {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--ink-primary);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  cursor: pointer;
+}
+.qlhh-pop-item span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.qlhh-pop-item:hover {
+  background: var(--bg-row-hover);
+}
+.qlhh-pop-item.active {
+  background: var(--sky-bg);
+  color: var(--sky-text);
+  font-weight: 700;
+}
+.qlhh-pop-count {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--slate-bg);
+  color: var(--ink-muted);
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.qlhh-pop-check {
+  color: var(--sky-text);
+  font-weight: 800;
+}
+.qlhh-pop-empty {
+  padding: 16px 10px;
+  text-align: center;
+  color: var(--ink-faint);
+  font-size: 12px;
+}
+.qlhh-pop-more {
+  margin-top: 4px;
+  padding: 7px 10px;
+  border-radius: 7px;
+  border: 1px dashed var(--sky-border);
+  background: var(--sky-bg);
+  color: var(--sky-text);
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.qlhh-pop-foot {
+  padding: 8px 10px;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-modal-head);
+}
+.qlhh-pop-create-btn {
+  width: 100%;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px dashed var(--sky-border);
+  background: var(--sky-bg);
+  color: var(--sky-text);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Price List Context Sub-Bar */
+.qlhh-pricelist-context-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 11px;
+  background: var(--bg-card);
+  border: 1px solid var(--amber-border);
+}
+.pl-ctx-left,
+.pl-ctx-right {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.pl-ctx-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--amber-text);
+  font-size: 12.5px;
+}
+
+/* ==========================================================================
+   3. SKELETON, EMPTY STATE & COLLAPSIBLE CATEGORY GROUPS
+========================================================================== */
+.qlhh-skeleton-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.qlhh-skeleton-bar {
+  height: 44px;
+  border-radius: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+}
+.qlhh-skeleton-card {
+  padding: 14px;
+  border-radius: 13px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.sk-row-top,
+.sk-chips,
+.sk-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.sk-pill {
+  width: 85px;
+  height: 18px;
+  border-radius: 999px;
+}
+.sk-pill.w60 {
+  width: 60px;
+}
+.sk-code {
+  width: 45%;
+  height: 16px;
+  border-radius: 5px;
+}
+.sk-title {
+  width: 92%;
+  height: 16px;
+  border-radius: 5px;
+}
+.sk-title.w70 {
+  width: 68%;
+}
+.sk-chip {
+  width: 78px;
+  height: 20px;
+  border-radius: 6px;
+}
+.sk-price {
+  width: 110px;
+  height: 24px;
+  border-radius: 6px;
+}
+.sk-btn {
+  width: 68px;
+  height: 28px;
+  border-radius: 999px;
+}
+
+.qlhh-empty-state {
+  padding: 44px 20px;
+  border-radius: 14px;
+  background: var(--bg-card);
+  border: 1px dashed var(--border-control);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.qlhh-empty-state .empty-ico {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: var(--sky-bg);
+  color: var(--sky-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.qlhh-empty-state h3 {
+  margin: 4px 0 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--ink-strong);
+}
+.qlhh-empty-state p {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 13px;
+}
+.qlhh-empty-state .empty-actions {
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.qlhh-groups-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.qlhh-group-block {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid #0ea5e9;
+  border-radius: 14px;
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.qlhh-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 15px;
+  background: linear-gradient(90deg, rgba(3, 105, 161, 0.36) 0%, rgba(15, 23, 42, 0.65) 65%, rgba(15, 23, 42, 0.45) 100%);
+  border-bottom: 1px solid var(--border-subtle);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s ease;
+}
+.qlhh-group-block.is-collapsed .qlhh-group-header {
+  border-bottom: none;
+}
+.qlhh-group-header:hover {
+  background: linear-gradient(90deg, rgba(2, 132, 199, 0.48) 0%, rgba(15, 23, 42, 0.72) 65%, rgba(15, 23, 42, 0.52) 100%);
+}
+.qlhh-page.theme-light-blue .qlhh-group-header {
+  background: linear-gradient(90deg, #e0f2fe 0%, #eff6ff 65%, #f8fbff 100%);
+  border-bottom-color: #bae6fd;
+}
+.qlhh-page.theme-light-blue .qlhh-group-header:hover {
+  background: linear-gradient(90deg, #bae6fd 0%, #e0f2fe 65%, #eff6ff 100%);
+}
+
+.qlhh-group-header .gh-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.qlhh-group-header .gh-folder-ico {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--sky-bg);
+  border: 1px solid var(--sky-border);
+  color: var(--sky-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.qlhh-group-header .gh-title-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.qlhh-group-header .gh-title {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--ink-strong);
+  letter-spacing: 0.01em;
+}
+.qlhh-group-header .gh-sub-hint {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+.qlhh-group-header .gh-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.qlhh-group-header .gh-count-pill {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--sky-bg);
+  border: 1px solid var(--sky-border);
+  color: var(--sky-text);
+  font-size: 11.5px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.qlhh-group-header .gh-toggle-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 7px;
+  border: 1px solid var(--border-control);
+  background: var(--bg-card);
+  color: var(--ink-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.qlhh-group-header .gh-chevron {
+  transition: transform 0.2s ease;
+}
+.qlhh-group-header .gh-chevron.is-collapsed {
+  transform: rotate(-90deg);
+}
+
+/* ==========================================================================
+   4. COMPACT 4-TIER PRODUCT CARDS (.qlhh-card)
+========================================================================== */
+.qlhh-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(295px, 1fr));
+  gap: 12px;
+}
+.qlhh-cards-grid.is-inside-group {
+  padding: 12px;
+}
+
+.qlhh-card {
+  padding: 13px 14px;
+  border-radius: 13px;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  cursor: pointer;
+  transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+  min-width: 0;
+}
+.qlhh-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--sky-border);
+  background: var(--bg-card-hover);
+  box-shadow: 0 10px 24px -10px rgba(14, 165, 233, 0.25);
+}
+.qlhh-page.theme-light-blue .qlhh-card {
+  background: #ffffff;
+  border: 1px solid #dbeafe;
+  border-left: 3px solid #2563eb;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.05);
+}
+.qlhh-page.theme-light-blue .qlhh-card:hover {
+  background: #f8fbff;
+  border-color: #60a5fa;
+  border-left-color: #1d4ed8;
+}
+
+.qlhh-card.in-quote-cart {
+  border-color: var(--emerald-border);
+  box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.25);
+}
+.qlhh-page.theme-light-blue .qlhh-card.in-quote-cart {
+  background: linear-gradient(180deg, #ffffff 0%, #ecfdf5 100%);
+  border-color: #34d399;
+  border-left: 3.5px solid #059669;
+}
+
+.qlhh-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.qlhh-card-badges {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.qlhh-brand-tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--sky-bg);
+  border: 1px solid var(--sky-border);
+  color: var(--sky-text);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qlhh-type-tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.qlhh-type-tag.is-emerald {
+  background: var(--emerald-bg);
+  border: 1px solid var(--emerald-border);
+  color: var(--emerald-text);
+}
+.qlhh-type-tag.is-amber {
+  background: var(--amber-bg);
+  border: 1px solid var(--amber-border);
+  color: var(--amber-text);
+}
+
+.qlhh-selected-tag {
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--emerald-bg);
+  border: 1px solid var(--emerald-border);
+  color: var(--emerald-text);
+  font-size: 10.5px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.qlhh-row-icons {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.qlhh-ico-act {
+  position: relative;
+  width: 27px;
+  height: 27px;
+  padding: 0;
+  margin: 0;
+  border-radius: 7px;
+  border: 1px solid var(--border-subtle);
+  background: var(--slate-bg);
+  color: var(--ink-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.qlhh-ico-act:hover {
+  color: var(--ink-strong);
+  border-color: var(--border-control);
+}
+.qlhh-ico-act.is-sky,
+.qlhh-ico-act.has-files {
+  color: var(--sky-text);
+  border-color: var(--sky-border);
+  background: var(--sky-bg);
+}
+.qlhh-ico-act.is-edit:hover {
+  color: var(--sky-text);
+  border-color: var(--sky-border);
+  background: var(--sky-bg);
+}
+.qlhh-ico-act.is-del:hover {
+  color: var(--rose-text);
+  border-color: var(--rose-border);
+  background: var(--rose-bg);
+}
+.ico-mini-dot {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: #0ea5e9;
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qlhh-card-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.qlhh-code-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.qlhh-code-pill {
+  font-family: var(--font-mono) !important;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 5px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.qlhh-code-pill.is-sku {
+  background: var(--violet-bg);
+  border: 1px solid var(--violet-border);
+  color: var(--violet-text);
+}
+.qlhh-code-pill.is-ma {
+  background: var(--slate-bg);
+  border: 1px solid var(--border-control);
+  color: var(--ink-secondary);
+}
+
+.qlhh-card-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.38;
+  color: var(--ink-strong);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.qlhh-spec-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.qlhh-spec-chip {
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--slate-bg);
+  border: 1px solid var(--border-subtle);
+  color: var(--ink-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.qlhh-spec-chip.is-sky {
+  background: var(--sky-bg);
+  border-color: var(--sky-border);
+  color: var(--sky-text);
+}
+.qlhh-spec-chip.is-cur {
+  background: var(--amber-bg);
+  border-color: var(--amber-border);
+  color: var(--amber-text);
+}
+
+.qlhh-card-footer {
+  margin-top: auto;
+  padding-top: 9px;
+  border-top: 1px dashed var(--border-control);
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.qlhh-price-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.qlhh-cost-line {
+  font-size: 11.5px;
+  color: var(--ink-muted);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.qlhh-cost-val {
+  color: var(--violet-text);
+  font-weight: 700;
+}
+.qlhh-price-strike {
+  font-size: 11px;
+  color: var(--ink-faint);
+  text-decoration: line-through;
+}
+.qlhh-price-main-line {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.qlhh-price-main-line.is-right {
+  justify-content: flex-end;
+}
+.qlhh-sell-val {
+  font-size: 15.5px;
+  font-weight: 800;
+  color: var(--emerald-text);
+  letter-spacing: -0.01em;
+}
+.qlhh-page.theme-light-blue .qlhh-sell-val {
+  color: #1d4ed8;
+}
+.qlhh-sell-dvt {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+
+/* Add Cart Button & Signature Circular Capsule Stepper */
+.qlhh-add-cart-btn {
+  height: 30px;
+  padding: 0 11px;
+  border-radius: 999px;
+  border: 1px solid var(--emerald-border);
+  background: var(--emerald-bg);
+  color: var(--emerald-text);
+  font-size: 12px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+.qlhh-add-cart-btn:hover {
+  background: #10b981;
+  border-color: #10b981;
+  color: #ffffff;
+}
+.qlhh-add-cart-btn.is-compact {
+  height: 27px;
+  padding: 0 9px;
+  font-size: 11.5px;
+}
+
+.qlhh-capsule-stepper {
+  height: 30px;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-control);
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.qlhh-capsule-stepper .step-cir {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  margin: 0;
+  border-radius: 999px;
+  border: none;
+  font-size: 14px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.qlhh-capsule-stepper .step-cir.minus {
+  background: var(--slate-bg);
+  color: var(--ink-primary);
+}
+.qlhh-capsule-stepper .step-cir.plus {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+}
+.qlhh-capsule-stepper .step-num {
+  width: 32px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--ink-strong);
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+  -moz-appearance: textfield;
+}
+.qlhh-capsule-stepper .step-num::-webkit-outer-spin-button,
+.qlhh-capsule-stepper .step-num::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* ==========================================================================
+   5. HIGH-DENSITY DATA TABLE VIEW (.qlhh-data-table)
+========================================================================== */
+.qlhh-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.qlhh-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 12.5px;
+}
+
+.qlhh-data-table thead th {
+  padding: 9px 12px;
+  background: var(--bg-table-head);
+  color: var(--ink-muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  text-align: left;
+  border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
+}
+.qlhh-data-table .col-code {
+  width: 165px;
+}
+.qlhh-data-table .col-spec {
+  width: 165px;
+}
+.qlhh-data-table .col-cur {
+  width: 92px;
+}
+.qlhh-data-table .col-cost {
+  width: 135px;
+}
+.qlhh-data-table .col-price {
+  width: 165px;
+}
+.qlhh-data-table .col-act {
+  width: 215px;
+}
+
+.qlhh-table-row {
+  border-bottom: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.qlhh-table-row:last-child {
+  border-bottom: none;
+}
+.qlhh-table-row:hover {
+  background: var(--bg-row-hover);
+}
+.qlhh-table-row.in-quote-cart {
+  background: rgba(16, 185, 129, 0.06);
+}
+.qlhh-data-table td {
+  padding: 9px 12px;
+  vertical-align: middle;
+}
+
+.tbl-code-stack,
+.tbl-spec-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.tbl-name-main {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-strong);
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.tbl-name-badges {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.qlhh-dvt-tag {
+  font-size: 11px;
+  color: var(--ink-muted);
+  font-weight: 600;
+}
+
+.qlhh-cur-pill {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--slate-bg);
+  border: 1px solid var(--border-subtle);
+  color: var(--ink-secondary);
+  font-size: 11px;
+  font-weight: 700;
+}
+.tbl-rate-sub {
+  margin-top: 2px;
+  font-size: 10.5px;
+  color: var(--amber-text);
+  font-weight: 600;
+}
+
+.tbl-act-cluster {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+/* Lazy Footer */
+.qlhh-lazy-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0 8px;
+}
+.qlhh-lazy-status {
+  font-size: 12.5px;
+  color: var(--ink-muted);
+  font-weight: 600;
+}
+.qlhh-lazy-status strong {
+  color: var(--sky-text);
+}
+.qlhh-load-more-btn {
+  width: 100%;
+  max-width: 560px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px dashed var(--sky-border);
+  background: var(--sky-bg);
+  color: var(--sky-text);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+.qlhh-load-more-btn:hover {
+  filter: brightness(1.08);
+}
+
+/* ==========================================================================
+   6. BENTO VENDOR IMPORT & COMPARE HUB MODAL (.qlhh-hub-modal)
+========================================================================== */
+.qlhh-hub-overlay {
+  z-index: 10045;
+}
+.qlhh-files-overlay,
+.qlhh-usd-overlay {
+  z-index: 10065;
+}
+
+.qlhh-hub-modal {
+  width: min(860px, 100%);
+  max-width: 860px;
+  max-height: min(88vh, calc(100dvh - 32px));
+  background: var(--bg-modal);
+  border: 1px solid var(--border-strong);
+  border-radius: 16px;
+  box-shadow: var(--shadow-modal);
+  color: var(--ink-primary);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.qlhh-hub-head {
+  padding: 15px 18px;
+  background: var(--bg-modal-head);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.qlhh-hub-head-left {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+.qlhh-hub-head-ico {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--sky-bg);
+  border: 1px solid var(--sky-border);
+  color: var(--sky-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.qlhh-hub-title {
+  margin: 0;
+  font-size: 15.5px;
+  font-weight: 800;
+  color: var(--ink-strong);
+}
+.qlhh-hub-sub {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+.qlhh-hub-close {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid var(--border-control);
+  background: var(--bg-input);
+  color: var(--ink-muted);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.qlhh-hub-close:hover {
+  color: var(--rose-text);
+  border-color: var(--rose-border);
+  background: var(--rose-bg);
+}
+
+.qlhh-hub-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  overflow-x: auto;
+}
+.qlhh-hub-tab {
+  padding: 6px 12px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink-muted);
+  font-size: 12.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+.qlhh-hub-tab:hover {
+  color: var(--ink-strong);
+  background: var(--slate-bg);
+}
+.qlhh-hub-tab.active {
+  background: var(--sky-bg);
+  border-color: var(--sky-border);
+  color: var(--sky-text);
+}
+.hub-tab-count {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.18);
+  font-size: 10.5px;
+  font-weight: 800;
+}
+
+.qlhh-hub-body {
+  padding: 16px 18px;
+  overflow-y: auto;
+  flex: 1 1 auto;
+}
+.qlhh-hub-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.hub-section-card {
+  padding: 14px 15px;
+  border-radius: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.hub-sec-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.hub-sec-head h4 {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--ink-strong);
+}
+.hub-sec-head p {
+  margin: 3px 0 0;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+.hub-sec-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.hub-file-slot-row {
+  padding: 8px 11px;
+  border-radius: 9px;
+  background: var(--bg-well);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+.hub-slot-label {
+  color: var(--ink-muted);
+  font-weight: 600;
+}
+.hub-file-link {
+  color: var(--sky-text);
+  font-weight: 700;
+  text-decoration: underline;
+  max-width: 340px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hub-file-time {
+  color: var(--ink-faint);
+  font-size: 11px;
+}
+.hub-file-empty {
+  color: var(--ink-faint);
+  font-style: italic;
+  font-size: 12px;
+}
+
+.hub-ref-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.hub-ref-item {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--bg-well);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.hub-ref-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.hub-ref-title-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.hub-ref-info strong {
+  font-size: 12.5px;
+  color: var(--ink-strong);
+}
+.hub-ref-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 11.5px;
+}
+.hub-ref-acts {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.hub-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.hub-choice-card {
+  padding: 13px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  color: var(--ink-primary);
+  text-align: left;
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  transition: all 0.16s ease;
+}
+button.hub-choice-card,
+label.hub-choice-card {
+  cursor: pointer;
+}
+button.hub-choice-card:hover,
+label.hub-choice-card:hover {
+  border-color: var(--sky-border);
+  background: var(--bg-card-hover);
+  transform: translateY(-1px);
+}
+.hub-choice-ico {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.hub-choice-ico.is-violet {
+  background: var(--violet-bg);
+  border: 1px solid var(--violet-border);
+  color: var(--violet-text);
+}
+.hub-choice-ico.is-sky {
+  background: var(--sky-bg);
+  border: 1px solid var(--sky-border);
+  color: var(--sky-text);
+}
+.hub-choice-ico.is-amber {
+  background: var(--amber-bg);
+  border: 1px solid var(--amber-border);
+  color: var(--amber-text);
+}
+.hub-choice-ico.is-emerald {
+  background: var(--emerald-bg);
+  border: 1px solid var(--emerald-border);
+  color: var(--emerald-text);
+}
+.hub-choice-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+.hub-choice-text strong {
+  font-size: 13px;
+  color: var(--ink-strong);
+}
+.hub-choice-text > span {
+  font-size: 11.5px;
+  color: var(--ink-muted);
+  line-height: 1.4;
+}
+
+/* ==========================================================================
+   7. LIGHT-BLUE PARITY & COLLISION-FREE MODAL DIALOGS (USD, ALERTS, EXCEL EDITOR, CART)
+========================================================================== */
+/* ExcelEditor Dual-Theme Parity without needing polluted global .page class */
+.qlhh-page.theme-light-blue .features-excel-editor:deep(.excel-editor),
+.qlhh-fm-modal.theme-light-blue .features-excel-editor:deep(.excel-editor),
+.qlhh-hub-modal.theme-light-blue .features-excel-editor:deep(.excel-editor) {
+  background: #ffffff;
+  border-color: #cbd5e1;
+}
+.qlhh-page.theme-light-blue .features-excel-editor:deep(.excel-toolbar),
+.qlhh-fm-modal.theme-light-blue .features-excel-editor:deep(.excel-toolbar),
+.qlhh-hub-modal.theme-light-blue .features-excel-editor:deep(.excel-toolbar) {
+  background: #f1f5f9;
+  border-bottom-color: #cbd5e1;
+}
+.qlhh-page.theme-light-blue .features-excel-editor:deep(.toolbar-divider),
+.qlhh-fm-modal.theme-light-blue .features-excel-editor:deep(.toolbar-divider),
+.qlhh-hub-modal.theme-light-blue .features-excel-editor:deep(.toolbar-divider) {
+  background: #cbd5e1;
+}
+.qlhh-page.theme-light-blue .features-excel-editor:deep(.toolbar-select),
+.qlhh-fm-modal.theme-light-blue .features-excel-editor:deep(.toolbar-select),
+.qlhh-hub-modal.theme-light-blue .features-excel-editor:deep(.toolbar-select) {
+  background-color: #ffffff;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+.qlhh-page.theme-light-blue .features-excel-editor:deep(.toolbar-btn),
+.qlhh-page.theme-light-blue .features-excel-editor:deep(.color-btn),
+.qlhh-fm-modal.theme-light-blue .features-excel-editor:deep(.toolbar-btn),
+.qlhh-fm-modal.theme-light-blue .features-excel-editor:deep(.color-btn),
+.qlhh-hub-modal.theme-light-blue .features-excel-editor:deep(.toolbar-btn),
+.qlhh-hub-modal.theme-light-blue .features-excel-editor:deep(.color-btn) {
+  color: #1e293b;
+  border-color: transparent;
+}
+.qlhh-page.theme-light-blue .features-excel-editor:deep(.toolbar-btn:hover),
+.qlhh-page.theme-light-blue .features-excel-editor:deep(.color-btn:hover),
+.qlhh-fm-modal.theme-light-blue .features-excel-editor:deep(.toolbar-btn:hover),
+.qlhh-fm-modal.theme-light-blue .features-excel-editor:deep(.color-btn:hover),
+.qlhh-hub-modal.theme-light-blue .features-excel-editor:deep(.toolbar-btn:hover),
+.qlhh-hub-modal.theme-light-blue .features-excel-editor:deep(.color-btn:hover) {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+}
+.qlhh-page.theme-light-blue .features-excel-editor:deep(.editor-content),
+.qlhh-fm-modal.theme-light-blue .features-excel-editor:deep(.editor-content),
+.qlhh-hub-modal.theme-light-blue .features-excel-editor:deep(.editor-content) {
+  background: #ffffff;
+  color: #0f172a;
+}
+
+/* Custom Alert Modals (Confirm Delete / Delete PriceList / AI Fallback) Dual-Theme */
+.custom-alert-modal {
+  width: min(440px, 100%);
+  padding: 28px 26px 24px;
+  border-radius: 18px;
+  background: var(--bg-modal);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-modal);
+  color: var(--ink-primary);
+  text-align: center;
+}
+.alert-icon.is-rose {
+  color: var(--rose-text);
+  background: var(--rose-bg);
+  border: 1px solid var(--rose-border);
+}
+.alert-icon.is-violet {
+  color: var(--violet-text);
+  background: var(--violet-bg);
+  border: 1px solid var(--violet-border);
+}
+.custom-alert-modal .alert-title {
+  margin: 12px 0 8px;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--ink-strong);
+}
+.custom-alert-modal .alert-desc {
+  margin: 0 0 22px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--ink-muted);
+}
+.custom-alert-modal .alert-hl-rose {
+  color: var(--rose-text);
+  font-weight: 700;
+}
+.custom-alert-modal .alert-hl-amber {
+  color: var(--amber-text);
+  font-weight: 700;
+}
+.custom-alert-modal .alert-hl-violet {
+  color: var(--violet-text);
+  font-weight: 700;
+}
+.custom-alert-modal .alert-hl-sky {
+  color: var(--sky-text);
+  font-weight: 700;
+}
+.custom-alert-modal .alert-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.qlhh-alert-danger-btn {
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 9px;
+  border: 1px solid #dc2626;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #ffffff;
+  font-size: 12.5px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 12px -3px rgba(239, 68, 68, 0.45);
+  transition: all 0.15s ease;
+}
+.qlhh-alert-danger-btn:hover {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+/* Async Result Modal Dual-Theme Parity */
+.qlhh-page.theme-light-blue .async-card {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: var(--shadow-modal);
+}
+.qlhh-page.theme-light-blue .async-title {
+  color: #0f172a;
+}
+.qlhh-page.theme-light-blue .async-subtitle {
+  color: #475569;
+}
+
+/* USD Exchange Rate Modal (.qlhh-usd-modal) Dual-Theme */
+.qlhh-usd-modal {
+  width: min(540px, 100%);
+  max-width: 540px;
+}
+.qlhh-usd-body {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+.qlhh-usd-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.qlhh-usd-kpi-box {
+  padding: 11px 13px;
+  border-radius: 11px;
+  background: var(--bg-well);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.usd-kpi-lbl {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+.usd-kpi-val {
+  font-size: 17.5px;
+  font-weight: 800;
+}
+.usd-kpi-val.is-sky {
+  color: var(--sky-text);
+}
+.usd-kpi-val.is-emerald {
+  color: var(--emerald-text);
+}
+.usd-kpi-val small {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+.qlhh-usd-scope-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.qlhh-usd-scope-opt {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border-control);
+  background: var(--bg-well);
+  color: var(--ink-secondary);
+  font-size: 12.5px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.qlhh-usd-scope-opt input[type='radio'] {
+  width: 16px;
+  height: 16px;
+  accent-color: #10b981;
+  flex-shrink: 0;
+}
+.qlhh-usd-scope-opt.active {
+  background: var(--emerald-bg);
+  border-color: var(--emerald-border);
+  color: var(--ink-strong);
+}
+.qlhh-usd-scope-opt.is-sky.active {
+  background: var(--sky-bg);
+  border-color: var(--sky-border);
+}
+.qlhh-usd-scope-opt strong.is-emerald {
+  color: var(--emerald-text);
+}
+.qlhh-usd-scope-opt strong.is-sky {
+  color: var(--sky-text);
+}
+.qlhh-usd-lbl-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.qlhh-usd-delta-tag {
+  font-size: 11.5px;
+  font-weight: 800;
+}
+.qlhh-usd-delta-tag.is-amber {
+  color: var(--amber-text);
+}
+.qlhh-usd-delta-tag.is-sky {
+  color: var(--sky-text);
+}
+.qlhh-usd-presets {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-top: 3px;
+}
+.usd-preset-caption {
+  font-size: 11.5px;
+  color: var(--ink-muted);
+  margin-right: 2px;
+}
+.qlhh-usd-modal.theme-light-blue .usd-quick-step-btn {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+.qlhh-usd-modal.theme-light-blue .usd-quick-step-btn.preset {
+  background: #ecfdf5;
+  border-color: #6ee7b7;
+  color: #047857;
+}
+.qlhh-usd-preview {
+  padding: 11px 14px;
+  border-radius: 11px;
+  background: var(--emerald-bg);
+  border: 1px dashed var(--emerald-border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12.5px;
+  color: var(--ink-secondary);
+}
+.usd-prev-head {
+  font-weight: 800;
+  color: var(--emerald-text);
+  margin-bottom: 3px;
+}
+.usd-prev-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.usd-prev-row.is-total {
+  border-bottom: none;
+}
+.usd-prev-row strong {
+  color: var(--ink-strong);
+  font-weight: 800;
+}
+.usd-prev-row.is-total strong {
+  color: var(--emerald-text);
+}
+
+.qlhh-page.theme-light-blue .btn-secondary {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+.qlhh-page.theme-light-blue .quote-cart-right-sidebar {
+  background: #ffffff;
+  border-left-color: #cbd5e1;
+  color: #0f172a;
+}
+.qlhh-page.theme-light-blue .quote-cart-sidebar__header,
+.qlhh-page.theme-light-blue .quote-cart-sidebar__footer {
+  background: #f8fbff;
+  border-color: #e2e8f0;
+}
+.qlhh-page.theme-light-blue .quote-cart-sidebar__heading,
+.qlhh-page.theme-light-blue .quote-cart-drawer__name,
+.qlhh-page.theme-light-blue .quote-cart-drawer__subtotal {
+  color: #0f172a;
+}
+.qlhh-page.theme-light-blue .quote-cart-sidebar__item,
+.qlhh-page.theme-light-blue .quote-cart-sidebar__totals {
+  background: #f8fafc;
+  border-color: #dbeafe;
+}
+.qlhh-page.theme-light-blue .quote-cart-total-row {
+  color: #334155;
+}
+
+/* ==========================================================================
+   8. RESPONSIVE MOBILE SHELL, BOTTOM SHEETS & FLOATING SUB-DOCK (<= 1100px)
+========================================================================== */
+@media (max-width: 1100px) {
+  .quan-ly-hang-hoa.qlhh-page {
+    padding: 10px 10px calc(148px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .hide-mob-dock,
+  .quote-cart-right-Launcher {
+    display: none !important;
+  }
+
+  .qlhh-kpi-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .qlhh-kpi-card {
+    padding: 11px 13px;
+  }
+
+  .qlhh-filter-row-main {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .qlhh-search-box {
+    order: -1;
+    flex: 1 1 auto;
+    width: 100%;
+  }
+  .qlhh-filter-left {
+    width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 2px;
+  }
+  .qlhh-picker-btn,
+  .qlhh-vol-pill,
+  .qlhh-reset-btn {
+    flex-shrink: 0;
+  }
+
+  /* Adaptive Pickers become Bottom Sheets on Mobile */
+  .qlhh-pop-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 10025;
+    background: rgba(2, 6, 23, 0.62);
+    backdrop-filter: blur(4px);
+  }
+  .qlhh-pop-menu,
+  .qlhh-pop-menu.is-wide {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    width: 100%;
+    max-height: 82dvh;
+    z-index: 10030;
+    border-radius: 18px 18px 0 0;
+    border-bottom: none;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .mob-sheet-grabber {
+    display: block;
+    width: 40px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--border-control);
+    margin: 8px auto 2px;
+    flex-shrink: 0;
+  }
+
+  /* Prevent iOS Safari Auto-Zoom on Inputs */
+  .qlhh-capsule-stepper .step-num {
+    font-size: 16px !important;
+  }
+  .form-grid-2col,
+  .hub-choice-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Floating Glass Bottom Sub-Dock (.bg-mobile-dock — Đồng bộ App.vue & QuanLyBaoGiaFirebase) */
+  .bg-mob-popover-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 970;
+    background: rgba(2, 6, 23, 0.35);
+  }
+
+  .bg-mobile-dock {
+    position: fixed;
+    left: 10px;
+    right: 10px;
+    bottom: calc(74px + env(safe-area-inset-bottom, 0px));
+    width: auto;
+    max-width: 430px;
+    margin: 0 auto;
+    z-index: 955;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 5px;
+    padding: 6px;
+    border-radius: 20px;
+    background: rgba(15, 23, 42, 0.92);
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    box-shadow: 0 14px 36px rgba(2, 6, 23, 0.62), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(22px) saturate(165%);
+    -webkit-backdrop-filter: blur(22px) saturate(165%);
+    transform: translate3d(0, 0, 0);
+    transition: bottom 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+      visibility 0.24s ease;
+  }
+  .qlhh-page.theme-light-blue .bg-mobile-dock {
+    background: rgba(255, 255, 255, 0.95);
+    border-color: rgba(2, 132, 199, 0.28);
+    box-shadow: 0 14px 34px rgba(15, 23, 42, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  }
+  :global(.app-layout.mobile-nav-hidden .bg-mobile-dock) {
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  .bg-mobile-dock.is-modal-hidden,
+  :global(.app-layout.has-open-modal .bg-mobile-dock),
+  :global(body.app-has-open-modal .bg-mobile-dock) {
+    transform: translateY(calc(100% + 96px + env(safe-area-inset-bottom, 0px))) scale(0.96) !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  .bg-dock-btn {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+    min-height: 48px;
+    margin: 0;
+    padding: 5px 3px 4px;
+    border-radius: 14px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: #94a3b8;
+    font-size: 10.5px;
+    font-weight: 700;
+    line-height: 1.15;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: all 0.16s ease;
+  }
+  .bg-dock-btn > span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .bg-dock-btn.active {
+    color: #38bdf8;
+    background: rgba(56, 189, 248, 0.14);
+    border-color: rgba(56, 189, 248, 0.3);
+  }
+  .qlhh-page.theme-light-blue .bg-dock-btn {
+    color: #475569;
+  }
+  .qlhh-page.theme-light-blue .bg-dock-btn.active {
+    color: #0284c7;
+    background: #e0f2fe;
+    border-color: #7dd3fc;
+  }
+  .bg-dock-btn.is-primary.is-center-cta {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: #042f2e;
+    font-weight: 800;
+    border-color: rgba(110, 231, 183, 0.48);
+    box-shadow: 0 6px 18px -4px rgba(16, 185, 129, 0.52);
+  }
+  .qlhh-page.theme-light-blue .bg-dock-btn.is-primary.is-center-cta {
+    background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+    color: #ffffff;
+    border-color: #38bdf8;
+    box-shadow: 0 6px 18px -4px rgba(2, 132, 199, 0.42);
+  }
+
+  .bg-dock-icon-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 20px;
+  }
+  .bg-dock-badge {
+    position: absolute;
+    top: -5px;
+    right: -14px;
+    min-width: 17px;
+    height: 15px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: #0ea5e9;
+    color: #ffffff;
+    font-size: 9px;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid #0f172a;
+    white-space: nowrap;
+  }
+  .bg-dock-badge.is-emerald {
+    background: #10b981;
+  }
+  .bg-dock-badge.is-mode {
+    background: rgba(56, 189, 248, 0.22);
+    color: #38bdf8;
+    right: -20px;
+  }
+  .qlhh-page.theme-light-blue .bg-dock-badge {
+    border-color: #ffffff;
+  }
+  .qlhh-page.theme-light-blue .bg-dock-badge.is-mode {
+    background: #e0f2fe;
+    color: #0369a1;
+  }
+
+  .bg-mob-display-popover {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: calc(138px + env(safe-area-inset-bottom, 0px));
+    max-width: 390px;
+    margin: 0 auto;
+    z-index: 980;
+    padding: 12px;
+    border-radius: 16px;
+    background: rgba(15, 23, 42, 0.97);
+    border: 1px solid rgba(56, 189, 248, 0.34);
+    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.68);
+    backdrop-filter: blur(18px);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: bottom 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .qlhh-page.theme-light-blue .bg-mob-display-popover {
+    background: #ffffff;
+    border-color: #93c5fd;
+    box-shadow: 0 20px 44px rgba(15, 23, 42, 0.2);
+  }
+  :global(.app-layout.mobile-nav-hidden .bg-mob-display-popover) {
+    bottom: calc(74px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .bg-ds-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .bg-ds-title {
+    font-size: 12.5px;
+    font-weight: 800;
+    color: var(--ink-strong);
+  }
+  .bg-ds-close {
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    border: 1px solid var(--border-control);
+    background: var(--bg-input);
+    color: var(--ink-muted);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .bg-ds-section {
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .bg-ds-section.is-last {
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+  .bg-ds-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--ink-muted);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .bg-ds-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .bg-ds-opt-btn {
+    height: 34px;
+    padding: 0 10px;
+    border-radius: 9px;
+    border: 1px solid var(--border-control);
+    background: var(--bg-input);
+    color: var(--ink-secondary);
+    font-size: 12px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    cursor: pointer;
+  }
+  .bg-ds-opt-btn.active {
+    background: var(--sky-bg);
+    border-color: var(--sky-border);
+    color: var(--sky-text);
+  }
+  .bg-ds-reset-btn {
+    width: 100%;
+    height: 34px;
+    border-radius: 9px;
+    border: 1px solid var(--rose-border);
+    background: var(--rose-bg);
+    color: var(--rose-text);
+    font-size: 12px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    cursor: pointer;
+  }
+}
+
+@media (max-width: 768px) {
+  .qlhh-cards-grid {
+    grid-template-columns: 1fr;
+  }
+  .qlhh-cards-grid.is-inside-group {
+    padding: 10px;
+  }
+  .kpi-brand-chips {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .panel-content {
+    grid-template-columns: 1fr;
+  }
+  .col-span-2,
+  .col-span-3 {
+    grid-column: span 1;
+  }
+  .quote-cart-right-sidebar {
+    width: 100vw !important;
+    max-width: 100vw !important;
+  }
+  /* Hub & Files Modals go Fullscreen Sheet ONLY on Phone (<= 768px), keeping USD & Alerts centered */
+  .qlhh-hub-overlay:not(.qlhh-usd-overlay) {
+    padding: 0;
+    align-items: stretch;
+  }
+  .qlhh-hub-modal:not(.qlhh-usd-modal) {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    border-radius: 0 !important;
+    border: none !important;
+  }
+  .qlhh-usd-overlay {
+    padding: 10px;
+  }
+  .qlhh-usd-modal {
+    width: 100%;
+    max-height: calc(100dvh - 20px);
+  }
+  .qlhh-usd-kpi-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* ==========================================================================
+   9. FULLSCREEN 100% ADD / EDIT PRODUCT MODAL (.qlhh-fm-overlay & .qlhh-fm-modal)
+      Zero Emojis • Unified 5+1 Semantic Palette • Dark Navy & Light Blue Parity
+========================================================================== */
+.qlhh-fm-overlay {
+  padding: 0 !important;
+  align-items: stretch !important;
+  justify-content: stretch !important;
+  z-index: 10050;
+}
+
+.qlhh-fm-modal {
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  max-height: 100%;
+  border-radius: 0;
+  border: none;
+  background: var(--bg-canvas);
+  color: var(--ink-primary);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Sticky Rich Header */
+.qlhh-fm-head {
+  padding: 12px 22px;
+  background: linear-gradient(135deg, #0d1d36 0%, #102a49 55%, #0c223b 100%);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-shrink: 0;
+}
+.qlhh-fm-modal.theme-light-blue .qlhh-fm-head {
+  background: linear-gradient(135deg, #e0f2fe 0%, #dbeafe 55%, #eff6ff 100%);
+  border-bottom-color: #bfdbfe;
+}
+
+.qlhh-fm-head-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.qlhh-fm-head-ico {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.qlhh-fm-head-ico.is-sky {
+  background: var(--sky-bg);
+  border: 1px solid var(--sky-border);
+  color: var(--sky-text);
+}
+.qlhh-fm-head-ico.is-emerald {
+  background: var(--emerald-bg);
+  border: 1px solid var(--emerald-border);
+  color: var(--emerald-text);
+}
+
+.qlhh-fm-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.qlhh-fm-title-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+.qlhh-fm-title-row h2 {
+  margin: 0;
+  font-size: 16.5px;
+  font-weight: 800;
+  color: var(--ink-strong);
+  letter-spacing: -0.01em;
+}
+
+.qlhh-fm-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.qlhh-fm-meta-pill {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid var(--border-control);
+  color: var(--ink-secondary);
+  font-size: 11.5px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.qlhh-fm-modal.theme-light-blue .qlhh-fm-meta-pill {
+  background: rgba(255, 255, 255, 0.85);
+}
+.qlhh-fm-meta-pill strong {
+  color: var(--sky-text);
+  font-weight: 700;
+}
+.qlhh-fm-meta-pill.is-amber {
+  background: var(--amber-bg);
+  border-color: var(--amber-border);
+  color: var(--amber-text);
+}
+.qlhh-fm-meta-pill.is-amber strong {
+  color: var(--amber-text);
+}
+
+.qlhh-fm-head-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.qlhh-fm-live-pills {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.fm-live-pill {
+  padding: 5px 11px;
+  border-radius: 9px;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  white-space: nowrap;
+}
+.fm-live-pill small {
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.85;
+}
+.fm-live-pill strong {
+  font-weight: 800;
+}
+.fm-live-pill.is-violet {
+  background: var(--violet-bg);
+  border: 1px solid var(--violet-border);
+  color: var(--violet-text);
+}
+.fm-live-pill.is-emerald {
+  background: var(--emerald-bg);
+  border: 1px solid var(--emerald-border);
+  color: var(--emerald-text);
+}
+
+.qlhh-fm-close {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  margin: 0;
+  border-radius: 9px;
+  border: 1px solid var(--border-control);
+  background: var(--bg-card);
+  color: var(--ink-secondary);
+  font-size: 15px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.qlhh-fm-close:hover {
+  background: var(--rose-bg);
+  border-color: var(--rose-border);
+  color: var(--rose-text);
+}
+
+/* Scrollable 2-Column Bento Body */
+.qlhh-fm-body {
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 22px 24px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.qlhh-fm-2col {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+  gap: 16px;
+  align-items: start;
+  max-width: 1720px;
+  margin: 0 auto;
+}
+
+.qlhh-fm-col {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.qlhh-bento-box {
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  min-width: 0;
+}
+
+.qlhh-bento-head {
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.qlhh-bento-head.is-between {
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.qlhh-bento-head .bento-head-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.qlhh-bento-head.is-sky {
+  color: var(--sky-text);
+}
+.qlhh-bento-head.is-emerald {
+  color: var(--emerald-text);
+}
+.qlhh-bento-head.is-slate {
+  color: var(--ink-secondary);
+}
+.bento-count-pill {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--sky-bg);
+  border: 1px solid var(--sky-border);
+  color: var(--sky-text);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+/* Form Grids & Inputs */
+.qlhh-fm-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 14px;
+}
+.qlhh-fm-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.qlhh-fm-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+.qlhh-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+.qlhh-field.col-span-2 {
+  grid-column: span 2;
+}
+.qlhh-field label {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--ink-muted);
+}
+
+.qlhh-fm-input,
+.qlhh-fm-select,
+.qlhh-fm-textarea {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 9px;
+  border: 1px solid var(--border-control);
+  background: var(--bg-input);
+  color: var(--ink-primary);
+  font-size: 13.5px;
+  font-weight: 500;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+.qlhh-fm-input,
+.qlhh-fm-select {
+  height: 38px;
+}
+.qlhh-fm-textarea {
+  resize: vertical;
+  min-height: 68px;
+  line-height: 1.45;
+}
+.qlhh-fm-input.is-mono {
+  font-family: var(--font-mono) !important;
+  font-weight: 700;
+  font-size: 13px;
+}
+.qlhh-fm-input::placeholder,
+.qlhh-fm-textarea::placeholder {
+  color: var(--ink-faint);
+  font-weight: 400;
+}
+.qlhh-fm-input:focus,
+.qlhh-fm-select:focus,
+.qlhh-fm-textarea:focus {
+  outline: none;
+  border-color: var(--sky-border);
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+}
+.qlhh-fm-input:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* Price Calculation Sub-Cards (Cost vs Sell) */
+.qlhh-price-calc-card {
+  padding: 13px 14px;
+  border-radius: 12px;
+  background: var(--bg-well);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.qlhh-price-calc-card.is-violet {
+  border-left: 3px solid #8b5cf6;
+}
+.qlhh-price-calc-card.is-emerald {
+  border-left: 3px solid #10b981;
+}
+
+.pcc-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.pcc-label-cluster,
+.pcc-right-cluster {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.pcc-label {
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.pcc-label.is-violet {
+  color: var(--violet-text);
+}
+.pcc-label.is-emerald {
+  color: var(--emerald-text);
+}
+.pcc-caption {
+  font-size: 11.5px;
+  color: var(--ink-muted);
+}
+.pcc-caption strong {
+  color: var(--ink-strong);
+}
+
+.qlhh-fm-input.is-hero-num {
+  height: 44px;
+  font-size: 16.5px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+.qlhh-fm-input.is-cost-hero {
+  border-color: var(--violet-border);
+  color: var(--violet-text);
+}
+.qlhh-fm-input.is-sell-hero {
+  border-color: var(--emerald-border);
+  color: var(--emerald-text);
+}
+.qlhh-fm-modal.theme-light-blue .qlhh-fm-input.is-sell-hero {
+  color: #047857;
+}
+
+/* Formula Bar inside Price Sub-Cards */
+.qlhh-formula-bar {
+  padding: 8px 10px;
+  border-radius: 9px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.qlhh-formula-bar.is-amber {
+  background: var(--amber-bg);
+  border-color: var(--amber-border);
+}
+
+.formula-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-secondary);
+}
+.qlhh-flow-toggle-btn {
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--violet-border);
+  background: var(--violet-bg);
+  color: var(--violet-text);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.12s ease;
+}
+.qlhh-flow-toggle-btn:hover {
+  filter: brightness(1.06);
+}
+.qlhh-flow-toggle-btn:active {
+  transform: scale(0.98);
+}
+.qlhh-flow-toggle-btn.is-reverse {
+  border-color: var(--amber-border);
+  background: var(--amber-bg);
+  color: var(--amber-text);
+}
+.qlhh-formula-bar.is-amber .formula-title {
+  color: var(--amber-text);
+}
+
+.formula-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.qlhh-mini-select {
+  height: 32px;
+  padding: 0 9px;
+  border-radius: 7px;
+  border: 1px solid var(--border-control);
+  background: var(--bg-input);
+  color: var(--ink-primary);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.qlhh-mini-select.is-emerald {
+  border-color: var(--emerald-border);
+  color: var(--emerald-text);
+  background: var(--emerald-bg);
+}
+.qlhh-mini-select.is-rose {
+  border-color: var(--rose-border);
+  color: var(--rose-text);
+  background: var(--rose-bg);
+}
+
+.qlhh-unit-input-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.qlhh-mini-num {
+  width: 92px;
+  height: 32px;
+  padding: 0 24px 0 9px;
+  border-radius: 7px;
+  border: 1px solid var(--border-control);
+  background: var(--bg-input);
+  color: var(--ink-strong);
+  font-size: 13px;
+  font-weight: 800;
+  text-align: right;
+}
+.qlhh-mini-num.is-wide {
+  width: 138px;
+  padding-right: 10px;
+}
+.qlhh-mini-num:focus {
+  outline: none;
+  border-color: var(--sky-border);
+}
+.unit-suffix {
+  position: absolute;
+  right: 8px;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--ink-muted);
+  pointer-events: none;
+}
+
+/* Unified File History List (.qlhh-file-card + .tpl-file-* Palette) */
+.qlhh-files-hint {
+  margin: -4px 0 0;
+  font-size: 11.5px;
+  color: var(--ink-muted);
+}
+
+.qlhh-files-empty {
+  padding: 18px 14px;
+  border-radius: 10px;
+  border: 1px dashed var(--border-control);
+  background: var(--bg-well);
+  color: var(--ink-muted);
+  font-size: 12px;
+  text-align: center;
+  line-height: 1.5;
+}
+
+.qlhh-file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.qlhh-file-list.is-tall {
+  max-height: 430px;
+}
+
+.qlhh-file-card {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--bg-well);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.qlhh-file-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.qlhh-file-name-wrap {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  flex: 1 1 200px;
+}
+
+.qlhh-file-rank {
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: var(--slate-bg);
+  border: 1px solid var(--border-subtle);
+  color: var(--ink-secondary);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.qlhh-file-rank.is-latest {
+  background: var(--emerald-bg);
+  border-color: var(--emerald-border);
+  color: var(--emerald-text);
+}
+
+.qlhh-file-link {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--sky-text);
+  text-decoration: underline;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.qlhh-file-plain {
+  font-size: 12.5px;
+  color: var(--ink-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qlhh-file-acts {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+/* Strict Unified File-Action Button Rule (Sky Primary, Slate Neutral, Slate->Rose Delete) */
+.qlhh-fbtn-primary {
+  height: 26px;
+  padding: 0 9px;
+  border-radius: 6px;
+  border: 1px solid var(--sky-border);
+  background: var(--sky-bg);
+  color: var(--sky-text);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+.qlhh-fbtn-primary:hover {
+  background: #0284c7;
+  border-color: #0284c7;
+  color: #ffffff;
+}
+
+.qlhh-fbtn-neutral {
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-control);
+  background: var(--bg-card);
+  color: var(--ink-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+.qlhh-fbtn-neutral:hover {
+  border-color: var(--sky-border);
+  color: var(--sky-text);
+}
+
+.qlhh-fbtn-delete {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid var(--border-control);
+  background: var(--bg-card);
+  color: var(--ink-muted);
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.qlhh-fbtn-delete:hover {
+  background: var(--rose-bg);
+  border-color: var(--rose-border);
+  color: var(--rose-text);
+}
+
+.qlhh-file-card-meta {
+  padding-top: 5px;
+  border-top: 1px dashed var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 11.5px;
+}
+.file-time-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ink-muted);
+}
+.file-note-inline {
+  color: var(--ink-faint);
+}
+
+.file-prices-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 11.5px;
+}
+.fp-violet {
+  color: var(--violet-text);
+}
+.fp-emerald {
+  color: var(--emerald-text);
+}
+.fp-amber {
+  color: var(--amber-text);
+}
+
+/* Sticky Action Footer */
+.qlhh-fm-foot {
+  padding: 12px 22px calc(12px + env(safe-area-inset-bottom, 0px));
+  background: var(--bg-modal-head);
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.qlhh-fm-foot-left,
+.qlhh-fm-foot-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.qlhh-fm-btn-delete {
+  height: 38px;
+  padding: 0 13px;
+  border-radius: 9px;
+  border: 1px solid var(--rose-border);
+  background: var(--rose-bg);
+  color: var(--rose-text);
+  font-size: 12.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.qlhh-fm-btn-delete:hover {
+  background: #ef4444;
+  border-color: #ef4444;
+  color: #ffffff;
+}
+
+.qlhh-btn-primary.is-save-cta {
+  height: 38px;
+  padding: 0 18px;
+  font-size: 13px;
+}
+.qlhh-btn-primary.is-save-cta:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+@media (max-width: 1100px) {
+  .hide-sm-head {
+    display: none !important;
+  }
+  .qlhh-fm-head {
+    padding: 11px 14px;
+  }
+  .qlhh-fm-body {
+    padding: 12px 12px 20px;
+  }
+  .qlhh-fm-2col {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .qlhh-bento-box {
+    padding: 13px 14px;
+  }
+  .qlhh-fm-input,
+  .qlhh-fm-select,
+  .qlhh-fm-textarea {
+    font-size: 16px !important;
+  }
+  .qlhh-fm-foot {
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (max-width: 768px) {
+  .qlhh-fm-head {
+    position: relative;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 11px 12px;
+  }
+  .qlhh-fm-head-left {
+    padding-right: 40px;
+    align-items: flex-start;
+  }
+  .qlhh-fm-head-ico {
+    width: 32px;
+    height: 32px;
+  }
+  .qlhh-fm-title-row h2 {
+    font-size: 15.5px;
+  }
+  .qlhh-fm-head-right {
+    justify-content: flex-start;
+  }
+  .qlhh-fm-close {
+    position: absolute;
+    top: 11px;
+    right: 12px;
+  }
+  .qlhh-fm-grid,
+  .qlhh-fm-grid-3 {
+    grid-template-columns: 1fr;
+  }
+  .qlhh-field.col-span-2 {
+    grid-column: span 1;
+  }
+  .qlhh-price-calc-card {
+    padding: 10px 11px;
+    gap: 8px;
+  }
+  .qlhh-formula-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 7px;
+    padding: 8px;
+  }
+  .qlhh-flow-toggle-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+  .qlhh-formula-bar .formula-controls {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    width: 100%;
+    flex-wrap: nowrap;
+  }
+  .qlhh-mini-select {
+    flex: 0 1 auto;
+    min-width: 0;
+    height: 32px;
+    padding: 0 6px;
+    font-size: 12px !important;
+    max-width: 100%;
+  }
+  .qlhh-unit-input-wrap,
+  .qlhh-unit-input-wrap.is-amount {
+    flex: 1 1 0;
+    min-width: 0;
+    width: auto;
+  }
+  .qlhh-mini-num,
+  .qlhh-mini-num.is-wide {
+    width: 100% !important;
+    min-width: 0;
+    height: 32px;
+    padding: 0 22px 0 8px;
+    font-size: 13px !important;
+  }
+  .qlhh-unit-input-wrap.is-amount .qlhh-mini-num,
+  .qlhh-unit-input-wrap.is-amount .qlhh-mini-num.is-wide {
+    padding-right: 8px;
+  }
+  .qlhh-fm-foot {
+    gap: 8px;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+  .qlhh-fm-btn-delete {
+    padding: 0 10px;
+    font-size: 12px;
+  }
+  .qlhh-fm-foot-right {
+    flex: 1 1 auto;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+  .qlhh-btn-primary.is-save-cta {
+    padding: 0 14px;
+    font-size: 12.5px;
+  }
+}
+
+/* ==========================================================================
+   10. REDESIGNED CARD FILE COMPARE MODAL (.qlhh-cmp-overlay & .qlhh-cmp-modal)
+       Unified Template Bento • Dual-Theme (Dark Navy & Light Blue) • No Emoji
+========================================================================== */
+.qlhh-cmp-overlay {
+  z-index: 10300;
+  padding: 18px;
+}
+
+.qlhh-cmp-modal {
+  width: min(1360px, 100%);
+  max-width: 1360px;
+  height: min(92vh, calc(100dvh - 36px));
+  max-height: min(92vh, calc(100dvh - 36px));
+  border-radius: 16px;
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-modal);
+}
+
+.qlhh-fm-head-ico.is-violet {
+  background: var(--violet-bg);
+  border: 1px solid var(--violet-border);
+  color: var(--violet-text);
+}
+
+.qlhh-cmp-vendor-tag {
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+.qlhh-cmp-vendor-tag.is-sophos {
+  background: var(--sky-bg);
+  border: 1px solid var(--sky-border);
+  color: var(--sky-text);
+}
+.qlhh-cmp-vendor-tag.is-kaspersky {
+  background: var(--emerald-bg);
+  border: 1px solid var(--emerald-border);
+  color: var(--emerald-text);
+}
+.qlhh-cmp-vendor-tag.is-acronis {
+  background: var(--violet-bg);
+  border: 1px solid var(--violet-border);
+  color: var(--violet-text);
+}
+.qlhh-cmp-subline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--ink-muted);
+}
+.qlhh-cmp-subline strong {
+  color: var(--ink-secondary);
+}
+
+.qlhh-cmp-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.qlhh-cmp-status-pill.is-match {
+  background: var(--emerald-bg);
+  border: 1px solid var(--emerald-border);
+  color: var(--emerald-text);
+}
+.qlhh-cmp-status-pill.is-diff {
+  background: var(--amber-bg);
+  border: 1px solid var(--amber-border);
+  color: var(--amber-text);
+}
+.qlhh-cmp-status-pill.is-miss {
+  background: var(--rose-bg);
+  border: 1px solid var(--rose-border);
+  color: var(--rose-text);
+}
+
+.qlhh-cmp-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.qlhh-cmp-loading {
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 36px 20px;
+  color: var(--sky-text);
+  font-weight: 700;
+}
+
+.qlhh-cmp-alert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.qlhh-cmp-alert.is-rose {
+  background: var(--rose-bg);
+  border: 1px solid var(--rose-border);
+  color: var(--rose-text);
+}
+
+/* 1. Hero Comparison Card */
+.qlhh-cmp-hero-card {
+  padding: 14px 18px;
+}
+.qlhh-cmp-hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+}
+.qlhh-cmp-hero-side {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.qlhh-cmp-hero-side.is-right {
+  align-items: flex-end;
+  text-align: right;
+}
+.qlhh-cmp-eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.qlhh-cmp-eyebrow.is-sky {
+  color: var(--sky-text);
+}
+.qlhh-cmp-eyebrow.is-emerald {
+  color: var(--emerald-text);
+}
+.qlhh-cmp-hero-price {
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+.qlhh-cmp-hero-price.is-sky {
+  color: var(--sky-text);
+}
+.qlhh-cmp-hero-price.is-emerald {
+  color: var(--emerald-text);
+}
+.qlhh-cmp-hero-sub {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+.qlhh-cmp-hero-sub strong {
+  color: var(--ink-strong);
+}
+.qlhh-cmp-hero-empty {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--rose-text);
+}
+.qlhh-cmp-hero-mid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 14px;
+  border-left: 1px dashed var(--border-control);
+  border-right: 1px dashed var(--border-control);
+}
+
+/* 2. Files & Quick Jump Strip */
+.qlhh-cmp-files-card {
+  gap: 10px;
+  padding: 12px 16px;
+}
+.qlhh-cmp-file-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.qlhh-cmp-file-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  padding: 3px 0;
+  min-width: 0;
+}
+.qlhh-cmp-file-text {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+}
+.qlhh-cmp-file-lbl {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink-secondary);
+  white-space: nowrap;
+}
+.qlhh-cmp-file-name {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--sky-text);
+  text-decoration: underline;
+  word-break: break-word;
+}
+.qlhh-cmp-file-icons {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.qlhh-cmp-ico-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  margin: 0;
+  border-radius: 7px;
+  border: 1px solid var(--border-control);
+  background: var(--bg-well);
+  color: var(--ink-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.14s ease;
+}
+.qlhh-cmp-ico-btn:hover {
+  border-color: var(--sky-border);
+  background: var(--sky-bg);
+  color: var(--sky-text);
+}
+.qlhh-cmp-change-btn {
+  cursor: pointer;
+}
+.qlhh-cmp-nav-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border-subtle);
+}
+.qlhh-cmp-ver-tag,
+.qlhh-cmp-plain-meta {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+.qlhh-cmp-body code {
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  color: var(--ink-strong) !important;
+  font-size: inherit !important;
+  font-weight: 700;
+}
+
+/* 3. ViewOffice Panel Dual-Theme Overrides */
+.qlhh-cmp-office {
+  margin-bottom: 0;
+  border: 1px solid var(--sky-border);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-card);
+}
+.qlhh-cmp-office .compare-office-embed-header {
+  background: var(--bg-modal-head);
+  border-bottom-color: var(--border-subtle);
+  padding: 8px 12px;
+}
+.qlhh-cmp-office-left,
+.qlhh-cmp-office-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.qlhh-cmp-office-brand {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--sky-text);
+  margin-right: 4px;
+}
+.qlhh-cmp-copied-msg {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--emerald-text);
+}
+.qlhh-cmp-modal.theme-light-blue .qlhh-cmp-office .compare-office-role-btn {
+  background: var(--bg-input);
+  border-color: var(--border-control);
+  color: var(--ink-secondary);
+}
+.qlhh-cmp-modal.theme-light-blue .qlhh-cmp-office .compare-office-role-btn.active {
+  background: var(--sky-bg);
+  border-color: var(--sky-border);
+  color: var(--sky-text);
+}
+.qlhh-cmp-modal.theme-light-blue .qlhh-cmp-office .compare-office-close-btn {
+  background: var(--rose-bg);
+  border-color: var(--rose-border);
+  color: var(--rose-text);
+}
+
+/* 4. Tabs, Stacks & Form Controls */
+.qlhh-cmp-tabs {
+  padding: 6px 8px;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  flex-shrink: 0;
+}
+.qlhh-cmp-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.qlhh-cmp-params-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 10px 12px;
+}
+.qlhh-cmp-model-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border-subtle);
+}
+.qlhh-cmp-model-left {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  min-width: 0;
+}
+.qlhh-cmp-sub-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+.qlhh-cmp-model-sel {
+  width: auto !important;
+  min-width: 145px;
+  height: 32px !important;
+  padding: 0 10px !important;
+  font-size: 12.5px !important;
+  font-weight: 700 !important;
+}
+.qlhh-cmp-model-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 800;
+}
+.qlhh-cmp-model-chip.is-primary {
+  background: var(--sky-bg);
+  border: 1px solid var(--sky-border);
+  color: var(--sky-text);
+}
+.qlhh-cmp-model-chip.is-secondary {
+  background: var(--violet-bg);
+  border: 1px solid var(--violet-border);
+  color: var(--violet-text);
+}
+.qlhh-cmp-chip-x {
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-weight: 900;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.qlhh-cmp-model-picker {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--bg-well);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.qlhh-cmp-model-group {
+  display: grid;
+  grid-template-columns: 185px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+.qlhh-cmp-mg-name {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--sky-text);
+}
+.qlhh-cmp-mg-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.qlhh-cmp-model-btn {
+  padding: 3px 9px;
+  border-radius: 6px;
+  border: 1px solid var(--border-control);
+  background: var(--bg-card);
+  color: var(--ink-secondary);
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.14s ease;
+}
+.qlhh-cmp-model-btn.active {
+  background: var(--sky-bg);
+  border-color: var(--sky-border);
+  color: var(--sky-text);
+}
+
+/* 5. Firewall Calculator Data Table (Template Styled) */
+.qlhh-cmp-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-card);
+}
+.qlhh-cmp-table {
+  width: 100%;
+  min-width: 840px;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.qlhh-cmp-table thead th {
+  padding: 10px 11px;
+  background: var(--bg-table-head);
+  color: var(--ink-muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  text-align: left;
+  border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
+}
+.qlhh-cmp-table th.col-group-sep,
+.qlhh-cmp-table td.col-group-sep {
+  border-left: 1px solid var(--border-subtle);
+}
+.qlhh-cmp-cat-row td {
+  padding: 7px 12px;
+  background: var(--bg-well);
+  color: var(--sky-text);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.qlhh-cmp-fw-row {
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.qlhh-cmp-fw-row td {
+  padding: 8px 11px;
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: middle;
+}
+.qlhh-cmp-fw-row:hover {
+  background: var(--bg-row-hover);
+}
+.qlhh-cmp-fw-row.is-unavail {
+  opacity: 0.62;
+}
+.qlhh-cmp-fw-row.is-selected {
+  background: var(--sky-bg);
+}
+.qlhh-cmp-fw-row.is-selected td:first-child {
+  box-shadow: inset 3px 0 0 var(--sky-text);
+}
+.qlhh-cmp-row-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-strong);
+  font-size: 12.5px;
+}
+.qlhh-cmp-active-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--emerald-text);
+  flex-shrink: 0;
+}
+.qlhh-cmp-row-sub {
+  font-size: 10.5px;
+  color: var(--ink-faint);
+  margin-top: 1px;
+}
+.qlhh-cmp-sku-code {
+  font-size: 12px !important;
+}
+.qlhh-cmp-cell-note {
+  font-size: 10px;
+  color: var(--amber-text);
+  margin-top: 2px;
+}
+.qlhh-cmp-msrp-txt {
+  color: var(--sky-text);
+  font-size: 13px;
+}
+.qlhh-cmp-buy-txt {
+  color: var(--emerald-text);
+  font-size: 13px;
+}
+.qlhh-cmp-disc-txt {
+  color: var(--amber-text);
+  font-weight: 700;
+}
+.qlhh-cmp-muted {
+  color: var(--ink-faint);
+  font-size: 11.5px;
+}
+.qlhh-cmp-pct-input {
+  width: 68px;
+  height: 28px;
+  padding: 0 7px;
+  border-radius: 7px;
+  border: 1px solid var(--border-control);
+  background: var(--bg-input);
+  color: var(--amber-text);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: right;
+}
+.qlhh-cmp-pct-input:focus {
+  outline: none;
+  border-color: var(--sky-border);
+}
+
+/* 6. Shared Grids, Key-Value Source Cards, Universal Search */
+.qlhh-cmp-2col {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 14px;
+}
+.qlhh-cmp-3col-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.qlhh-cmp-readonly-box {
+  height: 38px;
+  padding: 0 11px;
+  border-radius: 9px;
+  border: 1px solid var(--border-control);
+  background: var(--bg-well);
+  color: var(--amber-text);
+  font-size: 12.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+}
+.qlhh-cmp-band-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+.qlhh-cmp-warn-txt {
+  color: var(--amber-text);
+  font-weight: 700;
+}
+.qlhh-cmp-err-txt {
+  color: var(--rose-text);
+  font-weight: 700;
+}
+.is-emerald-txt {
+  color: var(--emerald-text);
+  font-weight: 700;
+}
+.qlhh-cmp-search-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.qlhh-cmp-search-row .qlhh-fm-input {
+  flex: 1 1 240px;
+}
+.qlhh-cmp-search-drop {
+  max-height: 220px;
+  overflow-y: auto;
+  border-radius: 10px;
+  border: 1px solid var(--border-control);
+  background: var(--bg-well);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.qlhh-cmp-search-hit {
+  padding: 7px 10px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 12.5px;
+}
+.qlhh-cmp-search-hit:hover {
+  background: var(--bg-row-hover);
+}
+.qlhh-cmp-hit-name {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.qlhh-cmp-hit-name strong {
+  color: var(--ink-strong);
+}
+.qlhh-cmp-hit-name span {
+  font-size: 11.5px;
+  color: var(--ink-muted);
+}
+
+.qlhh-cmp-sources-grid {
+  display: grid;
+  gap: 14px;
+}
+.qlhh-cmp-sources-grid.is-4col {
+  grid-template-columns: repeat(auto-fit, minmax(255px, 1fr));
+}
+.qlhh-cmp-sources-grid.is-3col {
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+}
+.qlhh-cmp-source-card.is-sky {
+  border-top: 3px solid #38bdf8;
+}
+.qlhh-cmp-source-card.is-emerald {
+  border-top: 3px solid #10b981;
+}
+.qlhh-cmp-source-card.is-violet {
+  border-top: 3px solid #8b5cf6;
+}
+.qlhh-bento-head.is-violet {
+  color: var(--violet-text);
+}
+
+.qlhh-cmp-kv-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.qlhh-cmp-kv-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12.5px;
+}
+.qlhh-cmp-kv-row > span:first-child {
+  color: var(--ink-muted);
+  flex-shrink: 0;
+}
+.qlhh-cmp-kv-row > strong,
+.qlhh-cmp-kv-row > span:last-child,
+.qlhh-cmp-kv-row > code {
+  color: var(--ink-strong);
+  text-align: right;
+  word-break: break-word;
+}
+.qlhh-cmp-kv-row.is-total {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border-control);
+  align-items: center;
+}
+.qlhh-cmp-price-lg {
+  font-size: 16px;
+  font-weight: 900;
+}
+.qlhh-cmp-price-lg.is-sky {
+  color: var(--sky-text);
+}
+.qlhh-cmp-price-lg.is-emerald {
+  color: var(--emerald-text);
+}
+.qlhh-cmp-empty-src {
+  padding: 14px 0;
+  font-size: 12.5px;
+  color: var(--ink-muted);
+}
+
+.qlhh-cmp-note-box {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--bg-well);
+  border: 1px solid var(--border-subtle);
+  font-size: 12px;
+  color: var(--ink-secondary);
+}
+.qlhh-cmp-note-text {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-secondary);
+}
+.qlhh-cmp-note-text.is-pre {
+  white-space: pre-line;
+}
+.qlhh-cmp-note-warn {
+  margin-top: 4px;
+  padding: 7px 9px;
+  border-radius: 8px;
+  background: var(--amber-bg);
+  border: 1px solid var(--amber-border);
+  color: var(--amber-text);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+/* Band Strip & Acronis Related Grid */
+.qlhh-cmp-band-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: 8px;
+}
+.qlhh-cmp-band-tile {
+  padding: 8px 10px;
+  border-radius: 9px;
+  background: var(--bg-well);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  cursor: pointer;
+  transition: all 0.14s ease;
+}
+.qlhh-cmp-band-tile:hover {
+  border-color: var(--emerald-border);
+  background: var(--emerald-bg);
+}
+.qlhh-cmp-band-tile.is-active {
+  background: var(--emerald-bg);
+  border: 1.5px solid var(--emerald-border);
+}
+.qlhh-cmp-bt-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+.qlhh-cmp-bt-price {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--emerald-text);
+}
+
+.qlhh-cmp-foot-note {
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+@media (max-width: 1100px) {
+  .qlhh-cmp-overlay {
+    padding: 0;
+  }
+  .qlhh-cmp-modal {
+    width: 100%;
+    max-width: 100%;
+    height: 100%;
+    max-height: 100%;
+    border-radius: 0;
+    border: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .qlhh-cmp-head .qlhh-cmp-status-pill {
+    display: none;
+  }
+  .qlhh-cmp-head .qlhh-fm-title-row h2 {
+    font-size: 14.5px;
+    line-height: 1.3;
+  }
+  .qlhh-cmp-body {
+    gap: 10px;
+  }
+  .qlhh-cmp-hero-card {
+    padding: 12px;
+  }
+  .qlhh-cmp-hero-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .qlhh-cmp-hero-side.is-right {
+    align-items: flex-start;
+    text-align: left;
+  }
+  .qlhh-cmp-hero-price {
+    font-size: 19px;
+  }
+  .qlhh-cmp-hero-mid {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    padding: 9px 0;
+    border-left: none;
+    border-right: none;
+    border-top: 1px dashed var(--border-control);
+    border-bottom: 1px dashed var(--border-control);
+  }
+  .qlhh-cmp-files-card {
+    padding: 10px 12px;
+  }
+  .qlhh-cmp-file-grid,
+  .qlhh-cmp-2col,
+  .qlhh-cmp-sources-grid.is-3col,
+  .qlhh-cmp-sources-grid.is-4col {
+    grid-template-columns: 1fr;
+  }
+  .qlhh-cmp-model-group,
+  .qlhh-cmp-3col-fields {
+    grid-template-columns: 1fr;
+  }
+  .qlhh-cmp-params-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .qlhh-cmp-band-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .qlhh-cmp-foot {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .qlhh-cmp-foot .qlhh-fm-foot-right {
+    width: 100%;
+    justify-content: flex-end;
   }
 }
 </style>

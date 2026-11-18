@@ -21,6 +21,16 @@
           <span style="font-size: 0.76rem; color: #94a3b8; margin-top: 3px;">
             Tài khoản: {{ botStatus.accountName || config.botAccount || 'bot.QkJpMNVs' }}
           </span>
+          <span
+            style="font-size: 0.72rem; margin-top: 4px; display: inline-flex; align-items: center; gap: 5px;"
+            :style="{ color: workerStatus.fresh ? '#34d399' : '#fbbf24' }"
+          >
+            <span
+              style="width: 6px; height: 6px; border-radius: 999px; display: inline-block;"
+              :style="{ background: workerStatus.fresh ? '#34d399' : '#fbbf24' }"
+            ></span>
+            {{ workerStatus.label }}
+          </span>
         </div>
       </div>
 
@@ -675,7 +685,9 @@ import {
   sendZaloBotMessage,
   renderBotTemplate,
   executeBotCommand,
-  pollZaloBotCommandsOnce
+  pollZaloBotCommandsOnce,
+  fetchWorkerHeartbeat,
+  isWorkerHeartbeatFresh
 } from '../utils/zaloBotService'
 
 const firebaseConfig = {
@@ -716,6 +728,39 @@ const botStatus = reactive({
   accountName: 'bot.QkJpMNVs',
   id: '1563589356003514094'
 })
+
+const workerStatus = reactive({
+  fresh: false,
+  lastRunAt: '',
+  label: 'Cloudflare 24/7: Đang kiểm tra...'
+})
+
+const refreshWorkerStatus = async () => {
+  try {
+    const hb = await fetchWorkerHeartbeat()
+    const fresh = isWorkerHeartbeatFresh(hb)
+    workerStatus.fresh = fresh
+    workerStatus.lastRunAt = hb?.lastRunAt || ''
+    const dt = workerStatus.lastRunAt ? new Date(workerStatus.lastRunAt) : null
+    const timeText = dt && !Number.isNaN(dt.getTime())
+      ? dt.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+      : ''
+
+    if (fresh) {
+      workerStatus.label = timeText
+        ? `Cloudflare 24/7: Đang chạy (${timeText})`
+        : 'Cloudflare 24/7: Đang chạy'
+    } else if (timeText) {
+      workerStatus.label = `Cloudflare 24/7: Tạm ngưng (${timeText})`
+    } else {
+      workerStatus.label = 'Cloudflare 24/7: Chưa bật Cron (dự phòng tab web)'
+    }
+  } catch {
+    workerStatus.fresh = false
+    workerStatus.lastRunAt = ''
+    workerStatus.label = 'Cloudflare 24/7: Chưa kiểm tra được'
+  }
+}
 
 const statusBanner = reactive({
   text: '',
@@ -802,7 +847,10 @@ const insertVarToManual = (code) => {
 const checkBotConnection = async () => {
   checkingBot.value = true
   try {
-    const res = await callZaloBotApi(config.value.botToken, 'getMe', {})
+    const [res] = await Promise.all([
+      callZaloBotApi(config.value.botToken, 'getMe', {}),
+      refreshWorkerStatus()
+    ])
     if (res && res.ok && res.result) {
       botStatus.online = true
       botStatus.displayName = res.result.display_name || config.value.botName

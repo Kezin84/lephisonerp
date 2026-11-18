@@ -151,7 +151,7 @@
         </button>
         <div style="width: 4px;"></div>
         <!-- STT button -->
-        <button type="button" class="toolbar-btn" style="width: auto; padding: 0 8px; font-weight: bold; font-size: 13px; letter-spacing: 0.5px; border: 1px solid rgba(255,255,255,0.1);" @mousedown.prevent="insertSTTBlock" title="Đánh Số Thứ Tự (STT)">
+        <button type="button" class="toolbar-btn stt-toolbar-btn" @mousedown.prevent="insertSTTBlock" title="Đánh Số Thứ Tự (STT)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><path d="M4 6h1v4"></path><path d="M4 10h2"></path><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"></path><line x1="12" y1="6" x2="21" y2="6"></line><line x1="12" y1="12" x2="21" y2="12"></line><line x1="12" y1="18" x2="21" y2="18"></line></svg>
           STT
         </button>
@@ -876,6 +876,10 @@ defineExpose({
 
 <style scoped>
 .excel-editor {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   border: 1px solid var(--border, #475569);
   border-radius: 8px;
   background: var(--surface, #1e293b);
@@ -891,6 +895,9 @@ defineExpose({
   border-bottom: 1px solid var(--border, #475569);
   gap: 12px;
   flex-wrap: wrap;
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
   border-top-left-radius: 8px;
   border-top-right-radius: 8px;
 }
@@ -899,6 +906,8 @@ defineExpose({
   display: flex;
   align-items: center;
   gap: 4px;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .formatting-group {
@@ -964,6 +973,15 @@ defineExpose({
 
 .toolbar-btn:active {
   background: rgba(255, 255, 255, 0.2);
+}
+
+.stt-toolbar-btn {
+  width: auto;
+  padding: 0 8px;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.4px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
 }
 
 .color-picker-group {
@@ -1136,67 +1154,139 @@ defineExpose({
   background: #1a2235;
 }
 
-/* Light Mode (Xanh Dương - Trắng) cho ExcelEditor */
-:global(.page.theme-light-blue) .excel-editor {
+/* Mobile compact layout: tránh tràn ngang & tránh toolbar quá cao trên điện thoại */
+@media (max-width: 768px) {
+  .excel-toolbar {
+    padding: 6px 8px;
+    gap: 6px 6px;
+  }
+
+  .toolbar-divider {
+    display: none;
+  }
+
+  .toolbar-group {
+    gap: 3px;
+    flex-wrap: wrap;
+  }
+
+  .font-select {
+    width: 108px;
+    height: 28px;
+    padding: 2px 20px 2px 8px;
+    font-size: 12.5px;
+    border-radius: 5px;
+  }
+
+  .size-input {
+    width: 42px;
+    height: 28px;
+    padding: 2px 4px;
+    font-size: 12.5px;
+    border-radius: 5px;
+  }
+
+  .toolbar-btn,
+  .color-btn {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+  }
+
+  .stt-toolbar-btn {
+    width: auto;
+    padding: 0 8px;
+    font-size: 12px;
+  }
+
+  .color-picker-group {
+    margin-left: 2px;
+    gap: 3px;
+  }
+
+  .color-palette-modern {
+    left: auto;
+    right: 0;
+    transform: none;
+    width: min(268px, calc(100vw - 48px));
+  }
+
+  .editor-content {
+    padding: 12px 14px;
+    min-height: 150px;
+    max-height: 300px;
+    font-size: 13.5px;
+    line-height: 1.5;
+  }
+}
+
+/* Light Mode (Xanh Dương - Trắng) cho ExcelEditor — toàn bộ selector gói trong :global(...) để @vue/compiler-sfc không cắt đuôi */
+:global(.theme-light-blue .excel-editor) {
   background: #ffffff;
   border-color: #cbd5e1;
 }
 
-:global(.page.theme-light-blue) .excel-toolbar {
+:global(.theme-light-blue .excel-editor .excel-toolbar) {
   background: #f1f5f9;
   border-bottom-color: #cbd5e1;
 }
 
-:global(.page.theme-light-blue) .toolbar-divider {
+:global(.theme-light-blue .excel-editor .toolbar-divider) {
   background: #cbd5e1;
 }
 
-:global(.page.theme-light-blue) .toolbar-select {
+:global(.theme-light-blue .excel-editor .toolbar-select) {
   background-color: #ffffff;
   color: #0f172a;
   border-color: #cbd5e1;
 }
 
-:global(.page.theme-light-blue) .toolbar-btn,
-:global(.page.theme-light-blue) .color-btn {
+:global(.theme-light-blue .excel-editor .toolbar-btn),
+:global(.theme-light-blue .excel-editor .color-btn) {
   color: #1e293b;
 }
 
-:global(.page.theme-light-blue) .toolbar-btn:hover,
-:global(.page.theme-light-blue) .color-btn:hover {
+:global(.theme-light-blue .excel-editor .stt-toolbar-btn) {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+:global(.theme-light-blue .excel-editor .toolbar-btn:hover),
+:global(.theme-light-blue .excel-editor .color-btn:hover) {
   background: #e2e8f0;
   border-color: #94a3b8;
 }
 
-:global(.page.theme-light-blue) .editor-content {
+:global(.theme-light-blue .excel-editor .editor-content) {
   background: #ffffff;
   color: #0f172a;
 }
 
-:global(.page.theme-light-blue) .editor-content:focus {
+:global(.theme-light-blue .excel-editor .editor-content:focus) {
   background: #ffffff;
 }
 
-:global(.page.theme-light-blue) .editor-content :deep([style*="color: rgb(241, 245, 249)"]),
-:global(.page.theme-light-blue) .editor-content :deep([style*="color: rgb(248, 250, 252)"]),
-:global(.page.theme-light-blue) .editor-content :deep([style*="color: rgb(255, 255, 255)"]),
-:global(.page.theme-light-blue) .editor-content :deep([style*="color: rgb(226, 232, 240)"]),
-:global(.page.theme-light-blue) .editor-content :deep([style*="color: rgb(203, 213, 225)"]),
-:global(.page.theme-light-blue) .editor-content :deep([style*="color: #fff"]),
-:global(.page.theme-light-blue) .editor-content :deep([style*="color:#fff"]),
-:global(.page.theme-light-blue) .editor-content :deep([style*="color: #f1f5f9"]),
-:global(.page.theme-light-blue) .editor-content :deep([style*="color: #f8fafc"]),
-:global(.page.theme-light-blue) .editor-content :deep([style*="color: #e2e8f0"]),
-:global(.page.theme-light-blue) .editor-content :deep([style*="color: #cbd5e1"]),
-:global(.page.theme-light-blue) .editor-content :deep(font[color="#ffffff"]),
-:global(.page.theme-light-blue) .editor-content :deep(font[color="#fff"]),
-:global(.page.theme-light-blue) .editor-content :deep(font[color="#f1f5f9"]),
-:global(.page.theme-light-blue) .editor-content :deep(font[color="#f8fafc"]) {
+:global(.theme-light-blue .excel-editor .editor-content [style*="color: rgb(241, 245, 249)"]),
+:global(.theme-light-blue .excel-editor .editor-content [style*="color: rgb(248, 250, 252)"]),
+:global(.theme-light-blue .excel-editor .editor-content [style*="color: rgb(255, 255, 255)"]),
+:global(.theme-light-blue .excel-editor .editor-content [style*="color: rgb(226, 232, 240)"]),
+:global(.theme-light-blue .excel-editor .editor-content [style*="color: rgb(203, 213, 225)"]),
+:global(.theme-light-blue .excel-editor .editor-content [style*="color: #fff"]),
+:global(.theme-light-blue .excel-editor .editor-content [style*="color:#fff"]),
+:global(.theme-light-blue .excel-editor .editor-content [style*="color: #f1f5f9"]),
+:global(.theme-light-blue .excel-editor .editor-content [style*="color: #f8fafc"]),
+:global(.theme-light-blue .excel-editor .editor-content [style*="color: #e2e8f0"]),
+:global(.theme-light-blue .excel-editor .editor-content [style*="color: #cbd5e1"]),
+:global(.theme-light-blue .excel-editor .editor-content font[color="#ffffff"]),
+:global(.theme-light-blue .excel-editor .editor-content font[color="#fff"]),
+:global(.theme-light-blue .excel-editor .editor-content font[color="#f1f5f9"]),
+:global(.theme-light-blue .excel-editor .editor-content font[color="#f8fafc"]) {
   color: #0f172a !important;
 }
 
-:global(.page.theme-light-blue) .editor-content :deep(td),
-:global(.page.theme-light-blue) .editor-content :deep(th) {
+:global(.theme-light-blue .excel-editor .editor-content td),
+:global(.theme-light-blue .excel-editor .editor-content th) {
   border-color: #cbd5e1;
 }
 

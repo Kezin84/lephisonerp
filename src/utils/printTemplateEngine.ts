@@ -639,7 +639,7 @@ export const AVAILABLE_TOKENS: TokenDef[] = [
   { token: '{{SO_LUONG}}', key: 'SO_LUONG', label: 'Số lượng', group: 'item_row', sample: '50', isNumeric: true },
   { token: '{{LIST_PRICE}}', key: 'LIST_PRICE', label: 'Giá List Price', group: 'item_row', sample: '1,200,000', isNumeric: true },
   { token: '{{GIA_TIEU_CHUAN}}', key: 'GIA_TIEU_CHUAN', label: 'Giá Off Hãng', group: 'item_row', sample: '950,000', isNumeric: true },
-  { token: '{{PHAN_TRAM_OFF_HANG}}', key: 'PHAN_TRAM_OFF_HANG', label: '% Off Hãng', group: 'item_row', sample: '20%' },
+  { token: '{{PHAN_TRAM_OFF_HANG}}', key: 'PHAN_TRAM_OFF_HANG', label: '% Hãng Off', group: 'item_row', sample: '20%' },
   { token: '{{GIA_NHAP}}', key: 'GIA_NHAP', label: 'Giá nhập', group: 'item_row', sample: '800,000', isNumeric: true },
   { token: '{{GIA_HARDWARE}}', key: 'GIA_HARDWARE', label: 'Giá Hardware', group: 'item_row', sample: '15,000,000', isNumeric: true },
   { token: '{{PHAN_TRAM_OFF}}', key: 'PHAN_TRAM_OFF', label: '% Off Khách', group: 'item_row', sample: '10%' },
@@ -657,7 +657,7 @@ export const AVAILABLE_TOKENS: TokenDef[] = [
   { token: '{{GIA_KHACH_TT}}', key: 'GIA_KHACH_TT', label: 'Giá khách - Thành tiền trước thuế (Đơn giá Khách × SL)', group: 'item_row', sample: '54,000,000', isNumeric: true },
   { token: '{{GIA_HD_DG}}', key: 'GIA_HD_DG', label: 'Giá hợp đồng - Đơn giá (Đối chiếu 3 giá)', group: 'item_row', sample: '1,300,000', isNumeric: true },
   { token: '{{GIA_HD_TT}}', key: 'GIA_HD_TT', label: 'Giá hợp đồng - Thành tiền trước thuế (Đơn giá HĐ × SL)', group: 'item_row', sample: '65,000,000', isNumeric: true },
-  { token: '{{GIA_OFF_HANG_KEM_PCT}}', key: 'GIA_OFF_HANG_KEM_PCT', label: 'Giá vốn / Giá off hãng kèm % off hãng (Đối chiếu 3 giá)', group: 'item_row', sample: '960,000 (20%)' },
+  { token: '{{GIA_OFF_HANG_KEM_PCT}}', key: 'GIA_OFF_HANG_KEM_PCT', label: 'Giá vốn / Giá off hãng kèm % hãng off (Đối chiếu 3 giá)', group: 'item_row', sample: '960,000 (20%)' },
   { token: '{{NET_MARGIN}}', key: 'NET_MARGIN', label: 'Net Margin - Lời/Lỗ so với Giá khách (Đối chiếu 3 giá)', group: 'item_row', sample: '6,000,000', isNumeric: true },
   { token: '{{GHI_CHU_SP}}', key: 'GHI_CHU_SP', label: 'Ghi chú sản phẩm', group: 'item_row', sample: 'Giao hàng qua email' },
 
@@ -7305,7 +7305,7 @@ export async function generateExcelBlobFromTemplate(
         }
       const extraHeaders = [
         { col: extraColListPrice, text: `Giá List\n(${ctx.currency || 'VND'})` },
-        { col: extraColOffHang, text: '% Off Hãng' },
+        { col: extraColOffHang, text: '% Hãng Off' },
         { col: extraColOffKhach, text: '% Off Khách' },
         { col: extraColDonGiaList, text: `Đơn giá List\n(${ctx.currency || 'VND'})` },
         { col: extraColThanhTienList, text: `Thành tiền List\n(${ctx.currency || 'VND'})` }

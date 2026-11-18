@@ -2701,6 +2701,7 @@ const addedStatus = reactive<Record<string, boolean>>({})
 ====================== */
 const showManualModal = ref(false)
 const showCardModal = ref(false)
+const cardModalCollapse = ref({ general: true, tech: true })
 const showPreviewRawModal = ref(false)
 const showSaveModal = ref(false)
 const showExportExcelModal = ref(false)
@@ -2744,7 +2745,7 @@ const availableExcelFields = [
   { value: 'ghi_chu', label: 'GHI CHÚ' },
   { value: 'list_price', label: 'LIST PRICE' },
   { value: 'don_gia_nhap', label: 'GIÁ NHẬP' },
-  { value: 'muc_off_hang', label: '% OFF HÃNG' },
+  { value: 'muc_off_hang', label: '% HÃNG OFF' },
   { value: 'gia_tieu_chuan', label: 'GIÁ VỐN / GIÁ OFF HÃNG' },
   { value: 'so_luong', label: 'SỐ LƯỢNG' },
   { value: 'volume', label: 'VOLUME' },
@@ -3558,18 +3559,28 @@ const isManualFormDirty = computed<boolean>(() => {
 })
 
 type CostMarkupRule = {
+  flow: 'cost_to_sell' | 'sell_to_cost'
   direction: 'increase' | 'decrease'
   type: 'percent' | 'amount'
   value: number
 }
 
 const manualCostMarkup = reactive<CostMarkupRule>({
+  flow: 'cost_to_sell',
   direction: 'increase',
   type: 'percent',
   value: 0
 })
 
 const cardCostMarkup = reactive<CostMarkupRule>({
+  flow: 'cost_to_sell',
+  direction: 'increase',
+  type: 'percent',
+  value: 0
+})
+
+const quoteEditCostMarkup = reactive<CostMarkupRule>({
+  flow: 'cost_to_sell',
   direction: 'increase',
   type: 'percent',
   value: 0
@@ -3587,22 +3598,52 @@ function syncCostMarkupFromPrices(rule: CostMarkupRule, giaVonVal: any, donGiaVa
   const giaVon = toNum(giaVonVal, 0)
   const donGia = toNum(donGiaVal, 0)
   if (giaVon <= 0 || donGia <= 0 || donGia === giaVon) {
-    rule.direction = 'increase'
+    rule.direction = rule.flow === 'sell_to_cost' ? 'decrease' : 'increase'
     rule.type = 'percent'
     rule.value = 0
     return
   }
   const diff = donGia - giaVon
-  rule.direction = diff < 0 ? 'decrease' : 'increase'
+  if (rule.flow === 'sell_to_cost') {
+    rule.direction = diff > 0 ? 'decrease' : 'increase'
+  } else {
+    rule.direction = diff < 0 ? 'decrease' : 'increase'
+  }
   rule.type = 'percent'
   rule.value = Math.round((Math.abs(diff) / giaVon) * 1000) / 10
 }
 
+function toggleCostMarkupFlow(target: any, rule: CostMarkupRule) {
+  rule.flow = rule.flow === 'sell_to_cost' ? 'cost_to_sell' : 'sell_to_cost'
+  if (toNum(rule.value, 0) > 0 || (target && toNum(target.Gia_tieu_chuan, 0) > 0 && toNum(target.Don_gia, 0) > 0 && toNum(target.Gia_tieu_chuan, 0) !== toNum(target.Don_gia, 0))) {
+    rule.direction = rule.direction === 'decrease' ? 'increase' : 'decrease'
+  } else {
+    rule.direction = rule.flow === 'sell_to_cost' ? 'decrease' : 'increase'
+  }
+}
+
 function applyCostMarkupToTarget(target: any, rule: CostMarkupRule) {
   if (!target) return
+  const val = Math.max(0, toNum(rule.value, 0))
+  if (rule.flow === 'sell_to_cost') {
+    const donGia = toNum(target.Don_gia, 0)
+    if (donGia <= 0) return
+    let rawCost = donGia
+    if (rule.type === 'percent') {
+      if (rule.direction === 'decrease') {
+        rawCost = donGia / (1 + val / 100)
+      } else {
+        const factor = 1 - val / 100
+        rawCost = factor > 1e-6 ? donGia / factor : 0
+      }
+    } else {
+      rawCost = rule.direction === 'decrease' ? donGia - val : donGia + val
+    }
+    target.Gia_tieu_chuan = roundPriceByCurrency(Math.max(0, rawCost), target.Don_vi_tien_te)
+    return
+  }
   const giaVon = toNum(target.Gia_tieu_chuan, 0)
   if (giaVon <= 0) return
-  const val = Math.max(0, toNum(rule.value, 0))
   const delta = rule.type === 'percent' ? (giaVon * val) / 100 : val
   const rawNew = rule.direction === 'decrease' ? giaVon - delta : giaVon + delta
   target.Don_gia = roundPriceByCurrency(Math.max(0, rawNew), target.Don_vi_tien_te)
@@ -3610,6 +3651,10 @@ function applyCostMarkupToTarget(target: any, rule: CostMarkupRule) {
 
 function onTargetGiaVonInput(target: any, rule: CostMarkupRule, isNewItem: boolean) {
   if (!target) return
+  if (rule.flow === 'sell_to_cost') {
+    syncCostMarkupFromPrices(rule, target.Gia_tieu_chuan, target.Don_gia)
+    return
+  }
   const giaVon = toNum(target.Gia_tieu_chuan, 0)
   if (giaVon <= 0) return
   if (toNum(rule.value, 0) > 0) {
@@ -3621,6 +3666,10 @@ function onTargetGiaVonInput(target: any, rule: CostMarkupRule, isNewItem: boole
 
 function onTargetDonGiaInput(target: any, rule: CostMarkupRule) {
   if (!target) return
+  if (rule.flow === 'sell_to_cost' && toNum(rule.value, 0) > 0) {
+    applyCostMarkupToTarget(target, rule)
+    return
+  }
   syncCostMarkupFromPrices(rule, target.Gia_tieu_chuan, target.Don_gia)
 }
 
@@ -10529,6 +10578,31 @@ async function handleExternalRouteAndCloneActions() {
         console.error(e)
       }
     }
+
+    const shouldCreateNewTab =
+      localStorage.getItem('pendingCreateNewQuoteTab') === '1' ||
+      String(route.query.newTab || '') === '1'
+    if (shouldCreateNewTab) {
+      localStorage.removeItem('pendingCreateNewQuoteTab')
+      const curActiveTab = quoteTabs.value.find(t => t.id === activeQuoteTabId.value)
+      const isSingleFreshBlankTab =
+        quoteTabs.value.length === 1 && !!curActiveTab && !hasQuoteTabData(curActiveTab)
+      if (isSingleFreshBlankTab) {
+        await generateNewQuoteIds()
+        flushQuoteTabsToStorageNow()
+        scrollActiveTabIntoView()
+      } else {
+        await createNewQuoteTab({ silent: true })
+        scrollActiveTabIntoView()
+      }
+      const activeNum =
+        quoteTabs.value.find(t => t.id === activeQuoteTabId.value)?.tabNumber || quoteTabs.value.length
+      if (window.innerWidth <= 1100) setMobileStep(1)
+      triggerToast(`Đã mở tab Báo giá ${activeNum}`)
+      if (route.query.newTab || route.query._ts) {
+        router.replace('/baogiafirebase').catch(() => {})
+      }
+    }
   } finally {
     isHandlingExternalRouteAction = false
   }
@@ -10684,10 +10758,10 @@ onDeactivated(() => {
 })
 
 watch(
-  () => [route.query.ma, route.query.clone, route.query._ts],
-  async ([newMa, newClone]) => {
+  () => [route.query.ma, route.query.clone, route.query.newTab, route.query._ts],
+  async ([newMa, newClone, newNewTab]) => {
     if (!isBaogiaComponentActive || isInitialMountRunning) return
-    if (!newMa && !newClone) return
+    if (!newMa && !newClone && !newNewTab) return
     await handleExternalRouteAndCloneActions()
     flushQuoteTabsToStorageNow()
   }
@@ -14906,11 +14980,13 @@ function openCardModal(p: HangHoa) {
   isCardMaHangEdited.value = false;
   isCardMaNccEdited.value = false;
   cardSessionUploadedFileIds.value = [];
+  cardModalCollapse.value = { general: true, tech: true };
   const qty = qtyMap[p.Ma_hang] || 1
   const cloned = cloneHang(p, qty)
   cloned.danh_sach_file = getProductFileHistory(p).map(f => ({ ...f }))
   cardEdit.value = cloned
   cardOriginalSnapshot.value = JSON.parse(JSON.stringify(cloned))
+  cardCostMarkup.flow = 'cost_to_sell'
   syncCostMarkupFromPrices(cardCostMarkup, cloned.Gia_tieu_chuan, cloned.Don_gia)
   showCardModal.value = true
 }
@@ -16145,7 +16221,7 @@ const quoteRows = computed<QuoteRow[]>(() => {
    ✅ QUOTE EDIT MODAL (click row -> edit)
 ====================== */
 const showQuoteEditModal = ref(false)
-const activeQuoteEditTab = ref<'info' | 'price'>('info')
+const activeQuoteEditTab = ref<'info' | 'price'>('price')
 const hiddenCols = ref({ c1: false, c2: false, c3: false, c4: false })
 const quoteEditGridCols = computed(() => {
   return [
@@ -16301,6 +16377,7 @@ function updateTieuChuanPct(val: number) {
   quoteEdit.value._Gia_tieu_chuan_goc = nextTc;
   quoteEdit.value._Gia_tieu_chuan_kho = nextTc;
   quoteEdit.value = { ...quoteEdit.value };
+  syncQuoteEditCostMarkupFromPrices();
 }
 
 // KASPERSKY CALCULATOR
@@ -16473,16 +16550,122 @@ const applyKaspOff = () => {
   showKasperskyCalculatorModal.value = false
 }
 
+function syncQuoteEditCostMarkupFromPrices() {
+  const it = quoteEdit.value
+  if (!it) return
+  const tg = toNum(it.Ti_gia, 1) || 1
+  const giaVonUnit = toNum(it.Gia_tieu_chuan, 0)
+  const lpUnit = donGiaLPKho(it)
+  if (quoteEditCostMarkup.type === 'amount') {
+    const giaVonVnd = Math.round(giaVonUnit * tg)
+    const lpVnd = Math.round(lpUnit * tg)
+    if (giaVonVnd <= 0 || lpVnd <= 0 || lpVnd === giaVonVnd) {
+      quoteEditCostMarkup.direction = quoteEditCostMarkup.flow === 'sell_to_cost' ? 'decrease' : 'increase'
+      quoteEditCostMarkup.value = 0
+      return
+    }
+    const diffVnd = lpVnd - giaVonVnd
+    quoteEditCostMarkup.direction = quoteEditCostMarkup.flow === 'sell_to_cost'
+      ? (diffVnd > 0 ? 'decrease' : 'increase')
+      : (diffVnd < 0 ? 'decrease' : 'increase')
+    quoteEditCostMarkup.value = Math.abs(diffVnd)
+    return
+  }
+  syncCostMarkupFromPrices(quoteEditCostMarkup, giaVonUnit, lpUnit)
+}
+
+function toggleQuoteEditCostMarkupFlow() {
+  const it = quoteEdit.value
+  toggleCostMarkupFlow(
+    it ? { Gia_tieu_chuan: it.Gia_tieu_chuan, Don_gia: donGiaLPKho(it) } : null,
+    quoteEditCostMarkup
+  )
+}
+
+function applyQuoteEditCostMarkup() {
+  const it = quoteEdit.value
+  if (!it) return
+  const tg = toNum(it.Ti_gia, 1) || 1
+  const val = Math.max(0, toNum(quoteEditCostMarkup.value, 0))
+  const cur = it.Don_vi_tien_te
+  const hwKho = getGocNumber(it, '_gia_hardware_kho', getGocNumber(it, '_gia_hardware_goc', toNum(it.gia_hardware, 0)))
+
+  if (quoteEditCostMarkup.flow === 'sell_to_cost') {
+    const lpUnit = donGiaLPKho(it)
+    if (lpUnit <= 0) return
+    let rawCostUnit = lpUnit
+    if (quoteEditCostMarkup.type === 'percent') {
+      if (quoteEditCostMarkup.direction === 'decrease') {
+        rawCostUnit = lpUnit / (1 + val / 100)
+      } else {
+        const factor = 1 - val / 100
+        rawCostUnit = factor > 1e-6 ? lpUnit / factor : 0
+      }
+    } else {
+      const deltaUnit = val / tg
+      rawCostUnit = quoteEditCostMarkup.direction === 'decrease' ? lpUnit - deltaUnit : lpUnit + deltaUnit
+    }
+    const nextTc = roundPriceByCurrency(Math.max(0, rawCostUnit), cur)
+    it.Gia_tieu_chuan = nextTc
+    it._Gia_tieu_chuan_goc = nextTc
+    it._Gia_tieu_chuan_kho = nextTc
+    return
+  }
+
+  const giaVonUnit = toNum(it.Gia_tieu_chuan, 0)
+  if (giaVonUnit <= 0) return
+  const deltaUnit = quoteEditCostMarkup.type === 'percent' ? (giaVonUnit * val) / 100 : (val / tg)
+  const rawNewLp = quoteEditCostMarkup.direction === 'decrease' ? giaVonUnit - deltaUnit : giaVonUnit + deltaUnit
+  const nextLpUnit = roundPriceByCurrency(Math.max(0, rawNewLp), cur)
+  const nextKhoDonGia = Math.max(0, nextLpUnit - hwKho)
+
+  const prevGoc = getGocNumber(it, '_Don_gia_goc', toNum(it.Don_gia, 0))
+  const prevKho = getGocNumber(it, '_Don_gia_kho', prevGoc)
+  const hasContractDiff = Math.abs(Math.round(lineTruocThue(it) - lineTruocThueRaw(it))) > 0
+  const hasCustDiff = Math.abs(prevGoc - prevKho) > 1e-6
+
+  it._Don_gia_kho = nextKhoDonGia
+  if (!hasCustDiff) {
+    it._Don_gia_goc = nextKhoDonGia
+  }
+  if (!hasContractDiff && !hasCustDiff) {
+    it.Don_gia = nextKhoDonGia
+  } else if (!hasContractDiff) {
+    it.Don_gia = it._Don_gia_goc
+  }
+  _adjustedFields.add('Don_gia')
+}
+
+function onQuoteEditGiaVonInput() {
+  if (!quoteEdit.value) return
+  if (quoteEditCostMarkup.flow === 'sell_to_cost') {
+    syncQuoteEditCostMarkupFromPrices()
+    return
+  }
+  if (toNum(quoteEdit.value.Gia_tieu_chuan, 0) <= 0) return
+  if (toNum(quoteEditCostMarkup.value, 0) > 0) {
+    applyQuoteEditCostMarkup()
+  }
+}
+
+function onQuoteEditListPriceChanged() {
+  if (!quoteEdit.value) return
+  if (quoteEditCostMarkup.flow === 'sell_to_cost' && toNum(quoteEditCostMarkup.value, 0) > 0) {
+    applyQuoteEditCostMarkup()
+    return
+  }
+  syncQuoteEditCostMarkupFromPrices()
+}
+
 function openQuoteEdit(idx: number, focusField?: string) {
   if (isBulkSelectMode.value && idx >= 0 && selectedItems.value[idx]) {
     toggleBulkSelectItem(selectedItems.value[idx])
     return
   }
-  const priceFocusFields = [
-    'So_luong', 'Ti_gia', 'Gia_tieu_chuan', 'Gia_tieu_chuan_usd',
-    'Don_gia', 'Don_gia_usd', 'gia_nhap', 'gia_nhap_usd',
-    'muc_phan_tram_off', 'unit_price_kh', 'line_truoc_thue',
-    'Thue_VAT', 'item_chenh_lech'
+  const infoFocusFields = [
+    'Ma_hang', 'sku_code', 'Ten_hang', 'Ten_hang_bao_gia',
+    'Description', 'Features', 'Dien_giai_bao_gia',
+    'Ten_nha_cung_cap', 'DVT'
   ]
   if (idx < 0 && guideTempTableDemoActive.value && selectedItems.value.length === 0) {
     closeQuoteEditRaw()
@@ -16490,7 +16673,10 @@ function openQuoteEdit(idx: number, focusField?: string) {
     quoteEditIdx.value = -1
     pendingQuoteEditFocusField.value = focusField || ''
     quoteEdit.value = createGuideDemoQuoteItem()
-    activeQuoteEditTab.value = focusField && priceFocusFields.includes(focusField) ? 'price' : 'info'
+    activeQuoteEditTab.value = focusField && infoFocusFields.includes(focusField) ? 'info' : 'price'
+    quoteEditCostMarkup.flow = 'cost_to_sell'
+    quoteEditCostMarkup.type = 'percent'
+    syncQuoteEditCostMarkupFromPrices()
     showQuoteEditModal.value = true
     return
   }
@@ -16502,10 +16688,10 @@ function openQuoteEdit(idx: number, focusField?: string) {
   quoteEditIdx.value = idx
   pendingQuoteEditFocusField.value = focusField || ''
 
-  if (focusField && priceFocusFields.includes(focusField)) {
-    activeQuoteEditTab.value = 'price'
-  } else {
+  if (focusField && infoFocusFields.includes(focusField)) {
     activeQuoteEditTab.value = 'info'
+  } else {
+    activeQuoteEditTab.value = 'price'
   }
 
   // Phát hiện Don_gia / gia_hardware / muc_phan_tram_off đã có chênh lệch trước đó
@@ -16520,6 +16706,10 @@ function openQuoteEdit(idx: number, focusField?: string) {
   if (getGocNumber(it, '_muc_phan_tram_off_goc', toNum(it.muc_phan_tram_off, 0)) !== toNum(it.muc_phan_tram_off, 0)) {
     _adjustedFields.add('muc_phan_tram_off')
   }
+
+  quoteEditCostMarkup.flow = 'cost_to_sell'
+  quoteEditCostMarkup.type = 'percent'
+  syncQuoteEditCostMarkupFromPrices()
 
   showQuoteEditModal.value = true
 }
@@ -16869,6 +17059,7 @@ const quoteEditDonGiaUsdModel = computed({
       quoteEdit.value.Don_gia = prevContractUsd;
     }
     _adjustedFields.add('Don_gia');
+    onQuoteEditListPriceChanged();
   }
 });
 
@@ -17547,6 +17738,7 @@ function applyAdjustPrice() {
         } else if (normalEditContractBehavior === 'keep_diff') {
           quoteEdit.value.Don_gia = Math.max(0, prevContractUSD + deltaUSD);
         }
+        onQuoteEditListPriceChanged();
       } else if (targetField === 'gia_hardware') {
         const prevHwGocUSD = getGocNumber(quoteEdit.value, '_gia_hardware_goc', toNum(quoteEdit.value.gia_hardware, 0));
         const prevHwContractUSD = toNum(quoteEdit.value.gia_hardware, 0);
@@ -17808,14 +18000,14 @@ const BULK_FIELD_OPTIONS: BulkFieldOptionMeta[] = [
   {
     key: 'vendor_off',
     group: 'discount_tax',
-    label: '% Off Hãng & Giá Vốn',
-    shortLabel: '% Off Hãng / Vốn',
+    label: '% Hãng Off & Giá Vốn',
+    shortLabel: '% Hãng Off / Vốn',
     icon: 'ri-shield-star-line',
-    desc: 'Cập nhật % Off từ Hãng (Deal Reg / Standard) hoặc chỉnh trực tiếp Giá vốn (Gia_tieu_chuan)',
+    desc: 'Cập nhật % Hãng Off (Deal Reg / Standard) hoặc chỉnh trực tiếp Giá vốn (Gia_tieu_chuan)',
     accent: 'violet',
     allowedOps: [
-      { key: 'set_val', label: 'Gán % Off Hãng (=)', icon: 'ri-equalizer-line' },
-      { key: 'delta_val', label: '± Điểm % Off Hãng', icon: 'ri-percent-line' },
+      { key: 'set_val', label: 'Gán % Hãng Off (=)', icon: 'ri-equalizer-line' },
+      { key: 'delta_val', label: '± Điểm % Hãng Off', icon: 'ri-percent-line' },
       { key: 'percent', label: '± % trên Giá vốn', icon: 'ri-line-chart-line' },
       { key: 'delta_unit', label: '± Số tiền Giá vốn', icon: 'ri-money-dollar-circle-line' }
     ]
@@ -18493,7 +18685,7 @@ function createInitialBulkVerticalRows(kind: BulkModalKind = bulkModalKind.value
     },
     {
       key: 'vendor_off_pct',
-      label: '% Off hãng',
+      label: '% Hãng off',
       unitType: 'percent',
       direction: 'set',
       value: '',
@@ -27418,9 +27610,42 @@ const visibleLeadingFooterColSpan = computed(() => {
   return count
 })
 
-const desktopQuoteTableMinWidthPx = computed(() => {
+const QUOTE_COL_WIDTHS_STORAGE_KEY = 'nts_quote_col_widths_v1'
+const QUOTE_COL_MAX_WIDTH_PX = 960
+const COMPARE_QUOTE_PRICE_COL_KEYS = [
+  'cmp_list_dg',
+  'cmp_list_tt',
+  'cmp_cust_dg',
+  'cmp_cust_tt',
+  'cmp_cont_dg',
+  'cmp_cont_tt',
+  'cmp_off_hang',
+  'cmp_net_margin'
+] as const
+
+const NORMAL_QUOTE_PRICE_COL_KEYS: QuoteColKey[] = [
+  'gia_off_hang',
+  'list_price',
+  'gia_nhap',
+  'muc_off',
+  'don_gia_kh',
+  'tt_truoc_thue',
+  'vat',
+  'tt_sau_thue',
+  'net_margin'
+]
+
+function getQuoteColMinWidth(colKey: string): number {
+  if (colKey === 'sl' || colKey === 'xoa') return 36
+  if (colKey === 'stt' || colKey === 'dvt') return 44
+  if (colKey === 'hang' || colKey === 'pn' || colKey === 'sku_code') return 56
+  if (colKey === 'ti_gia' || colKey === 'vat') return 64
+  return 76
+}
+
+function getDefaultQuoteColWidth(colKey: string): number {
   const isCompare = quotePriceViewMode.value === 'compare'
-  const leadingWidths: Record<string, number> = {
+  const defaults: Record<string, number> = {
     stt: 52,
     pn: isCompare ? 88 : 82,
     sku_code: isCompare ? 90 : 84,
@@ -27431,38 +27656,423 @@ const desktopQuoteTableMinWidthPx = computed(() => {
     dien_giai_bao_gia: 220,
     hang: isCompare ? 76 : 70,
     dvt: isCompare ? 58 : 55,
-    sl: isCompare ? 46 : 40
+    sl: isCompare ? 46 : 40,
+    ti_gia: 88,
+    gia_off_hang: 116,
+    list_price: 114,
+    gia_nhap: 114,
+    muc_off: 114,
+    don_gia_kh: 118,
+    tt_truoc_thue: 126,
+    vat: 94,
+    tt_sau_thue: 128,
+    net_margin: 128,
+    cmp_list_dg: 136,
+    cmp_list_tt: 154,
+    cmp_cust_dg: 136,
+    cmp_cust_tt: 154,
+    cmp_cont_dg: 136,
+    cmp_cont_tt: 154,
+    cmp_off_hang: 136,
+    cmp_net_margin: 154,
+    xoa: quoteActionColWidthPx.value
   }
-  let total = 0
-  for (const [k, w] of Object.entries(leadingWidths)) {
-    if (quoteColVisible[k as QuoteColKey]) total += w
+  return defaults[colKey] ?? 110
+}
+
+function loadSavedQuoteColWidths(): Record<string, number> {
+  const result: Record<string, number> = {}
+  try {
+    const raw = localStorage.getItem(QUOTE_COL_WIDTHS_STORAGE_KEY)
+    if (!raw) return result
+    const parsed = JSON.parse(raw)
+    if (parsed && typeof parsed === 'object') {
+      for (const [k, v] of Object.entries(parsed)) {
+        const num = Number(v)
+        if (Number.isFinite(num) && num > 0) {
+          const minW = getQuoteColMinWidth(k)
+          result[k] = Math.max(minW, Math.min(QUOTE_COL_MAX_WIDTH_PX, Math.round(num)))
+        }
+      }
+    }
+  } catch {}
+  return result
+}
+
+const quoteColWidths = reactive<Record<string, number>>(loadSavedQuoteColWidths())
+const quoteTableRef = ref<HTMLTableElement | null>(null)
+const resizingQuoteColKey = ref<string | null>(null)
+let activeQuoteColResizeCleanup: (() => void) | null = null
+
+watch(
+  quoteColWidths,
+  val => {
+    try {
+      const keys = Object.keys(val)
+      if (keys.length === 0) {
+        localStorage.removeItem(QUOTE_COL_WIDTHS_STORAGE_KEY)
+      } else {
+        localStorage.setItem(QUOTE_COL_WIDTHS_STORAGE_KEY, JSON.stringify(val))
+      }
+    } catch {}
+  },
+  { deep: true }
+)
+
+const hasCustomQuoteColWidths = computed(() => Object.keys(quoteColWidths).length > 0)
+
+const visibleDesktopQuoteColKeys = computed<string[]>(() => {
+  const keys: string[] = []
+  const leadingKeys: QuoteColKey[] = [
+    'stt', 'pn', 'sku_code', 'ten_hang', 'ten_hang_bao_gia',
+    'description', 'dien_giai', 'dien_giai_bao_gia', 'hang', 'dvt', 'sl'
+  ]
+  for (const k of leadingKeys) {
+    if (quoteColVisible[k]) keys.push(k)
   }
   if (quoteCurrency.value === 'USD' && quoteColVisible.ti_gia) {
-    total += 88
+    keys.push('ti_gia')
   }
-  if (isCompare) {
-    // 4 cột Đơn giá/Giá vốn (136px) + 4 cột Thành tiền/Net Margin (154px) = 1160px
-    total += 4 * 136 + 4 * 154
+  if (quotePriceViewMode.value === 'compare') {
+    keys.push(...COMPARE_QUOTE_PRICE_COL_KEYS)
   } else {
-    const normalPriceWidths: Partial<Record<QuoteColKey, number>> = {
-      gia_off_hang: 116,
-      list_price: 114,
-      gia_nhap: 114,
-      muc_off: 114,
-      don_gia_kh: 118,
-      tt_truoc_thue: 126,
-      vat: 94,
-      tt_sau_thue: 128,
-      net_margin: 128
-    }
-    for (const [k, w] of Object.entries(normalPriceWidths)) {
-      if (quoteColVisible[k as QuoteColKey] && w) total += w
+    for (const k of NORMAL_QUOTE_PRICE_COL_KEYS) {
+      if (quoteColVisible[k]) keys.push(k)
     }
   }
   if (quoteColVisible.xoa) {
-    total += quoteActionColWidthPx.value
+    keys.push('xoa')
+  }
+  return keys
+})
+
+function resolveEffectiveQuoteColWidth(colKey: string): number {
+  const custom = quoteColWidths[colKey]
+  if (typeof custom === 'number' && Number.isFinite(custom)) {
+    if (colKey === 'xoa') {
+      return Math.max(custom, quoteActionColWidthPx.value)
+    }
+    return custom
+  }
+  return getDefaultQuoteColWidth(colKey)
+}
+
+const desktopQuoteTableMinWidthPx = computed(() => {
+  let total = 0
+  for (const k of visibleDesktopQuoteColKeys.value) {
+    total += resolveEffectiveQuoteColWidth(k)
   }
   return Math.max(860, total)
+})
+
+const desktopQuoteTableStyle = computed(() => {
+  if (isMobileQuoteViewport.value) return undefined
+  if (!hasCustomQuoteColWidths.value) {
+    return { minWidth: desktopQuoteTableMinWidthPx.value + 'px' }
+  }
+  let total = 0
+  for (const k of visibleDesktopQuoteColKeys.value) {
+    total += resolveEffectiveQuoteColWidth(k)
+  }
+  const px = Math.max(320, Math.round(total))
+  return { width: px + 'px', minWidth: px + 'px' }
+})
+
+function getQuoteColThStyle(colKey: string, extra?: Record<string, string | number>) {
+  if (isMobileQuoteViewport.value) return extra
+  if (!hasCustomQuoteColWidths.value) {
+    if (colKey === 'xoa') {
+      return { width: quoteActionColWidthPx.value + 'px', ...extra }
+    }
+    return extra
+  }
+  return {
+    ...extra,
+    width: resolveEffectiveQuoteColWidth(colKey) + 'px'
+  }
+}
+
+function snapshotVisibleQuoteColWidths() {
+  const tableEl = quoteTableRef.value
+  if (!tableEl) return
+  const thEls = tableEl.querySelectorAll<HTMLTableCellElement>('thead th[data-resize-col-key]')
+  thEls.forEach(th => {
+    const key = th.dataset.resizeColKey
+    if (!key) return
+    if (typeof quoteColWidths[key] === 'number' && Number.isFinite(quoteColWidths[key])) return
+    const measured = Math.round(th.getBoundingClientRect().width)
+    const minW = getQuoteColMinWidth(key)
+    quoteColWidths[key] = Math.max(minW, Math.min(QUOTE_COL_MAX_WIDTH_PX, measured || getDefaultQuoteColWidth(key)))
+  })
+}
+
+function startQuoteColResize(e: PointerEvent | MouseEvent, colKey: string) {
+  if (isMobileQuoteViewport.value) return
+  if ('pointerType' in e) {
+    if (e.pointerType === 'mouse' && e.button !== 0) return
+  } else if (e.button !== 0) {
+    return
+  }
+  e.preventDefault()
+  e.stopPropagation()
+
+  activeQuoteColResizeCleanup?.()
+  snapshotVisibleQuoteColWidths()
+
+  const startX = e.clientX
+  const startW = resolveEffectiveQuoteColWidth(colKey)
+  const minW = getQuoteColMinWidth(colKey)
+
+  resizingQuoteColKey.value = colKey
+  document.body.style.cursor = 'col-resize'
+  document.body.style.userSelect = 'none'
+
+  const onMove = (moveEvt: PointerEvent | MouseEvent) => {
+    const deltaX = moveEvt.clientX - startX
+    const nextW = Math.max(minW, Math.min(QUOTE_COL_MAX_WIDTH_PX, Math.round(startW + deltaX)))
+    quoteColWidths[colKey] = nextW
+  }
+
+  const cleanup = () => {
+    document.body.style.cursor = ''
+    document.body.style.userSelect = ''
+    resizingQuoteColKey.value = null
+    window.removeEventListener('pointermove', onMove)
+    window.removeEventListener('pointerup', onUp)
+    window.removeEventListener('pointercancel', onUp)
+    window.removeEventListener('mousemove', onMove)
+    window.removeEventListener('mouseup', onUp)
+    window.removeEventListener('blur', onUp)
+    if (activeQuoteColResizeCleanup === cleanup) {
+      activeQuoteColResizeCleanup = null
+    }
+  }
+
+  const onUp = () => {
+    cleanup()
+  }
+
+  activeQuoteColResizeCleanup = cleanup
+  window.addEventListener('pointermove', onMove)
+  window.addEventListener('pointerup', onUp)
+  window.addEventListener('pointercancel', onUp)
+  window.addEventListener('mousemove', onMove)
+  window.addEventListener('mouseup', onUp)
+  window.addEventListener('blur', onUp)
+}
+
+const hoverResizeColKey = ref<string | null>(null)
+
+function resolveHeaderResizeColKey(e: PointerEvent | MouseEvent): string | null {
+  if (isMobileQuoteViewport.value) return null
+  const target = e.target as HTMLElement | null
+  const handle = target?.closest?.('.quote-col-resizer') as HTMLElement | null
+  if (handle?.dataset?.colKey) return handle.dataset.colKey
+
+  const th = target?.closest?.('th[data-resize-col-key]') as HTMLElement | null
+  if (!th) return null
+  const rect = th.getBoundingClientRect()
+  if (rect.right - e.clientX <= 7) {
+    return th.dataset.resizeColKey || null
+  }
+  if (e.clientX - rect.left <= 6) {
+    let prev = th.previousElementSibling as HTMLElement | null
+    while (prev && !prev.dataset?.resizeColKey) {
+      prev = prev.previousElementSibling as HTMLElement | null
+    }
+    return prev?.dataset?.resizeColKey || null
+  }
+  return null
+}
+
+function onQuoteTableHeaderMouseMove(e: MouseEvent) {
+  if (resizingQuoteColKey.value) return
+  hoverResizeColKey.value = resolveHeaderResizeColKey(e)
+}
+
+function onQuoteTableHeaderMouseLeave() {
+  hoverResizeColKey.value = null
+}
+
+function onQuoteTableHeaderPointerDown(e: PointerEvent) {
+  const colKey = resolveHeaderResizeColKey(e)
+  if (!colKey) return
+  startQuoteColResize(e, colKey)
+}
+
+function onQuoteTableHeaderDblClick(e: MouseEvent) {
+  const colKey = resolveHeaderResizeColKey(e)
+  if (!colKey) return
+  e.preventDefault()
+  e.stopPropagation()
+  if (hasCustomQuoteColWidths.value) {
+    quoteColWidths[colKey] = getDefaultQuoteColWidth(colKey)
+  }
+}
+
+function resetAllQuoteColWidths() {
+  activeQuoteColResizeCleanup?.()
+  for (const k of Object.keys(quoteColWidths)) {
+    delete quoteColWidths[k]
+  }
+  resetAllPcPanelWidths()
+}
+
+/* =====================================================================
+   KÉO CHỈNH ĐỘ RỘNG 3 CỘT CHÍNH TRÊN PC (KHO SP | BÁO GIÁ | CỘT CHỈ SỐ)
+===================================================================== */
+const PC_PANEL_WIDTHS_STORAGE_KEY = 'nts_quote_pc_panel_widths_v1'
+const PC_LEFT_PANEL_DEFAULT_PX = 380
+const PC_RIGHT_PANEL_DEFAULT_PX = 336
+const PC_PANEL_MIN_PX = 250
+const PC_CENTER_MIN_PX = 320
+
+function loadSavedPcPanelWidths(): { left: number | null; right: number | null } {
+  try {
+    const raw = localStorage.getItem(PC_PANEL_WIDTHS_STORAGE_KEY)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (parsed && typeof parsed === 'object') {
+        const leftNum = Number(parsed.left)
+        const rightNum = Number(parsed.right)
+        return {
+          left: Number.isFinite(leftNum) && leftNum >= PC_PANEL_MIN_PX ? Math.min(720, Math.round(leftNum)) : null,
+          right: Number.isFinite(rightNum) && rightNum >= PC_PANEL_MIN_PX ? Math.min(680, Math.round(rightNum)) : null
+        }
+      }
+    }
+  } catch {}
+  return { left: null, right: null }
+}
+
+const pcPanelWidths = reactive<{ left: number | null; right: number | null }>(loadSavedPcPanelWidths())
+const pcMainGridRef = ref<HTMLElement | null>(null)
+const pcLeftSidebarRef = ref<HTMLElement | null>(null)
+const pcRightFinanceRef = ref<HTMLElement | null>(null)
+const activePcPanelResize = ref<'left' | 'right' | null>(null)
+let activePcPanelResizeCleanup: (() => void) | null = null
+
+watch(
+  pcPanelWidths,
+  val => {
+    try {
+      if (val.left === null && val.right === null) {
+        localStorage.removeItem(PC_PANEL_WIDTHS_STORAGE_KEY)
+      } else {
+        localStorage.setItem(PC_PANEL_WIDTHS_STORAGE_KEY, JSON.stringify(val))
+      }
+    } catch {}
+  },
+  { deep: true }
+)
+
+const hasCustomPcPanelWidths = computed(() => pcPanelWidths.left !== null || pcPanelWidths.right !== null)
+
+const pcLeftSidebarStyle = computed(() => {
+  if (isMobileQuoteViewport.value || !showProductSidebar.value) return undefined
+  if (isQuoteTableCollapsed.value && !showCompareFinancePanel.value) return undefined
+  if (pcPanelWidths.left === null) return undefined
+  const px = pcPanelWidths.left + 'px'
+  return { width: px, minWidth: px, maxWidth: px }
+})
+
+const pcRightFinanceStyle = computed(() => {
+  if (isMobileQuoteViewport.value || !showCompareFinancePanel.value || isQuoteTableCollapsed.value) return undefined
+  if (pcPanelWidths.right === null) return undefined
+  const px = pcPanelWidths.right + 'px'
+  return { width: px, minWidth: px, maxWidth: px }
+})
+
+function startPcPanelResize(e: PointerEvent | MouseEvent, side: 'left' | 'right') {
+  if (isMobileQuoteViewport.value) return
+  if ('pointerType' in e) {
+    if (e.pointerType === 'mouse' && e.button !== 0) return
+  } else if (e.button !== 0) {
+    return
+  }
+  e.preventDefault()
+  e.stopPropagation()
+
+  activePcPanelResizeCleanup?.()
+
+  const startX = e.clientX
+  const targetEl = side === 'left' ? pcLeftSidebarRef.value : pcRightFinanceRef.value
+  const measuredW = targetEl ? Math.round(targetEl.getBoundingClientRect().width) : 0
+  const fallbackW = side === 'left'
+    ? (pcPanelWidths.left ?? PC_LEFT_PANEL_DEFAULT_PX)
+    : (pcPanelWidths.right ?? PC_RIGHT_PANEL_DEFAULT_PX)
+  const startW = measuredW > 0 ? measuredW : fallbackW
+
+  const gridW = pcMainGridRef.value ? Math.round(pcMainGridRef.value.getBoundingClientRect().width) : 1400
+  const centerContainerW = quoteTableContainerRef.value
+    ? Math.round(quoteTableContainerRef.value.getBoundingClientRect().width)
+    : 900
+  const rightMeasuredW = pcRightFinanceRef.value
+    ? Math.round(pcRightFinanceRef.value.getBoundingClientRect().width)
+    : (showCompareFinancePanel.value ? PC_RIGHT_PANEL_DEFAULT_PX : 48)
+
+  const maxW = side === 'left'
+    ? Math.max(PC_PANEL_MIN_PX, Math.min(720, gridW - rightMeasuredW - PC_CENTER_MIN_PX - 24))
+    : Math.max(PC_PANEL_MIN_PX, Math.min(680, centerContainerW - PC_CENTER_MIN_PX - 12))
+
+  activePcPanelResize.value = side
+  document.body.style.cursor = 'col-resize'
+  document.body.style.userSelect = 'none'
+
+  const onMove = (moveEvt: PointerEvent | MouseEvent) => {
+    const rawDelta = moveEvt.clientX - startX
+    const delta = side === 'left' ? rawDelta : -rawDelta
+    const nextW = Math.max(PC_PANEL_MIN_PX, Math.min(maxW, Math.round(startW + delta)))
+    if (side === 'left') {
+      pcPanelWidths.left = nextW
+    } else {
+      pcPanelWidths.right = nextW
+    }
+  }
+
+  const cleanup = () => {
+    document.body.style.cursor = ''
+    document.body.style.userSelect = ''
+    activePcPanelResize.value = null
+    window.removeEventListener('pointermove', onMove)
+    window.removeEventListener('pointerup', onUp)
+    window.removeEventListener('pointercancel', onUp)
+    window.removeEventListener('mousemove', onMove)
+    window.removeEventListener('mouseup', onUp)
+    window.removeEventListener('blur', onUp)
+    if (activePcPanelResizeCleanup === cleanup) {
+      activePcPanelResizeCleanup = null
+    }
+  }
+
+  const onUp = () => cleanup()
+
+  activePcPanelResizeCleanup = cleanup
+  window.addEventListener('pointermove', onMove)
+  window.addEventListener('pointerup', onUp)
+  window.addEventListener('pointercancel', onUp)
+  window.addEventListener('mousemove', onMove)
+  window.addEventListener('mouseup', onUp)
+  window.addEventListener('blur', onUp)
+}
+
+function resetSinglePcPanelWidth(side: 'left' | 'right') {
+  if (side === 'left') {
+    pcPanelWidths.left = null
+  } else {
+    pcPanelWidths.right = null
+  }
+}
+
+function resetAllPcPanelWidths() {
+  activePcPanelResizeCleanup?.()
+  pcPanelWidths.left = null
+  pcPanelWidths.right = null
+}
+
+onUnmounted(() => {
+  activeQuoteColResizeCleanup?.()
+  activePcPanelResizeCleanup?.()
 })
 
 const showGuideModal = ref(false)
@@ -28189,10 +28799,20 @@ onUnmounted(() => {
     <!-- MOBILE PROGRESS BAR (Hidden in 2-screen mobile flow) -->
     <div v-if="false" class="mobile-progress-wrapper"></div>
 
-    <div class="main-grid" :class="'mobile-step-' + mobileStep">
+    <div
+      ref="pcMainGridRef"
+      class="main-grid"
+      :class="['mobile-step-' + mobileStep, { 'is-pc-panel-resizing': activePcPanelResize !== null }]"
+    >
 
       <!-- ================== LEFT SIDEBAR ================== -->
-      <aside class="product-sidebar sidebar-left" :class="{ closed: !showProductSidebar }" @scroll.passive="onProductGridScroll">
+      <aside
+        ref="pcLeftSidebarRef"
+        class="product-sidebar sidebar-left"
+        :class="{ closed: !showProductSidebar }"
+        :style="pcLeftSidebarStyle"
+        @scroll.passive="onProductGridScroll"
+      >
         <!-- THANH DỌC THU GỌN KHO SẢN PHẨM (ĐỒNG BỘ VỚI CỘT CHỈ SỐ TÀI CHÍNH) -->
         <button
           v-if="!showProductSidebar"
@@ -29195,6 +29815,17 @@ onUnmounted(() => {
         <input type="file" ref="importMuaHangFileInput" :accept="UNIVERSAL_IMPORT_ACCEPT" style="display: none" @change="onImportMuaHangFileChange" />
       </aside>
 
+      <div
+        v-if="!isMobileQuoteViewport && showProductSidebar && (!isQuoteTableCollapsed || showCompareFinancePanel)"
+        class="pc-panel-splitter"
+        :class="{ 'is-active': activePcPanelResize === 'left' }"
+        title="Kéo để chỉnh độ rộng cột Kho sản phẩm & Báo giá • Nhấn đúp để về mặc định"
+        @pointerdown="startPcPanelResize($event, 'left')"
+        @dblclick.stop.prevent="resetSinglePcPanelWidth('left')"
+      >
+        <span class="pc-panel-splitter-grip"></span>
+      </div>
+
       <!-- ================== CENTER: BẢNG BÁO GIÁ VÀ TỔNG TIỀN ================== -->
       <section class="box center quote-center">
         <div class="quote-table-container" ref="quoteTableContainerRef">
@@ -29659,7 +30290,14 @@ onUnmounted(() => {
                     <div :style="{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', paddingBottom: '8px', borderBottom: quoteThemeMode === 'light' ? '1px solid #e2e8f0' : '1px solid #1e293b' }">
                       <span :style="{ fontSize: '12.5px', fontWeight: '700', color: quoteThemeMode === 'light' ? '#0f172a' : '#f8fafc' }">Thiết lập hiển thị</span>
                       <div style="display: flex; align-items: center; gap: 6px;">
-                        <button type="button" @click="setAllQuoteCols(true)" :style="{ width: 'auto !important', margin: '0 !important', background: quoteThemeMode === 'light' ? '#eff6ff' : '#1e293b', color: quoteThemeMode === 'light' ? '#2563eb' : '#10b981', border: quoteThemeMode === 'light' ? '1px solid #bfdbfe' : '1px solid #334155', padding: '2px 8px !important', borderRadius: '4px', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }">Tất cả cột</button>
+                        <button
+                          v-if="!isMobileQuoteViewport && (hasCustomQuoteColWidths || hasCustomPcPanelWidths)"
+                          type="button"
+                          @click="resetAllQuoteColWidths"
+                          title="Đặt lại độ rộng các cột và 3 khung hiển thị về mặc định"
+                          :style="{ width: 'auto !important', margin: '0 !important', background: quoteThemeMode === 'light' ? '#fffbeb' : '#1e293b', color: quoteThemeMode === 'light' ? '#b45309' : '#fbbf24', border: quoteThemeMode === 'light' ? '1px solid #fde68a' : '1px solid #475569', padding: '2px 7px !important', borderRadius: '4px', fontSize: '11px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap' }"
+                        >Đặt lại cỡ cột</button>
+                        <button type="button" @click="setAllQuoteCols(true)" :style="{ width: 'auto !important', margin: '0 !important', background: quoteThemeMode === 'light' ? '#eff6ff' : '#1e293b', color: quoteThemeMode === 'light' ? '#2563eb' : '#10b981', border: quoteThemeMode === 'light' ? '1px solid #bfdbfe' : '1px solid #334155', padding: '2px 8px !important', borderRadius: '4px', fontSize: '11px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap' }">Tất cả cột</button>
                         <button type="button" @click="showQuoteColSetting = false" :style="{ width: 'auto !important', margin: '0 !important', background: 'transparent', color: quoteThemeMode === 'light' ? '#64748b' : '#94a3b8', border: 'none', fontSize: '14px', fontWeight: '700', cursor: 'pointer', padding: '0 4px !important' }">✕</button>
                       </div>
                     </div>
@@ -30275,12 +30913,25 @@ onUnmounted(() => {
             </div>
 
             <table
-              :class="{ 'is-compare-3price-table': quotePriceViewMode === 'compare', 'is-bulk-select-table': isBulkSelectMode }"
-              :style="!isMobileQuoteViewport ? { minWidth: desktopQuoteTableMinWidthPx + 'px' } : undefined"
+              ref="quoteTableRef"
+              :class="{
+                'is-compare-3price-table': quotePriceViewMode === 'compare',
+                'is-bulk-select-table': isBulkSelectMode,
+                'is-pc-col-resizable': !isMobileQuoteViewport,
+                'has-custom-col-widths': !isMobileQuoteViewport && hasCustomQuoteColWidths
+              }"
+              :style="desktopQuoteTableStyle"
             >
               <thead>
-                <tr style="color: #ffffff !important; font-weight: 800 !important;">
-                  <th v-if="quoteColVisible.stt" class="col-stt" style="border-top-left-radius: 6px;">
+                <tr
+                  style="color: #ffffff !important; font-weight: 800 !important;"
+                  :style="hoverResizeColKey ? { cursor: 'col-resize' } : undefined"
+                  @mousemove="onQuoteTableHeaderMouseMove"
+                  @mouseleave="onQuoteTableHeaderMouseLeave"
+                  @pointerdown="onQuoteTableHeaderPointerDown"
+                  @dblclick="onQuoteTableHeaderDblClick"
+                >
+                  <th v-if="quoteColVisible.stt" data-resize-col-key="stt" class="col-stt" style="border-top-left-radius: 6px;" :style="getQuoteColThStyle('stt')">
                     <label
                       v-if="isBulkSelectMode"
                       class="bulk-th-check-label"
@@ -30296,40 +30947,128 @@ onUnmounted(() => {
                       />
                     </label>
                     <template v-else>STT</template>
+                    <span v-if="!isMobileQuoteViewport" class="quote-col-resizer" :class="{ 'is-active': resizingQuoteColKey === 'stt' }" data-col-key="stt" title="Kéo để chỉnh độ rộng cột • Nhấn đúp để về mặc định"></span>
                   </th>
-                  <th v-if="quoteColVisible.pn" class="col-pn">P/N</th>
-                  <th v-if="quoteColVisible.sku_code" class="col-pn">SKU Code</th>
-                  <th v-if="quoteColVisible.ten_hang" class="col-name">Tên hàng</th>
-                  <th v-if="quoteColVisible.ten_hang_bao_gia" class="col-name">Tên hàng báo giá</th>
-                  <th v-if="quoteColVisible.description" class="col-desc">Description nội bộ</th>
-                  <th v-if="quoteColVisible.dien_giai" class="col-desc">Diễn giải nội bộ</th>
-                  <th v-if="quoteColVisible.dien_giai_bao_gia" class="col-desc">Diễn giải báo giá</th>
-                  <th v-if="quoteColVisible.hang" class="col-hang">Hãng</th>
-                  <th v-if="quoteColVisible.dvt" class="col-dvt">ĐVT</th>
-                  <th v-if="quoteColVisible.sl" class="col-sl">SL</th>
-                  <th v-if="quoteCurrency === 'USD' && quoteColVisible.ti_gia" class="col-dg" style="min-width: 70px;">TỈ GIÁ</th>
+                  <th v-if="quoteColVisible.pn" data-resize-col-key="pn" class="col-pn" :style="getQuoteColThStyle('pn')">
+                    P/N
+                    <span v-if="!isMobileQuoteViewport" class="quote-col-resizer" :class="{ 'is-active': resizingQuoteColKey === 'pn' }" data-col-key="pn" title="Kéo để chỉnh độ rộng cột • Nhấn đúp để về mặc định"></span>
+                  </th>
+                  <th v-if="quoteColVisible.sku_code" data-resize-col-key="sku_code" class="col-pn" :style="getQuoteColThStyle('sku_code')">
+                    SKU Code
+                    <span v-if="!isMobileQuoteViewport" class="quote-col-resizer" :class="{ 'is-active': resizingQuoteColKey === 'sku_code' }" data-col-key="sku_code" title="Kéo để chỉnh độ rộng cột • Nhấn đúp để về mặc định"></span>
+                  </th>
+                  <th v-if="quoteColVisible.ten_hang" data-resize-col-key="ten_hang" class="col-name" :style="getQuoteColThStyle('ten_hang')">
+                    Tên hàng
+                    <span v-if="!isMobileQuoteViewport" class="quote-col-resizer" :class="{ 'is-active': resizingQuoteColKey === 'ten_hang' }" data-col-key="ten_hang" title="Kéo để chỉnh độ rộng cột • Nhấn đúp để về mặc định"></span>
+                  </th>
+                  <th v-if="quoteColVisible.ten_hang_bao_gia" data-resize-col-key="ten_hang_bao_gia" class="col-name" :style="getQuoteColThStyle('ten_hang_bao_gia')">
+                    Tên hàng báo giá
+                    <span v-if="!isMobileQuoteViewport" class="quote-col-resizer" :class="{ 'is-active': resizingQuoteColKey === 'ten_hang_bao_gia' }" data-col-key="ten_hang_bao_gia" title="Kéo để chỉnh độ rộng cột • Nhấn đúp để về mặc định"></span>
+                  </th>
+                  <th v-if="quoteColVisible.description" data-resize-col-key="description" class="col-desc" :style="getQuoteColThStyle('description')">
+                    Description nội bộ
+                    <span v-if="!isMobileQuoteViewport" class="quote-col-resizer" :class="{ 'is-active': resizingQuoteColKey === 'description' }" data-col-key="description" title="Kéo để chỉnh độ rộng cột • Nhấn đúp để về mặc định"></span>
+                  </th>
+                  <th v-if="quoteColVisible.dien_giai" data-resize-col-key="dien_giai" class="col-desc" :style="getQuoteColThStyle('dien_giai')">
+                    Diễn giải nội bộ
+                    <span v-if="!isMobileQuoteViewport" class="quote-col-resizer" :class="{ 'is-active': resizingQuoteColKey === 'dien_giai' }" data-col-key="dien_giai" title="Kéo để chỉnh độ rộng cột • Nhấn đúp để về mặc định"></span>
+                  </th>
+                  <th v-if="quoteColVisible.dien_giai_bao_gia" data-resize-col-key="dien_giai_bao_gia" class="col-desc" :style="getQuoteColThStyle('dien_giai_bao_gia')">
+                    Diễn giải báo giá
+                    <span v-if="!isMobileQuoteViewport" class="quote-col-resizer" :class="{ 'is-active': resizingQuoteColKey === 'dien_giai_bao_gia' }" data-col-key="dien_giai_bao_gia" title="Kéo để chỉnh độ rộng cột • Nhấn đúp để về mặc định"></span>
+                  </th>
+                  <th v-if="quoteColVisible.hang" data-resize-col-key="hang" class="col-hang" :style="getQuoteColThStyle('hang')">
+                    Hãng
+                    <span v-if="!isMobileQuoteViewport" class="quote-col-resizer" :class="{ 'is-active': resizingQuoteColKey === 'hang' }" data-col-key="hang" title="Kéo để chỉnh độ rộng cột • Nhấn đúp để về mặc định"></span>
+                  </th>
+                  <th v-if="quoteColVisible.dvt" data-resize-col-key="dvt" class="col-dvt" :style="getQuoteColThStyle('dvt')">
+                    ĐVT
+                    <span v-if="!isMobileQuoteViewport" class="quote-col-resizer" :class="{ 'is-active': resizingQuoteColKey === 'dvt' }" data-col-key="dvt" title="Kéo để chỉnh độ rộng cột • Nhấn đúp để về mặc định"></span>
+                  </th>
+                  <th v-if="quoteColVisible.sl" data-resize-col-key="sl" class="col-sl" :style="getQuoteColThStyle('sl')">
+                    SL
+                    <span v-if="!isMobileQuoteViewport" class="quote-col-resizer" :class="{ 'is-active': resizingQuoteColKey === 'sl' }" data-col-key="sl" title="Kéo để chỉnh độ rộng cột • Nhấn đúp để về mặc định"></span>
+                  </th>
+                  <th v-if="quoteCurrency === 'USD' && quoteColVisible.ti_gia" data-resize-col-key="ti_gia" class="col-dg" :style="getQuoteColThStyle('ti_gia', hasCustomQuoteColWidths ? undefined : { minWidth: '70px' })">
+                    TỈ GIÁ
+                    <span v-if="!isMobileQuoteViewport" class="quote-col-resizer" :class="{ 'is-active': resizingQuoteColKey === 'ti_gia' }" data-col-key="ti_gia" title="Kéo để chỉnh độ rộng cột • Nhấn đúp để về mặc định"></span>
+                  </th>
                   <template v-if="quotePriceViewMode === 'compare'">
-                    <th class="col-dg th-compare-col th-compare-list-dg">ĐƠN GIÁ LIST</th>
-                    <th class="col-tt th-compare-col th-compare-list-tt">THÀNH TIỀN LIST ({{ quoteCurrency }})</th>
-                    <th class="col-dg th-compare-col th-compare-cust-dg">ĐƠN GIÁ KHÁCH</th>
-                    <th class="col-tt th-compare-col th-compare-cust-tt">THÀNH TIỀN KHÁCH ({{ quoteCurrency }})</th>
-                    <th class="col-dg th-compare-col th-compare-cont-dg">ĐƠN GIÁ HỢP ĐỒNG</th>
-                    <th class="col-tt th-compare-col th-compare-cont-tt">THÀNH TIỀN HỢP ĐỒNG ({{ quoteCurrency }})</th>
-                    <th class="col-dg th-compare-col th-compare-off-hang">GIÁ VỐN / GIÁ OFF HÃNG</th>
-                    <th class="col-tt th-compare-col th-compare-net-margin">NET MARGIN</th>
+                    <th data-resize-col-key="cmp_list_dg" class="col-dg th-compare-col th-compare-list-dg" :style="getQuoteColThStyle('cmp_list_dg')">
+                      ĐƠN GIÁ LIST
+                      <span v-if="!isMobileQuoteViewport" class="quote-col-resizer" :class="{ 'is-active': resizingQuoteColKey === 'cmp_list_dg' }" data-col-key="cmp_list_dg" title="Kéo để chỉnh độ rộng cột • Nhấn đúp để về mặc định"></span>
+                    </th>
+                    <th data-resize-col-key="cmp_list_tt" class="col-tt th-compare-col th-compare-list-tt" :style="getQuoteColThStyle('cmp_list_tt')">
+                      THÀNH TIỀN LIST ({{ quoteCurrency }})
+                      <span v-if="!isMobileQuoteViewport" class="quote-col-resizer" :class="{ 'is-active': resizingQuoteColKey === 'cmp_list_tt' }" data-col-key="cmp_list_tt" title="Kéo để chỉnh độ rộng cột • Nhấn đúp để về mặc định"></span>
+                    </th>
+                    <th data-resize-col-key="cmp_cust_dg" class="col-dg th-compare-col th-compare-cust-dg" :style="getQuoteColThStyle('cmp_cust_dg')">
+                      ĐƠN GIÁ KHÁCH
+                      <span v-if="!isMobileQuoteViewport" class="quote-col-resizer" :class="{ 'is-active': resizingQuoteColKey === 'cmp_cust_dg' }" data-col-key="cmp_cust_dg" title="Kéo để chỉnh độ rộng cột • Nhấn đúp để về mặc định"></span>
+                    </th>
+                    <th data-resize-col-key="cmp_cust_tt" class="col-tt th-compare-col th-compare-cust-tt" :style="getQuoteColThStyle('cmp_cust_tt')">
+                      THÀNH TIỀN KHÁCH ({{ quoteCurrency }})
+                      <span v-if="!isMobileQuoteViewport" class="quote-col-resizer" :class="{ 'is-active': resizingQuoteColKey === 'cmp_cust_tt' }" data-col-key="cmp_cust_tt" title="Kéo để chỉnh độ rộng cột • Nhấn đúp để về mặc định"></span>
+                    </th>
+                    <th data-resize-col-key="cmp_cont_dg" class="col-dg th-compare-col th-compare-cont-dg" :style="getQuoteColThStyle('cmp_cont_dg')">
+                      ĐƠN GIÁ HỢP ĐỒNG
+                      <span v-if="!isMobileQuoteViewport" class="quote-col-resizer" :class="{ 'is-active': resizingQuoteColKey === 'cmp_cont_dg' }" data-col-key="cmp_cont_dg" title="Kéo để chỉnh độ rộng cột • Nhấn đúp để về mặc định"></span>
+                    </th>
+                    <th data-resize-col-key="cmp_cont_tt" class="col-tt th-compare-col th-compare-cont-tt" :style="getQuoteColThStyle('cmp_cont_tt')">
+                      THÀNH TIỀN HỢP ĐỒNG ({{ quoteCurrency }})
+                      <span v-if="!isMobileQuoteViewport" class="quote-col-resizer" :class="{ 'is-active': resizingQuoteColKey === 'cmp_cont_tt' }" data-col-key="cmp_cont_tt" title="Kéo để chỉnh độ rộng cột • Nhấn đúp để về mặc định"></span>
+                    </th>
+                    <th data-resize-col-key="cmp_off_hang" class="col-dg th-compare-col th-compare-off-hang" :style="getQuoteColThStyle('cmp_off_hang')">
+                      GIÁ VỐN / GIÁ OFF HÃNG
+                      <span v-if="!isMobileQuoteViewport" class="quote-col-resizer" :class="{ 'is-active': resizingQuoteColKey === 'cmp_off_hang' }" data-col-key="cmp_off_hang" title="Kéo để chỉnh độ rộng cột • Nhấn đúp để về mặc định"></span>
+                    </th>
+                    <th data-resize-col-key="cmp_net_margin" class="col-tt th-compare-col th-compare-net-margin" :style="getQuoteColThStyle('cmp_net_margin')">
+                      NET MARGIN
+                      <span v-if="!isMobileQuoteViewport" class="quote-col-resizer" :class="{ 'is-active': resizingQuoteColKey === 'cmp_net_margin' }" data-col-key="cmp_net_margin" title="Kéo để chỉnh độ rộng cột • Nhấn đúp để về mặc định"></span>
+                    </th>
                   </template>
                   <template v-else>
-                    <th v-if="quoteColVisible.gia_off_hang" class="col-dg">GIÁ VỐN / GIÁ OFF HÃNG</th>
-                    <th v-if="quoteColVisible.list_price" class="col-dg">LIST PRICE</th>
-                    <th v-if="quoteColVisible.gia_nhap" class="col-dg">GIÁ NHẬP</th>
-                    <th v-if="quoteColVisible.muc_off" class="col-dg">MỨC OFF</th>
-                    <th v-if="quoteColVisible.don_gia_kh" class="col-dg">{{ activeDonGiaHeaderLabel }}</th>
-                    <th v-if="quoteColVisible.tt_truoc_thue" class="col-tt">TT trước thuế ({{ quoteCurrency }})</th>
-                    <th v-if="quoteColVisible.vat" class="col-vat">VAT</th>
-                    <th v-if="quoteColVisible.tt_sau_thue" class="col-tt">TT sau thuế ({{ quoteCurrency }})</th>
-                    <th v-if="quoteColVisible.net_margin" class="col-tt" style="color: #ffffff !important;">Net Margin</th>
+                    <th v-if="quoteColVisible.gia_off_hang" data-resize-col-key="gia_off_hang" class="col-dg" :style="getQuoteColThStyle('gia_off_hang')">
+                      GIÁ VỐN / GIÁ OFF HÃNG
+                      <span v-if="!isMobileQuoteViewport" class="quote-col-resizer" :class="{ 'is-active': resizingQuoteColKey === 'gia_off_hang' }" data-col-key="gia_off_hang" title="Kéo để chỉnh độ rộng cột • Nhấn đúp để về mặc định"></span>
+                    </th>
+                    <th v-if="quoteColVisible.list_price" data-resize-col-key="list_price" class="col-dg" :style="getQuoteColThStyle('list_price')">
+                      LIST PRICE
+                      <span v-if="!isMobileQuoteViewport" class="quote-col-resizer" :class="{ 'is-active': resizingQuoteColKey === 'list_price' }" data-col-key="list_price" title="Kéo để chỉnh độ rộng cột • Nhấn đúp để về mặc định"></span>
+                    </th>
+                    <th v-if="quoteColVisible.gia_nhap" data-resize-col-key="gia_nhap" class="col-dg" :style="getQuoteColThStyle('gia_nhap')">
+                      GIÁ NHẬP
+                      <span v-if="!isMobileQuoteViewport" class="quote-col-resizer" :class="{ 'is-active': resizingQuoteColKey === 'gia_nhap' }" data-col-key="gia_nhap" title="Kéo để chỉnh độ rộng cột • Nhấn đúp để về mặc định"></span>
+                    </th>
+                    <th v-if="quoteColVisible.muc_off" data-resize-col-key="muc_off" class="col-dg" :style="getQuoteColThStyle('muc_off')">
+                      MỨC OFF
+                      <span v-if="!isMobileQuoteViewport" class="quote-col-resizer" :class="{ 'is-active': resizingQuoteColKey === 'muc_off' }" data-col-key="muc_off" title="Kéo để chỉnh độ rộng cột • Nhấn đúp để về mặc định"></span>
+                    </th>
+                    <th v-if="quoteColVisible.don_gia_kh" data-resize-col-key="don_gia_kh" class="col-dg" :style="getQuoteColThStyle('don_gia_kh')">
+                      {{ activeDonGiaHeaderLabel }}
+                      <span v-if="!isMobileQuoteViewport" class="quote-col-resizer" :class="{ 'is-active': resizingQuoteColKey === 'don_gia_kh' }" data-col-key="don_gia_kh" title="Kéo để chỉnh độ rộng cột • Nhấn đúp để về mặc định"></span>
+                    </th>
+                    <th v-if="quoteColVisible.tt_truoc_thue" data-resize-col-key="tt_truoc_thue" class="col-tt" :style="getQuoteColThStyle('tt_truoc_thue')">
+                      TT trước thuế ({{ quoteCurrency }})
+                      <span v-if="!isMobileQuoteViewport" class="quote-col-resizer" :class="{ 'is-active': resizingQuoteColKey === 'tt_truoc_thue' }" data-col-key="tt_truoc_thue" title="Kéo để chỉnh độ rộng cột • Nhấn đúp để về mặc định"></span>
+                    </th>
+                    <th v-if="quoteColVisible.vat" data-resize-col-key="vat" class="col-vat" :style="getQuoteColThStyle('vat')">
+                      VAT
+                      <span v-if="!isMobileQuoteViewport" class="quote-col-resizer" :class="{ 'is-active': resizingQuoteColKey === 'vat' }" data-col-key="vat" title="Kéo để chỉnh độ rộng cột • Nhấn đúp để về mặc định"></span>
+                    </th>
+                    <th v-if="quoteColVisible.tt_sau_thue" data-resize-col-key="tt_sau_thue" class="col-tt" :style="getQuoteColThStyle('tt_sau_thue')">
+                      TT sau thuế ({{ quoteCurrency }})
+                      <span v-if="!isMobileQuoteViewport" class="quote-col-resizer" :class="{ 'is-active': resizingQuoteColKey === 'tt_sau_thue' }" data-col-key="tt_sau_thue" title="Kéo để chỉnh độ rộng cột • Nhấn đúp để về mặc định"></span>
+                    </th>
+                    <th v-if="quoteColVisible.net_margin" data-resize-col-key="net_margin" class="col-tt" style="color: #ffffff !important;" :style="getQuoteColThStyle('net_margin')">
+                      Net Margin
+                      <span v-if="!isMobileQuoteViewport" class="quote-col-resizer" :class="{ 'is-active': resizingQuoteColKey === 'net_margin' }" data-col-key="net_margin" title="Kéo để chỉnh độ rộng cột • Nhấn đúp để về mặc định"></span>
+                    </th>
                   </template>
-                  <th v-if="quoteColVisible.xoa" class="col-del" :style="{ width: quoteActionColWidthPx + 'px', borderTopRightRadius: '6px' }">Xóa</th>
+                  <th v-if="quoteColVisible.xoa" data-resize-col-key="xoa" class="col-del" style="border-top-right-radius: 6px;" :style="getQuoteColThStyle('xoa')">
+                    Xóa
+                    <span v-if="!isMobileQuoteViewport" class="quote-col-resizer" :class="{ 'is-active': resizingQuoteColKey === 'xoa' }" data-col-key="xoa" title="Kéo để chỉnh độ rộng cột • Nhấn đúp để về mặc định"></span>
+                  </th>
                 </tr>
               </thead>
               <draggable 
@@ -31000,13 +31739,26 @@ onUnmounted(() => {
           </div>
           </div>
 
+          <div
+            v-if="!isMobileQuoteViewport && !isQuoteTableCollapsed && showCompareFinancePanel"
+            class="pc-panel-splitter"
+            :class="{ 'is-active': activePcPanelResize === 'right' }"
+            title="Kéo để chỉnh độ rộng cột Báo giá & Cột Chỉ số • Nhấn đúp để về mặc định"
+            @pointerdown="startPcPanelResize($event, 'right')"
+            @dblclick.stop.prevent="resetSinglePcPanelWidth('right')"
+          >
+            <span class="pc-panel-splitter-grip"></span>
+          </div>
+
           <!-- CỘT CHỈ SỐ TÀI CHÍNH, COM, THUẾ, TỈ SUẤT + CHIẾT KHẤU/TÀI CHÍNH & THAO TÁC TRÊN PC -->
           <aside
+            ref="pcRightFinanceRef"
             class="cmp-sr-finance-wrap"
             :class="{
               'is-collapsed': !showCompareFinancePanel,
               'is-origin-mode': quotePriceViewMode === 'origin'
             }"
+            :style="pcRightFinanceStyle"
           >
             <!-- THANH THU GỌN (HIỆN KHI ĐANG ĐÓNG: DẢI DỌC BÊN PHẢI TRÊN PC / THANH NGANG GỌN TRÊN MOBILE) -->
             <button
@@ -34188,8 +34940,8 @@ onUnmounted(() => {
                 <label style="margin: 0;">
                   <span style="font-size: 11px; text-transform: uppercase; color: #fbbf24; font-weight: 600; letter-spacing: 0.5px;">Giá vốn / Giá off hãng ({{ itemForm.Don_vi_tien_te || 'VND' }})</span>
                 </label>
-                <div class="vendor-off-inline-chip" title="Nhập % Off hãng để tính Giá vốn từ List Price">
-                  <span class="vendor-off-inline-label">% Off hãng:</span>
+                <div class="vendor-off-inline-chip" title="Nhập % Hãng off để tính Giá vốn từ List Price">
+                  <span class="vendor-off-inline-label">% Hãng off:</span>
                   <div class="vendor-off-inline-input-wrap">
                     <FormattedInput
                       :modelValue="getTargetVendorOffPct(itemForm)"
@@ -34222,11 +34974,18 @@ onUnmounted(() => {
                 ≈ {{ ((itemForm.Gia_tieu_chuan || 0) * (Number(itemForm.Ti_gia) || 1)).toLocaleString('vi-VN') }} VND
               </div>
 
-              <!-- KHUNG TÍNH NHANH ĐƠN GIÁ BÁN TỪ GIÁ VỐN (1 DÒNG GỌN) -->
+              <!-- KHUNG TÍNH NHANH ĐƠN GIÁ BÁN <-> GIÁ VỐN (1 DÒNG GỌN, ĐẢO CHIỀU ĐƯỢC) -->
               <div class="cost-markup-quick-box">
-                <span class="cost-markup-quick-label">
-                  <i class="ri-percent-line"></i> Giá vốn → Giá bán:
-                </span>
+                <button
+                  type="button"
+                  class="cost-markup-flow-btn"
+                  :class="{ 'is-reverse': manualCostMarkup.flow === 'sell_to_cost' }"
+                  @click.stop="toggleCostMarkupFlow(itemForm, manualCostMarkup)"
+                  :title="manualCostMarkup.flow === 'sell_to_cost' ? 'Đang tính ngược: giữ Đơn giá bán → tính Giá vốn (nhấn để đảo chiều)' : 'Đang tính xuôi: giữ Giá vốn → tính Đơn giá bán (nhấn để đảo chiều)'"
+                >
+                  <i class="ri-arrow-left-right-line"></i>
+                  <span>{{ manualCostMarkup.flow === 'sell_to_cost' ? 'Giá bán → Giá vốn' : 'Giá vốn → Giá bán' }}</span>
+                </button>
                 <div class="cost-markup-quick-controls">
                   <select
                     v-model="manualCostMarkup.direction"
@@ -34526,10 +35285,33 @@ onUnmounted(() => {
 
         <div class="fullscreen-modal-grid-3col" style="display: grid; grid-template-columns: 1fr 1.6fr 1fr; gap: 20px; padding: 20px 24px; flex: 1; min-height: 0; overflow-y: auto; align-items: stretch;">
           <!-- COLUMN 1: THÔNG TIN CHUNG -->
-          <div class="modal-group" style="margin: 0; display: flex; flex-direction: column; gap: 16px;">
-            <h4 class="modal-group-title" style="display: flex; align-items: center; gap: 8px;">
-              <i class="ri-information-line" style="color: #10b981; font-size: 16px;"></i> Thông tin chung
-            </h4>
+          <div class="modal-group" :class="{ 'is-mob-collapsed': isMobileQuoteViewport && cardModalCollapse.general }" style="margin: 0; display: flex; flex-direction: column; gap: 16px;">
+            <div
+              class="card-modal-group-head"
+              :class="{ 'is-collapsible': isMobileQuoteViewport }"
+              @click="isMobileQuoteViewport && (cardModalCollapse.general = !cardModalCollapse.general)"
+            >
+              <h4 class="modal-group-title" style="display: flex; align-items: center; gap: 8px;">
+                <i class="ri-information-line" style="color: #10b981; font-size: 16px;"></i> <span>Thông tin chung</span>
+              </h4>
+              <button
+                v-if="isMobileQuoteViewport"
+                type="button"
+                class="card-group-collapse-btn"
+                :aria-expanded="!cardModalCollapse.general"
+                @click.stop="cardModalCollapse.general = !cardModalCollapse.general"
+              >
+                <span>{{ cardModalCollapse.general ? 'Mở rộng' : 'Thu gọn' }}</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" :style="{ transform: cardModalCollapse.general ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </button>
+            </div>
+            <div v-if="isMobileQuoteViewport && cardModalCollapse.general" class="card-collapse-summary" @click="cardModalCollapse.general = false">
+              {{ cardEdit.Ten_hang || cardEdit.Ma_hang || 'Chạm để mở xem thông tin chung...' }}
+            </div>
+
+            <div v-show="!isMobileQuoteViewport || !cardModalCollapse.general" class="card-modal-group-body">
             
             <div style="display: flex; flex-direction: column; gap: 6px;">
               <div class="product-last-updated-inline" style="font-size: 11.5px; font-weight: 600; color: #38bdf8; display: flex; align-items: center; gap: 5px;">
@@ -34762,14 +35544,37 @@ onUnmounted(() => {
                 </div>
               </div>
             </div>
+            </div>
           </div>
 
           <!-- COLUMN 2: MÔ TẢ & CHI TIẾT KỸ THUẬT -->
-          <div class="modal-group" style="margin: 0; display: flex; flex-direction: column; gap: 16px;">
-            <h4 class="modal-group-title" style="display: flex; align-items: center; gap: 8px;">
-              <i class="ri-file-list-3-line" style="color: #38bdf8; font-size: 16px;"></i> Mô tả &amp; Cấu hình kỹ thuật
-            </h4>
+          <div class="modal-group" :class="{ 'is-mob-collapsed': isMobileQuoteViewport && cardModalCollapse.tech }" style="margin: 0; display: flex; flex-direction: column; gap: 16px;">
+            <div
+              class="card-modal-group-head"
+              :class="{ 'is-collapsible': isMobileQuoteViewport }"
+              @click="isMobileQuoteViewport && (cardModalCollapse.tech = !cardModalCollapse.tech)"
+            >
+              <h4 class="modal-group-title" style="display: flex; align-items: center; gap: 8px;">
+                <i class="ri-file-list-3-line" style="color: #38bdf8; font-size: 16px;"></i> <span>Mô tả &amp; Cấu hình kỹ thuật</span>
+              </h4>
+              <button
+                v-if="isMobileQuoteViewport"
+                type="button"
+                class="card-group-collapse-btn"
+                :aria-expanded="!cardModalCollapse.tech"
+                @click.stop="cardModalCollapse.tech = !cardModalCollapse.tech"
+              >
+                <span>{{ cardModalCollapse.tech ? 'Mở rộng' : 'Thu gọn' }}</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" :style="{ transform: cardModalCollapse.tech ? 'rotate(-90deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </button>
+            </div>
+            <div v-if="isMobileQuoteViewport && cardModalCollapse.tech" class="card-collapse-summary" @click="cardModalCollapse.tech = false">
+              {{ stripHtmlToPlain(cardEdit.Description || cardEdit.Features || cardEdit.Dien_giai_bao_gia) || 'Chạm để mở xem Description & Diễn giải...' }}
+            </div>
 
+            <div v-show="!isMobileQuoteViewport || !cardModalCollapse.tech" class="card-modal-group-body">
             <div class="modal-form-group" style="display: flex; flex-direction: column; gap: 6px; flex: 1;">
               <label style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Description nội bộ</label>
               <ExcelEditor v-model="cardEdit.Description" placeholder="Nhập Description nội bộ..." />
@@ -34784,6 +35589,7 @@ onUnmounted(() => {
               <label style="font-size: 11px; text-transform: uppercase; color: #fbbf24; font-weight: 600; letter-spacing: 0.5px;">Diễn giải báo giá</label>
               <ExcelEditor v-model="cardEdit.Dien_giai_bao_gia" placeholder="Nhập diễn giải báo giá (để trống nếu không dùng)..." />
             </div>
+            </div>
           </div>
 
           <!-- COLUMN 3: TÀI CHÍNH & GIÁ CẢ -->
@@ -34792,6 +35598,105 @@ onUnmounted(() => {
               <i class="ri-coins-line" style="color: #10b981; font-size: 16px;"></i> <span>Tài chính &amp; Giá cả</span>
             </h4>
             
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <label>
+                <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Giá Nhập (VND)</span>
+              </label>
+              <div style="position: relative;">
+                <FormattedInput :decimals="0" :modelValue="(cardEdit.gia_nhap || 0) * (Number(cardEdit.Ti_gia) || 1)" @update:modelValue="cardEdit.gia_nhap = $event / (Number(cardEdit.Ti_gia) || 1)" placeholder="0" style="width: 100%; padding: 10px 14px; padding-right: 36px; border-radius: 8px;" />
+                <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #64748b; pointer-events: none;">₫</span>
+              </div>
+              <div v-if="cardEdit.Don_vi_tien_te && cardEdit.Don_vi_tien_te.toUpperCase() !== 'VND' && cardEdit.Ti_gia > 1" style="font-size: 11px; color: #64748b; margin-top: 2px;">
+                ≈ {{ Number(cardEdit.gia_nhap || 0).toLocaleString('vi-VN') }} {{ cardEdit.Don_vi_tien_te }}
+              </div>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+                <label style="margin: 0;">
+                  <span style="font-size: 11px; text-transform: uppercase; color: #fbbf24; font-weight: 600; letter-spacing: 0.5px;">
+                    Giá vốn / Giá off hãng ({{ (cardEdit.Don_vi_tien_te && cardEdit.Don_vi_tien_te.toUpperCase() === 'USD' && Number(cardEdit.Ti_gia || 1) <= 1) ? 'USD' : 'VND' }})
+                  </span>
+                </label>
+                <div class="vendor-off-inline-chip" title="Nhập % Hãng off để tính Giá vốn từ List Price">
+                  <span class="vendor-off-inline-label">% Hãng off:</span>
+                  <div class="vendor-off-inline-input-wrap">
+                    <FormattedInput
+                      :modelValue="getTargetVendorOffPct(cardEdit)"
+                      :decimals="2"
+                      @update:modelValue="onTargetVendorOffPctInput(cardEdit, $event, cardCostMarkup)"
+                      class="vendor-off-inline-input"
+                      placeholder="0"
+                    />
+                    <span class="vendor-off-inline-unit">%</span>
+                  </div>
+                </div>
+              </div>
+              <div style="position: relative;">
+                <FormattedInput
+                  v-if="cardEdit.Don_vi_tien_te && cardEdit.Don_vi_tien_te.toUpperCase() === 'USD' && Number(cardEdit.Ti_gia || 1) <= 1"
+                  :decimals="2"
+                  :modelValue="cardEdit.Gia_tieu_chuan"
+                  @update:modelValue="cardEdit.Gia_tieu_chuan = $event; onTargetGiaVonInput(cardEdit, cardCostMarkup, false)"
+                  placeholder="0"
+                  style="width: 100%; padding: 10px 14px; padding-right: 36px; border-radius: 8px; color: #fbbf24; font-weight: 700;" />
+                <FormattedInput
+                  v-else
+                  :decimals="0"
+                  :modelValue="(cardEdit.Gia_tieu_chuan || 0) * (Number(cardEdit.Ti_gia) || 1)"
+                  @update:modelValue="cardEdit.Gia_tieu_chuan = $event / (Number(cardEdit.Ti_gia) || 1); onTargetGiaVonInput(cardEdit, cardCostMarkup, false)"
+                  placeholder="0"
+                  style="width: 100%; padding: 10px 14px; padding-right: 36px; border-radius: 8px; color: #fbbf24; font-weight: 700;" />
+                <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #fbbf24; pointer-events: none;">{{ (cardEdit.Don_vi_tien_te && cardEdit.Don_vi_tien_te.toUpperCase() === 'USD' && Number(cardEdit.Ti_gia || 1) <= 1) ? '$' : '₫' }}</span>
+              </div>
+              <div v-if="cardEdit.Don_vi_tien_te && cardEdit.Don_vi_tien_te.toUpperCase() !== 'VND' && cardEdit.Ti_gia > 1" style="font-size: 11px; color: #fbbf24; margin-top: 2px;">
+                ≈ {{ Number(cardEdit.Gia_tieu_chuan || 0).toLocaleString('vi-VN') }} {{ cardEdit.Don_vi_tien_te }}
+              </div>
+
+              <!-- KHUNG TÍNH NHANH ĐƠN GIÁ BÁN <-> GIÁ VỐN (1 DÒNG GỌN, ĐẢO CHIỀU ĐƯỢC) -->
+              <div class="cost-markup-quick-box">
+                <button
+                  type="button"
+                  class="cost-markup-flow-btn"
+                  :class="{ 'is-reverse': cardCostMarkup.flow === 'sell_to_cost' }"
+                  @click.stop="toggleCostMarkupFlow(cardEdit, cardCostMarkup)"
+                  :title="cardCostMarkup.flow === 'sell_to_cost' ? 'Đang tính ngược: giữ Đơn giá bán → tính Giá vốn (nhấn để đảo chiều)' : 'Đang tính xuôi: giữ Giá vốn → tính Đơn giá bán (nhấn để đảo chiều)'"
+                >
+                  <i class="ri-arrow-left-right-line"></i>
+                  <span>{{ cardCostMarkup.flow === 'sell_to_cost' ? 'Giá bán → Giá vốn' : 'Giá vốn → Giá bán' }}</span>
+                </button>
+                <div class="cost-markup-quick-controls">
+                  <select
+                    v-model="cardCostMarkup.direction"
+                    @change="applyCostMarkupToTarget(cardEdit, cardCostMarkup)"
+                    class="cost-markup-select is-dir is-sign-only"
+                    :class="cardCostMarkup.direction === 'decrease' ? 'is-down' : 'is-up'"
+                    title="Chọn + (Lãi / tăng) hoặc - (Giảm)"
+                    aria-label="Tăng hoặc giảm giá bán"
+                  >
+                    <option value="increase">+</option>
+                    <option value="decrease">-</option>
+                  </select>
+                  <div class="cost-markup-input-group cost-markup-num-wrap">
+                    <FormattedInput
+                      :modelValue="cardCostMarkup.value"
+                      :decimals="cardCostMarkup.type === 'percent' ? 2 : ((!cardEdit.Don_vi_tien_te || cardEdit.Don_vi_tien_te.toUpperCase() === 'VND') ? 0 : 2)"
+                      @update:modelValue="cardCostMarkup.value = $event; applyCostMarkupToTarget(cardEdit, cardCostMarkup)"
+                      class="cost-markup-num-input"
+                    />
+                    <select
+                      v-model="cardCostMarkup.type"
+                      @change="applyCostMarkupToTarget(cardEdit, cardCostMarkup)"
+                      class="cost-markup-select is-unit"
+                    >
+                      <option value="percent">%</option>
+                      <option value="amount">{{ (cardEdit.Don_vi_tien_te && cardEdit.Don_vi_tien_te.toUpperCase() === 'USD') ? 'USD' : '₫' }}</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div style="display: flex; flex-direction: column; gap: 6px;">
               <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
                 <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
@@ -34842,96 +35747,6 @@ onUnmounted(() => {
               </div>
               <div v-if="cardEdit.Don_vi_tien_te && cardEdit.Don_vi_tien_te.toUpperCase() !== 'VND' && cardEdit.Ti_gia > 1" style="font-size: 11px; color: #10b981; margin-top: 2px;">
                 ≈ {{ Number(cardEdit.Don_gia || 0).toLocaleString('vi-VN') }} {{ cardEdit.Don_vi_tien_te }}
-              </div>
-            </div>
-            
-            <div style="display: flex; flex-direction: column; gap: 6px;">
-              <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
-                <label style="margin: 0;">
-                  <span style="font-size: 11px; text-transform: uppercase; color: #fbbf24; font-weight: 600; letter-spacing: 0.5px;">
-                    Giá vốn / Giá off hãng ({{ (cardEdit.Don_vi_tien_te && cardEdit.Don_vi_tien_te.toUpperCase() === 'USD' && Number(cardEdit.Ti_gia || 1) <= 1) ? 'USD' : 'VND' }})
-                  </span>
-                </label>
-                <div class="vendor-off-inline-chip" title="Nhập % Off hãng để tính Giá vốn từ List Price">
-                  <span class="vendor-off-inline-label">% Off hãng:</span>
-                  <div class="vendor-off-inline-input-wrap">
-                    <FormattedInput
-                      :modelValue="getTargetVendorOffPct(cardEdit)"
-                      :decimals="2"
-                      @update:modelValue="onTargetVendorOffPctInput(cardEdit, $event, cardCostMarkup)"
-                      class="vendor-off-inline-input"
-                      placeholder="0"
-                    />
-                    <span class="vendor-off-inline-unit">%</span>
-                  </div>
-                </div>
-              </div>
-              <div style="position: relative;">
-                <FormattedInput
-                  v-if="cardEdit.Don_vi_tien_te && cardEdit.Don_vi_tien_te.toUpperCase() === 'USD' && Number(cardEdit.Ti_gia || 1) <= 1"
-                  :decimals="2"
-                  :modelValue="cardEdit.Gia_tieu_chuan"
-                  @update:modelValue="cardEdit.Gia_tieu_chuan = $event; onTargetGiaVonInput(cardEdit, cardCostMarkup, false)"
-                  placeholder="0"
-                  style="width: 100%; padding: 10px 14px; padding-right: 36px; border-radius: 8px; color: #fbbf24; font-weight: 700;" />
-                <FormattedInput
-                  v-else
-                  :decimals="0"
-                  :modelValue="(cardEdit.Gia_tieu_chuan || 0) * (Number(cardEdit.Ti_gia) || 1)"
-                  @update:modelValue="cardEdit.Gia_tieu_chuan = $event / (Number(cardEdit.Ti_gia) || 1); onTargetGiaVonInput(cardEdit, cardCostMarkup, false)"
-                  placeholder="0"
-                  style="width: 100%; padding: 10px 14px; padding-right: 36px; border-radius: 8px; color: #fbbf24; font-weight: 700;" />
-                <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #fbbf24; pointer-events: none;">{{ (cardEdit.Don_vi_tien_te && cardEdit.Don_vi_tien_te.toUpperCase() === 'USD' && Number(cardEdit.Ti_gia || 1) <= 1) ? '$' : '₫' }}</span>
-              </div>
-              <div v-if="cardEdit.Don_vi_tien_te && cardEdit.Don_vi_tien_te.toUpperCase() !== 'VND' && cardEdit.Ti_gia > 1" style="font-size: 11px; color: #fbbf24; margin-top: 2px;">
-                ≈ {{ Number(cardEdit.Gia_tieu_chuan || 0).toLocaleString('vi-VN') }} {{ cardEdit.Don_vi_tien_te }}
-              </div>
-
-              <!-- KHUNG TÍNH NHANH ĐƠN GIÁ BÁN TỪ GIÁ VỐN (1 DÒNG GỌN) -->
-              <div class="cost-markup-quick-box">
-                <span class="cost-markup-quick-label">
-                  <i class="ri-percent-line"></i> Giá vốn → Giá bán:
-                </span>
-                <div class="cost-markup-quick-controls">
-                  <select
-                    v-model="cardCostMarkup.direction"
-                    @change="applyCostMarkupToTarget(cardEdit, cardCostMarkup)"
-                    class="cost-markup-select is-dir"
-                    :class="cardCostMarkup.direction === 'decrease' ? 'is-down' : 'is-up'"
-                  >
-                    <option value="increase">+ Lãi</option>
-                    <option value="decrease">- Giảm</option>
-                  </select>
-                  <div class="cost-markup-input-group cost-markup-num-wrap">
-                    <FormattedInput
-                      :modelValue="cardCostMarkup.value"
-                      :decimals="cardCostMarkup.type === 'percent' ? 2 : ((!cardEdit.Don_vi_tien_te || cardEdit.Don_vi_tien_te.toUpperCase() === 'VND') ? 0 : 2)"
-                      @update:modelValue="cardCostMarkup.value = $event; applyCostMarkupToTarget(cardEdit, cardCostMarkup)"
-                      class="cost-markup-num-input"
-                    />
-                    <select
-                      v-model="cardCostMarkup.type"
-                      @change="applyCostMarkupToTarget(cardEdit, cardCostMarkup)"
-                      class="cost-markup-select is-unit"
-                    >
-                      <option value="percent">%</option>
-                      <option value="amount">{{ (cardEdit.Don_vi_tien_te && cardEdit.Don_vi_tien_te.toUpperCase() === 'USD') ? 'USD' : '₫' }}</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div style="display: flex; flex-direction: column; gap: 6px;">
-              <label>
-                <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Giá Nhập (VND)</span>
-              </label>
-              <div style="position: relative;">
-                <FormattedInput :decimals="0" :modelValue="(cardEdit.gia_nhap || 0) * (Number(cardEdit.Ti_gia) || 1)" @update:modelValue="cardEdit.gia_nhap = $event / (Number(cardEdit.Ti_gia) || 1)" placeholder="0" style="width: 100%; padding: 10px 14px; padding-right: 36px; border-radius: 8px;" />
-                <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #64748b; pointer-events: none;">₫</span>
-              </div>
-              <div v-if="cardEdit.Don_vi_tien_te && cardEdit.Don_vi_tien_te.toUpperCase() !== 'VND' && cardEdit.Ti_gia > 1" style="font-size: 11px; color: #64748b; margin-top: 2px;">
-                ≈ {{ Number(cardEdit.gia_nhap || 0).toLocaleString('vi-VN') }} {{ cardEdit.Don_vi_tien_te }}
               </div>
             </div>
 
@@ -36565,10 +37380,10 @@ onUnmounted(() => {
                 </div>
               </div>
 
-              <!-- % OFF Hãng -->
+              <!-- % Hãng Off -->
               <div style="display: flex; flex-direction: column; gap: 6px;">
                 <label style="display: flex; justify-content: space-between; align-items: center;">
-                  <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">% Off Hãng</span>
+                  <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">% Hãng Off</span>
                 </label>
                 <div style="display: flex; align-items: center; gap: 8px;">
                   <div class="qe-has-right-unit" style="position: relative; flex: 1; min-width: 0;">
@@ -36578,26 +37393,6 @@ onUnmounted(() => {
                   <button class="btn btn-sm btn-primary qe-calc-btn" style="width: auto !important; flex: none; padding: 8px 14px; font-size: 12px; background: #8b5cf6; border: none; border-radius: 8px; color: white; cursor: pointer; white-space: nowrap; font-weight: 700;" @click.prevent="openKasperskyCalculator" title="Tính toán % off Kaspersky">
                     <i class="fas fa-calculator"></i> Tính
                   </button>
-                </div>
-              </div>
-
-              <!-- Giá vốn / Giá off hãng (VND) -->
-              <div style="display: flex; flex-direction: column; gap: 6px;">
-                <label>
-                  <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Giá vốn / Giá off hãng (VND)</span>
-                </label>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <div class="qe-has-right-unit" style="position: relative; flex: 1;">
-                    <FormattedInput id="qe-Gia_tieu_chuan" :decimals="0" :modelValue="standardPrice(quoteEdit)" @update:modelValue="quoteEdit.Gia_tieu_chuan = $event / (Number(quoteEdit.Ti_gia) || 1)" @input="ensureNumberField(quoteEdit, 'Gia_tieu_chuan')" style="width: 100%; padding: 10px 14px; padding-right: 36px; border-radius: 8px; font-weight: 600; color: #8b5cf6;" />
-                    <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #8b5cf6; pointer-events: none;">₫</span>
-                  </div>
-                  <template v-if="quoteEdit.Don_vi_tien_te && quoteEdit.Don_vi_tien_te.toUpperCase() !== 'VND' && quoteEdit.Ti_gia > 1">
-                    <span style="font-size: 12px; color: #8b5cf6; font-weight: 600;">≈</span>
-                    <div class="qe-has-right-unit" style="position: relative; width: 130px;">
-                      <FormattedInput id="qe-Gia_tieu_chuan_usd" v-model="quoteEdit.Gia_tieu_chuan" @input="ensureNumberField(quoteEdit, 'Gia_tieu_chuan')" style="width: 100%; padding: 10px 10px; padding-right: 36px; border-radius: 8px; font-weight: 600; font-size: 13px; border: 1px dashed rgba(139,92,246,0.3); background: rgba(139,92,246,0.05); color: #a78bfa;" />
-                      <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: #8b5cf6; pointer-events: none;">{{ quoteEdit.Don_vi_tien_te }}</span>
-                    </div>
-                  </template>
                 </div>
               </div>
 
@@ -36618,6 +37413,69 @@ onUnmounted(() => {
                       <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: #94a3b8; pointer-events: none;">{{ quoteEdit.Don_vi_tien_te }}</span>
                     </div>
                   </template>
+                </div>
+              </div>
+
+              <!-- Giá vốn / Giá off hãng (VND) -->
+              <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label>
+                  <span style="font-size: 11px; text-transform: uppercase; color: #fff; font-weight: 600; letter-spacing: 0.5px;">Giá vốn / Giá off hãng (VND)</span>
+                </label>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <div class="qe-has-right-unit" style="position: relative; flex: 1;">
+                    <FormattedInput id="qe-Gia_tieu_chuan" :decimals="0" :modelValue="standardPrice(quoteEdit)" @update:modelValue="quoteEdit.Gia_tieu_chuan = $event / (Number(quoteEdit.Ti_gia) || 1); onQuoteEditGiaVonInput()" @input="ensureNumberField(quoteEdit, 'Gia_tieu_chuan')" style="width: 100%; padding: 10px 14px; padding-right: 36px; border-radius: 8px; font-weight: 600; color: #8b5cf6;" />
+                    <span style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; font-weight: 600; color: #8b5cf6; pointer-events: none;">₫</span>
+                  </div>
+                  <template v-if="quoteEdit.Don_vi_tien_te && quoteEdit.Don_vi_tien_te.toUpperCase() !== 'VND' && quoteEdit.Ti_gia > 1">
+                    <span style="font-size: 12px; color: #8b5cf6; font-weight: 600;">≈</span>
+                    <div class="qe-has-right-unit" style="position: relative; width: 130px;">
+                      <FormattedInput id="qe-Gia_tieu_chuan_usd" v-model="quoteEdit.Gia_tieu_chuan" @update:modelValue="onQuoteEditGiaVonInput()" @input="ensureNumberField(quoteEdit, 'Gia_tieu_chuan')" style="width: 100%; padding: 10px 10px; padding-right: 36px; border-radius: 8px; font-weight: 600; font-size: 13px; border: 1px dashed rgba(139,92,246,0.3); background: rgba(139,92,246,0.05); color: #a78bfa;" />
+                      <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: #8b5cf6; pointer-events: none;">{{ quoteEdit.Don_vi_tien_te }}</span>
+                    </div>
+                  </template>
+                </div>
+
+                <!-- KHUNG TÍNH NHANH GIÁ VỐN <-> GIÁ LIST (1 DÒNG GỌN, ĐẢO CHIỀU ĐƯỢC) -->
+                <div class="cost-markup-quick-box">
+                  <button
+                    type="button"
+                    class="cost-markup-flow-btn"
+                    :class="{ 'is-reverse': quoteEditCostMarkup.flow === 'sell_to_cost' }"
+                    @click.stop="toggleQuoteEditCostMarkupFlow()"
+                    :title="quoteEditCostMarkup.flow === 'sell_to_cost' ? 'Đang tính ngược: giữ Giá List → tính Giá vốn (nhấn để đảo chiều)' : 'Đang tính xuôi: giữ Giá vốn → tính Giá List (nhấn để đảo chiều)'"
+                  >
+                    <i class="ri-arrow-left-right-line"></i>
+                    <span>{{ quoteEditCostMarkup.flow === 'sell_to_cost' ? 'Giá List → Giá vốn' : 'Giá vốn → Giá List' }}</span>
+                  </button>
+                  <div class="cost-markup-quick-controls">
+                    <select
+                      v-model="quoteEditCostMarkup.direction"
+                      @change="applyQuoteEditCostMarkup()"
+                      class="cost-markup-select is-dir is-sign-only"
+                      :class="quoteEditCostMarkup.direction === 'decrease' ? 'is-down' : 'is-up'"
+                      title="Chọn + (tăng) hoặc - (giảm)"
+                      aria-label="Tăng hoặc giảm"
+                    >
+                      <option value="increase">+</option>
+                      <option value="decrease">-</option>
+                    </select>
+                    <div class="cost-markup-input-group cost-markup-num-wrap">
+                      <FormattedInput
+                        :modelValue="quoteEditCostMarkup.value"
+                        :decimals="quoteEditCostMarkup.type === 'percent' ? 2 : 0"
+                        @update:modelValue="quoteEditCostMarkup.value = $event; applyQuoteEditCostMarkup()"
+                        class="cost-markup-num-input"
+                      />
+                      <select
+                        v-model="quoteEditCostMarkup.type"
+                        @change="applyQuoteEditCostMarkup()"
+                        class="cost-markup-select is-unit"
+                      >
+                        <option value="percent">%</option>
+                        <option value="amount">₫</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -41034,7 +41892,7 @@ onUnmounted(() => {
     <div v-if="showKasperskyCalculatorModal" class="modal-overlay" @click.self="showKasperskyCalculatorModal = false" style="z-index: 1000000; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; padding: 20px;">
       <div class="modal-content" style="max-width: 1300px; max-height: 95vh; width: 100%; border-radius: 12px; padding: 0; display: flex; flex-direction: column; background: #1e293b; border: 1px solid #334155; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); overflow: hidden;">
         <div style="padding: 16px 20px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; background: #0f172a;">
-          <h3 style="margin: 0; font-size: 16px; color: #fff; font-weight: 600;">Tra cứu & Tính toán % OFF Hãng</h3>
+          <h3 style="margin: 0; font-size: 16px; color: #fff; font-weight: 600;">Tra cứu &amp; Tính toán % Hãng Off</h3>
           <button style="background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 16px;" @click="showKasperskyCalculatorModal = false"><i class="fas fa-times"></i></button>
         </div>
         
@@ -41081,7 +41939,7 @@ onUnmounted(() => {
             </div>
             
             <div style="padding: 16px; background: rgba(139,92,246,0.1); border-radius: 10px; border: 1px solid rgba(139,92,246,0.3); text-align: center;">
-              <div style="font-size: 13px; color: #a78bfa; margin-bottom: 6px; font-weight: 500;">Kết quả % Off Hãng:</div>
+              <div style="font-size: 13px; color: #a78bfa; margin-bottom: 6px; font-weight: 500;">Kết quả % Hãng Off:</div>
               <div style="font-size: 32px; font-weight: 800; color: #fff;">{{ kaspCalculatedOff !== null ? kaspCalculatedOff + ' %' : '--' }}</div>
             </div>
           </div>
@@ -45271,6 +46129,70 @@ td.dvt { font-family: inherit; white-space: normal; }
 .col-loi  { width: 110px; text-align: right; color: #059669; }
 .col-del  { width: 36px; text-align: center; white-space: nowrap; padding-left: 4px !important; padding-right: 4px !important; }
 .col-del-cell { white-space: nowrap; padding-left: 4px !important; padding-right: 4px !important; }
+
+/* PC Column Resizer */
+table.is-pc-col-resizable thead th {
+  box-sizing: border-box;
+  padding-right: 12px;
+  border-right: 1px solid rgba(255, 255, 255, 0.16);
+}
+table.is-pc-col-resizable thead th:last-child {
+  border-right: none;
+}
+table.is-pc-col-resizable thead th:hover,
+table.is-pc-col-resizable thead th:has(.quote-col-resizer.is-active) {
+  z-index: 6;
+}
+table.is-pc-col-resizable thead th.th-compare-col {
+  padding-right: 11px !important;
+}
+table.is-pc-col-resizable.has-custom-col-widths th.col-stt {
+  min-width: 0;
+}
+table.is-pc-col-resizable.has-custom-col-widths td.col-pn-cell,
+table.is-pc-col-resizable.has-custom-col-widths td.col-desc-cell,
+table.is-pc-col-resizable.has-custom-col-widths td.col-hang-cell,
+table.is-pc-col-resizable.has-custom-col-widths td.col-dvt-cell {
+  max-width: none !important;
+}
+.quote-col-resizer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 9px;
+  cursor: col-resize;
+  user-select: none;
+  touch-action: none;
+  z-index: 5;
+}
+.quote-col-resizer::after {
+  content: '';
+  position: absolute;
+  top: 18%;
+  bottom: 18%;
+  right: 2px;
+  width: 2px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.34);
+  transition: background 0.14s ease, top 0.14s ease, bottom 0.14s ease, width 0.14s ease;
+}
+.quote-col-resizer:hover::after,
+.quote-col-resizer.is-active::after {
+  top: 3px;
+  bottom: 3px;
+  width: 3px;
+  background: #38bdf8;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.75);
+}
+thead th.th-compare-col .quote-col-resizer::after {
+  background: rgba(15, 23, 42, 0.28);
+}
+thead th.th-compare-col .quote-col-resizer:hover::after,
+thead th.th-compare-col .quote-col-resizer.is-active::after {
+  background: #2563eb;
+  box-shadow: 0 0 8px rgba(37, 99, 235, 0.55);
+}
 
 /* Cell Input */
 .quote-center {
@@ -51164,13 +52086,13 @@ table.is-compare-3price-table thead th.th-compare-list-dg,
 table.is-compare-3price-table thead th.th-compare-cust-dg,
 table.is-compare-3price-table thead th.th-compare-cont-dg,
 table.is-compare-3price-table thead th.th-compare-off-hang {
-  width: 136px !important;
+  width: 136px;
 }
 table.is-compare-3price-table thead th.th-compare-list-tt,
 table.is-compare-3price-table thead th.th-compare-cust-tt,
 table.is-compare-3price-table thead th.th-compare-cont-tt,
 table.is-compare-3price-table thead th.th-compare-net-margin {
-  width: 154px !important;
+  width: 154px;
 }
 
 thead th.th-compare-col,
@@ -52190,6 +53112,170 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   overflow: hidden !important;
+}
+
+.main-grid.is-pc-panel-resizing .sidebar-left,
+.main-grid.is-pc-panel-resizing .cmp-sr-finance-wrap,
+.main-grid.is-pc-panel-resizing .quote-main-table-card {
+  transition: none !important;
+}
+
+.pc-panel-splitter {
+  width: 12px;
+  margin: 0 -12px;
+  flex-shrink: 0;
+  align-self: stretch;
+  position: relative;
+  z-index: 18;
+  cursor: col-resize;
+  user-select: none;
+  touch-action: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pc-panel-splitter-grip {
+  width: 3px;
+  height: 54px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.32);
+  transition: height 0.16s ease, width 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+}
+
+.pc-panel-splitter:hover .pc-panel-splitter-grip,
+.pc-panel-splitter.is-active .pc-panel-splitter-grip {
+  width: 4px;
+  height: 110px;
+  background: #38bdf8;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.75);
+}
+
+.page.theme-light-blue .pc-panel-splitter-grip {
+  background: rgba(100, 116, 139, 0.35);
+}
+
+.page.theme-light-blue .pc-panel-splitter:hover .pc-panel-splitter-grip,
+.page.theme-light-blue .pc-panel-splitter.is-active .pc-panel-splitter-grip {
+  background: #2563eb;
+  box-shadow: 0 0 10px rgba(37, 99, 235, 0.45);
+}
+
+@media (max-width: 1100px) {
+  .pc-panel-splitter {
+    display: none !important;
+  }
+}
+
+@media (min-width: 1101px) {
+  #app .page .sidebar-left:not(.closed) {
+    container-type: inline-size;
+    container-name: pc-left-sidebar;
+  }
+
+  #app .page .cmp-sr-finance-wrap:not(.is-collapsed) {
+    container-type: inline-size;
+    container-name: pc-right-finance;
+  }
+
+  @container pc-left-sidebar (max-width: 345px) {
+    #app .page .product-grid .card-bottom-row {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 6px;
+    }
+
+    #app .page .product-grid .card-price-col {
+      width: 100%;
+    }
+
+    #app .page .product-grid .card-price-row {
+      flex-wrap: wrap;
+      column-gap: 4px;
+      row-gap: 1px;
+    }
+
+    #app .page .product-grid .card-footer.dt-list-footer {
+      width: 100%;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    #app .page .product-grid .card-footer.dt-list-footer .btn-add {
+      flex: 1 1 auto;
+      max-width: 120px;
+    }
+  }
+
+  @container pc-left-sidebar (max-width: 305px) {
+    #app .page .product-grid .card {
+      padding: 8px 10px;
+    }
+
+    #app .page .pl-trig-count {
+      padding: 2px 6px;
+      font-size: 9.5px;
+    }
+
+    #app .page .cub-kw-seg {
+      padding: 0 5px 0 9px !important;
+      gap: 5px !important;
+    }
+
+    #app .page .cub-user-seg {
+      width: 64px !important;
+      padding: 0 5px 0 6px !important;
+      gap: 4px !important;
+    }
+  }
+
+  @container pc-right-finance (max-width: 305px) {
+    #app .page .cmp-sr-po1-block {
+      padding: 8px 9px;
+    }
+
+    #app .page .cmp-sr-com-inline-grid {
+      column-gap: 4px;
+    }
+
+    #app .page .cmp-sr-com-grid-lbl {
+      font-size: 11px;
+    }
+
+    #app .page .sidebar-dock-tabs .dock-tab-btn {
+      padding: 5px 4px !important;
+      font-size: 10.5px !important;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    #app .page .pc-right-sticky-actions .sidebar-bottom-action-row {
+      gap: 4px !important;
+    }
+
+    #app .page .pc-right-sticky-actions .action-save,
+    #app .page .pc-right-sticky-actions .action-export-file {
+      padding: 8px 6px !important;
+      font-size: 10.5px !important;
+      letter-spacing: 0.1px !important;
+      gap: 3px !important;
+      overflow: hidden;
+    }
+
+    #app .page .pc-right-sticky-actions .action-save span,
+    #app .page .pc-right-sticky-actions .action-export-file span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    #app .page .pc-right-sticky-actions .action-more-dots {
+      flex: 0 0 32px !important;
+      width: 32px !important;
+      min-width: 32px !important;
+    }
+  }
 }
 
 .btn-toggle-cmp-sr-panel {
@@ -74160,5 +75246,651 @@ label.m-qcard-bulk-check-pill input[type='checkbox'] {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* ==========================================================================
+   EXCELEDITOR TRONG CÁC MODAL SẢN PHẨM (THÊM MỚI / CHI TIẾT / CHỈNH SỬA HÀNG)
+   Đồng bộ chuẩn UI gọn gàng như QuanLyHangHoaFirebase trên cả Desktop & Mobile
+   ========================================================================== */
+#app .page.baogia-firebase-page .modal-card .modal-form-group:has(.excel-editor) {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+#app .page.baogia-firebase-page .modal-card .excel-editor {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  border-radius: 10px !important;
+  border: 1px solid #334155 !important;
+  background: #1e293b !important;
+  overflow: visible !important;
+}
+
+#app .page.baogia-firebase-page .modal-card .excel-editor .excel-toolbar {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  border-top-left-radius: 9px !important;
+  border-top-right-radius: 9px !important;
+  background: #283548 !important;
+  border-bottom: 1px solid #334155 !important;
+}
+
+#app .page.baogia-firebase-page .modal-card .excel-editor .toolbar-group {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  width: auto !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+#app .page.baogia-firebase-page .modal-card .excel-editor .editor-content {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  border-bottom-left-radius: 9px !important;
+  border-bottom-right-radius: 9px !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+}
+
+#app .page.baogia-firebase-page .modal-card .excel-editor select.font-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 6px center !important;
+  background-size: 12px 12px !important;
+  padding-right: 22px !important;
+}
+
+#app .page.baogia-firebase-page .modal-card .excel-editor input.hidden-color-input {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  opacity: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Light Mode (.theme-light-blue) cho ExcelEditor trong toàn bộ Modal baogiaFirebase */
+#app .page.baogia-firebase-page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) .excel-editor {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+#app .page.baogia-firebase-page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) .excel-editor .excel-toolbar {
+  background: #f1f5f9 !important;
+  border-bottom-color: #cbd5e1 !important;
+}
+
+#app .page.baogia-firebase-page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) .excel-editor .toolbar-divider {
+  background: #cbd5e1 !important;
+}
+
+#app .page.baogia-firebase-page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) .excel-editor select.font-select,
+#app .page.baogia-firebase-page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) .excel-editor input.size-input {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+#app .page.baogia-firebase-page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) .excel-editor select.font-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 6px center !important;
+  background-size: 12px 12px !important;
+}
+
+#app .page.baogia-firebase-page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) .excel-editor input.size-input {
+  background: #ffffff !important;
+}
+
+#app .page.baogia-firebase-page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) .excel-editor select.font-select:focus,
+#app .page.baogia-firebase-page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) .excel-editor input.size-input:focus {
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16) !important;
+}
+
+#app .page.baogia-firebase-page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) .excel-editor button.toolbar-btn,
+#app .page.baogia-firebase-page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) .excel-editor button.color-btn {
+  color: #1e293b !important;
+  background: transparent !important;
+  border-color: transparent !important;
+}
+
+#app .page.baogia-firebase-page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) .excel-editor button.toolbar-btn:hover,
+#app .page.baogia-firebase-page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) .excel-editor button.color-btn:hover {
+  background: #e2e8f0 !important;
+  border-color: #94a3b8 !important;
+}
+
+#app .page.baogia-firebase-page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) .excel-editor button.stt-toolbar-btn {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+#app .page.baogia-firebase-page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) .excel-editor .editor-content {
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
+#app .page.baogia-firebase-page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) .excel-editor .editor-content:focus {
+  background: #ffffff !important;
+}
+
+@media (max-width: 1100px) {
+  /* Chuẩn hóa khung ngoài cho Modal Thêm mới nhanh & Chi tiết hàng đồng bộ với Modal Chỉnh sửa hàng */
+  #app .page.baogia-firebase-page .modal-card.modal-fullscreen-card .fullscreen-modal-grid-3col {
+    padding: 12px 12px 24px !important;
+    gap: 12px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  #app .page.baogia-firebase-page .modal-card.modal-fullscreen-card .fullscreen-modal-grid-3col > .modal-group,
+  #app .page.baogia-firebase-page .modal-card .modal-group:has(.excel-editor) {
+    padding: 14px !important;
+    margin: 0 !important;
+    border-radius: 14px !important;
+    gap: 12px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  #app .page.baogia-firebase-page .modal-card .modal-group:has(.excel-editor) > .modal-group-title {
+    margin: 0 0 2px 0 !important;
+    padding: 0 0 8px 0 !important;
+    font-size: 12px !important;
+    font-weight: 800 !important;
+  }
+
+  #app .page.baogia-firebase-page .modal-card .modal-group .grid2:has(.excel-editor) {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  #app .page.baogia-firebase-page .modal-card .modal-group .grid2:has(.excel-editor) > div {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  #app .page.baogia-firebase-page .modal-card .modal-form-group:has(.excel-editor) {
+    min-height: 0 !important;
+    flex: 0 0 auto !important;
+    gap: 6px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  #app .page.baogia-firebase-page .modal-card .modal-form-group:has(.excel-editor) > label {
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.4px !important;
+    margin: 0 !important;
+  }
+
+  /* Gỡ bỏ style nút/input 48px của .modal-card khỏi ExcelEditor để giữ toolbar nhỏ gọn như QuanLyHangHoa */
+  #app .page.baogia-firebase-page .modal-card .excel-editor .excel-toolbar {
+    padding: 6px 8px !important;
+    gap: 5px 6px !important;
+  }
+
+  #app .page.baogia-firebase-page .modal-card .excel-editor .toolbar-group {
+    gap: 3px !important;
+  }
+
+  #app .page.baogia-firebase-page .modal-card .excel-editor .toolbar-divider {
+    height: 18px !important;
+    margin: 0 2px !important;
+  }
+
+  #app .page.baogia-firebase-page .modal-card .excel-editor select.toolbar-select.font-select {
+    width: 118px !important;
+    min-width: 0 !important;
+    max-width: 132px !important;
+    height: 28px !important;
+    min-height: 28px !important;
+    padding: 0 22px 0 8px !important;
+    margin: 0 !important;
+    font-size: 12.5px !important;
+    font-weight: 500 !important;
+    line-height: 1.2 !important;
+    border-radius: 5px !important;
+    background-color: #162032 !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 6px center !important;
+    background-size: 12px 12px !important;
+    border: 1px solid #475569 !important;
+    color: #f1f5f9 !important;
+    box-shadow: none !important;
+  }
+
+  #app .page.baogia-firebase-page .modal-card .excel-editor input.toolbar-select.size-input {
+    width: 44px !important;
+    min-width: 44px !important;
+    max-width: 48px !important;
+    height: 28px !important;
+    min-height: 28px !important;
+    padding: 0 4px !important;
+    margin: 0 !important;
+    font-size: 12.5px !important;
+    font-weight: 600 !important;
+    line-height: 1.2 !important;
+    text-align: center !important;
+    border-radius: 5px !important;
+    background: #162032 !important;
+    border: 1px solid #475569 !important;
+    color: #f1f5f9 !important;
+    box-shadow: none !important;
+  }
+
+  #app .page.baogia-firebase-page .modal-card .excel-editor button.toolbar-btn,
+  #app .page.baogia-firebase-page .modal-card .excel-editor button.color-btn {
+    width: 28px !important;
+    min-width: 28px !important;
+    max-width: 28px !important;
+    height: 28px !important;
+    min-height: 28px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 5px !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    line-height: 1 !important;
+    letter-spacing: 0 !important;
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    color: #e2e8f0 !important;
+    box-shadow: none !important;
+    flex-shrink: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  #app .page.baogia-firebase-page .modal-card .excel-editor button.color-btn {
+    flex-direction: column !important;
+    gap: 1px !important;
+  }
+
+  #app .page.baogia-firebase-page .modal-card .excel-editor button.toolbar-btn.stt-toolbar-btn {
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    padding: 0 8px !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+  }
+
+  #app .page.baogia-firebase-page .modal-card .excel-editor .color-picker-group {
+    margin-left: 2px !important;
+    gap: 3px !important;
+  }
+
+  #app .page.baogia-firebase-page .modal-card .excel-editor .editor-content {
+    min-height: 150px !important;
+    max-height: 300px !important;
+    padding: 12px 14px !important;
+    font-size: 13.5px !important;
+    line-height: 1.5 !important;
+  }
+
+  /* Giữ Light Mode ưu tiên sau @media mobile override */
+  #app .page.baogia-firebase-page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) .excel-editor select.toolbar-select.font-select {
+    background-color: #ffffff !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 6px center !important;
+    background-size: 12px 12px !important;
+    color: #0f172a !important;
+    border-color: #cbd5e1 !important;
+  }
+
+  #app .page.baogia-firebase-page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) .excel-editor input.toolbar-select.size-input {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border-color: #cbd5e1 !important;
+  }
+
+  #app .page.baogia-firebase-page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) .excel-editor button.toolbar-btn,
+  #app .page.baogia-firebase-page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) .excel-editor button.color-btn {
+    color: #1e293b !important;
+    background: transparent !important;
+    border-color: transparent !important;
+  }
+
+  #app .page.baogia-firebase-page.theme-light-blue .modal-card:not(.export-vip-modal):not(.load-invoice-modal) .excel-editor button.toolbar-btn.stt-toolbar-btn {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+  }
+}
+
+@media (max-width: 768px) {
+  #app .page.baogia-firebase-page .modal-card .excel-editor .toolbar-divider {
+    display: none !important;
+  }
+
+  #app .page.baogia-firebase-page .modal-card .excel-editor select.toolbar-select.font-select {
+    width: 108px !important;
+    max-width: 108px !important;
+  }
+
+  #app .page.baogia-firebase-page .modal-card .excel-editor input.toolbar-select.size-input {
+    width: 42px !important;
+    min-width: 42px !important;
+    max-width: 42px !important;
+  }
+
+  #app .page.baogia-firebase-page .modal-card .excel-editor .color-palette-modern {
+    left: auto !important;
+    right: 0 !important;
+    transform: none !important;
+    width: min(268px, calc(100vw - 48px)) !important;
+  }
+}
+
+/* ==========================================================================
+   TOGGLE THU GỌN CHO MODAL CHI TIẾT HÀNG HÓA (MOBILE) & DOCK CON CHỈ 4 NÚT
+   ========================================================================== */
+#app .page.baogia-firebase-page .card-modal-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+#app .page.baogia-firebase-page .card-modal-group-head > .modal-group-title {
+  flex: 1;
+  min-width: 0;
+}
+
+#app .page.baogia-firebase-page .card-modal-group-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+  min-width: 0;
+}
+
+@media (min-width: 1101px) {
+  #app .page.baogia-firebase-page .card-modal-group-body {
+    display: flex !important;
+  }
+}
+
+@media (max-width: 1100px) {
+  #app .page.baogia-firebase-page .modal-card .modal-group .card-modal-group-head.is-collapsible {
+    cursor: pointer;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  #app .page.baogia-firebase-page .modal-card .modal-group .card-modal-group-head.is-collapsible > .modal-group-title {
+    margin: 0 !important;
+    padding: 0 !important;
+    border-bottom: none !important;
+    font-size: 12px !important;
+    font-weight: 800 !important;
+  }
+
+  #app .page.baogia-firebase-page .modal-card .modal-group.is-mob-collapsed {
+    padding: 12px 14px !important;
+    gap: 8px !important;
+  }
+
+  #app .page.baogia-firebase-page .modal-card .modal-group.is-mob-collapsed .card-modal-group-head.is-collapsible {
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+
+  #app .page.baogia-firebase-page .modal-card .card-modal-group-body {
+    gap: 12px !important;
+  }
+
+  #app .page.baogia-firebase-page .modal-card button.card-group-collapse-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: 26px !important;
+    min-height: 26px !important;
+    padding: 0 9px !important;
+    margin: 0 !important;
+    border-radius: 999px !important;
+    background: rgba(56, 189, 248, 0.12) !important;
+    border: 1px solid rgba(56, 189, 248, 0.28) !important;
+    color: #7dd3fc !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+    box-shadow: none !important;
+    flex-shrink: 0 !important;
+  }
+
+  #app .page.baogia-firebase-page .modal-card .card-collapse-summary {
+    font-size: 12px;
+    color: #94a3b8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    padding: 2px 0;
+  }
+
+  #app .page.baogia-firebase-page.theme-light-blue .modal-card .modal-group .card-modal-group-head.is-collapsible {
+    border-bottom-color: #e2e8f0;
+  }
+
+  #app .page.baogia-firebase-page.theme-light-blue .modal-card button.card-group-collapse-btn {
+    background: #eff6ff !important;
+    border-color: #bfdbfe !important;
+    color: #1d4ed8 !important;
+  }
+
+  #app .page.baogia-firebase-page.theme-light-blue .modal-card .card-collapse-summary {
+    color: #64748b;
+  }
+
+  /* DOCK CON TRÊN MOBILE: ẨN NHÃN & NÚT BACK BÊN TRÁI, CHỈ HIỆN 4 NÚT HIỆN TẠI */
+  #app .page.baogia-firebase-page .mobile-screen1-cart-bar .m-dock-left,
+  #app .page.baogia-firebase-page .mobile-screen2-action-bar .m-dock-left {
+    display: none !important;
+  }
+
+  #app .page.baogia-firebase-page .mobile-screen1-cart-bar,
+  #app .page.baogia-firebase-page .mobile-screen2-action-bar {
+    justify-content: center !important;
+  }
+
+  #app .page.baogia-firebase-page .mobile-screen1-cart-bar .m-dock-steps,
+  #app .page.baogia-firebase-page .mobile-screen2-action-bar .m-dock-steps {
+    justify-content: center !important;
+  }
+}
+
+@media (max-width: 768px) {
+  #app .page.baogia-firebase-page .mobile-screen1-cart-bar,
+  #app .page.baogia-firebase-page .mobile-screen2-action-bar {
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+    width: max-content !important;
+    max-width: calc(100vw - 24px) !important;
+    padding: 8px 12px !important;
+    gap: 0 !important;
+    border-radius: 999px !important;
+  }
+
+  #app .page.baogia-firebase-page .mobile-screen1-cart-bar.is-modal-hidden,
+  #app .page.baogia-firebase-page .mobile-screen2-action-bar.is-modal-hidden,
+  #app .page.baogia-firebase-page.has-open-modal .mobile-screen1-cart-bar,
+  #app .page.baogia-firebase-page.has-open-modal .mobile-screen2-action-bar {
+    transform: translateX(-50%) translateY(calc(100% + 96px + env(safe-area-inset-bottom, 0px))) scale(0.96) !important;
+  }
+}
+
+/* Nút chọn dấu + / - to rõ trong khung % Giá vốn -> Giá bán của Modal Chi tiết hàng hóa */
+#app .page.baogia-firebase-page .modal-card .cost-markup-select.is-dir.is-sign-only {
+  min-width: 40px !important;
+  padding: 0 8px !important;
+  font-size: 17px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  text-align: center !important;
+  text-align-last: center !important;
+}
+
+#app .page.baogia-firebase-page .modal-card .cost-markup-select.is-dir.is-sign-only option {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+@media (max-width: 768px) {
+  #app .page.baogia-firebase-page .modal-card .cost-markup-quick-box {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    padding: 6px 8px !important;
+  }
+
+  #app .page.baogia-firebase-page .modal-card button.cost-markup-flow-btn {
+    height: 26px !important;
+    min-height: 26px !important;
+    padding: 0 7px !important;
+    font-size: 10.5px !important;
+    flex-shrink: 0 !important;
+  }
+
+  #app .page.baogia-firebase-page .modal-card .cost-markup-quick-controls {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    flex: 1 1 auto !important;
+    justify-content: flex-end !important;
+    min-width: 0 !important;
+    margin-left: auto !important;
+  }
+
+  #app .page.baogia-firebase-page .modal-card .cost-markup-select.is-dir {
+    height: 28px !important;
+    min-height: 28px !important;
+    padding: 0 6px !important;
+    font-size: 11.5px !important;
+    flex-shrink: 0 !important;
+  }
+
+  #app .page.baogia-firebase-page .modal-card .cost-markup-select.is-dir.is-sign-only {
+    min-width: 34px !important;
+    height: 28px !important;
+    min-height: 28px !important;
+    padding: 0 6px !important;
+    font-size: 15px !important;
+    font-weight: 900 !important;
+    line-height: 1 !important;
+  }
+
+  #app .page.baogia-firebase-page .modal-card .cost-markup-input-group {
+    height: 28px !important;
+    flex: 0 1 108px !important;
+    min-width: 82px !important;
+  }
+
+  #app .page.baogia-firebase-page .modal-card .cost-markup-input-group input.cost-markup-num-input {
+    width: 60px !important;
+    min-width: 44px !important;
+    height: 26px !important;
+    min-height: 26px !important;
+    font-size: 12.5px !important;
+    padding: 0 5px !important;
+  }
+
+  #app .page.baogia-firebase-page .modal-card .cost-markup-input-group select.cost-markup-select.is-unit {
+    height: 26px !important;
+    min-height: 26px !important;
+    padding: 0 5px !important;
+    font-size: 11px !important;
+  }
+}
+
+/* Nút đảo chiều Giá vốn <-> Giá bán trong khung tính nhanh */
+#app .page.baogia-firebase-page .modal-card button.cost-markup-flow-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: 24px !important;
+  min-height: 24px !important;
+  padding: 0 7px !important;
+  margin: 0 !important;
+  border-radius: 6px !important;
+  background: rgba(148, 163, 184, 0.1) !important;
+  border: 1px solid rgba(148, 163, 184, 0.25) !important;
+  color: #cbd5e1 !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  box-shadow: none !important;
+  cursor: pointer !important;
+  transition: all 0.16s ease !important;
+}
+
+#app .page.baogia-firebase-page .modal-card button.cost-markup-flow-btn:hover {
+  background: rgba(148, 163, 184, 0.18) !important;
+  color: #f8fafc !important;
+}
+
+#app .page.baogia-firebase-page .modal-card button.cost-markup-flow-btn.is-reverse {
+  background: rgba(139, 92, 246, 0.18) !important;
+  border-color: rgba(167, 139, 250, 0.45) !important;
+  color: #ddd6fe !important;
+}
+
+#app .page.baogia-firebase-page.theme-light-blue .modal-card button.cost-markup-flow-btn {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+#app .page.baogia-firebase-page.theme-light-blue .modal-card button.cost-markup-flow-btn:hover {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+#app .page.baogia-firebase-page.theme-light-blue .modal-card button.cost-markup-flow-btn.is-reverse {
+  background: #f5f3ff !important;
+  border-color: #c4b5fd !important;
+  color: #6d28d9 !important;
 }
 </style>
