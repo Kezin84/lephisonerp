@@ -30066,6 +30066,7 @@ onUnmounted(() => {
                 'is-current': mobileStep === 1 && !showSaveModal && !showExportInfoModal,
                 'is-done': mobileStep >= 2 || showSaveModal || showExportInfoModal
               }"
+              :aria-current="(mobileStep === 1 && !showSaveModal && !showExportInfoModal) ? 'step' : undefined"
               @click.stop="setMobileStep(1)"
             >
               <span class="m-step-label">Chọn hàng</span>
@@ -30077,12 +30078,13 @@ onUnmounted(() => {
               type="button"
               class="m-step-pill"
               :class="{
-                'is-active': mobileStep === 1 && !showSaveModal && !showExportInfoModal,
-                'is-next-pulse': mobileStep === 1 && !showSaveModal && !showExportInfoModal && selectedItems.length > 0,
                 'is-current': mobileStep === 2 && !showSaveModal && !showExportInfoModal,
+                'is-next-step': mobileStep === 1 && !showSaveModal && !showExportInfoModal && selectedItems.length > 0,
+                'is-next-pulse': mobileStep === 1 && !showSaveModal && !showExportInfoModal && selectedItems.length > 0,
                 'is-done': mobileStep >= 3 || showSaveModal || showExportInfoModal,
                 'is-cart-catching': isMobileQuoteDockCatching
               }"
+              :aria-current="(mobileStep === 2 && !showSaveModal && !showExportInfoModal) ? 'step' : undefined"
               @click.stop="setMobileStep(2)"
             >
               <span class="m-step-label">Báo giá</span>
@@ -30093,11 +30095,12 @@ onUnmounted(() => {
               type="button"
               class="m-step-pill"
               :class="{
-                'is-active': mobileStep === 2 && !showSaveModal && !showExportInfoModal,
-                'is-next-pulse': mobileStep === 2 && !showSaveModal && !showExportInfoModal,
                 'is-current': mobileStep === 3 && !showSaveModal && !showExportInfoModal,
+                'is-next-step': mobileStep === 2 && !showSaveModal && !showExportInfoModal && selectedItems.length > 0,
+                'is-next-pulse': mobileStep === 2 && !showSaveModal && !showExportInfoModal && selectedItems.length > 0,
                 'is-done': showSaveModal || showExportInfoModal
               }"
+              :aria-current="(mobileStep === 3 && !showSaveModal && !showExportInfoModal) ? 'step' : undefined"
               @click.stop="setMobileStep(3)"
             >
               <span class="m-step-label">Tổng kết</span>
@@ -30107,10 +30110,11 @@ onUnmounted(() => {
               type="button"
               class="m-step-pill m-step-save"
               :class="{
-                'is-active': mobileStep === 3 || showSaveModal || showExportInfoModal,
-                'is-next-pulse': mobileStep === 3 && !showSaveModal && !showExportInfoModal,
-                'is-current': showSaveModal || showExportInfoModal
+                'is-current': showSaveModal || showExportInfoModal,
+                'is-next-step': mobileStep === 3 && !showSaveModal && !showExportInfoModal && selectedItems.length > 0,
+                'is-next-pulse': mobileStep === 3 && !showSaveModal && !showExportInfoModal && selectedItems.length > 0
               }"
+              :aria-current="(showSaveModal || showExportInfoModal) ? 'step' : undefined"
               @click.stop="showSaveModal = true"
             >
               <span class="m-step-label">Lưu/Xuất</span>
@@ -32983,6 +32987,7 @@ onUnmounted(() => {
                   'is-current': mobileStep === 1 && !showSaveModal && !showExportInfoModal,
                   'is-done': mobileStep >= 2 || showSaveModal || showExportInfoModal
                 }"
+                :aria-current="(mobileStep === 1 && !showSaveModal && !showExportInfoModal) ? 'step' : undefined"
                 @click.stop="setMobileStep(1)"
               >
                 <span class="m-step-label">Chọn hàng</span>
@@ -32993,11 +32998,12 @@ onUnmounted(() => {
                 type="button"
                 class="m-step-pill"
                 :class="{
-                  'is-active': mobileStep === 1 && !showSaveModal && !showExportInfoModal,
-                  'is-next-pulse': mobileStep === 1 && !showSaveModal && !showExportInfoModal && selectedItems.length > 0,
                   'is-current': mobileStep === 2 && !showSaveModal && !showExportInfoModal,
+                  'is-next-step': mobileStep === 1 && !showSaveModal && !showExportInfoModal && selectedItems.length > 0,
+                  'is-next-pulse': mobileStep === 1 && !showSaveModal && !showExportInfoModal && selectedItems.length > 0,
                   'is-done': mobileStep >= 3 || showSaveModal || showExportInfoModal
                 }"
+                :aria-current="(mobileStep === 2 && !showSaveModal && !showExportInfoModal) ? 'step' : undefined"
                 @click.stop="setMobileStep(2)"
               >
                 <span class="m-step-label">Báo giá</span>
@@ -33008,11 +33014,12 @@ onUnmounted(() => {
                 type="button"
                 class="m-step-pill"
                 :class="{
-                  'is-active': mobileStep === 2 && !showSaveModal && !showExportInfoModal,
-                  'is-next-pulse': mobileStep === 2 && !showSaveModal && !showExportInfoModal,
                   'is-current': mobileStep === 3 && !showSaveModal && !showExportInfoModal,
+                  'is-next-step': mobileStep === 2 && !showSaveModal && !showExportInfoModal && selectedItems.length > 0,
+                  'is-next-pulse': mobileStep === 2 && !showSaveModal && !showExportInfoModal && selectedItems.length > 0,
                   'is-done': showSaveModal || showExportInfoModal
                 }"
+                :aria-current="(mobileStep === 3 && !showSaveModal && !showExportInfoModal) ? 'step' : undefined"
                 @click.stop="setMobileStep(3)"
               >
                 <span class="m-step-label">Tổng kết</span>
@@ -33022,10 +33029,11 @@ onUnmounted(() => {
                 type="button"
                 class="m-step-pill m-step-save"
                 :class="{
-                  'is-active': mobileStep === 3 || showSaveModal || showExportInfoModal,
-                  'is-next-pulse': mobileStep === 3 && !showSaveModal && !showExportInfoModal,
-                  'is-current': showSaveModal || showExportInfoModal
+                  'is-current': showSaveModal || showExportInfoModal,
+                  'is-next-step': mobileStep === 3 && !showSaveModal && !showExportInfoModal && selectedItems.length > 0,
+                  'is-next-pulse': mobileStep === 3 && !showSaveModal && !showExportInfoModal && selectedItems.length > 0
                 }"
+                :aria-current="(showSaveModal || showExportInfoModal) ? 'step' : undefined"
                 @click.stop="showSaveModal = true"
               >
                 <span class="m-step-label">Lưu/Xuất</span>
@@ -49134,6 +49142,7 @@ thead th.th-compare-col .quote-col-resizer.is-active::after {
 
   .m-step-pill {
     position: relative !important;
+    box-sizing: border-box !important;
     height: 32px !important;
     min-width: 0 !important;
     width: auto !important;
@@ -49166,59 +49175,92 @@ thead th.th-compare-col .quote-col-resizer.is-active::after {
     transform: scale(0.93) !important;
   }
 
+  /* Bước đã đi qua: dịu mắt, vẫn rõ để quay lại */
   .m-step-pill.is-done {
-    background: rgba(16, 185, 129, 0.1) !important;
-    border: 1px solid rgba(16, 185, 129, 0.28) !important;
-    color: #6ee7b7 !important;
+    background: rgba(16, 185, 129, 0.08) !important;
+    border: 1px solid rgba(16, 185, 129, 0.24) !important;
+    color: rgba(110, 231, 183, 0.84) !important;
+    font-weight: 700 !important;
   }
 
-  .m-step-pill.is-current:not(.is-active) {
-    background: rgba(16, 185, 129, 0.24) !important;
-    border: 1.5px solid #34d399 !important;
-    color: #ffffff !important;
-    font-weight: 800 !important;
-    box-shadow:
-      0 0 0 2px rgba(52, 211, 153, 0.18),
-      inset 0 1px 0 rgba(255, 255, 255, 0.18) !important;
-  }
-
-  .m-step-pill.is-active {
+  /* Tab đang đứng: tô nền đặc đậm nổi bật nhất */
+  .m-step-pill.is-current {
     background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
-    border-color: rgba(110, 231, 183, 0.65) !important;
+    border: 1px solid rgba(110, 231, 183, 0.72) !important;
     color: #ffffff !important;
     font-weight: 800 !important;
     box-shadow:
-      0 4px 12px rgba(16, 185, 129, 0.38),
-      inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+      0 4px 12px rgba(16, 185, 129, 0.42),
+      inset 0 1px 0 rgba(255, 255, 255, 0.26) !important;
   }
 
-  .m-step-pill.m-step-save.is-active {
+  .m-step-pill.m-step-save.is-current {
     background: linear-gradient(135deg, #2563eb 0%, #059669 100%) !important;
-    border-color: rgba(147, 197, 253, 0.65) !important;
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.38) !important;
+    border: 1px solid rgba(147, 197, 253, 0.72) !important;
+    box-shadow:
+      0 4px 12px rgba(37, 99, 235, 0.42),
+      inset 0 1px 0 rgba(255, 255, 255, 0.24) !important;
   }
 
-  @keyframes mDockNextStepPulse {
+  /* Bước tiếp theo: viền đậm rõ nét + quầng sáng thở nhẹ (GPU opacity) */
+  .m-step-pill.is-next-step {
+    background: rgba(16, 185, 129, 0.13) !important;
+    border: 2px solid #10b981 !important;
+    color: #ecfdf5 !important;
+    font-weight: 800 !important;
+    box-shadow:
+      0 0 0 1px rgba(52, 211, 153, 0.16),
+      0 2px 8px rgba(16, 185, 129, 0.18) !important;
+  }
+
+  .m-step-pill.m-step-save.is-next-step {
+    background: rgba(14, 165, 233, 0.15) !important;
+    border: 2px solid #0ea5e9 !important;
+    color: #e0f2fe !important;
+    box-shadow:
+      0 0 0 1px rgba(56, 189, 248, 0.18),
+      0 2px 8px rgba(14, 165, 233, 0.2) !important;
+  }
+
+  @keyframes mDockNextStepBorderPulse {
     0%, 100% {
-      transform: scale(1);
+      opacity: 0.12;
     }
     50% {
-      transform: scale(1.045);
+      opacity: 1;
     }
   }
 
-  .m-step-pill.is-next-pulse {
-    animation: mDockNextStepPulse 2.1s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
-    transform-origin: center center !important;
-    will-change: transform;
+  .m-step-pill.is-next-pulse::before {
+    content: '' !important;
+    position: absolute !important;
+    inset: -2px !important;
+    border-radius: 999px !important;
+    border: 2px solid #6ee7b7 !important;
+    box-shadow:
+      0 0 0 2.5px rgba(52, 211, 153, 0.34),
+      0 0 12px rgba(52, 211, 153, 0.48) !important;
+    pointer-events: none !important;
+    z-index: 0 !important;
+    will-change: opacity;
+    animation: mDockNextStepBorderPulse 2s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
   }
 
-  .m-step-pill.is-next-pulse:active {
+  .m-step-pill.m-step-save.is-next-pulse::before {
+    border-color: #7dd3fc !important;
+    box-shadow:
+      0 0 0 2.5px rgba(56, 189, 248, 0.36),
+      0 0 12px rgba(56, 189, 248, 0.5) !important;
+  }
+
+  .m-step-pill.is-next-pulse:active::before {
     animation: none !important;
-    transform: scale(0.93) !important;
+    opacity: 0.4 !important;
   }
 
   .m-step-label {
+    position: relative !important;
+    z-index: 1 !important;
     display: inline-block !important;
     max-width: none !important;
     opacity: 1 !important;
@@ -50889,25 +50931,60 @@ thead th.th-compare-col .quote-col-resizer.is-active::after {
   }
 
   .page.theme-light-blue .m-step-pill.is-done {
-    background: #eff6ff !important;
+    background: rgba(239, 246, 255, 0.78) !important;
     border: 1px solid #bfdbfe !important;
-    color: #2563eb !important;
+    color: #3b82f6 !important;
   }
 
-  .page.theme-light-blue .m-step-pill.is-current:not(.is-active) {
-    background: #dbeafe !important;
-    border: 1.5px solid #2563eb !important;
-    color: #1e3a8a !important;
-    font-weight: 800 !important;
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16) !important;
-  }
-
-  .page.theme-light-blue .m-step-pill.is-active {
+  .page.theme-light-blue .m-step-pill.is-current {
     background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
-    border-color: #60a5fa !important;
+    border: 1px solid #1d4ed8 !important;
     color: #ffffff !important;
     font-weight: 800 !important;
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3) !important;
+    box-shadow:
+      0 4px 12px rgba(37, 99, 235, 0.34),
+      inset 0 1px 0 rgba(255, 255, 255, 0.28) !important;
+  }
+
+  .page.theme-light-blue .m-step-pill.m-step-save.is-current {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+    border: 1px solid #047857 !important;
+    box-shadow:
+      0 4px 12px rgba(5, 150, 105, 0.32),
+      inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+  }
+
+  .page.theme-light-blue .m-step-pill.is-next-step {
+    background: #ffffff !important;
+    border: 2px solid #2563eb !important;
+    color: #1d4ed8 !important;
+    font-weight: 800 !important;
+    box-shadow:
+      0 0 0 1px rgba(37, 99, 235, 0.14),
+      0 2px 8px rgba(37, 99, 235, 0.14) !important;
+  }
+
+  .page.theme-light-blue .m-step-pill.m-step-save.is-next-step {
+    background: #ecfdf5 !important;
+    border: 2px solid #059669 !important;
+    color: #047857 !important;
+    box-shadow:
+      0 0 0 1px rgba(16, 185, 129, 0.16),
+      0 2px 8px rgba(16, 185, 129, 0.16) !important;
+  }
+
+  .page.theme-light-blue .m-step-pill.is-next-pulse::before {
+    border-color: #1d4ed8 !important;
+    box-shadow:
+      0 0 0 3px rgba(37, 99, 235, 0.28),
+      0 0 10px rgba(37, 99, 235, 0.32) !important;
+  }
+
+  .page.theme-light-blue .m-step-pill.m-step-save.is-next-pulse::before {
+    border-color: #047857 !important;
+    box-shadow:
+      0 0 0 3px rgba(16, 185, 129, 0.3),
+      0 0 10px rgba(16, 185, 129, 0.34) !important;
   }
 
   .page.theme-light-blue .m-step-mini-badge {
@@ -76839,8 +76916,15 @@ label.m-qcard-bulk-check-pill input[type='checkbox'] {
   #app .page.baogia-firebase-page .product-grid .card.is-spring-launch,
   #app .page.baogia-firebase-page .mobile-screen1-cart-bar .m-step-pill.is-cart-catching,
   #app .page.baogia-firebase-page .mobile-screen1-cart-bar .m-step-pill.is-cart-catching::after,
-  #app .page.baogia-firebase-page .mobile-screen1-cart-bar .m-step-pill.is-cart-catching .m-step-mini-badge {
+  #app .page.baogia-firebase-page .mobile-screen1-cart-bar .m-step-pill.is-cart-catching .m-step-mini-badge,
+  #app .page.baogia-firebase-page .mobile-screen1-cart-bar .m-step-pill.is-next-pulse::before,
+  #app .page.baogia-firebase-page .mobile-screen2-action-bar .m-step-pill.is-next-pulse::before {
     animation: none !important;
+  }
+
+  #app .page.baogia-firebase-page .mobile-screen1-cart-bar .m-step-pill.is-next-pulse::before,
+  #app .page.baogia-firebase-page .mobile-screen2-action-bar .m-step-pill.is-next-pulse::before {
+    opacity: 0 !important;
   }
 }
 </style>
