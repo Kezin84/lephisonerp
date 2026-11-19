@@ -10,6 +10,7 @@ import draggable from 'vuedraggable'
 import ExcelEditor from './ExcelEditor.vue'
 import FormattedInput from './FormattedInput.vue'
 import { parsePastedNumber } from '../utils/smartNumber'
+import { useBinaryAppTheme } from '../composables/useAppTheme'
 import PipelinePreviewModal from './PipelinePreviewModal.vue'
 import QuoteGuideTutorial, { type GuideStepItem } from './QuoteGuideTutorial.vue'
 import html2canvas from 'html2canvas'
@@ -2235,21 +2236,7 @@ function formatQuoteItemStt(itemIdxInScope: number, parentGroupStt = ''): number
   return itemIdxInScope
 }
 
-const QUOTE_THEME_MODE_STORAGE_KEY = 'nts_quote_theme_mode_v1'
-function loadSavedQuoteThemeMode(): 'dark' | 'light' {
-  try {
-    const raw = localStorage.getItem(QUOTE_THEME_MODE_STORAGE_KEY)
-    if (raw === 'light') return 'light'
-  } catch {}
-  return 'dark'
-}
-const quoteThemeMode = ref<'dark' | 'light'>(loadSavedQuoteThemeMode())
-function setQuoteThemeMode(mode: 'dark' | 'light') {
-  quoteThemeMode.value = mode
-  try {
-    localStorage.setItem(QUOTE_THEME_MODE_STORAGE_KEY, mode)
-  } catch {}
-}
+const { uiTheme: quoteThemeMode, setUiTheme: setQuoteThemeMode } = useBinaryAppTheme()
 
 function consolidateSelectedItemsByCategory(): boolean {
   if (selectedItems.value.length <= 1) return false

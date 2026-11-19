@@ -312,7 +312,17 @@
             </div>
 
             <div class="gh-right">
-              <span class="gh-ver-count tabular-nums">{{ group.versions.length }} bản</span>
+              <div class="gh-right-badges">
+                <span
+                  v-if="isGroupCompleted(group)"
+                  class="gh-done-badge"
+                  title="Nhóm báo giá đã chốt chính thức"
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span>DONE</span>
+                </span>
+                <span class="gh-ver-count tabular-nums">{{ group.versions.length }} bản</span>
+              </div>
               <button
                 type="button"
                 class="gh-toggle-btn"
@@ -675,24 +685,6 @@
                 <button type="button" class="qlbg-seg-btn" :class="{ active: quoteCurrency === 'VND' }" @click="quoteCurrency = 'VND'">VND</button>
                 <button type="button" class="qlbg-seg-btn" :class="{ active: quoteCurrency === 'USD' }" @click="quoteCurrency = 'USD'">USD</button>
               </div>
-
-              <!-- Xuất Excel -->
-              <button
-                type="button"
-                class="qlbg-excel-btn"
-                :disabled="exportingExcel || !selectedContractDetails.length"
-                @click="downloadDetailExcel"
-                :title="`Xuất file Excel theo ${detailViewMode === 'khach' ? 'Giá Khách' : 'Giá Hợp Đồng'}`"
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                  <polyline points="14 2 14 8 20 8"/>
-                  <path d="m9 13 3 4"/>
-                  <path d="m12 13-3 4"/>
-                </svg>
-                <span class="dm-lbl-dt">{{ exportingExcel ? 'Đang xuất...' : 'Xuất Excel' }}</span>
-                <span class="dm-lbl-mob">{{ exportingExcel ? 'Xuất...' : 'Excel' }}</span>
-              </button>
 
               <button type="button" class="dm-close-btn" @click="showDetailModal = false" title="Đóng">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -2208,13 +2200,14 @@ export default {
 </script>
 
 <script setup lang="ts">
-import { ref, computed, reactive, watch, onMounted, onUnmounted, onActivated, nextTick } from 'vue'
+import { ref, shallowRef, computed, reactive, watch, onMounted, onUnmounted, onActivated, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { initializeApp, getApps, getApp } from 'firebase/app'
 import { getDatabase, ref as dbRef, get, set, update, push, onValue } from 'firebase/database'
 import ExcelJS from 'exceljs'
 import { buildQuoteFileName } from '../utils/printTemplateEngine'
 import QuoteCompareModal, { type CompareQuoteRow } from './QuoteCompareModal.vue'
+import { useBinaryAppTheme } from '../composables/useAppTheme'
 
 const firebaseConfig = {
   apiKey: 'AIzaSyB3fHD_sOqyqVygCxP2gZtvaipr-35a1s8',
@@ -2233,23 +2226,9 @@ const router = useRouter()
 const route = useRoute()
 
 /* ======================
-   THEME & VIEW MODES
+   THEME & VIEW MODES (Synced globally via useAppTheme)
 ====================== */
-const QUOTE_THEME_MODE_STORAGE_KEY = 'nts_quote_theme_mode_v1'
-function loadSavedTheme(): 'dark' | 'light' {
-  try {
-    return localStorage.getItem(QUOTE_THEME_MODE_STORAGE_KEY) === 'light' ? 'light' : 'dark'
-  } catch {
-    return 'dark'
-  }
-}
-const uiTheme = ref<'dark' | 'light'>(loadSavedTheme())
-function toggleUiTheme() {
-  uiTheme.value = uiTheme.value === 'dark' ? 'light' : 'dark'
-  try {
-    localStorage.setItem(QUOTE_THEME_MODE_STORAGE_KEY, uiTheme.value)
-  } catch {}
-}
+const { uiTheme, toggleUiTheme } = useBinaryAppTheme()
 
 const quoteCurrency = ref<'VND' | 'USD'>('VND')
 const detailViewMode = ref<'hd' | 'khach' | 'noibo'>('hd')
@@ -2875,19 +2854,19 @@ function fbKhachHangToRow(item: any, fbKey = ''): any[] {
    REACTIVE DATA STORES & REALTIME LISTENERS
 ====================== */
 const loading = ref(true)
-const contracts = ref<Contract[]>([])
-const allHdRaw = ref<any[][]>([])
-const allDetailsRaw = ref<any[][]>([])
-const detailFbKeysByContract = ref<Record<string, string[]>>({})
-const detailItemCountMap = ref<Record<string, number>>({})
-const detailSearchIndexMap = ref<Record<string, string>>({})
-const customersRaw = ref<any[][]>([])
-const customerFullMap = ref<Map<string, any>>(new Map())
-const hangHoaDescMap = ref<Record<string, string>>({})
-const hangHoaSkuMap = ref<Record<string, string>>({})
-const saleReportMapByKeyOrPo = ref<Record<string, { key: string; soPo: string; paid: number; debt: number; total: number }>>({})
-const saleReportRecords = ref<Array<{ maKH: string; maCT: string; mst: string; total: number; paid: number; debt: number }>>([])
-const saleReportCraftMap = ref<Record<string, any>>({})
+const contracts = shallowRef<Contract[]>([])
+const allHdRaw = shallowRef<any[][]>([])
+const allDetailsRaw = shallowRef<any[][]>([])
+const detailFbKeysByContract = shallowRef<Record<string, string[]>>({})
+const detailItemCountMap = shallowRef<Record<string, number>>({})
+const detailSearchIndexMap = shallowRef<Record<string, string>>({})
+const customersRaw = shallowRef<any[][]>([])
+const customerFullMap = shallowRef<Map<string, any>>(new Map())
+const hangHoaDescMap = shallowRef<Record<string, string>>({})
+const hangHoaSkuMap = shallowRef<Record<string, string>>({})
+const saleReportMapByKeyOrPo = shallowRef<Record<string, { key: string; soPo: string; paid: number; debt: number; total: number }>>({})
+const saleReportRecords = shallowRef<Array<{ maKH: string; maCT: string; mst: string; total: number; paid: number; debt: number }>>([])
+const saleReportCraftMap = shallowRef<Record<string, any>>({})
 const pinningSrCraftMa = ref('')
 
 function mapRowToContract(r: any[], fbKey: string): Contract {
@@ -3168,10 +3147,20 @@ function applySaleReportCraftSnapshot(data: any) {
 const unsubscribers: Array<() => void> = []
 
 function setupRealtimeSubscriptions() {
-  let initialResolved = 0
+  // Đảm bảo dọn sạch listener cũ nếu hàm được gọi lại
+  unsubscribers.forEach(fn => {
+    try {
+      fn()
+    } catch {}
+  })
+  unsubscribers.length = 0
+
+  let isReady = false
   const markReady = () => {
-    initialResolved++
-    if (initialResolved >= 2) loading.value = false
+    if (!isReady) {
+      isReady = true
+      loading.value = false
+    }
   }
 
   unsubscribers.push(
@@ -3183,28 +3172,28 @@ function setupRealtimeSubscriptions() {
   unsubscribers.push(
     onValue(dbRef(database, 'hop_dong_chi_tiet'), snap => {
       applyDetailsSnapshot(snap.val())
-      markReady()
-    }, () => markReady())
+    }, () => {})
   )
   unsubscribers.push(
     onValue(dbRef(database, 'khach_hang'), snap => {
       applyCustomersSnapshot(snap.val())
-    })
+    }, () => {})
   )
-  unsubscribers.push(
-    onValue(dbRef(database, 'hang_hoa'), snap => {
+  // Chỉ tải bảng hang_hoa 1 lần để tra cứu SKU/Mô tả (tránh giữ realtime listener trên bảng hàng hóa lớn gây nặng máy)
+  get(dbRef(database, 'hang_hoa'))
+    .then(snap => {
       applyHangHoaSnapshot(snap.val())
     })
-  )
+    .catch(() => {})
   unsubscribers.push(
     onValue(dbRef(database, 'sale_report'), snap => {
       applySaleReportSnapshot(snap.val())
-    })
+    }, () => {})
   )
   unsubscribers.push(
     onValue(dbRef(database, 'sale_report_craft'), snap => {
       applySaleReportCraftSnapshot(snap.val())
-    })
+    }, () => {})
   )
 }
 
@@ -6447,7 +6436,6 @@ watch(isMobileDockHidden, hidden => {
 })
 
 onMounted(() => {
-  uiTheme.value = loadSavedTheme()
   setupRealtimeSubscriptions()
   applyIncomingRouteQuery()
   document.addEventListener('click', handleGlobalDocumentClick)
@@ -6472,7 +6460,6 @@ onMounted(() => {
 })
 
 onActivated(() => {
-  uiTheme.value = loadSavedTheme()
   applyIncomingRouteQuery()
 })
 
@@ -6569,9 +6556,9 @@ onUnmounted(() => {
   --indigo-bg: rgba(99, 102, 241, 0.14);
   --indigo-border: rgba(129, 140, 248, 0.36);
 
-  --bg-modal-head-rich: linear-gradient(135deg, #0d1d36 0%, #102a49 55%, #0c223b 100%);
-  --bg-table-head-rich: #102442;
-  --ink-table-head: #7dd3fc;
+  --bg-modal-head-rich: linear-gradient(135deg, #0c4a6e 0%, #0369a1 52%, #0f766e 100%);
+  --bg-table-head-rich: linear-gradient(180deg, #075985 0%, #0c4a6e 100%);
+  --ink-table-head: #ffffff;
 
   --shadow-card: 0 10px 28px -10px rgba(0, 0, 0, 0.55);
   --shadow-modal: 0 26px 60px -12px rgba(0, 0, 0, 0.78);
@@ -6628,9 +6615,9 @@ onUnmounted(() => {
   --indigo-bg: #eef2ff;
   --indigo-border: #c7d2fe;
 
-  --bg-modal-head-rich: linear-gradient(135deg, #e0f2fe 0%, #dbeafe 55%, #eff6ff 100%);
-  --bg-table-head-rich: #dbeafe;
-  --ink-table-head: #0369a1;
+  --bg-modal-head-rich: linear-gradient(135deg, #0284c7 0%, #2563eb 55%, #1d4ed8 100%);
+  --bg-table-head-rich: linear-gradient(180deg, #0284c7 0%, #0369a1 100%);
+  --ink-table-head: #ffffff;
 
   --shadow-card: 0 8px 24px -8px rgba(15, 23, 42, 0.08);
   --shadow-modal: 0 24px 52px -12px rgba(15, 23, 42, 0.22);
@@ -7319,14 +7306,14 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 9px 12px;
+  padding: 10px 12px;
   background: var(--bg-modal-head-rich);
-  border-bottom: 1px solid var(--sky-border);
-  font-size: 11px;
+  border-bottom: 1.5px solid rgba(56, 189, 248, 0.45);
+  font-size: 11.5px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--ink-table-head);
+  color: #ffffff;
 }
 .qlbg-pop-close {
   display: none;
@@ -7335,14 +7322,18 @@ onUnmounted(() => {
   margin: 0;
   padding: 0;
   border-radius: 6px;
-  border: 1px solid var(--border-control);
-  background: var(--bg-input);
-  color: var(--ink-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  background: rgba(2, 18, 38, 0.28);
+  color: #ffffff;
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
   align-items: center;
   justify-content: center;
+}
+.qlbg-pop-close:hover {
+  background: rgba(239, 68, 68, 0.78);
+  border-color: #fecaca;
 }
 .qlbg-pop-list {
   padding: 6px;
@@ -7783,6 +7774,38 @@ onUnmounted(() => {
   gap: 8px;
   flex-wrap: wrap;
   justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.gh-right-badges {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.gh-done-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3.5px 9px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1.15;
+  text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #ffffff 0%, #d1fae5 100%);
+  color: #065f46;
+  border: 1px solid rgba(255, 255, 255, 0.92);
+  box-shadow: 0 1px 4px rgba(2, 44, 34, 0.28);
+}
+
+.gh-done-badge svg {
+  color: #059669;
   flex-shrink: 0;
 }
 
@@ -8679,7 +8702,8 @@ onUnmounted(() => {
   flex-wrap: wrap;
   padding: 13px 18px;
   background: var(--bg-modal-head-rich);
-  border-bottom: 1.5px solid var(--sky-border);
+  border-bottom: 1.5px solid rgba(56, 189, 248, 0.48);
+  color: #ffffff;
   flex-shrink: 0;
 }
 
@@ -8702,7 +8726,7 @@ onUnmounted(() => {
   font-family: var(--font-sans);
   letter-spacing: -0.01em;
   line-height: 1.3;
-  color: var(--ink-strong);
+  color: #ffffff;
 }
 
 .dm-sub-row {
@@ -8712,7 +8736,66 @@ onUnmounted(() => {
   flex-wrap: wrap;
   margin-top: 3px;
   font-size: 12px;
-  color: var(--ink-secondary);
+  color: rgba(224, 242, 254, 0.92);
+}
+
+.dm-head .qc-status-badge.is-emerald {
+  background: rgba(16, 185, 129, 0.34);
+  color: #ffffff;
+  border-color: rgba(167, 243, 208, 0.72);
+}
+.dm-head .qc-status-badge.is-amber {
+  background: rgba(245, 158, 11, 0.36);
+  color: #fffbeb;
+  border-color: rgba(253, 230, 138, 0.72);
+}
+.dm-head .qc-ver-tag,
+.dm-head .qc-origin-tag,
+.dm-head .qc-po-badge,
+.dm-head .qc-sr-active-pill {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.38);
+}
+.dm-head .qc-sr-active-pill:hover {
+  background: rgba(255, 255, 255, 0.28);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+.dm-head .qlbg-seg-group {
+  background: rgba(2, 18, 38, 0.34);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+.dm-head .qlbg-seg-btn {
+  color: rgba(241, 245, 249, 0.88);
+}
+.dm-head .qlbg-seg-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.14);
+}
+.dm-head .qlbg-seg-btn.active {
+  background: #ffffff;
+  color: #0369a1;
+  box-shadow: 0 1px 4px rgba(2, 6, 23, 0.24);
+}
+.dm-head .qlbg-seg-btn.is-khach.active {
+  background: #ecfdf5;
+  color: #047857;
+  box-shadow: 0 1px 4px rgba(2, 6, 23, 0.24);
+}
+.dm-head .qlbg-seg-btn.is-noibo.active {
+  background: #fffbeb;
+  color: #b45309;
+  box-shadow: 0 1px 4px rgba(2, 6, 23, 0.24);
+}
+.dm-head .qlbg-excel-btn {
+  background: rgba(16, 185, 129, 0.3);
+  border-color: rgba(167, 243, 208, 0.65);
+  color: #ffffff;
+}
+.dm-head .qlbg-excel-btn:hover:not(:disabled) {
+  background: #10b981;
+  border-color: #6ee7b7;
+  color: #ffffff;
 }
 
 .dm-head-controls {
@@ -8728,9 +8811,9 @@ onUnmounted(() => {
   margin: 0;
   padding: 0;
   border-radius: 8px;
-  border: 1px solid var(--border-control);
-  background: var(--bg-input);
-  color: var(--ink-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  background: rgba(2, 18, 38, 0.28);
+  color: #ffffff;
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
@@ -8738,11 +8821,12 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  transition: all 0.15s ease;
 }
 .dm-close-btn:hover {
-  background: var(--rose-bg);
-  color: var(--rose-text);
-  border-color: var(--rose-border);
+  background: rgba(239, 68, 68, 0.8);
+  color: #ffffff;
+  border-color: #fecaca;
 }
 
 .dm-mobile-tabs {
@@ -8972,44 +9056,56 @@ onUnmounted(() => {
   gap: 6px;
   padding: 8px 10px;
   background: var(--bg-modal-head-rich);
-  border-bottom: 1px solid var(--sky-border);
+  border-bottom: 1.5px solid rgba(56, 189, 248, 0.42);
   flex-shrink: 0;
 }
 
-.cmp-sr-source-pills {
-  display: inline-flex;
+.qlbg-detail-modal .cmp-sr-source-pills {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: center;
-  padding: 2px;
+  gap: 3px;
+  padding: 2.5px;
   border-radius: 8px;
-  background: var(--bg-input);
-  border: 1px solid var(--border-control);
+  background: rgba(2, 18, 38, 0.38);
+  border: 1px solid rgba(255, 255, 255, 0.28);
 }
 
-.cmp-sr-source-pill {
-  width: auto;
-  margin: 0;
-  padding: 4px 10px;
-  border-radius: 6px;
-  border: none;
-  background: transparent;
-  color: var(--ink-muted);
-  font-size: 11px;
-  font-weight: 700;
+.qlbg-detail-modal .cmp-sr-source-pill {
+  width: 100% !important;
+  height: 26px !important;
+  margin: 0 !important;
+  padding: 0 10px !important;
+  border-radius: 6px !important;
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  color: rgba(241, 245, 249, 0.9) !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
   transition: all 0.15s ease;
 }
-.cmp-sr-source-pill:hover:not(.active) {
-  color: var(--ink-primary);
+.qlbg-detail-modal .cmp-sr-source-pill:hover:not(.active) {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.16) !important;
 }
-.cmp-sr-source-pill.active {
-  background: var(--sky-bg);
-  color: var(--sky-text);
-  box-shadow: inset 0 0 0 1px var(--sky-border), 0 1px 2px rgba(2, 6, 23, 0.16);
+.qlbg-detail-modal .cmp-sr-source-pill.active {
+  background: #ffffff !important;
+  color: #0369a1 !important;
+  border-color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(2, 6, 23, 0.28) !important;
 }
-.cmp-sr-source-pill.is-khach.active {
-  background: var(--emerald-bg);
-  color: var(--emerald-text);
-  box-shadow: inset 0 0 0 1px var(--emerald-border), 0 1px 2px rgba(2, 6, 23, 0.16);
+.qlbg-detail-modal .cmp-sr-source-pill.is-khach.active {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  color: #ffffff !important;
+  border-color: rgba(167, 243, 208, 0.75) !important;
+  box-shadow: 0 2px 6px rgba(5, 150, 105, 0.38) !important;
 }
 
 .cmp-sr-source-actions {
@@ -9050,17 +9146,19 @@ onUnmounted(() => {
   margin: 0;
   padding: 0;
   border-radius: 6px;
-  border: 1px solid var(--border-control);
-  background: var(--bg-input);
-  color: var(--ink-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  background: rgba(2, 18, 38, 0.28);
+  color: #ffffff;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transition: all 0.15s ease;
 }
 .cmp-sr-collapse-btn:hover {
-  color: var(--sky-text);
-  border-color: var(--sky-border);
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.58);
 }
 
 .cmp-sr-blocks-scroll {
@@ -9109,31 +9207,31 @@ onUnmounted(() => {
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--sky-text);
+  color: #ffffff;
 }
 .cmp-sr-po1-block.is-tone-sky > .cmp-sr-po1-block-title,
 .cmp-sr-po1-block.is-tone-sky .cmp-sr-po1-block-head {
-  background: var(--sky-bg);
-  border-bottom-color: var(--sky-border);
+  background: linear-gradient(90deg, #0284c7 0%, #0369a1 100%);
+  border-bottom-color: #0369a1;
 }
 .cmp-sr-po1-block.is-tone-sky .cmp-sr-po1-block-title {
-  color: var(--sky-text);
+  color: #ffffff;
 }
 .cmp-sr-po1-block.is-tone-emerald > .cmp-sr-po1-block-title,
 .cmp-sr-po1-block.is-tone-emerald .cmp-sr-po1-block-head {
-  background: var(--emerald-bg);
-  border-bottom-color: var(--emerald-border);
+  background: linear-gradient(90deg, #059669 0%, #047857 100%);
+  border-bottom-color: #047857;
 }
 .cmp-sr-po1-block.is-tone-emerald .cmp-sr-po1-block-title {
-  color: var(--emerald-text);
+  color: #ffffff;
 }
 .cmp-sr-po1-block.is-tone-amber > .cmp-sr-po1-block-title,
 .cmp-sr-po1-block.is-tone-amber .cmp-sr-po1-block-head {
-  background: var(--amber-bg);
-  border-bottom-color: var(--amber-border);
+  background: linear-gradient(90deg, #d97706 0%, #b45309 100%);
+  border-bottom-color: #b45309;
 }
 .cmp-sr-po1-block.is-tone-amber .cmp-sr-po1-block-title {
-  color: var(--amber-text);
+  color: #ffffff;
 }
 
 .cmp-sr-round-toggle-btn {
@@ -9141,17 +9239,21 @@ onUnmounted(() => {
   margin: 0;
   padding: 2px 7px;
   border-radius: 6px;
-  border: 1px solid var(--border-control);
-  background: var(--bg-card);
-  color: var(--ink-secondary);
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  background: rgba(2, 18, 38, 0.24);
+  color: #ffffff;
   font-size: 10px;
   font-weight: 700;
   cursor: pointer;
+  transition: all 0.15s ease;
+}
+.cmp-sr-round-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
 }
 .cmp-sr-round-toggle-btn.is-active {
-  background: var(--sky-bg);
-  color: var(--sky-text);
-  border-color: var(--sky-border);
+  background: #ffffff;
+  color: #047857;
+  border-color: #ffffff;
 }
 
 .cmp-sr-po1-list {
@@ -9447,7 +9549,7 @@ onUnmounted(() => {
   gap: 3px;
   padding: 5px 6px;
   background: var(--bg-table-head-rich);
-  border-bottom: 1px solid var(--sky-border);
+  border-bottom: 1.5px solid rgba(56, 189, 248, 0.45);
 }
 
 .dock-tab-btn {
@@ -9457,7 +9559,7 @@ onUnmounted(() => {
   border-radius: 6px;
   border: 1px solid transparent;
   background: transparent;
-  color: var(--ink-secondary);
+  color: rgba(240, 249, 255, 0.9);
   font-size: 10.5px;
   font-weight: 700;
   cursor: pointer;
@@ -9469,20 +9571,21 @@ onUnmounted(() => {
   transition: all 0.15s ease;
 }
 .dock-tab-btn:hover {
-  color: var(--ink-strong);
-  background: var(--sky-bg);
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.16);
 }
 .dock-tab-btn.active {
-  background: var(--sky-bg);
-  color: var(--sky-text);
-  border-color: var(--sky-border);
+  background: #ffffff;
+  color: #0369a1;
+  border-color: #ffffff;
   font-weight: 800;
+  box-shadow: 0 1px 4px rgba(2, 6, 23, 0.24);
 }
 .qlbg-overlay.theme-light-blue .dock-tab-btn.active {
   background: #ffffff;
   color: #0284c7;
-  border-color: #60a5fa;
-  box-shadow: 0 1px 3px rgba(2, 132, 199, 0.16);
+  border-color: #ffffff;
+  box-shadow: 0 1px 4px rgba(2, 6, 23, 0.2);
 }
 
 .dock-tab-panel {
@@ -9499,29 +9602,34 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  padding: 4px 8px;
+  padding: 5px 8px;
   border-radius: 7px;
-  background: var(--sky-bg);
-  border: 1px solid var(--sky-border);
+  background: linear-gradient(90deg, #0284c7 0%, #0369a1 100%);
+  border: 1px solid #0369a1;
 }
 .customer-dock-title {
   font-size: 10.5px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  color: var(--sky-text);
+  color: #ffffff;
 }
 .btn-customer-detail-pill {
   width: auto;
   margin: 0;
   padding: 2px 8px;
   border-radius: 999px;
-  border: 1px solid var(--sky-border);
-  background: var(--bg-card);
-  color: var(--sky-text);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
   font-size: 10.5px;
   font-weight: 700;
   cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn-customer-detail-pill:hover {
+  background: #ffffff;
+  color: #0369a1;
 }
 
 .customer-dock-grid {
@@ -9995,7 +10103,9 @@ onUnmounted(() => {
   gap: 10px;
   padding: 13px 16px;
   background: var(--bg-modal-head-rich);
-  border-bottom: 1.5px solid var(--sky-border);
+  border-bottom: 1.5px solid rgba(56, 189, 248, 0.48);
+  color: #ffffff;
+  flex-shrink: 0;
 }
 .dm-date-modal-body {
   padding: 14px 16px;
@@ -10136,21 +10246,22 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   min-width: 0;
+  flex-wrap: wrap;
 }
 .pm-title-wrap h3 {
   margin: 0;
   font-size: 15px;
   font-weight: 800;
-  color: var(--ink-strong);
+  color: #ffffff;
 }
 .pm-count {
   padding: 2px 8px;
   border-radius: 999px;
   font-size: 11px;
   font-weight: 700;
-  background: var(--sky-bg);
-  color: var(--sky-text);
-  border: 1px solid var(--sky-border);
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.38);
 }
 
 .pm-search-bar {
@@ -10290,9 +10401,9 @@ onUnmounted(() => {
   border-radius: 999px;
   font-size: 11px;
   font-weight: 700;
-  background: var(--slate-bg);
-  color: var(--ink-secondary);
-  border: 1px solid var(--slate-border);
+  background: rgba(2, 18, 38, 0.28);
+  color: #e0f2fe;
+  border: 1px solid rgba(255, 255, 255, 0.32);
 }
 .cm-body {
   flex: 1 1 auto;
@@ -10392,29 +10503,29 @@ onUnmounted(() => {
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  background: var(--slate-bg);
-  color: var(--ink-secondary);
-  border-bottom: 1px solid var(--border-subtle);
+  background: linear-gradient(90deg, #334155 0%, #1e293b 100%);
+  color: #ffffff;
+  border-bottom: 1px solid #1e293b;
 }
 .cm-section-title.is-emerald {
-  background: var(--emerald-bg);
-  color: var(--emerald-text);
-  border-bottom-color: var(--emerald-border);
+  background: linear-gradient(90deg, #059669 0%, #047857 100%);
+  color: #ffffff;
+  border-bottom-color: #047857;
 }
 .cm-section-title.is-sky {
-  background: var(--sky-bg);
-  color: var(--sky-text);
-  border-bottom-color: var(--sky-border);
+  background: linear-gradient(90deg, #0284c7 0%, #0369a1 100%);
+  color: #ffffff;
+  border-bottom-color: #0369a1;
 }
 .cm-section-title.is-amber {
-  background: var(--amber-bg);
-  color: var(--amber-text);
-  border-bottom-color: var(--amber-border);
+  background: linear-gradient(90deg, #d97706 0%, #b45309 100%);
+  color: #ffffff;
+  border-bottom-color: #b45309;
 }
 .cm-section-title.is-indigo {
-  background: var(--indigo-bg);
-  color: var(--indigo-text);
-  border-bottom-color: var(--indigo-border);
+  background: linear-gradient(90deg, #4f46e5 0%, #4338ca 100%);
+  color: #ffffff;
+  border-bottom-color: #4338ca;
 }
 .cm-sub-divider {
   font-size: 11px;
@@ -11009,13 +11120,15 @@ onUnmounted(() => {
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    padding-bottom: 7px;
-    margin-bottom: 8px;
-    border-bottom: 1px dashed rgba(52, 211, 153, 0.24);
+    margin: -11px -12px 10px;
+    padding: 11px 12px 9px;
+    background: linear-gradient(90deg, #065f46 0%, #047857 58%, #0f766e 100%);
+    border-bottom: 1px solid rgba(52, 211, 153, 0.42);
   }
 
   .qlbg-overlay.theme-light-blue .dm-mob-overview-head {
-    border-bottom-color: #dbeafe;
+    background: linear-gradient(90deg, #0284c7 0%, #2563eb 58%, #1d4ed8 100%);
+    border-bottom-color: #1d4ed8;
   }
 
   .dm-mob-overview-title {
@@ -11026,11 +11139,11 @@ onUnmounted(() => {
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: #34d399;
+    color: #ffffff;
   }
 
   .qlbg-overlay.theme-light-blue .dm-mob-overview-title {
-    color: #0284c7;
+    color: #ffffff;
   }
 
   .dm-mob-overview-grid {
@@ -11517,22 +11630,28 @@ onUnmounted(() => {
     display: flex;
     align-items: center;
     gap: 7px;
-    padding-bottom: 7px;
-    margin-bottom: 2px;
-    border-bottom: 1px dashed var(--border-subtle);
+    margin: -12px -13px 4px;
+    padding: 9px 13px;
+    border-radius: 13px 13px 0 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.16);
     font-size: 11.5px;
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.04em;
+    color: #ffffff;
+    background: linear-gradient(90deg, #334155 0%, #1e293b 100%);
   }
   .dm-mob-dock-sec-head.is-sky {
-    color: var(--sky-text);
+    background: linear-gradient(90deg, #0284c7 0%, #0369a1 100%);
+    color: #ffffff;
   }
   .dm-mob-dock-sec-head.is-amber {
-    color: var(--amber-text);
+    background: linear-gradient(90deg, #d97706 0%, #b45309 100%);
+    color: #ffffff;
   }
   .dm-mob-dock-sec-head.is-emerald {
-    color: var(--emerald-text);
+    background: linear-gradient(90deg, #059669 0%, #047857 100%);
+    color: #ffffff;
   }
 }
 
@@ -11788,14 +11907,17 @@ onUnmounted(() => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding-bottom: 8px;
-    border-bottom: 1px solid var(--border-subtle);
+    margin: -12px -12px 0;
+    padding: 10px 12px;
+    border-radius: 15px 15px 0 0;
+    background: var(--bg-modal-head-rich);
+    border-bottom: 1.5px solid rgba(56, 189, 248, 0.45);
   }
 
   .bg-ds-title {
     font-size: 12.5px;
     font-weight: 800;
-    color: var(--ink-strong);
+    color: #ffffff;
   }
 
   .bg-ds-close {
@@ -11804,9 +11926,9 @@ onUnmounted(() => {
     margin: 0;
     padding: 0;
     border-radius: 7px;
-    border: 1px solid var(--border-control);
-    background: var(--bg-input);
-    color: var(--ink-muted);
+    border: 1px solid rgba(255, 255, 255, 0.34);
+    background: rgba(2, 18, 38, 0.28);
+    color: #ffffff;
     font-size: 12px;
     font-weight: 700;
     cursor: pointer;
@@ -11941,8 +12063,18 @@ onUnmounted(() => {
   }
   .gh-right {
     flex-wrap: nowrap;
+    align-items: flex-start;
     gap: 6px;
     padding-top: 2px;
+  }
+  .gh-right-badges {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+  }
+  .gh-done-badge {
+    padding: 3px 7.5px;
+    font-size: 10px;
   }
 
   .qlbg-cards-grid {
@@ -11962,10 +12094,15 @@ onUnmounted(() => {
     margin: auto 14px;
   }
   .qlbg-picker-modal {
+    position: relative;
     width: 100%;
     max-height: 94vh;
     border-radius: 18px 18px 0 0;
     border-bottom: none;
+  }
+  .qlbg-picker-modal .pm-head,
+  .qlbg-pop-menu .qlbg-pop-head {
+    padding-top: 20px;
   }
   .qlbg-cust-modal {
     width: 100vw !important;
@@ -11977,12 +12114,17 @@ onUnmounted(() => {
   }
   .mob-sheet-grabber {
     display: block;
+    position: absolute;
+    top: 7px;
+    left: 50%;
+    transform: translateX(-50%);
     width: 40px;
     height: 4px;
     border-radius: 999px;
-    background: var(--border-control);
-    margin: 8px auto 2px;
-    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.48);
+    margin: 0;
+    z-index: 2;
+    pointer-events: none;
   }
 
   /* Ngăn iOS / Chrome Mobile auto-zoom khi chạm vào input trong modal */

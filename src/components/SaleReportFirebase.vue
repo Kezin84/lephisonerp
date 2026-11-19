@@ -12977,6 +12977,7 @@ import FormattedInput from './FormattedInput.vue'
 import LicenseVendorPickerModal from './LicenseVendorPickerModal.vue'
 import LicenseDatePickerInput from './LicenseDatePickerInput.vue'
 import { parsePastedNumber } from '../utils/smartNumber'
+import { useBinaryAppTheme } from '../composables/useAppTheme'
 import {
   UNIVERSAL_IMPORT_ACCEPT,
   isImageDocFile,
@@ -13507,17 +13508,7 @@ const onSearchEnter = () => {
   showSearchSuggestions.value = false
 }
 
-const uiTheme = ref<'dark' | 'light'>(
-  typeof window !== 'undefined' && localStorage.getItem('baogia_theme_pref') === 'light'
-    ? 'light'
-    : 'dark'
-)
-const toggleUiTheme = () => {
-  uiTheme.value = uiTheme.value === 'dark' ? 'light' : 'dark'
-  try {
-    localStorage.setItem('baogia_theme_pref', uiTheme.value)
-  } catch (_e) {}
-}
+const { uiTheme, toggleUiTheme } = useBinaryAppTheme()
 
 function escapeHtmlForHighlight(str: string): string {
   return str

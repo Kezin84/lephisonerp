@@ -1152,8 +1152,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, nextTick } from 'vue'
+import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
+import { useBinaryAppTheme } from '../composables/useAppTheme'
 import {
   useSystemConfig,
   useCloudSyncMeta,
@@ -1257,10 +1258,18 @@ const navTabs: { id: TabId; num: string; label: string; shortLabel: string; desc
   }
 ]
 
+const { uiTheme: globalBinaryTheme, setUiTheme: setGlobalBinaryTheme } = useBinaryAppTheme()
 const draft = reactive<SystemConfig>(mergeSystemConfig(JSON.parse(JSON.stringify(sysConfig))))
+draft.ui.theme = globalBinaryTheme.value
 if (!isLocalHost) {
   draft.dbMode = 'live'
 }
+
+watch(globalBinaryTheme, (next) => {
+  if (draft.ui.theme !== next) {
+    draft.ui.theme = next
+  }
+})
 
 const revealed = reactive({
   firebaseApiKey: false,
@@ -1657,7 +1666,9 @@ function goBackToLogin(): void {
 }
 
 function toggleTheme(): void {
-  draft.ui.theme = draft.ui.theme === 'dark' ? 'light' : 'dark'
+  const next = draft.ui.theme === 'dark' ? 'light' : 'dark'
+  draft.ui.theme = next
+  setGlobalBinaryTheme(next)
 }
 
 function selectDbMode(mode: 'mock' | 'live'): void {

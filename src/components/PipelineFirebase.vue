@@ -7877,6 +7877,7 @@ import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.js?url'
 import { initializeApp, getApps, getApp } from 'firebase/app'
 import { getDatabase, ref as dbRef, get, set, update, remove, push, onValue } from 'firebase/database'
 import PipelineWorkflowFirebase from './PipelineWorkflowFirebase.vue'
+import { useFullAppTheme } from '../composables/useAppTheme'
 import anhMauThueUrl from '../assets/anh_mau_thue.png'
 import {
   UNIVERSAL_IMPORT_ACCEPT,
@@ -7950,7 +7951,6 @@ const formatNumber = (val) => {
 // =========================================================
 // THEME & CUSTOM GLASSIFY (SYNCED WITH MAIN TEMPLATE)
 // =========================================================
-const THEME_STORAGE_KEY = 'sonai_report_fb_theme_v2'
 const CUSTOM_GLASS_CFG_KEY = 'sonai_report_fb_custom_glass_cfg_v1'
 
 const DEFAULT_CUSTOM_GLASS_CONFIG = {
@@ -7965,14 +7965,6 @@ const GLASS_PRESETS = {
   ios_frost: { brightness: 34, opacity: 46, blur: 22, dim: 20 },
   ocean_dark: { brightness: 6, opacity: 52, blur: 20, dim: 32 },
   crystal_clear: { brightness: 42, opacity: 26, blur: 12, dim: 14 }
-}
-
-const getInitialTheme = () => {
-  if (typeof window !== 'undefined') {
-    const saved = localStorage.getItem(THEME_STORAGE_KEY)
-    if (saved === 'dark' || saved === 'light' || saved === 'custom') return saved
-  }
-  return 'dark'
 }
 
 const loadInitialGlassConfig = () => {
@@ -7996,7 +7988,7 @@ const loadInitialGlassConfig = () => {
   return { ...DEFAULT_CUSTOM_GLASS_CONFIG }
 }
 
-const uiTheme = ref(getInitialTheme())
+const { uiTheme, setUiTheme: setGlobalFullTheme } = useFullAppTheme()
 const showCustomGlassTuner = ref(false)
 const customGlassConfig = ref(loadInitialGlassConfig())
 
@@ -8075,11 +8067,8 @@ watch([uiTheme, customGlassStyleVars], syncCustomGlassVarsToDocumentRoot, { imme
 
 const setUiTheme = (nextTheme) => {
   if (!nextTheme || uiTheme.value === nextTheme) return
-  uiTheme.value = nextTheme
+  setGlobalFullTheme(nextTheme)
   if (nextTheme !== 'custom') showCustomGlassTuner.value = false
-  try {
-    localStorage.setItem(THEME_STORAGE_KEY, nextTheme)
-  } catch (e) {}
 }
 
 const tunerPopoverPos = ref({ top: '54px', left: 'auto', right: '18px' })
@@ -17564,7 +17553,6 @@ onMounted(() => {
 })
 
 onActivated(() => {
-  uiTheme.value = getInitialTheme()
   customGlassConfig.value = loadInitialGlassConfig()
   syncCustomGlassVarsToDocumentRoot()
   handleOpenIdDeepLink()

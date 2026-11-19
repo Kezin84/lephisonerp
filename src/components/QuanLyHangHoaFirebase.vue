@@ -275,95 +275,7 @@
             </div>
           </div>
 
-          <!-- 3. Lọc Nhà cung cấp -->
-          <div class="qlhh-picker-root" @click.stop>
-            <button
-              type="button"
-              class="qlhh-picker-btn"
-              :class="{ 'is-active': Boolean(selectedSupplierFilter), 'is-open': openDropdownType === 'supplier' }"
-              @click="toggleFilterDropdown('supplier')"
-              title="Lọc theo nhà cung cấp"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
-              <span class="picker-btn-text">{{ selectedSupplierFilter ? 'NCC: ' + selectedSupplierFilter : `NCC (${supplierFilterOptions.length})` }}</span>
-              <span
-                v-if="selectedSupplierFilter"
-                class="picker-clear-dot"
-                title="Bỏ lọc nhà cung cấp"
-                @click.stop="selectedSupplierFilter = ''"
-              >✕</span>
-              <svg v-else width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="picker-chev"><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-
-            <div v-if="openDropdownType === 'supplier'" class="qlhh-pop-backdrop" @click="openDropdownType = ''"></div>
-            <div v-if="openDropdownType === 'supplier'" class="qlhh-pop-menu is-wide" :class="{ 'theme-light-blue': uiTheme === 'light' }">
-              <div class="mob-sheet-grabber"></div>
-              <div class="qlhh-pop-head">
-                <span>Chọn Nhà cung cấp</span>
-                <button type="button" class="qlhh-pop-close" @click="openDropdownType = ''">✕</button>
-              </div>
-              <div class="qlhh-pop-search-wrap">
-                <input
-                  type="text"
-                  v-model="supplierDropdownSearch"
-                  placeholder="Tìm nhanh nhà cung cấp..."
-                  class="qlhh-pop-search"
-                />
-              </div>
-              <div class="qlhh-pop-list" @scroll="onFilterDropdownScroll($event, 'supplier')">
-                <button
-                  type="button"
-                  class="qlhh-pop-item"
-                  :class="{ active: !selectedSupplierFilter }"
-                  @click="selectFilterOption('supplier', '')"
-                >
-                  <span>Tất cả Nhà cung cấp</span>
-                  <span class="qlhh-pop-count tabular-nums">{{ items.length }}</span>
-                </button>
-                <button
-                  v-for="opt in displayedSupplierOptions"
-                  :key="opt.value"
-                  type="button"
-                  class="qlhh-pop-item"
-                  :class="{ active: selectedSupplierFilter === opt.value }"
-                  @click="selectFilterOption('supplier', opt.value)"
-                >
-                  <span :title="opt.label">{{ opt.label }}</span>
-                  <span class="qlhh-pop-count tabular-nums">{{ opt.count }}</span>
-                </button>
-                <div v-if="!filteredSupplierOptions.length" class="qlhh-pop-empty">Không tìm thấy nhà cung cấp phù hợp</div>
-                <button
-                  v-if="displayedSupplierOptions.length < filteredSupplierOptions.length"
-                  type="button"
-                  class="qlhh-pop-more"
-                  @click="supplierDropdownLimit += FILTER_DROPDOWN_PAGE_SIZE"
-                >
-                  Đang hiện {{ displayedSupplierOptions.length }}/{{ filteredSupplierOptions.length }} — Bấm tải thêm
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- 4. Lọc Số User (Volume) -->
-          <div class="qlhh-vol-pill" :class="{ 'is-active': userVolumeFilter !== '' }" title="Nhập số user / thiết bị để lọc dải Volume tương ứng">
-            <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-            <input
-              type="number"
-              min="1"
-              v-model="userVolumeFilter"
-              placeholder="Volume (user)..."
-              class="qlhh-vol-input tabular-nums"
-            />
-            <button
-              v-if="userVolumeFilter !== ''"
-              type="button"
-              class="picker-clear-dot"
-              title="Xóa lọc Volume"
-              @click="userVolumeFilter = ''"
-            >✕</button>
-          </div>
-
-          <!-- 5. Chọn Bảng Giá -->
+          <!-- 3. Chọn Bảng Giá -->
           <div class="qlhh-picker-root" @click.stop>
             <button
               type="button"
@@ -497,18 +409,15 @@
           </button>
         </div>
 
-        <!-- Ở GIỮA: KHUNG TÌM KIẾM BO TRÒN VIỀN XANH NHẸ -->
-        <div class="qlhh-search-box">
+        <!-- Ở GIỮA: KHUNG TÌM KIẾM BO TRÒN VIỀN XANH NHẸ (TÍCH HỢP Ô LỌC USER / VOLUME) -->
+        <div class="qlhh-search-box" :class="{ 'has-vol-active': userVolumeFilter !== '' }">
           <svg class="qlhh-search-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input
             v-model="searchQuery"
             type="text"
             class="qlhh-search-input"
-            placeholder="Tìm mã hàng, SKU, tên hàng, danh mục, nhà cung cấp..."
+            placeholder="Tìm mã hàng, SKU, tên hàng, danh mục..."
           />
-          <span v-if="hasActiveSearchOrFilter || selectedPriceListId" class="qlhh-search-count tabular-nums">
-            {{ totalProductsCount }} SP
-          </span>
           <button
             v-if="searchQuery"
             type="button"
@@ -517,46 +426,152 @@
           >
             Xóa
           </button>
+
+          <span class="qlhh-search-sep" aria-hidden="true"></span>
+
+          <div
+            class="qlhh-search-vol"
+            :class="{ 'is-active': userVolumeFilter !== '' }"
+            title="Nhập số user / thiết bị để lọc dải Volume tương ứng"
+          >
+            <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <NumberInput
+              :modelValue="userVolumeFilter"
+              @update:modelValue="onUserVolumeInput"
+              :decimals="0"
+              :emptyOnZero="true"
+              placeholder="User..."
+              class="qlhh-search-vol-input tabular-nums"
+              aria-label="Lọc theo số user / Volume"
+            />
+            <button
+              v-if="userVolumeFilter !== ''"
+              type="button"
+              class="picker-clear-dot"
+              title="Xóa lọc User"
+              @click="userVolumeFilter = ''"
+            >✕</button>
+          </div>
+
+          <span v-if="hasActiveSearchOrFilter || selectedPriceListId" class="qlhh-search-count tabular-nums">
+            {{ totalProductsCount }} SP
+          </span>
         </div>
 
-        <!-- BÊN PHẢI: CHUYỂN CHẾ ĐỘ XEM · NHÓM · THEME · IMPORT HUB · THÊM MỚI -->
+        <!-- BÊN PHẢI: CHẾ ĐỘ HIỂN THỊ · NHÓM · ĐỒNG BỘ · IMPORT HUB · THÊM MỚI -->
         <div class="qlhh-filter-right">
-          <!-- Segmented Switcher: Thẻ ↔ Bảng -->
-          <div class="qlhh-view-seg hide-mob-dock" role="group" aria-label="Chế độ hiển thị danh sách">
+          <!-- Nút Chế độ hiển thị hợp nhất (Thẻ / Bảng & Light / Dark Mode) -->
+          <div class="qlhh-picker-root hide-mob-dock" @click.stop>
             <button
               type="button"
-              class="qlhh-view-seg-btn"
-              :class="{ active: viewMode === 'card' }"
-              @click="setViewMode('card')"
-              title="Hiển thị dạng Lưới Thẻ 4 tầng"
+              class="qlhh-picker-btn qlhh-display-btn"
+              :class="{ 'is-open': openDropdownType === 'display' }"
+              @click="toggleFilterDropdown('display')"
+              title="Chế độ hiển thị (Thẻ / Bảng & Light / Dark Mode)"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
-              <span>Thẻ</span>
+              <svg width="14.5" height="14.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+              <span>Chế độ hiển thị</span>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="picker-chev"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
-            <button
-              type="button"
-              class="qlhh-view-seg-btn"
-              :class="{ active: viewMode === 'table' }"
-              @click="setViewMode('table')"
-              title="Hiển thị dạng Bảng dữ liệu mật độ cao"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-              <span>Bảng</span>
-            </button>
+
+            <div v-if="openDropdownType === 'display'" class="qlhh-pop-backdrop" @click="openDropdownType = ''"></div>
+            <div v-if="openDropdownType === 'display'" class="qlhh-pop-menu is-align-right is-display-pop" :class="{ 'theme-light-blue': uiTheme === 'light' }">
+              <div class="mob-sheet-grabber"></div>
+              <div class="qlhh-pop-head">
+                <span>Chế độ hiển thị</span>
+                <button type="button" class="qlhh-pop-close" @click="openDropdownType = ''">✕</button>
+              </div>
+              <div class="qlhh-display-pop-body">
+                <div class="qlhh-display-sec">
+                  <div class="qlhh-display-sec-lbl">Kiểu danh sách</div>
+                  <div class="qlhh-display-grid">
+                    <button
+                      type="button"
+                      class="qlhh-display-opt"
+                      :class="{ active: viewMode === 'card' }"
+                      @click="setViewMode('card')"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+                      <span>Thẻ</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="qlhh-display-opt"
+                      :class="{ active: viewMode === 'table' }"
+                      @click="setViewMode('table')"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                      <span>Bảng</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="qlhh-display-sec">
+                  <div class="qlhh-display-sec-lbl">Giao diện (Theme)</div>
+                  <div class="qlhh-display-grid">
+                    <button
+                      type="button"
+                      class="qlhh-display-opt"
+                      :class="{ active: uiTheme === 'light' }"
+                      @click="uiTheme !== 'light' && toggleUiTheme()"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                      <span>Light Mode</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="qlhh-display-opt"
+                      :class="{ active: uiTheme === 'dark' }"
+                      @click="uiTheme !== 'dark' && toggleUiTheme()"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                      <span>Dark Mode</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div v-if="totalGroupsCount > 0" class="qlhh-display-sec">
+                  <div class="qlhh-display-sec-lbl">Nhóm danh mục</div>
+                  <div class="qlhh-display-grid">
+                    <button
+                      type="button"
+                      class="qlhh-display-opt"
+                      :class="{ active: !areAllCategoriesCollapsed }"
+                      @click="areAllCategoriesCollapsed && toggleAllCategoriesCollapse()"
+                    >
+                      <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                      <span>Mở rộng</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="qlhh-display-opt"
+                      :class="{ active: areAllCategoriesCollapsed }"
+                      @click="!areAllCategoriesCollapsed && toggleAllCategoriesCollapse()"
+                    >
+                      <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+                      <span>Thu gọn</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <button
-            v-if="totalGroupsCount > 0"
             type="button"
-            class="qlhh-ghost-btn hide-mob-dock"
-            @click="toggleAllCategoriesCollapse"
-            :title="areAllCategoriesCollapsed ? 'Mở rộng toàn bộ nhóm danh mục' : 'Thu gọn toàn bộ nhóm danh mục'"
+            class="qlhh-ghost-btn qlhh-bulk-toggle-btn hide-mob-dock"
+            :class="{ 'is-active': bulkEditMode }"
+            @click="toggleBulkEditMode"
+            :title="bulkEditMode ? 'Thoát chế độ chọn & sửa hàng loạt' : 'Bật chế độ tick chọn để sửa hoặc xóa nhiều sản phẩm cùng lúc'"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
-              <polyline v-if="areAllCategoriesCollapsed" points="6 9 12 15 18 9"/>
-              <polyline v-else points="18 15 12 9 6 15"/>
-            </svg>
-            <span>{{ areAllCategoriesCollapsed ? 'Mở rộng nhóm' : 'Thu gọn nhóm' }}</span>
+            <svg width="14.5" height="14.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            <span>{{ bulkEditMode ? 'Đang chọn sửa' : 'Sửa hàng loạt' }}</span>
+            <span v-if="bulkEditMode && bulkSelectedKeys.length > 0" class="qlhh-bulk-btn-count tabular-nums">
+              {{ bulkSelectedKeys.length }}
+            </span>
           </button>
 
           <button
@@ -571,22 +586,42 @@
 
           <button
             type="button"
-            class="qlhh-icon-btn hide-mob-dock"
-            @click="toggleUiTheme"
-            :title="uiTheme === 'dark' ? 'Chuyển sang giao diện Sáng (Light Blue)' : 'Chuyển sang giao diện Tối (Dark Navy)'"
+            class="qlhh-ghost-btn is-hub-btn hide-mob-dock"
+            @click="openImportHub()"
+            title="Import Excel/PDF danh mục hãng, giá vốn & mức off"
           >
-            <svg v-if="uiTheme === 'dark'" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-            <svg v-else width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span>Import</span>
           </button>
 
           <button
             type="button"
-            class="qlhh-ghost-btn is-hub-btn hide-mob-dock"
-            @click="openVendorToolsHub()"
-            title="Mở Trung tâm Import Excel/PDF, File Tham Chiếu Hãng & Đối chiếu Bảng giá"
+            class="qlhh-ghost-btn is-compare-hub-btn hide-mob-dock"
+            @click="openCompareHub()"
+            title="Đối chiếu ảnh/bảng giá hãng & quản lý file tham chiếu Cloudinary"
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            <span>Import &amp; Đối chiếu</span>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            <span>Đối chiếu</span>
+          </button>
+
+          <button
+            type="button"
+            class="qlhh-ghost-btn is-usd-rate-btn hide-mob-dock"
+            @click="openUsdRateModal()"
+            :title="`Đổi tỉ giá USD toàn hệ thống (hiện tại: ${currentSystemUsdRate > 1 ? formatNumberPlain(currentSystemUsdRate) + ' ₫' : 'Chưa đặt'})`"
+          >
+            <svg width="14.5" height="14.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            <span>Đổi tỉ giá</span>
+          </button>
+
+          <button
+            type="button"
+            class="qlhh-ghost-btn is-pricelist-btn hide-mob-dock"
+            @click="openCreatePriceListModal()"
+            :title="`Tạo bảng giá riêng mới (hiện có ${priceLists.length} bảng giá)`"
+          >
+            <svg width="14.5" height="14.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+            <span>Tạo bảng giá</span>
           </button>
 
           <button
@@ -699,6 +734,20 @@
         <!-- HEADER NHÓM DANH MỤC (BẤM THU GỌN / MỞ RỘNG) -->
         <div class="qlhh-group-header" @click="toggleCategoryCollapse(category)">
           <div class="gh-left">
+            <button
+              v-if="bulkEditMode"
+              type="button"
+              class="qlhh-bulk-check is-on-header"
+              :class="{
+                selected: isBulkCategoryAllSelected(category),
+                'is-partial': isBulkCategoryPartialSelected(category)
+              }"
+              :title="isBulkCategoryAllSelected(category) ? 'Bỏ chọn tất cả sản phẩm trong nhóm này' : 'Chọn tất cả sản phẩm trong nhóm này'"
+              @click.stop="toggleBulkCategorySelection(category)"
+            >
+              <svg v-if="isBulkCategoryAllSelected(category)" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              <span v-else-if="isBulkCategoryPartialSelected(category)" class="qlhh-bulk-chk-dash"></span>
+            </button>
             <span class="gh-folder-ico">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
             </span>
@@ -749,6 +798,21 @@
             <table class="qlhh-data-table">
               <thead>
                 <tr>
+                  <th v-if="bulkEditMode" class="col-bulk-chk">
+                    <button
+                      type="button"
+                      class="qlhh-bulk-check"
+                      :class="{
+                        selected: isBulkCategoryAllSelected(category),
+                        'is-partial': isBulkCategoryPartialSelected(category)
+                      }"
+                      :title="isBulkCategoryAllSelected(category) ? 'Bỏ chọn cả nhóm' : 'Chọn cả nhóm'"
+                      @click.stop="toggleBulkCategorySelection(category)"
+                    >
+                      <svg v-if="isBulkCategoryAllSelected(category)" width="10.5" height="10.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      <span v-else-if="isBulkCategoryPartialSelected(category)" class="qlhh-bulk-chk-dash"></span>
+                    </button>
+                  </th>
                   <th class="col-code">Mã / SKU</th>
                   <th class="col-name">Tên hàng hóa</th>
                   <th class="col-spec">Volume &amp; Thời hạn</th>
@@ -763,9 +827,23 @@
                   v-for="(item, index) in groupItems"
                   :key="item._firebaseKey || item.Ma_hang || index"
                   class="qlhh-table-row"
-                  :class="{ 'in-quote-cart': isInQuoteCart(item) }"
-                  @click="openEditModal(item)"
+                  :class="{
+                    'in-quote-cart': isInQuoteCart(item),
+                    'is-bulk-selected': bulkEditMode && isBulkItemSelected(item)
+                  }"
+                  @click="bulkEditMode ? toggleBulkItemSelection(item) : openEditModal(item)"
                 >
+                  <td v-if="bulkEditMode" class="col-bulk-chk" @click.stop>
+                    <button
+                      type="button"
+                      class="qlhh-bulk-check"
+                      :class="{ selected: isBulkItemSelected(item) }"
+                      :title="isBulkItemSelected(item) ? 'Bỏ chọn sản phẩm này' : 'Chọn sản phẩm này'"
+                      @click.stop="toggleBulkItemSelection(item)"
+                    >
+                      <svg v-if="isBulkItemSelected(item)" width="10.5" height="10.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    </button>
+                  </td>
                   <td class="col-code">
                     <div class="tbl-code-stack">
                       <span
@@ -914,26 +992,160 @@
               v-for="(item, index) in groupItems"
               :key="item._firebaseKey || item.Ma_hang || index"
               class="qlhh-card"
-              :class="{ 'in-quote-cart': isInQuoteCart(item) }"
-              @click="openEditModal(item)"
+              :class="{
+                'in-quote-cart': isInQuoteCart(item),
+                'is-bulk-selected': bulkEditMode && isBulkItemSelected(item)
+              }"
+              @click="bulkEditMode ? toggleBulkItemSelection(item) : openEditModal(item)"
             >
-              <!-- Tầng 1: Hãng + Type + Giỏ đã chọn + Cụm icon thao tác -->
+              <!-- Tầng 1: Checkbox (khi sửa hàng loạt) + Hãng + Giỏ đã chọn -->
               <div class="qlhh-card-top">
                 <div class="qlhh-card-badges">
-                  <span class="qlhh-brand-tag">{{ item.Ten_nha_cung_cap || getItemBrand(item) }}</span>
-                  <span
-                    v-if="item.Type"
-                    class="qlhh-type-tag"
-                    :class="String(item.Type).toLowerCase().includes('renewal') ? 'is-amber' : 'is-emerald'"
+                  <button
+                    v-if="bulkEditMode"
+                    type="button"
+                    class="qlhh-bulk-check"
+                    :class="{ selected: isBulkItemSelected(item) }"
+                    :title="isBulkItemSelected(item) ? 'Bỏ chọn sản phẩm này' : 'Chọn sản phẩm này'"
+                    @click.stop="toggleBulkItemSelection(item)"
                   >
-                    {{ item.Type }}
-                  </span>
+                    <svg v-if="isBulkItemSelected(item)" width="10.5" height="10.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  </button>
+                  <span class="qlhh-brand-tag">{{ item.Ten_nha_cung_cap || getItemBrand(item) }}</span>
                   <span v-if="isInQuoteCart(item)" class="qlhh-selected-tag tabular-nums">
                     ✓ x{{ getCartItemQty(item) }}
                   </span>
                 </div>
+              </div>
 
-                <div class="qlhh-row-icons" @click.stop>
+              <!-- Tầng 2: Tên hàng hóa + Dòng SKU & Thời hạn dạng chữ thường -->
+              <div class="qlhh-card-identity">
+                <h4 class="qlhh-card-title" :title="item.Ten_hang" v-html="highlightText(item.Ten_hang, searchQuery)"></h4>
+                <div v-if="item.sku_code" class="qlhh-card-sku-line tabular-nums" :title="'SKU: ' + item.sku_code">
+                  <span class="qlhh-card-sku-lbl">SKU:</span>
+                  <span class="qlhh-card-sku-val" v-html="highlightText(item.sku_code, searchQuery)"></span>
+                </div>
+                <div
+                  v-if="item.License_duration || item.thoi_han_bao_hanh"
+                  class="qlhh-card-sku-line tabular-nums"
+                  :title="'Thời hạn: ' + (item.License_duration || item.thoi_han_bao_hanh)"
+                >
+                  <span class="qlhh-card-sku-lbl">Thời hạn:</span>
+                  <span class="qlhh-card-sku-val">{{ item.License_duration || item.thoi_han_bao_hanh }}</span>
+                </div>
+              </div>
+
+              <!-- Tầng 3: Chip Volume (nếu có) -->
+              <div v-if="item.volume" class="qlhh-spec-row">
+                <span class="qlhh-spec-chip is-sky tabular-nums">
+                  {{ item.volume }}
+                </span>
+              </div>
+
+              <!-- Tầng 4: Giá List + Nút + Giỏ & Hàng 4 nút thao tác riêng ở đáy Card -->
+              <div class="qlhh-card-footer">
+                <div class="qlhh-card-price-row">
+                  <div class="qlhh-price-stack tabular-nums">
+                    <template v-if="getPriceListEntry(item)">
+                      <div class="qlhh-price-lbl-row">
+                        <div class="qlhh-price-strike">
+                          Giá List: {{ formatCardDisplayPrice(activePriceList?.auto_sync_base_price ? item.Don_gia : getPriceListEntry(item).gia_goc, item) }}
+                        </div>
+                        <button
+                          v-if="isCardUsdItem(item)"
+                          type="button"
+                          class="qlhh-cur-switch"
+                          :class="{ 'is-vnd': isCardShowingVnd(item) }"
+                          :title="`Chuyển đổi USD ↔ VND (tỉ giá ${formatNumberPlain(getCardUsdRate(item))} ₫)`"
+                          @click.stop="toggleCardUsdToVnd(item)"
+                        >
+                          <span class="cur-sw-opt" :class="{ active: !isCardShowingVnd(item) }">USD</span>
+                          <span class="cur-sw-opt" :class="{ active: isCardShowingVnd(item) }">VND</span>
+                        </button>
+                        <span v-if="isCardUsdItem(item)" class="qlhh-usd-rate-txt tabular-nums">
+                          Tỉ giá: {{ formatNumberPlain(getCardUsdRate(item)) }}₫
+                        </span>
+                      </div>
+                      <div class="qlhh-price-main-line">
+                        <strong class="qlhh-sell-val">{{ formatCardDisplayPrice(getPriceListEntry(item).gia_ban_moi, item) }}</strong>
+                        <small v-if="item.DVT" class="qlhh-sell-dvt">/ {{ item.DVT }}</small>
+                        <span
+                          class="pl-card-diff-badge"
+                          :class="getPriceListDiffClass(getPriceListEntry(item), activePriceList?.auto_sync_base_price ? item.Don_gia : getPriceListEntry(item).gia_goc)"
+                        >
+                          {{ formatPriceListRuleShort(getPriceListEntry(item), activePriceList?.auto_sync_base_price ? item.Don_gia : getPriceListEntry(item).gia_goc) }}
+                        </span>
+                      </div>
+                    </template>
+                    <template v-else>
+                      <div class="qlhh-price-lbl-row">
+                        <span class="qlhh-price-list-lbl">Giá List</span>
+                        <button
+                          v-if="isCardUsdItem(item)"
+                          type="button"
+                          class="qlhh-cur-switch"
+                          :class="{ 'is-vnd': isCardShowingVnd(item) }"
+                          :title="`Chuyển đổi USD ↔ VND (tỉ giá ${formatNumberPlain(getCardUsdRate(item))} ₫)`"
+                          @click.stop="toggleCardUsdToVnd(item)"
+                        >
+                          <span class="cur-sw-opt" :class="{ active: !isCardShowingVnd(item) }">USD</span>
+                          <span class="cur-sw-opt" :class="{ active: isCardShowingVnd(item) }">VND</span>
+                        </button>
+                        <span v-if="isCardUsdItem(item)" class="qlhh-usd-rate-txt tabular-nums">
+                          Tỉ giá: {{ formatNumberPlain(getCardUsdRate(item)) }}₫
+                        </span>
+                      </div>
+                      <div class="qlhh-price-main-line">
+                        <strong class="qlhh-sell-val">{{ formatCardDisplayPrice(item.Don_gia, item) }}</strong>
+                        <small v-if="item.DVT" class="qlhh-sell-dvt">/ {{ item.DVT }}</small>
+                      </div>
+                    </template>
+                  </div>
+
+                  <div class="qlhh-cart-ctrl" @click.stop>
+                    <button
+                      v-if="!isInQuoteCart(item)"
+                      type="button"
+                      class="qlhh-add-cart-btn is-icon-only"
+                      title="Thêm vào giỏ báo giá"
+                      aria-label="Thêm vào giỏ báo giá"
+                      @click.stop="addToQuoteCart(item)"
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    </button>
+
+                    <div v-else class="qlhh-capsule-stepper" @click.stop>
+                      <button
+                        type="button"
+                        class="step-cir minus"
+                        title="Giảm số lượng (về 0 sẽ bỏ khỏi giỏ)"
+                        @click.stop="updateQuoteCartQty(item, -1, false)"
+                      >−</button>
+                      <input
+                        type="number"
+                        min="1"
+                        inputmode="numeric"
+                        class="step-num tabular-nums"
+                        :value="getCartItemQty(item)"
+                        @click.stop
+                        @change="onCardCartQtyInputChange(item, $event)"
+                      />
+                      <button
+                        type="button"
+                        class="step-cir plus"
+                        title="Tăng số lượng"
+                        @click.stop="updateQuoteCartQty(item, 1, false)"
+                      >+</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Hàng 4 nút thao tác riêng ở đáy card (2 nút mỗi hàng) -->
+                <div
+                  class="qlhh-card-bottom-bar"
+                  :class="{ 'is-3btn': !getCardVendorType(item) }"
+                  @click.stop
+                >
                   <button
                     v-if="getCardVendorType(item)"
                     type="button"
@@ -942,131 +1154,26 @@
                     @click.stop="openCardOriginalFileCompare(item)"
                   >
                     <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    <span>Đối chiếu</span>
                   </button>
                   <button
                     type="button"
-                    class="qlhh-ico-act"
+                    class="qlhh-ico-act is-doc-btn"
                     :class="{ 'has-files': getProductFileHistory(item).length > 0 }"
-                    :title="`Lịch sử file đính kèm (${getProductFileHistory(item).length})`"
+                    :title="`Tài liệu & lịch sử file đính kèm (${getProductFileHistory(item).length})`"
                     @click.stop="openProductFilesModal(item)"
                   >
                     <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-                    <span v-if="getProductFileHistory(item).length" class="ico-mini-dot tabular-nums">{{ getProductFileHistory(item).length }}</span>
+                    <span class="tabular-nums">Tài liệu<template v-if="getProductFileHistory(item).length"> ({{ getProductFileHistory(item).length }})</template></span>
                   </button>
                   <button type="button" class="qlhh-ico-act is-edit" title="Chỉnh sửa chi tiết" @click.stop="openEditModal(item)">
                     <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    <span>Sửa</span>
                   </button>
                   <button type="button" class="qlhh-ico-act is-del" title="Xóa hàng hóa" @click.stop="requestDelete(item)">
                     <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    <span>Xóa</span>
                   </button>
-                </div>
-              </div>
-
-              <!-- Tầng 2: Pill Mã/SKU + Tên hàng hóa 2 dòng -->
-              <div class="qlhh-card-identity">
-                <div v-if="item.sku_code || (item.Ma_hang && item.Ma_hang !== item.Ten_hang)" class="qlhh-code-row">
-                  <span
-                    v-if="item.sku_code"
-                    class="qlhh-code-pill is-sku tabular-nums"
-                    :title="'SKU: ' + item.sku_code"
-                    v-html="highlightText(item.sku_code, searchQuery)"
-                  ></span>
-                  <span
-                    v-if="item.Ma_hang && item.Ma_hang !== item.sku_code && String(item.Ma_hang).toLowerCase() !== String(item.Ten_hang || '').toLowerCase()"
-                    class="qlhh-code-pill is-ma tabular-nums"
-                    :title="'Mã hàng: ' + item.Ma_hang"
-                    v-html="highlightText(item.Ma_hang, searchQuery)"
-                  ></span>
-                </div>
-                <h4 class="qlhh-card-title" :title="item.Ten_hang" v-html="highlightText(item.Ten_hang, searchQuery)"></h4>
-              </div>
-
-              <!-- Tầng 3: Chip thông số ngang -->
-              <div class="qlhh-spec-row">
-                <span v-if="item.License_duration || item.thoi_han_bao_hanh" class="qlhh-spec-chip tabular-nums">
-                  {{ item.License_duration || item.thoi_han_bao_hanh }}
-                </span>
-                <span v-if="item.volume" class="qlhh-spec-chip is-sky tabular-nums">
-                  {{ item.volume }}
-                </span>
-                <span class="qlhh-spec-chip is-cur tabular-nums">
-                  {{ item.Don_vi_tien_te || 'VND' }}<template v-if="String(item.Don_vi_tien_te || '').trim().toUpperCase() === 'USD' && item.Ti_gia"> · {{ formatNumberPlain(item.Ti_gia) }}₫</template>
-                </span>
-              </div>
-
-              <!-- Tầng 4: Giá vốn vs Giá bán & Nút + Giỏ / Stepper -->
-              <div class="qlhh-card-footer">
-                <div class="qlhh-price-stack tabular-nums">
-                  <div class="qlhh-cost-line">
-                    <span>Giá vốn:</span>
-                    <strong class="qlhh-cost-val">{{ formatCurrency(item.Gia_tieu_chuan || 0, item.Don_vi_tien_te) }}</strong>
-                  </div>
-
-                  <template v-if="getPriceListEntry(item)">
-                    <div class="qlhh-price-strike">
-                      Gốc: {{ formatCurrency(activePriceList?.auto_sync_base_price ? item.Don_gia : getPriceListEntry(item).gia_goc, item.Don_vi_tien_te) }}
-                    </div>
-                    <div class="qlhh-price-main-line">
-                      <strong class="qlhh-sell-val">{{ formatCurrency(getPriceListEntry(item).gia_ban_moi, item.Don_vi_tien_te) }}</strong>
-                      <small v-if="item.DVT" class="qlhh-sell-dvt">/ {{ item.DVT }}</small>
-                      <span
-                        class="pl-card-diff-badge"
-                        :class="getPriceListDiffClass(getPriceListEntry(item), activePriceList?.auto_sync_base_price ? item.Don_gia : getPriceListEntry(item).gia_goc)"
-                      >
-                        {{ formatPriceListRuleShort(getPriceListEntry(item), activePriceList?.auto_sync_base_price ? item.Don_gia : getPriceListEntry(item).gia_goc) }}
-                      </span>
-                    </div>
-                  </template>
-                  <template v-else>
-                    <div class="qlhh-price-main-line">
-                      <strong class="qlhh-sell-val">{{ formatCurrency(item.Don_gia, item.Don_vi_tien_te) }}</strong>
-                      <small v-if="item.DVT" class="qlhh-sell-dvt">/ {{ item.DVT }}</small>
-                      <span
-                        v-if="toNum(item.Gia_tieu_chuan) > 0 && toNum(item.Don_gia) > 0 && toNum(item.Don_gia) !== toNum(item.Gia_tieu_chuan)"
-                        class="pl-card-diff-badge"
-                        :class="toNum(item.Don_gia) > toNum(item.Gia_tieu_chuan) ? 'up' : 'down'"
-                        title="Chênh lệch Giá bán so với Giá vốn/off hãng"
-                      >
-                        {{ formatCardMarkupBadge(item) }}
-                      </span>
-                    </div>
-                  </template>
-                </div>
-
-                <div class="qlhh-cart-ctrl" @click.stop>
-                  <button
-                    v-if="!isInQuoteCart(item)"
-                    type="button"
-                    class="qlhh-add-cart-btn"
-                    @click.stop="addToQuoteCart(item)"
-                  >
-                    <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                    <span>Giỏ</span>
-                  </button>
-
-                  <div v-else class="qlhh-capsule-stepper" @click.stop>
-                    <button
-                      type="button"
-                      class="step-cir minus"
-                      title="Giảm số lượng (về 0 sẽ bỏ khỏi giỏ)"
-                      @click.stop="updateQuoteCartQty(item, -1, false)"
-                    >−</button>
-                    <input
-                      type="number"
-                      min="1"
-                      inputmode="numeric"
-                      class="step-num tabular-nums"
-                      :value="getCartItemQty(item)"
-                      @click.stop
-                      @change="onCardCartQtyInputChange(item, $event)"
-                    />
-                    <button
-                      type="button"
-                      class="step-cir plus"
-                      title="Tăng số lượng"
-                      @click.stop="updateQuoteCartQty(item, 1, false)"
-                    >+</button>
-                  </div>
                 </div>
               </div>
             </article>
@@ -1387,7 +1494,7 @@
                   </div>
                 </div>
 
-                <!-- KHỐI 1: GIÁ VỐN / OFF HÃNG + CÔNG THỨC TÍNH GIÁ BÁN -->
+                <!-- KHỐI 1: GIÁ VỐN / OFF HÃNG -->
                 <div class="qlhh-price-calc-card is-violet">
                   <div class="pcc-top-row">
                     <label class="pcc-label is-violet">Giá vốn / Off hãng</label>
@@ -1400,6 +1507,16 @@
                     class="qlhh-fm-input is-hero-num is-cost-hero tabular-nums"
                     @update:modelValue="onModalGiaVonChange"
                   />
+                </div>
+
+                <!-- KHỐI CẦU NỐI TÁCH BIỆT: TÍNH TOÁN 2 CHIỀU GIÁ VỐN ↔ GIÁ LIST -->
+                <div class="qlhh-price-calc-card is-sky is-formula-bridge">
+                  <div class="pcc-top-row">
+                    <label class="pcc-label is-sky">Tính toán Giá vốn ↔ Giá List</label>
+                    <span class="pcc-caption">
+                      {{ modalCostMarkup.flow === 'sell_to_cost' ? 'Đang tính ngược từ Giá List → Giá vốn' : 'Đang tính xuôi từ Giá vốn → Giá List' }}
+                    </span>
+                  </div>
 
                   <div class="qlhh-formula-bar">
                     <button
@@ -1808,8 +1925,8 @@
     </div>
 
     <!-- IMPORT PREVIEW MODAL -->
-    <div v-if="showImportModal" class="import-overlay" @click.self="showImportModal = false">
-      <div class="import-modal">
+    <div v-if="showImportModal" class="import-overlay import-overlay--fullscreen" @click.self="showImportModal = false">
+      <div class="import-modal import-modal--fullscreen">
         <!-- Header -->
         <div class="import-modal__header">
           <div class="import-modal__header-left">
@@ -1925,46 +2042,97 @@
         <!-- Thanh cấu hình chuẩn hóa SOPHOS (hiển thị khi đang import dữ liệu SOPHOS) -->
         <div
           v-if="importData[0]?.Ten_nha_cung_cap === 'SOPHOS'"
-          style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 10px 18px; background: rgba(245, 158, 11, 0.08); border-bottom: 1px solid rgba(245, 158, 11, 0.25);"
+          class="imp-sophos-bar"
         >
-          <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; color: #fde68a; font-weight: 700;">
-            <input
-              type="checkbox"
-              v-model="clearOldSophosBeforeImport"
-              style="width: 16px; height: 16px; accent-color: #f59e0b; cursor: pointer;"
-            />
-            <span>🗑️ Xóa toàn bộ hàng SOPHOS cũ trong Database trước khi lưu bộ mã mới (Chuẩn hóa <code>Ma_hang = SKU</code>)</span>
-          </label>
+          <div class="imp-sophos-bar__top">
+            <label class="imp-sophos-clear-check">
+              <input
+                type="checkbox"
+                v-model="clearOldSophosBeforeImport"
+              />
+              <span>🗑️ Xóa toàn bộ hàng SOPHOS cũ trong Database trước khi lưu bộ mã mới (Chuẩn hóa <code>Ma_hang = SKU</code>)</span>
+            </label>
+          </div>
 
-          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-            <span style="font-size: 12px; color: #cbd5e1; font-weight: 600;">Nguồn nạp nhanh:</span>
-            <button
-              type="button"
-              class="pl-mini-btn"
-              :style="sophosReimportMode === 'bom' ? 'background: rgba(16,185,129,0.22); border-color: #10b981; color: #6ee7b7;' : ''"
-              @click="openSophosStandardizedReimportModal('bom')"
-              title="182 mã SKU chuẩn trong file_trung_gian_SOPHOS kết hợp Description / Volume / Months / New-Renewal từ SKU_List"
-            >
-              📘 BOM Trung Gian + SKU_List (182 mã)
-            </button>
-            <button
-              type="button"
-              class="pl-mini-btn"
-              :style="sophosReimportMode === 'bom_plus_skulist' ? 'background: rgba(245,158,11,0.22); border-color: #f59e0b; color: #fde68a;' : ''"
-              @click="openSophosStandardizedReimportModal('bom_plus_skulist')"
-              title="Bao gồm 182 mã BOM Trung Gian + Toàn bộ mã CORP (New & Renewal, 12/24/36 months, mọi range users) từ sophos-pricelist-reseller_SKU_list.xlsb"
-            >
-              📙 BOM + Toàn bộ SKU_Tab CORP (New &amp; Renewal)
-            </button>
-            <button
-              type="button"
-              class="pl-mini-btn"
-              :style="sophosReimportMode === 'all_skulist' ? 'background: rgba(56,189,248,0.22); border-color: #38bdf8; color: #bae6fd;' : ''"
-              @click="openSophosStandardizedReimportModal('all_skulist')"
-              title="Toàn bộ 9,958 mã SKU trong sophos-pricelist-reseller_SKU_list-asean-usd-2026-3.0.xlsb"
-            >
-              🌐 Tất cả SKU_Tab (9,958 mã)
-            </button>
+          <div class="imp-sophos-src-row">
+            <span class="imp-sophos-src-label">Nguồn nạp theo file đối chiếu:</span>
+
+            <!-- Nguồn 1: File Trung Gian -->
+            <div class="imp-src-pill" :class="{ 'is-active is-emerald': sophosReimportMode === 'bom' }">
+              <button
+                type="button"
+                class="imp-src-pill__main"
+                @click="openSophosStandardizedReimportModal('bom')"
+                :title="`Nạp ${sophosReimportSourceInfo.bomCount.toLocaleString()} mã SKU từ ${sophosReimportSourceInfo.tgFileName} (ghép thông tin từ ${sophosReimportSourceInfo.gocFileName})`"
+              >
+                <span class="imp-src-pill__name">{{ sophosReimportSourceInfo.tgFileName }}</span>
+                <span class="imp-src-pill__badge tabular-nums">{{ sophosReimportSourceInfo.bomCount.toLocaleString() }} mã</span>
+              </button>
+              <a
+                v-if="sophosReimportSourceInfo.tgMeta"
+                :href="getVendorOfficeViewUrl(sophosReimportSourceInfo.tgMeta)"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="imp-src-pill__eye"
+                :title="`Xem trước file Excel: ${sophosReimportSourceInfo.tgFileName}`"
+                @click.stop="handleOpenVendorOfficeView($event, 'sophos', 'tg', sophosReimportSourceInfo.tgMeta)"
+              >
+                <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <span>Xem file</span>
+              </a>
+            </div>
+
+            <!-- Nguồn 2: File Trung Gian + File Gốc (CORP) -->
+            <div class="imp-src-pill" :class="{ 'is-active is-amber': sophosReimportMode === 'bom_plus_skulist' }">
+              <button
+                type="button"
+                class="imp-src-pill__main"
+                @click="openSophosStandardizedReimportModal('bom_plus_skulist')"
+                :title="`Nạp ${sophosReimportSourceInfo.tgFileName} + các mã CORP (New & Renewal) trong ${sophosReimportSourceInfo.gocFileName}`"
+              >
+                <span class="imp-src-pill__name">{{ sophosReimportSourceInfo.gocFileName }}</span>
+                <span class="imp-src-pill__scope">CORP + Trung gian</span>
+                <span class="imp-src-pill__badge tabular-nums">{{ sophosReimportSourceInfo.bomPlusCorpCount.toLocaleString() }} mã</span>
+              </button>
+              <a
+                v-if="sophosReimportSourceInfo.gocMeta"
+                :href="getVendorOfficeViewUrl(sophosReimportSourceInfo.gocMeta)"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="imp-src-pill__eye"
+                :title="`Xem trước file Excel: ${sophosReimportSourceInfo.gocFileName}`"
+                @click.stop="handleOpenVendorOfficeView($event, 'sophos', 'goc', sophosReimportSourceInfo.gocMeta)"
+              >
+                <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <span>Xem file</span>
+              </a>
+            </div>
+
+            <!-- Nguồn 3: Toàn bộ File Gốc / SKU_List -->
+            <div class="imp-src-pill" :class="{ 'is-active is-sky': sophosReimportMode === 'all_skulist' }">
+              <button
+                type="button"
+                class="imp-src-pill__main"
+                @click="openSophosStandardizedReimportModal('all_skulist')"
+                :title="`Nạp toàn bộ ${sophosReimportSourceInfo.allSkuCount.toLocaleString()} mã SKU trong ${sophosReimportSourceInfo.gocFileName}`"
+              >
+                <span class="imp-src-pill__name">{{ sophosReimportSourceInfo.gocFileName }}</span>
+                <span class="imp-src-pill__scope">Tất cả</span>
+                <span class="imp-src-pill__badge tabular-nums">{{ sophosReimportSourceInfo.allSkuCount.toLocaleString() }} mã</span>
+              </button>
+              <a
+                v-if="sophosReimportSourceInfo.gocMeta"
+                :href="getVendorOfficeViewUrl(sophosReimportSourceInfo.gocMeta)"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="imp-src-pill__eye"
+                :title="`Xem trước file Excel: ${sophosReimportSourceInfo.gocFileName}`"
+                @click.stop="handleOpenVendorOfficeView($event, 'sophos', 'goc', sophosReimportSourceInfo.gocMeta)"
+              >
+                <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <span>Xem file</span>
+              </a>
+            </div>
           </div>
         </div>
 
@@ -7742,36 +7910,36 @@
     </template>
 
     <!-- =========================================================
-         TRUNG TÂM IMPORT & ĐỐI CHIẾU HÃNG (BENTO HUB MODAL)
+         MODAL RIÊNG 1: IMPORT DỮ LIỆU & BẢNG GIÁ HÃNG
     ========================================================== -->
     <div
-      v-if="showVendorToolsModal"
+      v-if="showImportHubModal"
       class="qlhh-modal-backdrop qlhh-hub-overlay"
       :class="{ 'theme-light-blue': uiTheme === 'light' }"
-      @click.self="showVendorToolsModal = false"
+      @click.self="showImportHubModal = false"
     >
       <div class="qlhh-hub-modal" :class="{ 'theme-light-blue': uiTheme === 'light' }">
         <div class="mob-sheet-grabber"></div>
-        <div class="qlhh-hub-head">
+        <div class="qlhh-hub-head is-import-hub">
           <div class="qlhh-hub-head-left">
             <span class="qlhh-hub-head-ico">
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
             </span>
             <div>
-              <h3 class="qlhh-hub-title">Trung tâm Import &amp; Đối chiếu Hãng</h3>
-              <p class="qlhh-hub-sub">Quản lý import bảng giá, file mẫu, file tham chiếu Cloudinary và đối chiếu ảnh theo từng hãng</p>
+              <h3 class="qlhh-hub-title">Import Dữ Liệu Hãng &amp; Giá Vốn</h3>
+              <p class="qlhh-hub-sub">Nạp danh mục Excel theo từng hãng, tải file mẫu và import giá vốn / mức off hãng</p>
             </div>
           </div>
-          <button type="button" class="qlhh-hub-close" @click="showVendorToolsModal = false" aria-label="Đóng">✕</button>
+          <button type="button" class="qlhh-hub-close" @click="showImportHubModal = false" aria-label="Đóng">✕</button>
         </div>
 
-        <!-- 4 TAB CHUYÊN BIỆT -->
+        <!-- 4 TAB IMPORT -->
         <div class="qlhh-hub-tabs" role="tablist">
           <button
             type="button"
             class="qlhh-hub-tab"
-            :class="{ active: activeVendorHubTab === 'sophos' }"
-            @click="activeVendorHubTab = 'sophos'"
+            :class="{ active: activeImportHubTab === 'sophos' }"
+            @click="activeImportHubTab = 'sophos'"
           >
             <span>Sophos</span>
             <span class="hub-tab-count tabular-nums">{{ brandKpiCounts.sophos }}</span>
@@ -7779,8 +7947,8 @@
           <button
             type="button"
             class="qlhh-hub-tab"
-            :class="{ active: activeVendorHubTab === 'kaspersky' }"
-            @click="activeVendorHubTab = 'kaspersky'"
+            :class="{ active: activeImportHubTab === 'kaspersky' }"
+            @click="activeImportHubTab = 'kaspersky'"
           >
             <span>Kaspersky</span>
             <span class="hub-tab-count tabular-nums">{{ brandKpiCounts.kaspersky }}</span>
@@ -7788,8 +7956,8 @@
           <button
             type="button"
             class="qlhh-hub-tab"
-            :class="{ active: activeVendorHubTab === 'acronis' }"
-            @click="activeVendorHubTab = 'acronis'"
+            :class="{ active: activeImportHubTab === 'acronis' }"
+            @click="activeImportHubTab = 'acronis'"
           >
             <span>Acronis</span>
             <span class="hub-tab-count tabular-nums">{{ brandKpiCounts.acronis }}</span>
@@ -7797,16 +7965,16 @@
           <button
             type="button"
             class="qlhh-hub-tab"
-            :class="{ active: activeVendorHubTab === 'cost_pricing' }"
-            @click="activeVendorHubTab = 'cost_pricing'"
+            :class="{ active: activeImportHubTab === 'cost_pricing' }"
+            @click="activeImportHubTab = 'cost_pricing'"
           >
-            <span>Giá vốn &amp; Bảng giá</span>
+            <span>Giá vốn &amp; Mức Off</span>
           </button>
         </div>
 
         <div class="qlhh-hub-body">
-          <!-- TAB 1: SOPHOS -->
-          <div v-if="activeVendorHubTab === 'sophos'" class="qlhh-hub-pane">
+          <!-- IMPORT TAB 1: SOPHOS -->
+          <div v-if="activeImportHubTab === 'sophos'" class="qlhh-hub-pane">
             <div class="hub-section-card">
               <div class="hub-sec-head">
                 <div>
@@ -7831,7 +7999,7 @@
                   <button
                     type="button"
                     class="qlhh-ghost-btn is-sm is-amber-tint"
-                    @click="showVendorToolsModal = false; openSophosStandardizedReimportModal('bom')"
+                    @click="showImportHubModal = false; openSophosStandardizedReimportModal('bom')"
                     title="Xóa dữ liệu Sophos cũ và nạp lại theo chuẩn Mã hàng = SKU, tách Volume, License và Trạng thái từ SKU_List"
                   >
                     <span>Chuẩn hóa DB Sophos (SKU)</span>
@@ -7863,7 +8031,210 @@
                 <span v-else class="hub-file-empty">Chưa có file trên hệ thống</span>
               </div>
             </div>
+          </div>
 
+          <!-- IMPORT TAB 2: KASPERSKY -->
+          <div v-else-if="activeImportHubTab === 'kaspersky'" class="qlhh-hub-pane">
+            <div class="hub-section-card">
+              <div class="hub-sec-head">
+                <div>
+                  <h4>Import Danh mục Kaspersky</h4>
+                  <p>Nạp sản phẩm từ file Excel chuẩn Kaspersky vào kho hàng hóa</p>
+                </div>
+                <div class="hub-sec-actions">
+                  <label class="qlhh-btn-primary is-sm" style="cursor: pointer;">
+                    <input type="file" accept=".xlsx,.xls" style="display: none" @change="handleKasperskyUpload" />
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <span>Import Kaspersky</span>
+                  </label>
+                  <a
+                    href="/template_excel/KASPERSKY_file_mau_import.xlsx"
+                    download="KASPERSKY_file_mau_import.xlsx"
+                    class="qlhh-ghost-btn is-sm"
+                    style="text-decoration: none;"
+                  >
+                    <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    <span>Tải file mẫu</span>
+                  </a>
+                </div>
+              </div>
+
+              <div class="hub-file-slot-row">
+                <span class="hub-slot-label">File Import gần nhất:</span>
+                <template v-if="getVendorImportFileMeta('kaspersky')">
+                  <a
+                    :href="getVendorOfficeViewUrl(getVendorImportFileMeta('kaspersky'))"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="hub-file-link"
+                    @click="handleOpenVendorOfficeView($event, 'kaspersky', 'import', getVendorImportFileMeta('kaspersky'))"
+                  >
+                    {{ getVendorImportFileMeta('kaspersky').name }}
+                  </a>
+                  <span class="hub-file-time tabular-nums">{{ formatRefTimestamp(getVendorImportFileMeta('kaspersky').updatedAt) }}</span>
+                  <button
+                    type="button"
+                    class="vendor-file-download-btn"
+                    @click.stop.prevent="handleDownloadVendorUploadedFile('kaspersky', 'import', getVendorImportFileMeta('kaspersky'))"
+                  >
+                    Tải về
+                  </button>
+                </template>
+                <span v-else class="hub-file-empty">Chưa có file trên hệ thống</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- IMPORT TAB 3: ACRONIS -->
+          <div v-else-if="activeImportHubTab === 'acronis'" class="qlhh-hub-pane">
+            <div class="hub-section-card">
+              <div class="hub-sec-head">
+                <div>
+                  <h4>Import Danh mục Acronis</h4>
+                  <p>Nạp sản phẩm từ file Excel mẫu Acronis vào kho hàng hóa</p>
+                </div>
+                <div class="hub-sec-actions">
+                  <label class="qlhh-btn-primary is-sm" style="cursor: pointer;">
+                    <input type="file" accept=".xlsx,.xls" style="display: none" @change="handleAcronisUpload" />
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <span>Import Acronis</span>
+                  </label>
+                  <a
+                    href="/template_excel/ACRONIS_file_mau_import.xlsx"
+                    download="ACRONIS_file_mau_import.xlsx"
+                    class="qlhh-ghost-btn is-sm"
+                    style="text-decoration: none;"
+                  >
+                    <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    <span>Tải file mẫu</span>
+                  </a>
+                </div>
+              </div>
+
+              <div class="hub-file-slot-row">
+                <span class="hub-slot-label">File Import gần nhất:</span>
+                <template v-if="getVendorImportFileMeta('acronis')">
+                  <a
+                    :href="getVendorOfficeViewUrl(getVendorImportFileMeta('acronis'))"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="hub-file-link"
+                    @click="handleOpenVendorOfficeView($event, 'acronis', 'import', getVendorImportFileMeta('acronis'))"
+                  >
+                    {{ getVendorImportFileMeta('acronis').name }}
+                  </a>
+                  <span class="hub-file-time tabular-nums">{{ formatRefTimestamp(getVendorImportFileMeta('acronis').updatedAt) }}</span>
+                  <button
+                    type="button"
+                    class="vendor-file-download-btn"
+                    @click.stop.prevent="handleDownloadVendorUploadedFile('acronis', 'import', getVendorImportFileMeta('acronis'))"
+                  >
+                    Tải về
+                  </button>
+                </template>
+                <span v-else class="hub-file-empty">Chưa có file trên hệ thống</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- IMPORT TAB 4: GIÁ VỐN, MỨC OFF & BẢNG GIÁ -->
+          <div v-else class="qlhh-hub-pane">
+            <div class="hub-choice-grid">
+              <label class="hub-choice-card is-violet" style="cursor: pointer;">
+                <input type="file" accept=".pdf,.xlsx,.xls" style="display: none" @change="handlePurchaseQuoteUpload" />
+                <div class="hub-choice-ico is-violet">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                </div>
+                <div class="hub-choice-text">
+                  <strong>Import Mua Hàng (Giá vốn PDF / Excel)</strong>
+                  <span>Trích xuất đơn giá mua sau thuế từ báo giá NCC để cập nhật làm Giá vốn / Off hãng</span>
+                </div>
+              </label>
+
+              <div class="hub-choice-card is-sky">
+                <div class="hub-choice-ico is-sky">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                </div>
+                <div class="hub-choice-text">
+                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+                    <strong>Import Mức Off Hãng (Ảnh / PDF)</strong>
+                    <label class="qlhh-ghost-btn is-xs" style="cursor: pointer;">
+                      <input type="file" accept="image/*,.pdf" style="display: none" @change="handleGiaOffUpload" />
+                      <span>Chọn file Mức Off</span>
+                    </label>
+                  </div>
+                  <span>Cập nhật bảng chiết khấu / mức off từ chứng từ hãng</span>
+                  <div v-if="latestFileGiaOff" class="hub-ref-meta" style="margin-top: 4px;">
+                    <span>File gần nhất:</span>
+                    <a :href="latestFileGiaOff.link_file" target="_blank" rel="noopener noreferrer" class="hub-file-link">{{ latestFileGiaOff.ten_file }}</a>
+                    <span class="hub-file-time tabular-nums">{{ formatGiaOffDate(latestFileGiaOff.thoi_gian) }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- =========================================================
+         MODAL RIÊNG 2: ĐỐI CHIẾU HÃNG & KHO FILE THAM CHIẾU
+    ========================================================== -->
+    <div
+      v-if="showCompareHubModal"
+      class="qlhh-modal-backdrop qlhh-hub-overlay"
+      :class="{ 'theme-light-blue': uiTheme === 'light' }"
+      @click.self="showCompareHubModal = false"
+    >
+      <div class="qlhh-hub-modal" :class="{ 'theme-light-blue': uiTheme === 'light' }">
+        <div class="mob-sheet-grabber"></div>
+        <div class="qlhh-hub-head is-compare-hub">
+          <div class="qlhh-hub-head-left">
+            <span class="qlhh-hub-head-ico">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            </span>
+            <div>
+              <h3 class="qlhh-hub-title">Đối Chiếu Hãng &amp; File Tham Chiếu</h3>
+              <p class="qlhh-hub-sub">Quét ảnh đối chiếu giá, đồng bộ ListPrice và quản lý file gốc / calculator / trung gian trên Cloudinary</p>
+            </div>
+          </div>
+          <button type="button" class="qlhh-hub-close" @click="showCompareHubModal = false" aria-label="Đóng">✕</button>
+        </div>
+
+        <!-- 3 TAB ĐỐI CHIẾU -->
+        <div class="qlhh-hub-tabs" role="tablist">
+          <button
+            type="button"
+            class="qlhh-hub-tab"
+            :class="{ active: activeCompareHubTab === 'sophos' }"
+            @click="activeCompareHubTab = 'sophos'"
+          >
+            <span>Sophos</span>
+            <span class="hub-tab-count tabular-nums">{{ brandKpiCounts.sophos }}</span>
+          </button>
+          <button
+            type="button"
+            class="qlhh-hub-tab"
+            :class="{ active: activeCompareHubTab === 'kaspersky' }"
+            @click="activeCompareHubTab = 'kaspersky'"
+          >
+            <span>Kaspersky</span>
+            <span class="hub-tab-count tabular-nums">{{ brandKpiCounts.kaspersky }}</span>
+          </button>
+          <button
+            type="button"
+            class="qlhh-hub-tab"
+            :class="{ active: activeCompareHubTab === 'acronis' }"
+            @click="activeCompareHubTab = 'acronis'"
+          >
+            <span>Acronis</span>
+            <span class="hub-tab-count tabular-nums">{{ brandKpiCounts.acronis }}</span>
+          </button>
+        </div>
+
+        <div class="qlhh-hub-body">
+          <!-- ĐỐI CHIẾU TAB 1: SOPHOS -->
+          <div v-if="activeCompareHubTab === 'sophos'" class="qlhh-hub-pane">
             <div class="hub-section-card">
               <div class="hub-sec-head">
                 <div>
@@ -7874,7 +8245,7 @@
                   <button
                     type="button"
                     class="qlhh-btn-primary is-sm"
-                    @click="showVendorToolsModal = false; openImageCheckModal()"
+                    @click="showCompareHubModal = false; openImageCheckModal()"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
                     <span>Đối chiếu Sophos (Ảnh)</span>
@@ -7927,7 +8298,7 @@
                     <button
                       type="button"
                       class="qlhh-ghost-btn is-xs is-emerald-tint"
-                      @click="showVendorToolsModal = false; openSophosDbListPriceSyncModal()"
+                      @click="showCompareHubModal = false; openSophosDbListPriceSyncModal()"
                     >
                       Đồng bộ ListPrice (DB)
                     </button>
@@ -8006,7 +8377,7 @@
                     <button
                       type="button"
                       class="qlhh-ghost-btn is-xs is-sky-tint"
-                      @click="showVendorToolsModal = false; openSophosTrungGianCalcSyncModal()"
+                      @click="showCompareHubModal = false; openSophosTrungGianCalcSyncModal()"
                     >
                       Đồng bộ giá theo Calc
                     </button>
@@ -8024,57 +8395,8 @@
             </div>
           </div>
 
-          <!-- TAB 2: KASPERSKY -->
-          <div v-else-if="activeVendorHubTab === 'kaspersky'" class="qlhh-hub-pane">
-            <div class="hub-section-card">
-              <div class="hub-sec-head">
-                <div>
-                  <h4>Import Danh mục Kaspersky</h4>
-                  <p>Nạp sản phẩm từ file Excel chuẩn Kaspersky vào kho hàng hóa</p>
-                </div>
-                <div class="hub-sec-actions">
-                  <label class="qlhh-btn-primary is-sm" style="cursor: pointer;">
-                    <input type="file" accept=".xlsx,.xls" style="display: none" @change="handleKasperskyUpload" />
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                    <span>Import Kaspersky</span>
-                  </label>
-                  <a
-                    href="/template_excel/KASPERSKY_file_mau_import.xlsx"
-                    download="KASPERSKY_file_mau_import.xlsx"
-                    class="qlhh-ghost-btn is-sm"
-                    style="text-decoration: none;"
-                  >
-                    <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    <span>Tải file mẫu</span>
-                  </a>
-                </div>
-              </div>
-
-              <div class="hub-file-slot-row">
-                <span class="hub-slot-label">File Import gần nhất:</span>
-                <template v-if="getVendorImportFileMeta('kaspersky')">
-                  <a
-                    :href="getVendorOfficeViewUrl(getVendorImportFileMeta('kaspersky'))"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="hub-file-link"
-                    @click="handleOpenVendorOfficeView($event, 'kaspersky', 'import', getVendorImportFileMeta('kaspersky'))"
-                  >
-                    {{ getVendorImportFileMeta('kaspersky').name }}
-                  </a>
-                  <span class="hub-file-time tabular-nums">{{ formatRefTimestamp(getVendorImportFileMeta('kaspersky').updatedAt) }}</span>
-                  <button
-                    type="button"
-                    class="vendor-file-download-btn"
-                    @click.stop.prevent="handleDownloadVendorUploadedFile('kaspersky', 'import', getVendorImportFileMeta('kaspersky'))"
-                  >
-                    Tải về
-                  </button>
-                </template>
-                <span v-else class="hub-file-empty">Chưa có file trên hệ thống</span>
-              </div>
-            </div>
-
+          <!-- ĐỐI CHIẾU TAB 2: KASPERSKY -->
+          <div v-else-if="activeCompareHubTab === 'kaspersky'" class="qlhh-hub-pane">
             <div class="hub-section-card">
               <div class="hub-sec-head">
                 <div>
@@ -8085,7 +8407,7 @@
                   <button
                     type="button"
                     class="qlhh-btn-primary is-sm"
-                    @click="showVendorToolsModal = false; openKasImageCheckModal()"
+                    @click="showCompareHubModal = false; openKasImageCheckModal()"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                     <span>Đối chiếu Kaspersky (Ảnh)</span>
@@ -8167,57 +8489,8 @@
             </div>
           </div>
 
-          <!-- TAB 3: ACRONIS -->
-          <div v-else-if="activeVendorHubTab === 'acronis'" class="qlhh-hub-pane">
-            <div class="hub-section-card">
-              <div class="hub-sec-head">
-                <div>
-                  <h4>Import Danh mục Acronis</h4>
-                  <p>Nạp sản phẩm từ file Excel mẫu Acronis vào kho hàng hóa</p>
-                </div>
-                <div class="hub-sec-actions">
-                  <label class="qlhh-btn-primary is-sm" style="cursor: pointer;">
-                    <input type="file" accept=".xlsx,.xls" style="display: none" @change="handleAcronisUpload" />
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                    <span>Import Acronis</span>
-                  </label>
-                  <a
-                    href="/template_excel/ACRONIS_file_mau_import.xlsx"
-                    download="ACRONIS_file_mau_import.xlsx"
-                    class="qlhh-ghost-btn is-sm"
-                    style="text-decoration: none;"
-                  >
-                    <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    <span>Tải file mẫu</span>
-                  </a>
-                </div>
-              </div>
-
-              <div class="hub-file-slot-row">
-                <span class="hub-slot-label">File Import gần nhất:</span>
-                <template v-if="getVendorImportFileMeta('acronis')">
-                  <a
-                    :href="getVendorOfficeViewUrl(getVendorImportFileMeta('acronis'))"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="hub-file-link"
-                    @click="handleOpenVendorOfficeView($event, 'acronis', 'import', getVendorImportFileMeta('acronis'))"
-                  >
-                    {{ getVendorImportFileMeta('acronis').name }}
-                  </a>
-                  <span class="hub-file-time tabular-nums">{{ formatRefTimestamp(getVendorImportFileMeta('acronis').updatedAt) }}</span>
-                  <button
-                    type="button"
-                    class="vendor-file-download-btn"
-                    @click.stop.prevent="handleDownloadVendorUploadedFile('acronis', 'import', getVendorImportFileMeta('acronis'))"
-                  >
-                    Tải về
-                  </button>
-                </template>
-                <span v-else class="hub-file-empty">Chưa có file trên hệ thống</span>
-              </div>
-            </div>
-
+          <!-- ĐỐI CHIẾU TAB 3: ACRONIS -->
+          <div v-else class="qlhh-hub-pane">
             <div class="hub-section-card">
               <div class="hub-sec-head">
                 <div>
@@ -8228,7 +8501,7 @@
                   <button
                     type="button"
                     class="qlhh-btn-primary is-sm"
-                    @click="showVendorToolsModal = false; openAcronisCompareModal()"
+                    @click="showCompareHubModal = false; openAcronisCompareModal()"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                     <span>Đối chiếu Acronis</span>
@@ -8272,73 +8545,6 @@
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-
-          <!-- TAB 4: GIÁ VỐN, MỨC OFF & BẢNG GIÁ -->
-          <div v-else class="qlhh-hub-pane">
-            <div class="hub-choice-grid">
-              <label class="hub-choice-card is-violet" style="cursor: pointer;">
-                <input type="file" accept=".pdf,.xlsx,.xls" style="display: none" @change="handlePurchaseQuoteUpload" />
-                <div class="hub-choice-ico is-violet">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-                </div>
-                <div class="hub-choice-text">
-                  <strong>Import Mua Hàng (Giá vốn PDF / Excel)</strong>
-                  <span>Trích xuất đơn giá mua sau thuế từ báo giá NCC để cập nhật làm Giá vốn / Off hãng</span>
-                </div>
-              </label>
-
-              <div class="hub-choice-card is-sky">
-                <div class="hub-choice-ico is-sky">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                </div>
-                <div class="hub-choice-text">
-                  <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
-                    <strong>Import Mức Off Hãng (Ảnh / PDF)</strong>
-                    <label class="qlhh-ghost-btn is-xs" style="cursor: pointer;">
-                      <input type="file" accept="image/*,.pdf" style="display: none" @change="handleGiaOffUpload" />
-                      <span>Chọn file Mức Off</span>
-                    </label>
-                  </div>
-                  <span>Cập nhật bảng chiết khấu / mức off từ chứng từ hãng</span>
-                  <div v-if="latestFileGiaOff" class="hub-ref-meta" style="margin-top: 4px;">
-                    <span>File gần nhất:</span>
-                    <a :href="latestFileGiaOff.link_file" target="_blank" rel="noopener noreferrer" class="hub-file-link">{{ latestFileGiaOff.ten_file }}</a>
-                    <span class="hub-file-time tabular-nums">{{ formatGiaOffDate(latestFileGiaOff.thoi_gian) }}</span>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                class="hub-choice-card is-amber"
-                @click="showVendorToolsModal = false; openUsdRateModal()"
-              >
-                <div class="hub-choice-ico is-amber">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                </div>
-                <div class="hub-choice-text">
-                  <strong>Đổi Tỉ Giá Hệ Thống (USD)</strong>
-                  <span class="tabular-nums">
-                    Đang áp dụng: {{ currentSystemUsdRate > 1 ? formatCurrency(currentSystemUsdRate, 'VND') : 'Chưa đặt' }} — Cập nhật đồng loạt cho toàn bộ SKU hệ USD
-                  </span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                class="hub-choice-card is-emerald"
-                @click="showVendorToolsModal = false; openCreatePriceListModal()"
-              >
-                <div class="hub-choice-ico is-emerald">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-                </div>
-                <div class="hub-choice-text">
-                  <strong>Tạo Bảng Giá Riêng Mới</strong>
-                  <span>Thiết lập bảng giá tăng/giảm theo % hoặc số tiền riêng cho đại lý / dự án (hiện có {{ priceLists.length }} bảng giá)</span>
-                </div>
-              </button>
             </div>
           </div>
         </div>
@@ -8433,6 +8639,45 @@
         </div>
       </div>
 
+      <div class="bg-ds-section" :class="{ 'is-last': !hasActiveSearchOrFilter && !selectedPriceListId }">
+        <div class="bg-ds-label">Công cụ nhanh</div>
+        <div class="bg-ds-grid-2">
+          <button
+            type="button"
+            class="bg-ds-opt-btn"
+            :class="{ active: bulkEditMode }"
+            @click="toggleBulkEditMode(); showMobileDisplayPopover = false"
+          >
+            <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            <span>{{ bulkEditMode ? 'Thoát sửa HL' : 'Sửa hàng loạt' }}</span>
+          </button>
+          <button
+            type="button"
+            class="bg-ds-opt-btn"
+            @click="showMobileDisplayPopover = false; openCompareHub()"
+          >
+            <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            <span>Đối chiếu hãng</span>
+          </button>
+          <button
+            type="button"
+            class="bg-ds-opt-btn"
+            @click="showMobileDisplayPopover = false; openUsdRateModal()"
+          >
+            <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            <span>Đổi tỉ giá USD</span>
+          </button>
+          <button
+            type="button"
+            class="bg-ds-opt-btn"
+            @click="showMobileDisplayPopover = false; openCreatePriceListModal()"
+          >
+            <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+            <span>Tạo bảng giá</span>
+          </button>
+        </div>
+      </div>
+
       <div v-if="hasActiveSearchOrFilter || selectedPriceListId" class="bg-ds-section is-last">
         <button
           type="button"
@@ -8480,11 +8725,11 @@
         <span>Thêm mới</span>
       </button>
 
-      <!-- 3. Trung tâm Import & Hãng -->
+      <!-- 3. Import dữ liệu & bảng giá -->
       <button
         type="button"
         class="bg-dock-btn"
-        @click="openVendorToolsHub()"
+        @click="openImportHub()"
       >
         <div class="bg-dock-icon-wrap">
           <svg width="17.5" height="17.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -8519,18 +8764,860 @@
         <span>{{ loading ? 'Đang tải' : 'Đồng bộ' }}</span>
       </button>
     </nav>
+
+    <!-- =========================================================
+         THANH NỔI THAO TÁC SỬA / XÓA HÀNG LOẠT (BULK ACTION BAR)
+    ========================================================== -->
+    <div
+      v-if="bulkEditMode && !showBulkEditModal && !showBulkDeleteConfirmModal"
+      class="qlhh-bulk-float-bar"
+      :class="{ 'is-mobile-offset': isMobileDockViewport }"
+    >
+      <div class="qlhh-bulk-float-left">
+        <span class="qlhh-bulk-float-badge tabular-nums">
+          Đã chọn <strong>{{ bulkSelectedItems.length }}</strong> / {{ filteredItems.length }} SP
+        </span>
+        <button
+          type="button"
+          class="qlhh-bulk-float-link"
+          @click="toggleSelectAllFilteredBulk"
+        >
+          {{ isAllFilteredBulkSelected ? 'Bỏ chọn tất cả' : `Chọn tất cả (${filteredItems.length})` }}
+        </button>
+        <button
+          v-if="bulkSelectedItems.length > 0 && !isAllFilteredBulkSelected"
+          type="button"
+          class="qlhh-bulk-float-link"
+          @click="clearBulkSelection"
+        >
+          Bỏ chọn
+        </button>
+      </div>
+
+      <div class="qlhh-bulk-float-actions">
+        <button
+          type="button"
+          class="qlhh-bulk-float-btn is-primary"
+          :disabled="bulkSelectedItems.length === 0"
+          @click="openBulkEditModal"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          <span>Sửa {{ bulkSelectedItems.length || '' }} SP</span>
+        </button>
+        <button
+          type="button"
+          class="qlhh-bulk-float-btn is-danger"
+          :disabled="bulkSelectedItems.length === 0"
+          @click="openBulkDeleteConfirm"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          <span>Xóa ({{ bulkSelectedItems.length }})</span>
+        </button>
+        <button
+          type="button"
+          class="qlhh-bulk-float-btn is-ghost"
+          @click="exitBulkEditMode"
+          title="Thoát chế độ chọn hàng loạt"
+        >
+          Thoát
+        </button>
+      </div>
+    </div>
+
+    <!-- =========================================================
+         MODAL SỬA HÀNG LOẠT KHO GỐC (ÁP DỤNG CHUNG + CHỈNH TAY TỪNG DÒNG)
+    ========================================================== -->
+    <Teleport to="body">
+      <div
+        v-if="showBulkEditModal"
+        class="qlhh-modal-backdrop qlhh-bulk-overlay"
+        :class="{ 'theme-light-blue': uiTheme === 'light' }"
+        @click.self="closeBulkEditModal"
+      >
+        <div class="qlhh-bulk-modal" @click.stop>
+        <!-- HEADER ĐẬM -->
+        <header class="qlhh-bulk-head">
+          <div class="qlhh-bulk-head-left">
+            <span class="qlhh-bulk-head-ico">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            </span>
+            <div>
+              <div class="qlhh-bulk-head-title-row">
+                <h3>Sửa hàng loạt sản phẩm</h3>
+                <span class="qlhh-bulk-head-pill tabular-nums">{{ bulkDraftRows.length }} sản phẩm</span>
+                <span class="qlhh-bulk-head-pill is-origin">Kho gốc (hang_hoa)</span>
+              </div>
+              <p class="qlhh-bulk-head-sub">
+                Tick chọn các trường muốn sửa ở phần trên để áp dụng nhanh cho tất cả, hoặc chỉnh sửa trực tiếp từng ô trong bảng bên dưới.
+              </p>
+            </div>
+          </div>
+          <button type="button" class="qlhh-bulk-close" @click="closeBulkEditModal" title="Đóng">✕</button>
+        </header>
+
+        <!-- LƯU Ý NẾU ĐANG XEM BẢNG GIÁ TÙY CHỈNH -->
+        <div v-if="activePriceList" class="qlhh-bulk-notice">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span>
+            Bạn đang xem bảng giá <strong>{{ activePriceList.ten_bang_gia }}</strong> — thao tác Sửa hàng loạt sẽ cập nhật trực tiếp vào <strong>Kho gốc (hang_hoa)</strong> và tự động đồng bộ các bảng giá có bật Auto-sync.
+          </span>
+        </div>
+
+        <!-- BODY -->
+        <div class="qlhh-bulk-body">
+          <!-- PHẦN 1: THANH ÁP DỤNG NHANH HÀNG LOẠT (ĐẦY ĐỦ TẤT CẢ FIELD) -->
+          <section class="qlhh-bulk-panel">
+            <div class="qlhh-bulk-panel-head">
+              <div class="qlhh-bulk-panel-tabs">
+                <button
+                  type="button"
+                  class="qlhh-bulk-tab"
+                  :class="{ active: bulkFieldTab === 'general' }"
+                  @click="bulkFieldTab = 'general'"
+                >
+                  <span>Phân loại &amp; Chung</span>
+                  <span v-if="bulkTabEnabledCount('general') > 0" class="qlhh-bulk-tab-cnt tabular-nums">{{ bulkTabEnabledCount('general') }}</span>
+                </button>
+                <button
+                  type="button"
+                  class="qlhh-bulk-tab"
+                  :class="{ active: bulkFieldTab === 'pricing' }"
+                  @click="bulkFieldTab = 'pricing'"
+                >
+                  <span>Tiền tệ, Thuế &amp; Giá</span>
+                  <span v-if="bulkTabEnabledCount('pricing') > 0" class="qlhh-bulk-tab-cnt tabular-nums">{{ bulkTabEnabledCount('pricing') }}</span>
+                </button>
+                <button
+                  type="button"
+                  class="qlhh-bulk-tab"
+                  :class="{ active: bulkFieldTab === 'specs' }"
+                  @click="bulkFieldTab = 'specs'"
+                >
+                  <span>Volume, Thời hạn &amp; Liên kết</span>
+                  <span v-if="bulkTabEnabledCount('specs') > 0" class="qlhh-bulk-tab-cnt tabular-nums">{{ bulkTabEnabledCount('specs') }}</span>
+                </button>
+                <button
+                  type="button"
+                  class="qlhh-bulk-tab"
+                  :class="{ active: bulkFieldTab === 'text' }"
+                  @click="bulkFieldTab = 'text'"
+                >
+                  <span>Tên, Mô tả &amp; Ghi chú</span>
+                  <span v-if="bulkTabEnabledCount('text') > 0" class="qlhh-bulk-tab-cnt tabular-nums">{{ bulkTabEnabledCount('text') }}</span>
+                </button>
+              </div>
+
+              <div class="qlhh-bulk-panel-acts">
+                <button
+                  type="button"
+                  class="qlhh-bulk-mini-btn"
+                  @click="bulkPanelCollapsed = !bulkPanelCollapsed"
+                >
+                  {{ bulkPanelCollapsed ? 'Mở bảng áp nhanh' : 'Thu gọn áp nhanh' }}
+                </button>
+                <button
+                  v-if="bulkTotalEnabledFieldsCount > 0"
+                  type="button"
+                  class="qlhh-bulk-mini-btn is-muted"
+                  @click="resetBulkBatchRules"
+                >
+                  Bỏ tick ({{ bulkTotalEnabledFieldsCount }})
+                </button>
+                <button
+                  type="button"
+                  class="qlhh-bulk-apply-btn"
+                  :disabled="bulkTotalEnabledFieldsCount === 0 || bulkDraftRows.length === 0"
+                  @click="applyBulkRulesToDraftRows"
+                >
+                  <svg width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  <span>Áp dụng {{ bulkTotalEnabledFieldsCount }} trường vào bảng</span>
+                </button>
+              </div>
+            </div>
+
+            <div v-show="!bulkPanelCollapsed" class="qlhh-bulk-fields-wrap">
+              <!-- TAB 1: PHÂN LOẠI & CHUNG -->
+              <div v-if="bulkFieldTab === 'general'" class="qlhh-bulk-fields-grid">
+                <div class="qlhh-bf-card" :class="{ 'is-on': bulkRules.Ten_nha_cung_cap.enabled }">
+                  <label class="qlhh-bf-chk">
+                    <input type="checkbox" v-model="bulkRules.Ten_nha_cung_cap.enabled" />
+                    <span>Nhà cung cấp / Hãng</span>
+                  </label>
+                  <input
+                    v-model="bulkRules.Ten_nha_cung_cap.value"
+                    type="text"
+                    list="qlhh-bulk-ncc-list"
+                    class="qlhh-bf-input"
+                    placeholder="VD: SOPHOS, KASPERSKY, ACRONIS..."
+                    @focus="bulkRules.Ten_nha_cung_cap.enabled = true"
+                  />
+                  <datalist id="qlhh-bulk-ncc-list">
+                    <option value="SOPHOS"></option>
+                    <option value="KASPERSKY"></option>
+                    <option value="ACRONIS"></option>
+                    <option v-for="opt in supplierFilterOptions" :key="'bncc-' + opt.value" :value="opt.value"></option>
+                  </datalist>
+                </div>
+
+                <div class="qlhh-bf-card" :class="{ 'is-on': bulkRules.Ma_nha_cung_cap.enabled }">
+                  <label class="qlhh-bf-chk">
+                    <input type="checkbox" v-model="bulkRules.Ma_nha_cung_cap.enabled" />
+                    <span>Mã nhà cung cấp</span>
+                  </label>
+                  <input
+                    v-model="bulkRules.Ma_nha_cung_cap.value"
+                    type="text"
+                    class="qlhh-bf-input"
+                    placeholder="Nhập mã NCC..."
+                    @focus="bulkRules.Ma_nha_cung_cap.enabled = true"
+                  />
+                </div>
+
+                <div class="qlhh-bf-card" :class="{ 'is-on': bulkRules.Danh_muc.enabled }">
+                  <label class="qlhh-bf-chk">
+                    <input type="checkbox" v-model="bulkRules.Danh_muc.enabled" />
+                    <span>Danh mục</span>
+                  </label>
+                  <input
+                    v-model="bulkRules.Danh_muc.value"
+                    type="text"
+                    list="qlhh-bulk-cat-list"
+                    class="qlhh-bf-input"
+                    placeholder="VD: ENDPOINT PROTECTION, FIREWALL..."
+                    @focus="bulkRules.Danh_muc.enabled = true"
+                  />
+                  <datalist id="qlhh-bulk-cat-list">
+                    <option v-for="opt in categoryFilterOptions" :key="'bcat-' + opt.value" :value="opt.value"></option>
+                  </datalist>
+                </div>
+
+                <div class="qlhh-bf-card" :class="{ 'is-on': bulkRules.Type.enabled }">
+                  <label class="qlhh-bf-chk">
+                    <input type="checkbox" v-model="bulkRules.Type.enabled" />
+                    <span>Loại hàng (Type)</span>
+                  </label>
+                  <input
+                    v-model="bulkRules.Type.value"
+                    type="text"
+                    list="qlhh-bulk-type-list"
+                    class="qlhh-bf-input"
+                    placeholder="New / Renewal / Hardware..."
+                    @focus="bulkRules.Type.enabled = true"
+                  />
+                  <datalist id="qlhh-bulk-type-list">
+                    <option value="New"></option>
+                    <option value="Renewal"></option>
+                    <option value="Base Plus"></option>
+                    <option value="Renewal Plus"></option>
+                    <option value="Hardware"></option>
+                    <option value="Software"></option>
+                  </datalist>
+                </div>
+
+                <div class="qlhh-bf-card" :class="{ 'is-on': bulkRules.DVT.enabled }">
+                  <label class="qlhh-bf-chk">
+                    <input type="checkbox" v-model="bulkRules.DVT.enabled" />
+                    <span>Đơn vị tính (ĐVT)</span>
+                  </label>
+                  <input
+                    v-model="bulkRules.DVT.value"
+                    type="text"
+                    class="qlhh-bf-input"
+                    placeholder="VD: License, Thiết bị, Gói, Năm..."
+                    @focus="bulkRules.DVT.enabled = true"
+                  />
+                </div>
+
+                <div class="qlhh-bf-card" :class="{ 'is-on': bulkRules.Trang_thai.enabled }">
+                  <label class="qlhh-bf-chk">
+                    <input type="checkbox" v-model="bulkRules.Trang_thai.enabled" />
+                    <span>Trạng thái</span>
+                  </label>
+                  <input
+                    v-model="bulkRules.Trang_thai.value"
+                    type="text"
+                    class="qlhh-bf-input"
+                    placeholder="VD: Đang kinh doanh, Ngưng bán..."
+                    @focus="bulkRules.Trang_thai.enabled = true"
+                  />
+                </div>
+
+                <div class="qlhh-bf-card" :class="{ 'is-on': bulkRules.sku_code.enabled }">
+                  <label class="qlhh-bf-chk">
+                    <input type="checkbox" v-model="bulkRules.sku_code.enabled" />
+                    <span>SKU Code (Tìm &amp; thay / Ghi đè)</span>
+                  </label>
+                  <div class="qlhh-bf-inline-row">
+                    <select v-model="bulkRules.sku_code.mode" class="qlhh-bf-select is-sm" @change="bulkRules.sku_code.enabled = true">
+                      <option value="replace">Ghi đè</option>
+                      <option value="prefix">Nối đầu</option>
+                      <option value="suffix">Nối cuối</option>
+                      <option value="find_replace">Tìm → Thay</option>
+                    </select>
+                    <input
+                      v-if="bulkRules.sku_code.mode === 'find_replace'"
+                      v-model="bulkRules.sku_code.find"
+                      type="text"
+                      class="qlhh-bf-input"
+                      placeholder="Tìm..."
+                      @focus="bulkRules.sku_code.enabled = true"
+                    />
+                    <input
+                      v-model="bulkRules.sku_code.value"
+                      type="text"
+                      class="qlhh-bf-input"
+                      :placeholder="bulkRules.sku_code.mode === 'find_replace' ? 'Thay bằng...' : 'Giá trị SKU...'"
+                      @focus="bulkRules.sku_code.enabled = true"
+                    />
+                  </div>
+                </div>
+
+                <div class="qlhh-bf-card" :class="{ 'is-on': bulkRules.Main_img.enabled }">
+                  <label class="qlhh-bf-chk">
+                    <input type="checkbox" v-model="bulkRules.Main_img.enabled" />
+                    <span>Link ảnh sản phẩm (Main_img)</span>
+                  </label>
+                  <input
+                    v-model="bulkRules.Main_img.value"
+                    type="text"
+                    class="qlhh-bf-input"
+                    placeholder="https://..."
+                    @focus="bulkRules.Main_img.enabled = true"
+                  />
+                </div>
+              </div>
+
+              <!-- TAB 2: TIỀN TỆ, THUẾ & GIÁ THÔNG MINH -->
+              <div v-else-if="bulkFieldTab === 'pricing'" class="qlhh-bulk-fields-grid">
+                <div class="qlhh-bf-card" :class="{ 'is-on': bulkRules.Don_vi_tien_te.enabled }">
+                  <label class="qlhh-bf-chk">
+                    <input type="checkbox" v-model="bulkRules.Don_vi_tien_te.enabled" />
+                    <span>Đơn vị tiền tệ</span>
+                  </label>
+                  <select
+                    v-model="bulkRules.Don_vi_tien_te.value"
+                    class="qlhh-bf-select"
+                    @change="bulkRules.Don_vi_tien_te.enabled = true"
+                  >
+                    <option value="VND">VND — Việt Nam Đồng</option>
+                    <option value="USD">USD — Đô la Mỹ</option>
+                  </select>
+                </div>
+
+                <div class="qlhh-bf-card" :class="{ 'is-on': bulkRules.Ti_gia.enabled }">
+                  <label class="qlhh-bf-chk">
+                    <input type="checkbox" v-model="bulkRules.Ti_gia.enabled" />
+                    <span>Tỉ giá quy đổi (VND)</span>
+                  </label>
+                  <NumberInput
+                    v-model="bulkRules.Ti_gia.value"
+                    :decimals="0"
+                    class="qlhh-bf-input tabular-nums"
+                    placeholder="VD: 25.500"
+                    @focus="bulkRules.Ti_gia.enabled = true"
+                    @update:modelValue="bulkRules.Ti_gia.enabled = true"
+                  />
+                </div>
+
+                <div class="qlhh-bf-card" :class="{ 'is-on': bulkRules.Thue_VAT.enabled }">
+                  <label class="qlhh-bf-chk">
+                    <input type="checkbox" v-model="bulkRules.Thue_VAT.enabled" />
+                    <span>Thuế VAT (%)</span>
+                  </label>
+                  <NumberInput
+                    v-model="bulkRules.Thue_VAT.value"
+                    :decimals="2"
+                    class="qlhh-bf-input tabular-nums"
+                    placeholder="VD: 0, 8, 10..."
+                    @focus="bulkRules.Thue_VAT.enabled = true"
+                    @update:modelValue="bulkRules.Thue_VAT.enabled = true"
+                  />
+                </div>
+
+                <div class="qlhh-bf-card" :class="{ 'is-on': bulkRules.muc_phan_tram_off.enabled }">
+                  <label class="qlhh-bf-chk">
+                    <input type="checkbox" v-model="bulkRules.muc_phan_tram_off.enabled" />
+                    <span>Mức % Off hãng</span>
+                  </label>
+                  <NumberInput
+                    v-model="bulkRules.muc_phan_tram_off.value"
+                    :decimals="2"
+                    class="qlhh-bf-input tabular-nums"
+                    placeholder="VD: 25, 30..."
+                    @focus="bulkRules.muc_phan_tram_off.enabled = true"
+                    @update:modelValue="bulkRules.muc_phan_tram_off.enabled = true"
+                  />
+                </div>
+
+                <div class="qlhh-bf-card is-span-2" :class="{ 'is-on': bulkRules.Gia_tieu_chuan.enabled }">
+                  <label class="qlhh-bf-chk">
+                    <input type="checkbox" v-model="bulkRules.Gia_tieu_chuan.enabled" />
+                    <span>Giá vốn / Off hãng (Gia_tieu_chuan)</span>
+                  </label>
+                  <div class="qlhh-bf-inline-row">
+                    <select v-model="bulkRules.Gia_tieu_chuan.mode" class="qlhh-bf-select" @change="bulkRules.Gia_tieu_chuan.enabled = true">
+                      <option value="set">Đặt cố định (=)</option>
+                      <option value="inc_pct">Tăng theo % (+%)</option>
+                      <option value="dec_pct">Giảm theo % (-%)</option>
+                      <option value="inc_amt">Cộng số tiền (+)</option>
+                      <option value="dec_amt">Trừ số tiền (-)</option>
+                      <option value="from_sell_dec_pct">Tính từ Giá List (-%)</option>
+                      <option value="from_sell_inc_pct">Tính từ Giá List (+%)</option>
+                    </select>
+                    <NumberInput
+                      v-model="bulkRules.Gia_tieu_chuan.value"
+                      :decimals="getBulkRulePriceDecimals(bulkRules.Gia_tieu_chuan.mode)"
+                      class="qlhh-bf-input tabular-nums"
+                      placeholder="Nhập giá trị..."
+                      @focus="bulkRules.Gia_tieu_chuan.enabled = true"
+                      @update:modelValue="bulkRules.Gia_tieu_chuan.enabled = true"
+                    />
+                  </div>
+                </div>
+
+                <div class="qlhh-bf-card is-span-2" :class="{ 'is-on': bulkRules.Don_gia.enabled }">
+                  <label class="qlhh-bf-chk">
+                    <input type="checkbox" v-model="bulkRules.Don_gia.enabled" />
+                    <span>Giá List / Giá bán (Don_gia)</span>
+                  </label>
+                  <div class="qlhh-bf-inline-row">
+                    <select v-model="bulkRules.Don_gia.mode" class="qlhh-bf-select" @change="bulkRules.Don_gia.enabled = true">
+                      <option value="set">Đặt cố định (=)</option>
+                      <option value="inc_pct">Tăng theo % (+%)</option>
+                      <option value="dec_pct">Giảm theo % (-%)</option>
+                      <option value="inc_amt">Cộng số tiền (+)</option>
+                      <option value="dec_amt">Trừ số tiền (-)</option>
+                      <option value="from_cost_inc_pct">Tính từ Giá vốn (+%)</option>
+                      <option value="from_cost_dec_pct">Tính từ Giá vốn (-%)</option>
+                    </select>
+                    <NumberInput
+                      v-model="bulkRules.Don_gia.value"
+                      :decimals="getBulkRulePriceDecimals(bulkRules.Don_gia.mode)"
+                      class="qlhh-bf-input tabular-nums"
+                      placeholder="Nhập giá trị..."
+                      @focus="bulkRules.Don_gia.enabled = true"
+                      @update:modelValue="bulkRules.Don_gia.enabled = true"
+                    />
+                  </div>
+                </div>
+
+                <div class="qlhh-bf-card is-span-2" :class="{ 'is-on': bulkRules.gia_nhap.enabled }">
+                  <label class="qlhh-bf-chk">
+                    <input type="checkbox" v-model="bulkRules.gia_nhap.enabled" />
+                    <span>Giá nhập tham chiếu (gia_nhap)</span>
+                  </label>
+                  <div class="qlhh-bf-inline-row">
+                    <select v-model="bulkRules.gia_nhap.mode" class="qlhh-bf-select" @change="bulkRules.gia_nhap.enabled = true">
+                      <option value="set">Đặt cố định (=)</option>
+                      <option value="inc_pct">Tăng theo % (+%)</option>
+                      <option value="dec_pct">Giảm theo % (-%)</option>
+                      <option value="inc_amt">Cộng số tiền (+)</option>
+                      <option value="dec_amt">Trừ số tiền (-)</option>
+                    </select>
+                    <NumberInput
+                      v-model="bulkRules.gia_nhap.value"
+                      :decimals="getBulkRulePriceDecimals(bulkRules.gia_nhap.mode)"
+                      class="qlhh-bf-input tabular-nums"
+                      placeholder="Nhập giá trị..."
+                      @focus="bulkRules.gia_nhap.enabled = true"
+                      @update:modelValue="bulkRules.gia_nhap.enabled = true"
+                    />
+                  </div>
+                </div>
+
+                <div class="qlhh-bf-card is-span-2" :class="{ 'is-on': bulkRules.gia_hardware.enabled }">
+                  <label class="qlhh-bf-chk">
+                    <input type="checkbox" v-model="bulkRules.gia_hardware.enabled" />
+                    <span>Giá Hardware (gia_hardware)</span>
+                  </label>
+                  <div class="qlhh-bf-inline-row">
+                    <select v-model="bulkRules.gia_hardware.mode" class="qlhh-bf-select" @change="bulkRules.gia_hardware.enabled = true">
+                      <option value="set">Đặt cố định (=)</option>
+                      <option value="inc_pct">Tăng theo % (+%)</option>
+                      <option value="dec_pct">Giảm theo % (-%)</option>
+                      <option value="inc_amt">Cộng số tiền (+)</option>
+                      <option value="dec_amt">Trừ số tiền (-)</option>
+                    </select>
+                    <NumberInput
+                      v-model="bulkRules.gia_hardware.value"
+                      :decimals="getBulkRulePriceDecimals(bulkRules.gia_hardware.mode)"
+                      class="qlhh-bf-input tabular-nums"
+                      placeholder="Nhập giá trị..."
+                      @focus="bulkRules.gia_hardware.enabled = true"
+                      @update:modelValue="bulkRules.gia_hardware.enabled = true"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <!-- TAB 3: VOLUME, THỜI HẠN & LIÊN KẾT -->
+              <div v-else-if="bulkFieldTab === 'specs'" class="qlhh-bulk-fields-grid">
+                <div class="qlhh-bf-card" :class="{ 'is-on': bulkRules.volume.enabled }">
+                  <label class="qlhh-bf-chk">
+                    <input type="checkbox" v-model="bulkRules.volume.enabled" />
+                    <span>Volume (Users / Blocks)</span>
+                  </label>
+                  <input
+                    v-model="bulkRules.volume.value"
+                    type="text"
+                    class="qlhh-bf-input"
+                    placeholder="VD: 1-9 users, 10-24 users..."
+                    @focus="bulkRules.volume.enabled = true"
+                  />
+                </div>
+
+                <div class="qlhh-bf-card" :class="{ 'is-on': bulkRules.License_duration.enabled }">
+                  <label class="qlhh-bf-chk">
+                    <input type="checkbox" v-model="bulkRules.License_duration.enabled" />
+                    <span>Thời hạn License (License_duration)</span>
+                  </label>
+                  <input
+                    v-model="bulkRules.License_duration.value"
+                    type="text"
+                    class="qlhh-bf-input"
+                    placeholder="VD: 12 months, 36 months..."
+                    @focus="bulkRules.License_duration.enabled = true"
+                  />
+                </div>
+
+                <div class="qlhh-bf-card" :class="{ 'is-on': bulkRules.thoi_han_bao_hanh.enabled }">
+                  <label class="qlhh-bf-chk">
+                    <input type="checkbox" v-model="bulkRules.thoi_han_bao_hanh.enabled" />
+                    <span>Thời hạn bảo hành</span>
+                  </label>
+                  <input
+                    v-model="bulkRules.thoi_han_bao_hanh.value"
+                    type="text"
+                    class="qlhh-bf-input"
+                    placeholder="VD: 12 tháng, 36 tháng..."
+                    @focus="bulkRules.thoi_han_bao_hanh.enabled = true"
+                  />
+                </div>
+
+                <div class="qlhh-bf-card" :class="{ 'is-on': bulkRules.Ma_hang_lien_ket.enabled }">
+                  <label class="qlhh-bf-chk">
+                    <input type="checkbox" v-model="bulkRules.Ma_hang_lien_ket.enabled" />
+                    <span>Mã hàng liên kết</span>
+                  </label>
+                  <textarea
+                    v-model="bulkRules.Ma_hang_lien_ket.value"
+                    rows="2"
+                    class="qlhh-bf-textarea"
+                    placeholder="Mỗi mã 1 dòng..."
+                    @focus="bulkRules.Ma_hang_lien_ket.enabled = true"
+                  ></textarea>
+                </div>
+
+                <div class="qlhh-bf-card is-span-2" :class="{ 'is-on': bulkRules.Ten_hang_lien_ket.enabled }">
+                  <label class="qlhh-bf-chk">
+                    <input type="checkbox" v-model="bulkRules.Ten_hang_lien_ket.enabled" />
+                    <span>Tên hàng liên kết</span>
+                  </label>
+                  <textarea
+                    v-model="bulkRules.Ten_hang_lien_ket.value"
+                    rows="2"
+                    class="qlhh-bf-textarea"
+                    placeholder="Mỗi tên hàng 1 dòng..."
+                    @focus="bulkRules.Ten_hang_lien_ket.enabled = true"
+                  ></textarea>
+                </div>
+              </div>
+
+              <!-- TAB 4: TÊN, MÔ TẢ & GHI CHÚ -->
+              <div v-else class="qlhh-bulk-fields-grid">
+                <div
+                  v-for="tf in BULK_TEXT_FIELD_DEFS"
+                  :key="tf.key"
+                  class="qlhh-bf-card is-span-2"
+                  :class="{ 'is-on': bulkRules[tf.key].enabled }"
+                >
+                  <div class="qlhh-bf-card-top">
+                    <label class="qlhh-bf-chk">
+                      <input type="checkbox" v-model="bulkRules[tf.key].enabled" />
+                      <span>{{ tf.label }}</span>
+                    </label>
+                    <select v-model="bulkRules[tf.key].mode" class="qlhh-bf-select is-sm" @change="bulkRules[tf.key].enabled = true">
+                      <option value="replace">Ghi đè</option>
+                      <option value="prefix">Nối đầu</option>
+                      <option value="suffix">Nối cuối</option>
+                      <option value="find_replace">Tìm &amp; thay thế</option>
+                    </select>
+                  </div>
+                  <div class="qlhh-bf-inline-row">
+                    <input
+                      v-if="bulkRules[tf.key].mode === 'find_replace'"
+                      v-model="bulkRules[tf.key].find"
+                      type="text"
+                      class="qlhh-bf-input"
+                      placeholder="Chuỗi cần tìm..."
+                      @focus="bulkRules[tf.key].enabled = true"
+                    />
+                    <input
+                      v-if="!tf.multiline"
+                      v-model="bulkRules[tf.key].value"
+                      type="text"
+                      class="qlhh-bf-input"
+                      :placeholder="bulkRules[tf.key].mode === 'find_replace' ? 'Thay bằng...' : tf.placeholder"
+                      @focus="bulkRules[tf.key].enabled = true"
+                    />
+                    <textarea
+                      v-else
+                      v-model="bulkRules[tf.key].value"
+                      rows="2"
+                      class="qlhh-bf-textarea"
+                      :placeholder="bulkRules[tf.key].mode === 'find_replace' ? 'Thay bằng...' : tf.placeholder"
+                      @focus="bulkRules[tf.key].enabled = true"
+                    ></textarea>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- PHẦN 2: BẢNG XEM TRƯỚC & CHỈNH TAY TỪNG DÒNG -->
+          <section class="qlhh-bulk-table-sec">
+            <div class="qlhh-bulk-table-toolbar">
+              <div class="qlhh-bulk-col-tabs">
+                <button
+                  type="button"
+                  class="qlhh-bulk-col-tab"
+                  :class="{ active: bulkTableColGroup === 'core' }"
+                  @click="bulkTableColGroup = 'core'"
+                >
+                  Phân loại &amp; Giá
+                </button>
+                <button
+                  type="button"
+                  class="qlhh-bulk-col-tab"
+                  :class="{ active: bulkTableColGroup === 'detail' }"
+                  @click="bulkTableColGroup = 'detail'"
+                >
+                  Mô tả, Thời hạn &amp; Khác
+                </button>
+                <button
+                  type="button"
+                  class="qlhh-bulk-col-tab"
+                  :class="{ active: bulkTableColGroup === 'changed' }"
+                  @click="bulkTableColGroup = 'changed'"
+                >
+                  Chỉ cột thay đổi ({{ bulkChangedFieldKeys.length }})
+                </button>
+              </div>
+              <div class="qlhh-bulk-table-meta tabular-nums">
+                <input
+                  v-model="bulkTableSearch"
+                  type="text"
+                  class="qlhh-bulk-tbl-search"
+                  placeholder="Lọc nhanh mã/tên trong bảng..."
+                />
+                <span><strong>{{ bulkChangedRowsCount }}</strong> / {{ bulkDraftRows.length }} SP có thay đổi</span>
+                <button
+                  v-if="bulkChangedRowsCount > 0"
+                  type="button"
+                  class="qlhh-bulk-mini-btn"
+                  @click="revertAllBulkDraftRows"
+                >
+                  Hoàn tác tất cả
+                </button>
+              </div>
+            </div>
+
+            <div class="qlhh-bulk-table-scroll" @scroll="onBulkTableScroll">
+              <table class="qlhh-bulk-edit-table">
+                <thead>
+                  <tr>
+                    <th class="col-b-idx">#</th>
+                    <th class="col-b-sticky">Mã hàng / SKU</th>
+                    <th v-for="col in visibleBulkTableColumns" :key="col.key" :style="{ minWidth: col.width }">
+                      {{ col.label }}
+                    </th>
+                    <th class="col-b-act">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="(row, rIdx) in displayedBulkDraftRows"
+                    :key="row._bulkKey"
+                    :class="{ 'is-row-dirty': isBulkRowDirtyFast(row._bulkKey) }"
+                  >
+                    <td class="col-b-idx tabular-nums">{{ rIdx + 1 }}</td>
+                    <td class="col-b-sticky">
+                      <div class="qlhh-b-code tabular-nums">{{ row.Ma_hang }}</div>
+                      <div class="qlhh-b-name-sub" :title="row.Ten_hang">{{ row.Ten_hang }}</div>
+                    </td>
+
+                    <td
+                      v-for="col in visibleBulkTableColumns"
+                      :key="row._bulkKey + '-' + col.key"
+                      :class="{ 'is-cell-changed': isBulkCellChangedFast(row._bulkKey, col.key) }"
+                      :title="isBulkCellChangedFast(row._bulkKey, col.key) ? `Giá trị gốc: ${formatBulkOldVal(row, col.key)}` : ''"
+                    >
+                      <select
+                        v-if="col.type === 'select'"
+                        v-model="row[col.key]"
+                        class="qlhh-b-cell-input"
+                        @change="bumpBulkDraftVersion"
+                      >
+                        <option v-for="opt in col.options" :key="opt" :value="opt">{{ opt }}</option>
+                      </select>
+                      <NumberInput
+                        v-else-if="col.type === 'number'"
+                        v-model="row[col.key]"
+                        :decimals="getBulkCellDecimals(row, col.key)"
+                        class="qlhh-b-cell-input is-num tabular-nums"
+                        @update:modelValue="bumpBulkDraftVersion"
+                      />
+                      <textarea
+                        v-else-if="col.type === 'textarea'"
+                        v-model="row[col.key]"
+                        rows="1"
+                        class="qlhh-b-cell-textarea"
+                        @input="bumpBulkDraftVersion"
+                      ></textarea>
+                      <input
+                        v-else
+                        v-model="row[col.key]"
+                        type="text"
+                        class="qlhh-b-cell-input"
+                        @input="bumpBulkDraftVersion"
+                      />
+                      <div v-if="isBulkCellChangedFast(row._bulkKey, col.key)" class="qlhh-b-old-hint tabular-nums">
+                        Cũ: {{ formatBulkOldVal(row, col.key) }}
+                      </div>
+                    </td>
+
+                    <td class="col-b-act">
+                      <div class="qlhh-b-row-acts">
+                        <button
+                          v-if="isBulkRowDirtyFast(row._bulkKey)"
+                          type="button"
+                          class="qlhh-b-row-btn"
+                          title="Hoàn tác dòng này về giá trị gốc"
+                          @click="revertBulkDraftRow(row)"
+                        >
+                          ↺
+                        </button>
+                        <button
+                          type="button"
+                          class="qlhh-b-row-btn is-del"
+                          title="Bỏ sản phẩm này khỏi danh sách sửa"
+                          @click="removeBulkDraftRow(row._bulkKey)"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <div
+                v-if="displayedBulkDraftRows.length < filteredBulkDraftRows.length"
+                class="qlhh-bulk-load-more-row tabular-nums"
+              >
+                <span>
+                  Đang hiển thị <strong>{{ displayedBulkDraftRows.length }}</strong> / {{ filteredBulkDraftRows.length }} dòng
+                  (Áp dụng &amp; Lưu vẫn tác động lên toàn bộ {{ bulkDraftRows.length }} SP)
+                </span>
+                <button type="button" class="qlhh-bulk-mini-btn" @click="bulkTableLimit += 40">
+                  Tải thêm +40 dòng
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <!-- FOOTER -->
+        <footer class="qlhh-bulk-foot">
+          <div class="qlhh-bulk-foot-info tabular-nums">
+            <span v-if="bulkChangedRowsCount > 0" class="is-ready">
+              Sẵn sàng cập nhật <strong>{{ bulkChangedRowsCount }}</strong> sản phẩm lên kho gốc Firebase (hang_hoa)
+            </span>
+            <span v-else class="is-idle">
+              Chưa có thay đổi nào — hãy tick chọn trường ở trên rồi bấm Áp dụng, hoặc sửa trực tiếp trên bảng.
+            </span>
+          </div>
+          <div class="qlhh-bulk-foot-btns">
+            <button type="button" class="qlhh-ghost-btn" :disabled="bulkSaving" @click="closeBulkEditModal">
+              Hủy
+            </button>
+            <button
+              type="button"
+              class="qlhh-btn-primary is-save-cta"
+              :disabled="bulkSaving || bulkChangedRowsCount === 0"
+              @click="saveBulkEdit"
+            >
+              <span v-if="bulkSaving" class="spinner"></span>
+              <svg v-else width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              <span>{{ bulkSaving ? 'Đang lưu...' : `Lưu ${bulkChangedRowsCount} sản phẩm` }}</span>
+            </button>
+          </div>
+        </footer>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- =========================================================
+         MODAL XÁC NHẬN XÓA HÀNG LOẠT KHO GỐC
+    ========================================================== -->
+    <Teleport to="body">
+      <div
+        v-if="showBulkDeleteConfirmModal"
+        class="qlhh-modal-backdrop qlhh-bulk-del-overlay"
+        :class="{ 'theme-light-blue': uiTheme === 'light' }"
+        @click.self="showBulkDeleteConfirmModal = false"
+      >
+        <div class="qlhh-bulk-del-modal" @click.stop>
+        <div class="qlhh-bulk-del-head">
+          <div class="qlhh-bulk-del-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            <span>Xác nhận xóa {{ bulkSelectedItems.length }} sản phẩm?</span>
+          </div>
+          <button type="button" class="qlhh-bulk-close" @click="showBulkDeleteConfirmModal = false">✕</button>
+        </div>
+        <div class="qlhh-bulk-del-body">
+          <p class="qlhh-bulk-del-warn">
+            Thao tác này sẽ xóa vĩnh viễn <strong>{{ bulkSelectedItems.length }}</strong> sản phẩm đã chọn khỏi <strong>Kho gốc (hang_hoa)</strong> trên Firebase và không thể hoàn tác.
+          </p>
+          <div class="qlhh-bulk-del-list">
+            <div
+              v-for="it in bulkSelectedItems.slice(0, 8)"
+              :key="'bdel-' + getBulkItemKey(it)"
+              class="qlhh-bulk-del-item"
+            >
+              <strong class="tabular-nums">{{ it.sku_code || it.Ma_hang }}</strong>
+              <span>{{ it.Ten_hang }}</span>
+            </div>
+            <div v-if="bulkSelectedItems.length > 8" class="qlhh-bulk-del-more tabular-nums">
+              ... và {{ bulkSelectedItems.length - 8 }} sản phẩm khác
+            </div>
+          </div>
+        </div>
+        <div class="qlhh-bulk-del-foot">
+          <button type="button" class="qlhh-ghost-btn" :disabled="bulkDeleting" @click="showBulkDeleteConfirmModal = false">
+            Hủy
+          </button>
+          <button type="button" class="qlhh-fm-btn-delete" :disabled="bulkDeleting" @click="executeBulkDelete">
+            <span v-if="bulkDeleting" class="spinner"></span>
+            <span>{{ bulkDeleting ? 'Đang xóa...' : `Xác nhận xóa ${bulkSelectedItems.length} SP` }}</span>
+          </button>
+        </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { ref, shallowRef, computed, onMounted, onUnmounted, watch, nextTick, markRaw } from 'vue'
 import { useRouter } from 'vue-router'
 import * as XLSX from 'xlsx-js-style'
 import ExcelJS from 'exceljs'
 import NumberInput from './NumberInput.vue'
+import { formatViNumber } from '../utils/smartNumber'
 import ExcelEditor from './ExcelEditor.vue'
 import Tesseract from 'tesseract.js'
 import { callDeepSeek } from '../services/deepseek'
+import { useBinaryAppTheme } from '../composables/useAppTheme'
 import { parsePurchaseFileStandard, analyzePurchaseFileWithAI } from '../utils/purchaseQuoteParser'
 import {
   uploadBlobToCloudinary,
@@ -9906,6 +10993,44 @@ const linkRelatedSophosProducts = (products) => {
  * - License_duration = chuyển MOS -> months (VD: 12 months, 24 months, 36 months)
  * - Trang_thai = New hoặc Renewal
  */
+const sophosReimportSourceInfo = computed(() => {
+  const tgMeta = getVendorCompareFileMeta('sophos', 'tg')
+  const gocMeta = getVendorCompareFileMeta('sophos', 'goc')
+  const tgFileName = tgMeta?.name || 'file_trung_gian_SOPHOS.xlsx'
+  const gocFileName = gocMeta?.name || 'file_goc_SOPHOS.xlsx'
+
+  const refObj = sophosRefData.value || {}
+  const tgList = Array.isArray(refObj.trungGianItems) ? refObj.trungGianItems : []
+  const gocMap = refObj.gocSkus && typeof refObj.gocSkus === 'object' ? refObj.gocSkus : {}
+
+  const bomSkus = new Set()
+  for (const tg of tgList) {
+    const sku = String(tg?.sku || '').trim().toUpperCase()
+    if (sku) bomSkus.add(sku)
+  }
+
+  let corpExtra = 0
+  let allExtra = 0
+  for (const [skuKey, entry] of Object.entries(gocMap)) {
+    const sku = String(skuKey || '').trim().toUpperCase()
+    if (!sku || bomSkus.has(sku)) continue
+    allExtra++
+    if (entry?.skuTabRow && (!entry.sector || entry.sector === 'CORP')) {
+      corpExtra++
+    }
+  }
+
+  return {
+    tgMeta,
+    gocMeta,
+    tgFileName,
+    gocFileName,
+    bomCount: bomSkus.size,
+    bomPlusCorpCount: bomSkus.size + corpExtra,
+    allSkuCount: bomSkus.size + allExtra
+  }
+})
+
 const openSophosStandardizedReimportModal = async (mode = 'bom') => {
   sophosReimportMode.value = mode
   showAsyncLoading('Đang chuẩn bị dữ liệu chuẩn SOPHOS...', 'Đang đọc SKU_Tab & BOM Trung Gian...')
@@ -20062,16 +21187,7 @@ const proceedToCalculateQuote = () => {
 // =========================================================================
 // THEME, VIEW MODE, KPI COUNTS, VENDOR HUB & MOBILE SUB-DOCK
 // =========================================================================
-const QUOTE_THEME_MODE_STORAGE_KEY = 'nts_quote_theme_mode_v1'
 const QLHH_VIEW_MODE_STORAGE_KEY = 'nts_qlhh_view_mode_v1'
-
-const loadSavedQlhhTheme = () => {
-  try {
-    return localStorage.getItem(QUOTE_THEME_MODE_STORAGE_KEY) === 'light' ? 'light' : 'dark'
-  } catch {
-    return 'dark'
-  }
-}
 
 const loadSavedQlhhViewMode = () => {
   try {
@@ -20081,13 +21197,7 @@ const loadSavedQlhhViewMode = () => {
   }
 }
 
-const uiTheme = ref(loadSavedQlhhTheme())
-const toggleUiTheme = () => {
-  uiTheme.value = uiTheme.value === 'dark' ? 'light' : 'dark'
-  try {
-    localStorage.setItem(QUOTE_THEME_MODE_STORAGE_KEY, uiTheme.value)
-  } catch {}
-}
+const { uiTheme, toggleUiTheme } = useBinaryAppTheme()
 
 const viewMode = ref(loadSavedQlhhViewMode())
 const setViewMode = (mode) => {
@@ -20140,20 +21250,34 @@ const sortOrderLabel = computed(() => {
   return 'Sắp xếp'
 })
 
-const showVendorToolsModal = ref(false)
-const activeVendorHubTab = ref('sophos')
+const showImportHubModal = ref(false)
+const activeImportHubTab = ref('sophos')
+const showCompareHubModal = ref(false)
+const activeCompareHubTab = ref('sophos')
+
+const resolvePreferredVendorHubTab = (tab = '', fallback = 'sophos') => {
+  if (tab) return tab
+  if (selectedBrandFilter.value === 'KASPERSKY') return 'kaspersky'
+  if (selectedBrandFilter.value === 'ACRONIS') return 'acronis'
+  if (selectedBrandFilter.value === 'SOPHOS') return 'sophos'
+  return fallback
+}
+
+const openImportHub = (tab = '') => {
+  activeImportHubTab.value = resolvePreferredVendorHubTab(tab, activeImportHubTab.value || 'sophos')
+  showCompareHubModal.value = false
+  showImportHubModal.value = true
+}
+
+const openCompareHub = (tab = '') => {
+  const resolved = resolvePreferredVendorHubTab(tab, activeCompareHubTab.value || 'sophos')
+  activeCompareHubTab.value = resolved === 'cost_pricing' ? 'sophos' : resolved
+  showImportHubModal.value = false
+  showCompareHubModal.value = true
+}
 
 const openVendorToolsHub = (tab = '') => {
-  if (tab) {
-    activeVendorHubTab.value = tab
-  } else if (selectedBrandFilter.value === 'KASPERSKY') {
-    activeVendorHubTab.value = 'kaspersky'
-  } else if (selectedBrandFilter.value === 'ACRONIS') {
-    activeVendorHubTab.value = 'acronis'
-  } else if (selectedBrandFilter.value === 'SOPHOS') {
-    activeVendorHubTab.value = 'sophos'
-  }
-  showVendorToolsModal.value = true
+  openImportHub(tab)
 }
 
 watch(
@@ -20168,11 +21292,753 @@ watch(
     showPriceListModal
   ],
   (vals) => {
-    if (vals.some(Boolean) && showVendorToolsModal.value) {
-      showVendorToolsModal.value = false
+    if (vals.some(Boolean)) {
+      if (showImportHubModal.value) showImportHubModal.value = false
+      if (showCompareHubModal.value) showCompareHubModal.value = false
     }
   }
 )
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SỬA HÀNG LOẠT & XÓA HÀNG LOẠT KHO GỐC (BULK EDIT / BULK DELETE)
+   ═══════════════════════════════════════════════════════════════════════════ */
+const bulkEditMode = ref(false)
+const bulkSelectedKeys = ref([])
+const showBulkEditModal = ref(false)
+const showBulkDeleteConfirmModal = ref(false)
+const bulkSaving = ref(false)
+const bulkDeleting = ref(false)
+const bulkFieldTab = ref('general')
+const bulkPanelCollapsed = ref(false)
+const bulkTableColGroup = ref('core')
+const bulkDraftRows = shallowRef([])
+const bulkDraftVersion = ref(0)
+const bumpBulkDraftVersion = () => {
+  bulkDraftVersion.value++
+}
+
+const BULK_NUMERIC_FIELDS = new Set([
+  'Ti_gia',
+  'Thue_VAT',
+  'muc_phan_tram_off',
+  'Gia_tieu_chuan',
+  'Don_gia',
+  'gia_nhap',
+  'gia_hardware'
+])
+
+const BULK_TEXT_FIELD_DEFS = [
+  { key: 'Ten_hang', label: 'Tên hàng hóa (Ten_hang)', placeholder: 'Nhập tên hàng hóa...', multiline: false },
+  { key: 'Ten_hang_bao_gia', label: 'Tên hàng xuất báo giá', placeholder: 'Tên hiển thị trên báo giá...', multiline: false },
+  { key: 'Description', label: 'Description nội bộ', placeholder: 'Nhập Description...', multiline: true },
+  { key: 'Mo_ta_chung', label: 'Mô tả chung', placeholder: 'Nhập mô tả chung...', multiline: true },
+  { key: 'Mo_ta_chi_tiet', label: 'Mô tả chi tiết', placeholder: 'Nhập mô tả chi tiết...', multiline: true },
+  { key: 'Features', label: 'Diễn giải kỹ thuật nội bộ (Features)', placeholder: 'Nhập tính năng kỹ thuật...', multiline: true },
+  { key: 'Dien_giai_bao_gia', label: 'Diễn giải hiển thị trên báo giá', placeholder: 'Diễn giải xuất báo giá...', multiline: true },
+  { key: 'Ghi_chu', label: 'Ghi chú nội bộ', placeholder: 'Ghi chú cho sale / mua hàng...', multiline: true }
+]
+
+const BULK_TAB_FIELD_MAP = {
+  general: ['Ten_nha_cung_cap', 'Ma_nha_cung_cap', 'Danh_muc', 'Type', 'DVT', 'Trang_thai', 'sku_code', 'Main_img'],
+  pricing: ['Don_vi_tien_te', 'Ti_gia', 'Thue_VAT', 'muc_phan_tram_off', 'Gia_tieu_chuan', 'Don_gia', 'gia_nhap', 'gia_hardware'],
+  specs: ['volume', 'License_duration', 'thoi_han_bao_hanh', 'Ma_hang_lien_ket', 'Ten_hang_lien_ket'],
+  text: BULK_TEXT_FIELD_DEFS.map(d => d.key)
+}
+
+const BULK_ALL_TABLE_COLUMNS = [
+  { key: 'sku_code', label: 'SKU Code', group: 'core', type: 'text', width: '130px' },
+  { key: 'Ten_hang', label: 'Tên hàng hóa', group: 'core', type: 'text', width: '220px' },
+  { key: 'Ten_nha_cung_cap', label: 'Hãng / NCC', group: 'core', type: 'text', width: '125px' },
+  { key: 'Ma_nha_cung_cap', label: 'Mã NCC', group: 'detail', type: 'text', width: '110px' },
+  { key: 'Danh_muc', label: 'Danh mục', group: 'core', type: 'text', width: '165px' },
+  { key: 'Type', label: 'Loại (Type)', group: 'core', type: 'text', width: '115px' },
+  { key: 'DVT', label: 'ĐVT', group: 'core', type: 'text', width: '88px' },
+  { key: 'volume', label: 'Volume', group: 'core', type: 'text', width: '120px' },
+  { key: 'License_duration', label: 'Thời hạn Lic', group: 'core', type: 'text', width: '115px' },
+  { key: 'Don_vi_tien_te', label: 'Tiền tệ', group: 'core', type: 'select', options: ['VND', 'USD'], width: '88px' },
+  { key: 'Ti_gia', label: 'Tỉ giá', group: 'core', type: 'number', width: '105px' },
+  { key: 'Thue_VAT', label: 'VAT (%)', group: 'core', type: 'number', width: '84px' },
+  { key: 'muc_phan_tram_off', label: '% Off', group: 'core', type: 'number', width: '84px' },
+  { key: 'Gia_tieu_chuan', label: 'Giá vốn', group: 'core', type: 'number', width: '125px' },
+  { key: 'Don_gia', label: 'Giá List / Bán', group: 'core', type: 'number', width: '125px' },
+  { key: 'gia_nhap', label: 'Giá nhập', group: 'core', type: 'number', width: '115px' },
+  { key: 'gia_hardware', label: 'Giá HW', group: 'core', type: 'number', width: '115px' },
+  { key: 'Trang_thai', label: 'Trạng thái', group: 'detail', type: 'text', width: '125px' },
+  { key: 'thoi_han_bao_hanh', label: 'Bảo hành', group: 'detail', type: 'text', width: '115px' },
+  { key: 'Ten_hang_bao_gia', label: 'Tên xuất BG', group: 'detail', type: 'text', width: '210px' },
+  { key: 'Description', label: 'Description', group: 'detail', type: 'textarea', width: '220px' },
+  { key: 'Mo_ta_chung', label: 'Mô tả chung', group: 'detail', type: 'textarea', width: '200px' },
+  { key: 'Mo_ta_chi_tiet', label: 'Mô tả chi tiết', group: 'detail', type: 'textarea', width: '210px' },
+  { key: 'Features', label: 'Features (KT)', group: 'detail', type: 'textarea', width: '220px' },
+  { key: 'Dien_giai_bao_gia', label: 'Diễn giải BG', group: 'detail', type: 'textarea', width: '220px' },
+  { key: 'Ghi_chu', label: 'Ghi chú', group: 'detail', type: 'textarea', width: '190px' },
+  { key: 'Ma_hang_lien_ket', label: 'Mã LK', group: 'detail', type: 'textarea', width: '150px' },
+  { key: 'Ten_hang_lien_ket', label: 'Tên LK', group: 'detail', type: 'textarea', width: '180px' },
+  { key: 'Main_img', label: 'Link ảnh', group: 'detail', type: 'text', width: '180px' }
+]
+
+const createDefaultBulkRules = () => ({
+  Ten_nha_cung_cap: { enabled: false, value: '' },
+  Ma_nha_cung_cap: { enabled: false, value: '' },
+  Danh_muc: { enabled: false, value: '' },
+  Type: { enabled: false, value: '' },
+  DVT: { enabled: false, value: '' },
+  Trang_thai: { enabled: false, value: '' },
+  Main_img: { enabled: false, value: '' },
+  sku_code: { enabled: false, mode: 'replace', find: '', value: '' },
+  Don_vi_tien_te: { enabled: false, value: 'VND' },
+  Ti_gia: { enabled: false, value: '' },
+  Thue_VAT: { enabled: false, value: '' },
+  muc_phan_tram_off: { enabled: false, value: '' },
+  Gia_tieu_chuan: { enabled: false, mode: 'set', value: '' },
+  Don_gia: { enabled: false, mode: 'set', value: '' },
+  gia_nhap: { enabled: false, mode: 'set', value: '' },
+  gia_hardware: { enabled: false, mode: 'set', value: '' },
+  volume: { enabled: false, value: '' },
+  License_duration: { enabled: false, value: '' },
+  thoi_han_bao_hanh: { enabled: false, value: '' },
+  Ma_hang_lien_ket: { enabled: false, value: '' },
+  Ten_hang_lien_ket: { enabled: false, value: '' },
+  Ten_hang: { enabled: false, mode: 'find_replace', find: '', value: '' },
+  Ten_hang_bao_gia: { enabled: false, mode: 'replace', find: '', value: '' },
+  Description: { enabled: false, mode: 'replace', find: '', value: '' },
+  Mo_ta_chung: { enabled: false, mode: 'replace', find: '', value: '' },
+  Mo_ta_chi_tiet: { enabled: false, mode: 'replace', find: '', value: '' },
+  Features: { enabled: false, mode: 'replace', find: '', value: '' },
+  Dien_giai_bao_gia: { enabled: false, mode: 'replace', find: '', value: '' },
+  Ghi_chu: { enabled: false, mode: 'replace', find: '', value: '' }
+})
+
+const bulkRules = ref(createDefaultBulkRules())
+
+const getBulkItemKey = (item) => String(item?._firebaseKey || item?.Ma_hang || '').trim()
+
+const bulkSelectedSet = computed(() => new Set(bulkSelectedKeys.value))
+
+const bulkSelectedItems = computed(() => {
+  if (!bulkSelectedKeys.value.length) return []
+  const set = bulkSelectedSet.value
+  return items.value.filter(it => set.has(getBulkItemKey(it)))
+})
+
+const isBulkItemSelected = (item) => bulkSelectedSet.value.has(getBulkItemKey(item))
+
+const toggleBulkEditMode = () => {
+  if (bulkEditMode.value) {
+    exitBulkEditMode()
+  } else {
+    bulkEditMode.value = true
+    openDropdownType.value = ''
+  }
+}
+
+const exitBulkEditMode = () => {
+  bulkEditMode.value = false
+  bulkSelectedKeys.value = []
+  showBulkEditModal.value = false
+  showBulkDeleteConfirmModal.value = false
+}
+
+const clearBulkSelection = () => {
+  bulkSelectedKeys.value = []
+}
+
+const toggleBulkItemSelection = (item) => {
+  const k = getBulkItemKey(item)
+  if (!k) return
+  if (bulkSelectedSet.value.has(k)) {
+    bulkSelectedKeys.value = bulkSelectedKeys.value.filter(x => x !== k)
+  } else {
+    bulkSelectedKeys.value = [...bulkSelectedKeys.value, k]
+  }
+}
+
+const BULK_TABLE_PAGE_SIZE = 30
+const bulkTableLimit = ref(BULK_TABLE_PAGE_SIZE)
+const bulkTableSearch = ref('')
+
+const filteredItemsByCategoryMap = computed(() => {
+  const map = new Map()
+  for (const it of filteredItems.value) {
+    const cat = getItemCategory(it)
+    let arr = map.get(cat)
+    if (!arr) {
+      arr = []
+      map.set(cat, arr)
+    }
+    arr.push(it)
+  }
+  return map
+})
+
+const getFilteredCategoryItems = (category) => {
+  return filteredItemsByCategoryMap.value.get(category) || []
+}
+
+const isBulkCategoryAllSelected = (category) => {
+  const catItems = getFilteredCategoryItems(category)
+  if (!catItems.length) return false
+  const set = bulkSelectedSet.value
+  return catItems.every(it => set.has(getBulkItemKey(it)))
+}
+
+const isBulkCategoryPartialSelected = (category) => {
+  const catItems = getFilteredCategoryItems(category)
+  if (!catItems.length) return false
+  const set = bulkSelectedSet.value
+  let count = 0
+  for (const it of catItems) {
+    if (set.has(getBulkItemKey(it))) count++
+  }
+  return count > 0 && count < catItems.length
+}
+
+const toggleBulkCategorySelection = (category) => {
+  const catItems = getFilteredCategoryItems(category)
+  if (!catItems.length) return
+  const catKeys = catItems.map(getBulkItemKey).filter(Boolean)
+  const catKeySet = new Set(catKeys)
+  if (isBulkCategoryAllSelected(category)) {
+    bulkSelectedKeys.value = bulkSelectedKeys.value.filter(k => !catKeySet.has(k))
+  } else {
+    const merged = new Set(bulkSelectedKeys.value)
+    catKeys.forEach(k => merged.add(k))
+    bulkSelectedKeys.value = Array.from(merged)
+  }
+}
+
+const isAllFilteredBulkSelected = computed(() => {
+  if (!filteredItems.value.length) return false
+  const set = bulkSelectedSet.value
+  return filteredItems.value.every(it => set.has(getBulkItemKey(it)))
+})
+
+const toggleSelectAllFilteredBulk = () => {
+  if (!filteredItems.value.length) return
+  const filtKeys = filteredItems.value.map(getBulkItemKey).filter(Boolean)
+  const filtSet = new Set(filtKeys)
+  if (isAllFilteredBulkSelected.value) {
+    bulkSelectedKeys.value = bulkSelectedKeys.value.filter(k => !filtSet.has(k))
+  } else {
+    const merged = new Set(bulkSelectedKeys.value)
+    filtKeys.forEach(k => merged.add(k))
+    bulkSelectedKeys.value = Array.from(merged)
+  }
+}
+
+const bulkTabEnabledCount = (tabKey) => {
+  const keys = BULK_TAB_FIELD_MAP[tabKey] || []
+  return keys.filter(k => bulkRules.value[k]?.enabled).length
+}
+
+const bulkTotalEnabledFieldsCount = computed(() => {
+  return Object.values(bulkRules.value).filter(r => r && r.enabled).length
+})
+
+const resetBulkBatchRules = () => {
+  bulkRules.value = createDefaultBulkRules()
+}
+
+const makeBulkDraftRowFromItem = (it) => {
+  const snap = {
+    Ma_hang: String(it.Ma_hang || '').trim(),
+    sku_code: String(it.sku_code ?? it.SKU ?? it.sku ?? it.ma_sku ?? '').trim(),
+    Ten_hang: String(it.Ten_hang || ''),
+    Ten_hang_bao_gia: String(it.Ten_hang_bao_gia ?? it.ten_hang_bao_gia ?? ''),
+    Description: String(it.Description ?? it.description ?? ''),
+    Main_img: String(it.Main_img || ''),
+    Ma_nha_cung_cap: String(it.Ma_nha_cung_cap || ''),
+    Ten_nha_cung_cap: String(it.Ten_nha_cung_cap || ''),
+    Mo_ta_chung: String(it.Mo_ta_chung || ''),
+    Mo_ta_chi_tiet: String(it.Mo_ta_chi_tiet || ''),
+    Features: String(it.Features || ''),
+    Dien_giai_bao_gia: String(it.Dien_giai_bao_gia ?? it.dien_giai_bao_gia ?? ''),
+    Danh_muc: String(it.Danh_muc || '').trim().toUpperCase(),
+    License_duration: String(it.License_duration || ''),
+    DVT: String(it.DVT || ''),
+    Gia_tieu_chuan: toNum(it.Gia_tieu_chuan, 0),
+    Don_gia: toNum(it.Don_gia, 0),
+    Trang_thai: String(it.Trang_thai || ''),
+    Don_vi_tien_te: String(it.Don_vi_tien_te || 'VND').trim().toUpperCase() === 'USD' ? 'USD' : 'VND',
+    Ti_gia: toNum(it.Ti_gia, String(it.Don_vi_tien_te || 'VND').trim().toUpperCase() === 'USD' ? 0 : 1),
+    Thue_VAT: toNum(it.Thue_VAT, 0),
+    Ma_hang_lien_ket: String(it.Ma_hang_lien_ket || ''),
+    Ten_hang_lien_ket: String(it.Ten_hang_lien_ket || ''),
+    Ghi_chu: String(it.Ghi_chu || ''),
+    gia_hardware: toNum(it.gia_hardware, 0),
+    gia_nhap: toNum(it.gia_nhap, 0),
+    muc_phan_tram_off: toNum(it.muc_phan_tram_off !== undefined && it.muc_phan_tram_off !== '' ? it.muc_phan_tram_off : it['muc_%_off'], 0),
+    Type: String(it.Type ?? it.TYPE ?? ''),
+    thoi_han_bao_hanh: String(it.thoi_han_bao_hanh || ''),
+    volume: String(it.volume || '')
+  }
+  return {
+    ...snap,
+    _bulkKey: getBulkItemKey(it),
+    _firebaseKey: it._firebaseKey || '',
+    _danh_sach_file: markRaw(Array.isArray(it.danh_sach_file) ? it.danh_sach_file : []),
+    _original: markRaw(Object.freeze({ ...snap }))
+  }
+}
+
+const openBulkEditModal = () => {
+  if (!bulkSelectedItems.value.length) return
+  bulkDraftRows.value = bulkSelectedItems.value.map(makeBulkDraftRowFromItem)
+  bulkDraftVersion.value++
+  bulkRules.value = createDefaultBulkRules()
+  bulkFieldTab.value = 'general'
+  bulkPanelCollapsed.value = false
+  bulkTableColGroup.value = 'core'
+  bulkTableLimit.value = BULK_TABLE_PAGE_SIZE
+  bulkTableSearch.value = ''
+  showBulkEditModal.value = true
+}
+
+const closeBulkEditModal = () => {
+  if (bulkSaving.value) return
+  showBulkEditModal.value = false
+}
+
+const isBulkCellChanged = (row, key) => {
+  if (!row || !row._original) return false
+  if (BULK_NUMERIC_FIELDS.has(key)) {
+    return toNum(row[key], 0) !== toNum(row._original[key], 0)
+  }
+  if (key === 'Danh_muc') {
+    return String(row[key] ?? '').trim().toUpperCase() !== String(row._original[key] ?? '').trim().toUpperCase()
+  }
+  return String(row[key] ?? '').trim() !== String(row._original[key] ?? '').trim()
+}
+
+const hasBulkRowChanged = (row) => {
+  return BULK_ALL_TABLE_COLUMNS.some(col => isBulkCellChanged(row, col.key))
+}
+
+const bulkDiffSummary = computed(() => {
+  void bulkDraftVersion.value
+  const changedRowKeys = new Set()
+  const changedCellsMap = new Map()
+  const changedFieldSet = new Set()
+
+  for (const row of bulkDraftRows.value) {
+    let rowCells = null
+    for (const col of BULK_ALL_TABLE_COLUMNS) {
+      if (isBulkCellChanged(row, col.key)) {
+        if (!rowCells) {
+          rowCells = new Set()
+          changedCellsMap.set(row._bulkKey, rowCells)
+          changedRowKeys.add(row._bulkKey)
+        }
+        rowCells.add(col.key)
+        changedFieldSet.add(col.key)
+      }
+    }
+  }
+
+  return {
+    changedRowKeys,
+    changedCellsMap,
+    changedFieldKeys: BULK_ALL_TABLE_COLUMNS.map(c => c.key).filter(k => changedFieldSet.has(k)),
+    changedRowsCount: changedRowKeys.size
+  }
+})
+
+const isBulkRowDirtyFast = (bulkKey) => bulkDiffSummary.value.changedRowKeys.has(bulkKey)
+
+const isBulkCellChangedFast = (bulkKey, colKey) => {
+  const s = bulkDiffSummary.value.changedCellsMap.get(bulkKey)
+  return Boolean(s && s.has(colKey))
+}
+
+const bulkChangedFieldKeys = computed(() => bulkDiffSummary.value.changedFieldKeys)
+
+const visibleBulkTableColumns = computed(() => {
+  if (bulkTableColGroup.value === 'changed') {
+    const set = new Set(bulkChangedFieldKeys.value)
+    const matched = BULK_ALL_TABLE_COLUMNS.filter(c => set.has(c.key))
+    return matched.length ? matched : BULK_ALL_TABLE_COLUMNS.filter(c => c.group === 'core')
+  }
+  return BULK_ALL_TABLE_COLUMNS.filter(c => c.group === bulkTableColGroup.value)
+})
+
+const bulkChangedRowsCount = computed(() => bulkDiffSummary.value.changedRowsCount)
+
+const filteredBulkDraftRows = computed(() => {
+  const kw = bulkTableSearch.value.trim().toLowerCase()
+  if (!kw) return bulkDraftRows.value
+  const kwN = normalizeString(kw)
+  return bulkDraftRows.value.filter(r => {
+    const hay = `${r.Ma_hang || ''} ${r.sku_code || ''} ${r.Ten_hang || ''} ${r.Danh_muc || ''}`.toLowerCase()
+    return hay.includes(kw) || normalizeString(hay).includes(kwN)
+  })
+})
+
+const displayedBulkDraftRows = computed(() => {
+  void bulkDraftVersion.value
+  return filteredBulkDraftRows.value.slice(0, bulkTableLimit.value)
+})
+
+watch(bulkTableSearch, () => {
+  bulkTableLimit.value = BULK_TABLE_PAGE_SIZE
+})
+
+const onBulkTableScroll = (e) => {
+  const el = e?.target
+  if (!el) return
+  if (
+    bulkTableLimit.value < filteredBulkDraftRows.value.length &&
+    el.scrollTop + el.clientHeight >= el.scrollHeight - 160
+  ) {
+    bulkTableLimit.value += 40
+  }
+}
+
+const cardUsdToVndMap = ref({})
+
+const isCardUsdItem = (item) => {
+  return String(item?.Don_vi_tien_te || '').trim().toUpperCase() === 'USD'
+}
+
+const getCardUsdRate = (item) => {
+  const itemRate = toNum(item?.Ti_gia, 0)
+  if (itemRate > 1) return itemRate
+  const sysRate = toNum(currentSystemUsdRate.value, 0)
+  if (sysRate > 1) return sysRate
+  return 25400
+}
+
+const isCardShowingVnd = (item) => {
+  if (!isCardUsdItem(item)) return false
+  const k = getBulkItemKey(item)
+  return Boolean(k && cardUsdToVndMap.value[k])
+}
+
+const toggleCardUsdToVnd = (item) => {
+  const k = getBulkItemKey(item)
+  if (!k) return
+  cardUsdToVndMap.value = {
+    ...cardUsdToVndMap.value,
+    [k]: !cardUsdToVndMap.value[k]
+  }
+}
+
+const formatCardDisplayPrice = (amount, item) => {
+  if (isCardShowingVnd(item)) {
+    return formatCurrency(Math.round(toNum(amount, 0) * getCardUsdRate(item)), 'VND')
+  }
+  return formatCurrency(amount, item?.Don_vi_tien_te)
+}
+
+const onUserVolumeInput = (val) => {
+  if (val === '' || val === null || val === undefined) {
+    userVolumeFilter.value = ''
+    return
+  }
+  const n = Math.floor(toNum(val, 0))
+  userVolumeFilter.value = n > 0 ? n : ''
+}
+
+const getBulkCellDecimals = (row, key) => {
+  if (key === 'Ti_gia') return 0
+  if (key === 'Thue_VAT' || key === 'muc_phan_tram_off') return 2
+  const cur = String(row?.Don_vi_tien_te || 'VND').trim().toUpperCase()
+  return cur === 'USD' ? 2 : 0
+}
+
+const getBulkRulePriceDecimals = (mode) => {
+  if (
+    mode === 'inc_pct' ||
+    mode === 'dec_pct' ||
+    mode === 'from_sell_dec_pct' ||
+    mode === 'from_sell_inc_pct' ||
+    mode === 'from_cost_inc_pct' ||
+    mode === 'from_cost_dec_pct'
+  ) {
+    return 2
+  }
+  if (bulkRules.value.Don_vi_tien_te?.enabled) {
+    return bulkRules.value.Don_vi_tien_te.value === 'USD' ? 2 : 0
+  }
+  return bulkDraftRows.value.some(r => String(r?.Don_vi_tien_te || '').trim().toUpperCase() === 'USD') ? 2 : 0
+}
+
+const formatBulkOldVal = (row, key) => {
+  const val = row?._original?.[key]
+  if (val === undefined || val === null || val === '') return '(trống)'
+  if (BULK_NUMERIC_FIELDS.has(key)) {
+    return formatViNumber(toNum(val, 0), getBulkCellDecimals(row._original, key))
+  }
+  const s = String(val)
+  return s.length > 48 ? s.slice(0, 48) + '…' : s
+}
+
+const roundBulkPrice = (val, isUsd) => {
+  const n = Number(val)
+  if (!Number.isFinite(n)) return 0
+  return isUsd ? Math.round(n * 100) / 100 : Math.round(n)
+}
+
+const applyBulkTextMode = (oldVal, rule) => {
+  const cur = String(oldVal ?? '')
+  const val = String(rule.value ?? '')
+  if (rule.mode === 'prefix') return val + cur
+  if (rule.mode === 'suffix') return cur + val
+  if (rule.mode === 'find_replace') {
+    const findStr = String(rule.find ?? '')
+    if (!findStr) return cur
+    return cur.split(findStr).join(val)
+  }
+  return val
+}
+
+const applyBulkPriceMode = (curVal, rule, isUsd, refCost, refSell) => {
+  const cur = toNum(curVal, 0)
+  const v = toNum(rule.value, 0)
+  switch (rule.mode) {
+    case 'set':
+      return roundBulkPrice(v, isUsd)
+    case 'inc_pct':
+      return roundBulkPrice(cur * (1 + v / 100), isUsd)
+    case 'dec_pct':
+      return roundBulkPrice(Math.max(0, cur * (1 - v / 100)), isUsd)
+    case 'inc_amt':
+      return roundBulkPrice(cur + v, isUsd)
+    case 'dec_amt':
+      return roundBulkPrice(Math.max(0, cur - v), isUsd)
+    case 'from_cost_inc_pct':
+      return roundBulkPrice(refCost * (1 + v / 100), isUsd)
+    case 'from_cost_dec_pct':
+      return roundBulkPrice(Math.max(0, refCost * (1 - v / 100)), isUsd)
+    case 'from_sell_dec_pct':
+      return roundBulkPrice(Math.max(0, refSell * (1 - v / 100)), isUsd)
+    case 'from_sell_inc_pct':
+      return roundBulkPrice(refSell * (1 + v / 100), isUsd)
+    default:
+      return roundBulkPrice(v, isUsd)
+  }
+}
+
+const applyBulkRulesToDraftRows = () => {
+  const rules = bulkRules.value
+  if (bulkTotalEnabledFieldsCount.value === 0) return
+
+  const simpleKeys = [
+    'Ten_nha_cung_cap',
+    'Ma_nha_cung_cap',
+    'Type',
+    'DVT',
+    'Trang_thai',
+    'Main_img',
+    'volume',
+    'License_duration',
+    'thoi_han_bao_hanh',
+    'Ma_hang_lien_ket',
+    'Ten_hang_lien_ket'
+  ]
+  const textModeKeys = ['sku_code', ...BULK_TEXT_FIELD_DEFS.map(d => d.key)]
+
+  bulkDraftRows.value.forEach(row => {
+    // 1. Simple text fields
+    for (const k of simpleKeys) {
+      if (rules[k]?.enabled) row[k] = String(rules[k].value ?? '').trim()
+    }
+    if (rules.Danh_muc?.enabled) {
+      row.Danh_muc = String(rules.Danh_muc.value ?? '').trim().toUpperCase()
+    }
+
+    // 2. Text fields with mode (replace / prefix / suffix / find_replace)
+    for (const k of textModeKeys) {
+      if (rules[k]?.enabled) {
+        row[k] = applyBulkTextMode(row[k], rules[k])
+      }
+    }
+
+    // 3. Currency, Rate, VAT, % Off
+    if (rules.Don_vi_tien_te?.enabled) {
+      row.Don_vi_tien_te = rules.Don_vi_tien_te.value === 'USD' ? 'USD' : 'VND'
+    }
+    const isUsd = String(row.Don_vi_tien_te || 'VND').trim().toUpperCase() === 'USD'
+
+    if (rules.Ti_gia?.enabled) {
+      row.Ti_gia = toNum(rules.Ti_gia.value, isUsd ? 0 : 1)
+    }
+    if (rules.Thue_VAT?.enabled) {
+      row.Thue_VAT = toNum(rules.Thue_VAT.value, 0)
+    }
+    if (rules.muc_phan_tram_off?.enabled) {
+      row.muc_phan_tram_off = toNum(rules.muc_phan_tram_off.value, 0)
+    }
+
+    // 4. Smart pricing fields (respect dependency order between cost & sell)
+    const costRule = rules.Gia_tieu_chuan
+    const sellRule = rules.Don_gia
+    const costDependsOnSell = costRule?.enabled && (costRule.mode === 'from_sell_dec_pct' || costRule.mode === 'from_sell_inc_pct')
+
+    if (costDependsOnSell) {
+      if (sellRule?.enabled) {
+        row.Don_gia = applyBulkPriceMode(row.Don_gia, sellRule, isUsd, toNum(row.Gia_tieu_chuan, 0), toNum(row.Don_gia, 0))
+      }
+      row.Gia_tieu_chuan = applyBulkPriceMode(row.Gia_tieu_chuan, costRule, isUsd, toNum(row.Gia_tieu_chuan, 0), toNum(row.Don_gia, 0))
+    } else {
+      if (costRule?.enabled) {
+        row.Gia_tieu_chuan = applyBulkPriceMode(row.Gia_tieu_chuan, costRule, isUsd, toNum(row.Gia_tieu_chuan, 0), toNum(row.Don_gia, 0))
+      }
+      if (sellRule?.enabled) {
+        row.Don_gia = applyBulkPriceMode(row.Don_gia, sellRule, isUsd, toNum(row.Gia_tieu_chuan, 0), toNum(row.Don_gia, 0))
+      }
+    }
+
+    if (rules.gia_nhap?.enabled) {
+      row.gia_nhap = applyBulkPriceMode(row.gia_nhap, rules.gia_nhap, isUsd, toNum(row.Gia_tieu_chuan, 0), toNum(row.Don_gia, 0))
+    }
+    if (rules.gia_hardware?.enabled) {
+      row.gia_hardware = applyBulkPriceMode(row.gia_hardware, rules.gia_hardware, isUsd, toNum(row.Gia_tieu_chuan, 0), toNum(row.Don_gia, 0))
+    }
+  })
+
+  bumpBulkDraftVersion()
+  if (bulkChangedFieldKeys.value.length > 0 && bulkTableColGroup.value !== 'changed') {
+    bulkTableColGroup.value = 'changed'
+  }
+}
+
+const revertBulkDraftRow = (row) => {
+  if (!row || !row._original) return
+  Object.assign(row, { ...row._original })
+  bumpBulkDraftVersion()
+}
+
+const revertAllBulkDraftRows = () => {
+  bulkDraftRows.value.forEach(row => {
+    if (row && row._original) Object.assign(row, { ...row._original })
+  })
+  bumpBulkDraftVersion()
+}
+
+const removeBulkDraftRow = (bulkKey) => {
+  bulkDraftRows.value = bulkDraftRows.value.filter(r => r._bulkKey !== bulkKey)
+  bulkSelectedKeys.value = bulkSelectedKeys.value.filter(k => k !== bulkKey)
+  bumpBulkDraftVersion()
+  if (!bulkDraftRows.value.length) {
+    showBulkEditModal.value = false
+  }
+}
+
+const saveBulkEdit = async () => {
+  const dirtyRows = bulkDraftRows.value.filter(row => hasBulkRowChanged(row))
+  if (!dirtyRows.length) return
+
+  bulkSaving.value = true
+  showAsyncLoading('Đang cập nhật hàng loạt lên Firebase...', `Cập nhật ${dirtyRows.length} sản phẩm trong kho gốc (hang_hoa)`)
+  try {
+    const multiUpdates = {}
+    const affectedCategories = new Set()
+    let hasPriceImpact = false
+
+    for (const row of dirtyRows) {
+      const fbKey = row._firebaseKey || (await findFirebaseKeyByMaHang(row))
+      if (!fbKey) continue
+
+      const payload = buildFirebaseHangHoaPayload({
+        ...row,
+        danh_sach_file: row._danh_sach_file
+      })
+      multiUpdates[fbKey] = payload
+
+      const oldCat = String(row._original?.Danh_muc || '').trim().toUpperCase()
+      const newCat = String(payload.Danh_muc || '').trim().toUpperCase()
+      if (oldCat !== newCat) {
+        if (oldCat) affectedCategories.add(oldCat)
+        if (newCat) affectedCategories.add(newCat)
+      }
+      if (
+        isBulkCellChanged(row, 'Don_gia') ||
+        isBulkCellChanged(row, 'Gia_tieu_chuan') ||
+        isBulkCellChanged(row, 'Don_vi_tien_te') ||
+        isBulkCellChanged(row, 'Ti_gia')
+      ) {
+        hasPriceImpact = true
+      }
+    }
+
+    const updatedCount = Object.keys(multiUpdates).length
+    if (!updatedCount) {
+      showAsyncError('Không thể cập nhật', 'Không tìm thấy khóa Firebase của các sản phẩm đã chọn.')
+      return
+    }
+
+    await update(dbRef(database, 'hang_hoa'), multiUpdates)
+
+    for (const cat of affectedCategories) {
+      try {
+        await rebuildCategoryLinksFirebase(cat)
+      } catch (e) {
+        console.warn('Rebuild category links warning:', cat, e)
+      }
+    }
+
+    showBulkEditModal.value = false
+    exitBulkEditMode()
+    await fetchData()
+    if (hasPriceImpact) {
+      await syncAutoUpdatePriceListsInFirebase()
+    }
+    showAsyncSuccess('Cập nhật hàng loạt thành công!', `Đã lưu thay đổi cho ${updatedCount} sản phẩm vào kho gốc (hang_hoa).`)
+  } catch (err) {
+    console.error('Bulk edit Firebase error:', err)
+    showAsyncError('Lỗi lưu hàng loạt', err?.message || String(err))
+  } finally {
+    bulkSaving.value = false
+  }
+}
+
+const openBulkDeleteConfirm = () => {
+  if (!bulkSelectedItems.value.length) return
+  showBulkDeleteConfirmModal.value = true
+}
+
+const executeBulkDelete = async () => {
+  const targets = [...bulkSelectedItems.value]
+  if (!targets.length) return
+
+  bulkDeleting.value = true
+  showBulkDeleteConfirmModal.value = false
+  showAsyncLoading('Đang xóa hàng loạt sản phẩm...', `Xóa ${targets.length} sản phẩm khỏi kho gốc (hang_hoa)`)
+  try {
+    const deleteUpdates = {}
+    const deletedMaSet = new Set()
+
+    for (const it of targets) {
+      const fbKey = it._firebaseKey || (await findFirebaseKeyByMaHang(it))
+      if (!fbKey) continue
+      deleteUpdates[fbKey] = null
+      if (it.Ma_hang) deletedMaSet.add(String(it.Ma_hang).trim())
+    }
+
+    const deletedCount = Object.keys(deleteUpdates).length
+    if (!deletedCount) {
+      showAsyncError('Không thể xóa', 'Không tìm thấy sản phẩm cần xóa trên Firebase.')
+      return
+    }
+
+    await update(dbRef(database, 'hang_hoa'), deleteUpdates)
+
+    // Dọn các SP đã xóa khỏi giỏ báo giá (nếu có)
+    if (deletedMaSet.size > 0 && quoteCart.value.length > 0) {
+      quoteCart.value = quoteCart.value.filter(c => !deletedMaSet.has(String(c.Ma_hang || '').trim()))
+      saveQuoteCartToStorage()
+    }
+
+    exitBulkEditMode()
+    await fetchData()
+    showAsyncSuccess('Xóa hàng loạt thành công!', `Đã xóa ${deletedCount} sản phẩm khỏi kho gốc.`)
+  } catch (err) {
+    console.error('Bulk delete Firebase error:', err)
+    showAsyncError('Lỗi xóa hàng loạt', err?.message || String(err))
+  } finally {
+    bulkDeleting.value = false
+  }
+}
 
 const isMobileDockViewport = ref(typeof window !== 'undefined' ? window.innerWidth <= 1100 : false)
 const isCompactPhoneViewport = ref(typeof window !== 'undefined' ? window.innerWidth <= 768 : false)
@@ -20189,7 +22055,10 @@ const updateQlhhViewportFlags = () => {
 const isAnyPrimaryOverlayOpen = computed(() =>
   Boolean(
     showModal.value ||
-    showVendorToolsModal.value ||
+    showBulkEditModal.value ||
+    showBulkDeleteConfirmModal.value ||
+    showImportHubModal.value ||
+    showCompareHubModal.value ||
     productFilesModal.value?.show ||
     showImportModal.value ||
     Boolean(importFeaturesEditRow.value) ||
@@ -20228,7 +22097,6 @@ watch(
 )
 
 onMounted(async () => {
-  uiTheme.value = loadSavedQlhhTheme()
   updateQlhhViewportFlags()
   restoreQuoteCartFromStorage()
   window.addEventListener('resize', updateQlhhViewportFlags)
@@ -21155,6 +23023,179 @@ onUnmounted(() => {
   animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   color: #f8fafc;
   backdrop-filter: blur(20px);
+}
+
+/* Fullscreen 100% riêng cho Modal Import dữ liệu hàng hóa */
+.import-overlay--fullscreen {
+  padding: 0 !important;
+}
+.import-modal--fullscreen {
+  width: 100vw !important;
+  max-width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  max-height: 100vh !important;
+  max-height: 100dvh !important;
+  border-radius: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+.import-modal--fullscreen .import-modal__header {
+  padding: 14px 22px;
+}
+.import-modal--fullscreen .import-stats {
+  gap: 12px;
+  padding: 12px 22px;
+}
+.import-modal--fullscreen .import-stat-card {
+  padding: 10px 14px;
+  border-radius: 12px;
+}
+.import-modal--fullscreen .import-stat-card__value {
+  font-size: 20px;
+}
+.import-modal--fullscreen .import-stat-card__label {
+  margin-top: 4px;
+}
+.import-modal--fullscreen .import-tabs {
+  padding: 10px 22px 12px;
+  gap: 8px;
+}
+.import-modal--fullscreen .import-tab {
+  padding: 7px 14px;
+}
+.import-modal--fullscreen .import-modal__footer {
+  padding: 12px 22px;
+}
+
+/* Thanh chọn nguồn nạp theo tên file đối chiếu SOPHOS */
+.imp-sophos-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 10px 22px;
+  background: rgba(245, 158, 11, 0.08);
+  border-bottom: 1px solid rgba(245, 158, 11, 0.25);
+}
+.imp-sophos-bar__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.imp-sophos-clear-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #fde68a;
+  font-weight: 700;
+}
+.imp-sophos-clear-check input {
+  width: 16px;
+  height: 16px;
+  accent-color: #f59e0b;
+  cursor: pointer;
+}
+.imp-sophos-src-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.imp-sophos-src-label {
+  font-size: 12px;
+  color: #cbd5e1;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.imp-src-pill {
+  display: inline-flex;
+  align-items: stretch;
+  border-radius: 9px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.72);
+  overflow: hidden;
+  transition: border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+}
+.imp-src-pill:hover {
+  border-color: rgba(148, 163, 184, 0.55);
+  background: rgba(30, 41, 59, 0.9);
+}
+.imp-src-pill.is-active.is-emerald {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.18);
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.3);
+}
+.imp-src-pill.is-active.is-amber {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.18);
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.3);
+}
+.imp-src-pill.is-active.is-sky {
+  border-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.18);
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.3);
+}
+.imp-src-pill__main {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 11px;
+  background: transparent;
+  border: none;
+  color: #e2e8f0;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  min-width: 0;
+}
+.imp-src-pill.is-active.is-emerald .imp-src-pill__main { color: #a7f3d0; }
+.imp-src-pill.is-active.is-amber .imp-src-pill__main { color: #fde68a; }
+.imp-src-pill.is-active.is-sky .imp-src-pill__main { color: #bae6fd; }
+.imp-src-pill__name {
+  max-width: 310px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.imp-src-pill__scope {
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
+  font-size: 10.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.imp-src-pill__badge {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.imp-src-pill__eye {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border-left: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(30, 41, 59, 0.65);
+  color: #93c5fd;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.imp-src-pill__eye:hover {
+  background: rgba(59, 130, 246, 0.28);
+  color: #ffffff;
 }
 
 @keyframes slideUp {
@@ -25712,6 +27753,55 @@ onUnmounted(() => {
   border-color: var(--rose-border);
   background: var(--rose-bg);
 }
+.qlhh-search-sep {
+  width: 1px;
+  height: 20px;
+  background: var(--border-control);
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+.qlhh-search-vol {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  color: var(--ink-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+.qlhh-search-vol:focus-within,
+.qlhh-search-vol.is-active {
+  background: var(--sky-bg);
+  border-color: var(--sky-border);
+  color: var(--sky-text);
+}
+.qlhh-search-vol-input {
+  width: 64px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--ink-primary);
+  font-size: 12.5px;
+  font-weight: 700;
+  -moz-appearance: textfield;
+}
+.qlhh-search-vol-input::-webkit-outer-spin-button,
+.qlhh-search-vol-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.qlhh-search-vol-input::placeholder {
+  color: var(--ink-faint);
+  font-weight: 500;
+}
+
+.qlhh-display-btn {
+  max-width: none;
+  white-space: nowrap;
+}
 
 /* Right Action Cluster */
 .qlhh-view-seg {
@@ -25874,6 +27964,66 @@ onUnmounted(() => {
 }
 .qlhh-pop-menu.is-wide {
   width: 340px;
+}
+.qlhh-pop-menu.is-align-right {
+  left: auto;
+  right: 0;
+}
+.qlhh-pop-menu.is-display-pop {
+  width: 270px;
+}
+.qlhh-display-pop-body {
+  padding: 10px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+.qlhh-display-sec {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.qlhh-display-sec-lbl {
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+}
+.qlhh-display-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.qlhh-display-opt {
+  height: 36px;
+  width: 100%;
+  margin: 0;
+  padding: 0 9px;
+  border-radius: 9px;
+  border: 1px solid var(--border-control);
+  background: var(--bg-input);
+  color: var(--ink-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+.qlhh-display-opt:hover:not(.active) {
+  border-color: var(--sky-border);
+  color: var(--ink-strong);
+}
+.qlhh-display-opt.active {
+  background: var(--sky-bg);
+  border-color: var(--sky-border);
+  color: var(--sky-text);
+  font-weight: 800;
+  box-shadow: 0 2px 8px -4px rgba(14, 165, 233, 0.35);
 }
 
 .qlhh-pop-head {
@@ -26470,6 +28620,26 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
+.qlhh-card-sku-line {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--ink-secondary);
+  min-width: 0;
+}
+.qlhh-card-sku-lbl {
+  color: var(--ink-muted);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.qlhh-card-sku-val {
+  font-weight: 700;
+  color: var(--ink-secondary);
+  word-break: break-word;
+}
+
 .qlhh-spec-row {
   display: flex;
   align-items: center;
@@ -26505,9 +28675,41 @@ onUnmounted(() => {
   padding-top: 9px;
   border-top: 1px dashed var(--border-control);
   display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.qlhh-card-price-row {
+  display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: 8px;
+}
+
+.qlhh-card-bottom-bar {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.qlhh-card-bottom-bar .qlhh-ico-act {
+  width: 100%;
+  min-width: 0;
+  height: 31px;
+  padding: 0 8px;
+  gap: 5px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.qlhh-card-bottom-bar.is-3btn .qlhh-ico-act.is-doc-btn {
+  grid-column: span 2;
+}
+.qlhh-card-bottom-bar .qlhh-ico-act svg {
+  flex-shrink: 0;
 }
 
 .qlhh-price-stack {
@@ -26526,6 +28728,59 @@ onUnmounted(() => {
 .qlhh-cost-val {
   color: var(--violet-text);
   font-weight: 700;
+}
+.qlhh-price-lbl-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.qlhh-price-list-lbl {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  line-height: 1.2;
+}
+.qlhh-cur-switch {
+  display: inline-flex;
+  align-items: center;
+  padding: 1.5px;
+  margin: 0;
+  border-radius: 999px;
+  border: 1px solid var(--border-control);
+  background: var(--bg-input);
+  cursor: pointer;
+  gap: 1px;
+  transition: border-color 0.15s ease;
+}
+.qlhh-cur-switch:hover {
+  border-color: var(--sky-border);
+}
+.qlhh-cur-switch .cur-sw-opt {
+  padding: 1.5px 6px;
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  line-height: 1.25;
+  color: var(--ink-muted);
+  transition: all 0.14s ease;
+}
+.qlhh-cur-switch .cur-sw-opt.active {
+  background: #0284c7;
+  color: #ffffff;
+}
+.qlhh-cur-switch.is-vnd .cur-sw-opt.active {
+  background: #059669;
+  color: #ffffff;
+}
+.qlhh-usd-rate-txt {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  white-space: nowrap;
 }
 .qlhh-price-strike {
   font-size: 11px;
@@ -26582,6 +28837,14 @@ onUnmounted(() => {
   height: 27px;
   padding: 0 9px;
   font-size: 11.5px;
+}
+.qlhh-add-cart-btn.is-icon-only {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  justify-content: center;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .qlhh-capsule-stepper {
@@ -26819,6 +29082,66 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+.qlhh-hub-head.is-import-hub {
+  background: linear-gradient(135deg, #0c4a6e 0%, #0369a1 55%, #1d4ed8 100%);
+  border-bottom: 1.5px solid rgba(56, 189, 248, 0.45);
+  color: #ffffff;
+}
+.qlhh-hub-head.is-compare-hub {
+  background: linear-gradient(135deg, #065f46 0%, #047857 55%, #0f766e 100%);
+  border-bottom: 1.5px solid rgba(52, 211, 153, 0.45);
+  color: #ffffff;
+}
+.qlhh-hub-head.is-import-hub .qlhh-hub-head-ico,
+.qlhh-hub-head.is-compare-hub .qlhh-hub-head-ico {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.36);
+  color: #ffffff;
+}
+.qlhh-hub-head.is-import-hub .qlhh-hub-title,
+.qlhh-hub-head.is-compare-hub .qlhh-hub-title {
+  color: #ffffff;
+}
+.qlhh-hub-head.is-import-hub .qlhh-hub-sub,
+.qlhh-hub-head.is-compare-hub .qlhh-hub-sub {
+  color: rgba(240, 249, 255, 0.88);
+}
+.qlhh-hub-head.is-import-hub .qlhh-hub-close,
+.qlhh-hub-head.is-compare-hub .qlhh-hub-close {
+  background: rgba(2, 18, 38, 0.28);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #ffffff;
+}
+.qlhh-hub-head.is-import-hub .qlhh-hub-close:hover,
+.qlhh-hub-head.is-compare-hub .qlhh-hub-close:hover {
+  background: rgba(239, 68, 68, 0.82);
+  border-color: #fecaca;
+  color: #ffffff;
+}
+.qlhh-ghost-btn.is-compare-hub-btn {
+  border-color: var(--emerald-border);
+  background: var(--emerald-bg);
+  color: var(--emerald-text);
+}
+.qlhh-ghost-btn.is-compare-hub-btn:hover {
+  filter: brightness(1.06);
+}
+.qlhh-ghost-btn.is-usd-rate-btn {
+  border-color: var(--amber-border);
+  background: var(--amber-bg);
+  color: var(--amber-text);
+}
+.qlhh-ghost-btn.is-usd-rate-btn:hover {
+  filter: brightness(1.06);
+}
+.qlhh-ghost-btn.is-pricelist-btn {
+  border-color: var(--violet-border);
+  background: var(--violet-bg);
+  color: var(--violet-text);
+}
+.qlhh-ghost-btn.is-pricelist-btn:hover {
+  filter: brightness(1.06);
 }
 .qlhh-hub-head-left {
   display: flex;
@@ -27461,6 +29784,14 @@ label.hub-choice-card:hover {
     order: -1;
     flex: 1 1 auto;
     width: 100%;
+    padding: 0 10px 0 12px;
+    gap: 6px;
+  }
+  .qlhh-search-vol {
+    padding: 2px 6px;
+  }
+  .qlhh-search-vol-input {
+    width: 52px;
   }
   .qlhh-filter-left {
     width: 100%;
@@ -28161,21 +30492,26 @@ label.hub-choice-card:hover {
   cursor: not-allowed;
 }
 
-/* Price Calculation Sub-Cards (Cost vs Sell) */
+/* Price Calculation Sections (Flat, Borderless inside Bento Box) */
 .qlhh-price-calc-card {
-  padding: 13px 14px;
-  border-radius: 12px;
-  background: var(--bg-well);
-  border: 1px solid var(--border-subtle);
+  padding: 10px 0 0;
+  border-radius: 0;
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 7px;
 }
-.qlhh-price-calc-card.is-violet {
-  border-left: 3px solid #8b5cf6;
-}
+.qlhh-price-calc-card.is-violet,
+.qlhh-price-calc-card.is-sky,
 .qlhh-price-calc-card.is-emerald {
-  border-left: 3px solid #10b981;
+  border-left: none;
+  background: transparent;
+}
+.qlhh-price-calc-card.is-formula-bridge {
+  padding: 10px 0 0;
+  gap: 7px;
 }
 
 .pcc-top-row {
@@ -28201,6 +30537,9 @@ label.hub-choice-card:hover {
 .pcc-label.is-violet {
   color: var(--violet-text);
 }
+.pcc-label.is-sky {
+  color: var(--sky-text);
+}
 .pcc-label.is-emerald {
   color: var(--emerald-text);
 }
@@ -28219,22 +30558,22 @@ label.hub-choice-card:hover {
   letter-spacing: -0.01em;
 }
 .qlhh-fm-input.is-cost-hero {
-  border-color: var(--violet-border);
+  border-color: var(--border-control);
   color: var(--violet-text);
 }
 .qlhh-fm-input.is-sell-hero {
-  border-color: var(--emerald-border);
+  border-color: var(--border-control);
   color: var(--emerald-text);
 }
 .qlhh-fm-modal.theme-light-blue .qlhh-fm-input.is-sell-hero {
   color: #047857;
 }
 
-/* Formula Bar inside Price Sub-Cards */
+/* Formula Bar (Flat Inline Row) */
 .qlhh-formula-bar {
   padding: 8px 10px;
   border-radius: 9px;
-  background: var(--bg-card);
+  background: var(--bg-well);
   border: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
@@ -28655,8 +30994,8 @@ label.hub-choice-card:hover {
     grid-column: span 1;
   }
   .qlhh-price-calc-card {
-    padding: 10px 11px;
-    gap: 8px;
+    padding: 8px 0 0;
+    gap: 7px;
   }
   .qlhh-formula-bar {
     flex-direction: column;
@@ -29596,6 +31935,1011 @@ label.hub-choice-card:hover {
   .qlhh-cmp-foot .qlhh-fm-foot-right {
     width: 100%;
     justify-content: flex-end;
+  }
+}
+
+/* ==========================================================================
+   SỬA HÀNG LOẠT & XÓA HÀNG LOẠT (BULK EDIT / BULK DELETE)
+========================================================================== */
+.qlhh-bulk-toggle-btn.is-active {
+  background: var(--sky-bg);
+  border-color: var(--sky-border);
+  color: var(--sky-text);
+  font-weight: 800;
+}
+.qlhh-bulk-btn-count {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--sky-text);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.qlhh-bulk-check {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  border-radius: 5px;
+  border: 1.5px solid var(--border-control);
+  background: var(--bg-input);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.14s ease;
+}
+.qlhh-bulk-check:hover {
+  border-color: var(--sky-text);
+}
+.qlhh-bulk-check.selected {
+  background: #0284c7;
+  border-color: #38bdf8;
+  color: #ffffff;
+}
+.qlhh-bulk-check.is-partial {
+  background: var(--sky-bg);
+  border-color: #38bdf8;
+}
+.qlhh-bulk-chk-dash {
+  width: 8px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--sky-text);
+}
+.qlhh-bulk-check.is-on-header {
+  border-color: rgba(255, 255, 255, 0.55);
+  background: rgba(2, 18, 38, 0.35);
+}
+.qlhh-bulk-check.is-on-header.selected {
+  background: #ffffff;
+  border-color: #ffffff;
+  color: #0369a1;
+}
+.qlhh-bulk-check.is-on-header.is-partial {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: #ffffff;
+}
+.qlhh-bulk-check.is-on-header .qlhh-bulk-chk-dash {
+  background: #ffffff;
+}
+.qlhh-page.theme-light-blue .qlhh-bulk-check:not(.is-on-header) {
+  background: #ffffff;
+  border-color: #94a3b8;
+}
+.qlhh-page.theme-light-blue .qlhh-bulk-check:not(.is-on-header).selected {
+  background: #0284c7;
+  border-color: #0284c7;
+  color: #ffffff;
+}
+
+.qlhh-data-table th.col-bulk-chk,
+.qlhh-data-table td.col-bulk-chk {
+  width: 38px;
+  text-align: center;
+  padding-left: 10px;
+  padding-right: 6px;
+}
+
+.qlhh-table-row.is-bulk-selected td {
+  background: rgba(14, 165, 233, 0.14) !important;
+}
+.qlhh-page.theme-light-blue .qlhh-table-row.is-bulk-selected td {
+  background: #e0f2fe !important;
+}
+
+.qlhh-card.is-bulk-selected {
+  border-color: #38bdf8 !important;
+  box-shadow: inset 3px 0 0 #0284c7, 0 8px 22px -8px rgba(2, 132, 199, 0.35) !important;
+}
+.qlhh-page.theme-light-blue .qlhh-card.is-bulk-selected {
+  background: #f0f9ff !important;
+  border-color: #0284c7 !important;
+  box-shadow: inset 4px 0 0 #0284c7, 0 8px 20px -8px rgba(2, 132, 199, 0.22) !important;
+}
+
+/* Floating Bulk Action Bar */
+.qlhh-bulk-float-bar {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  z-index: 985;
+  max-width: calc(100vw - 24px);
+  padding: 9px 14px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(12, 74, 110, 0.96) 0%, rgba(15, 23, 42, 0.97) 100%);
+  border: 1.5px solid rgba(56, 189, 248, 0.55);
+  box-shadow: 0 18px 44px -10px rgba(2, 6, 23, 0.72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  color: #ffffff;
+}
+.qlhh-bulk-float-bar.is-mobile-offset {
+  bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  width: calc(100vw - 20px);
+  padding: 9px 11px;
+  gap: 8px;
+}
+.qlhh-bulk-float-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.qlhh-bulk-float-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+}
+.qlhh-bulk-float-link {
+  padding: 4px 8px;
+  border-radius: 7px;
+  border: 1px solid rgba(125, 211, 252, 0.35);
+  background: rgba(14, 165, 233, 0.18);
+  color: #e0f2fe;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.14s ease;
+}
+.qlhh-bulk-float-link:hover {
+  background: rgba(14, 165, 233, 0.35);
+  color: #ffffff;
+}
+.qlhh-bulk-float-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.qlhh-bulk-float-btn {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  font-size: 12.5px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+.qlhh-bulk-float-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.qlhh-bulk-float-btn.is-primary {
+  background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+  color: #ffffff;
+  border-color: rgba(186, 230, 253, 0.5);
+  box-shadow: 0 4px 12px -2px rgba(14, 165, 233, 0.45);
+}
+.qlhh-bulk-float-btn.is-primary:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+.qlhh-bulk-float-btn.is-danger {
+  background: rgba(239, 68, 68, 0.24);
+  color: #fecaca;
+  border-color: rgba(252, 165, 165, 0.45);
+}
+.qlhh-bulk-float-btn.is-danger:hover:not(:disabled) {
+  background: #dc2626;
+  color: #ffffff;
+  border-color: #fca5a5;
+}
+.qlhh-bulk-float-btn.is-ghost {
+  background: rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+  border-color: rgba(255, 255, 255, 0.25);
+}
+.qlhh-bulk-float-btn.is-ghost:hover {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+}
+
+/* Bulk Edit Modal */
+.qlhh-bulk-overlay,
+.qlhh-bulk-del-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(2, 6, 23, 0.78);
+  z-index: 10060 !important;
+  padding: 14px !important;
+  box-sizing: border-box;
+}
+.qlhh-bulk-tbl-search {
+  height: 28px;
+  width: 195px;
+  padding: 0 9px;
+  border-radius: 7px;
+  border: 1px solid var(--border-control);
+  background: var(--bg-input);
+  color: var(--ink-primary);
+  font-size: 11.5px;
+}
+.qlhh-bulk-tbl-search:focus {
+  outline: none;
+  border-color: var(--sky-border);
+}
+.qlhh-bulk-load-more-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 11px 14px;
+  background: var(--bg-table-head);
+  border-top: 1px solid var(--border-subtle);
+  font-size: 12px;
+  color: var(--ink-secondary);
+}
+.qlhh-bulk-del-overlay {
+  z-index: 10070 !important;
+}
+.qlhh-bulk-modal {
+  width: min(1480px, 98vw);
+  height: min(94dvh, 920px);
+  max-height: 94dvh;
+  background: var(--bg-modal);
+  border: 1px solid var(--border-control);
+  border-radius: 16px;
+  box-shadow: var(--shadow-modal);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: var(--ink-primary);
+}
+.qlhh-bulk-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 18px;
+  background: linear-gradient(135deg, #0c4a6e 0%, #0369a1 52%, #0f766e 100%);
+  border-bottom: 1.5px solid rgba(56, 189, 248, 0.48);
+  color: #ffffff;
+  flex-shrink: 0;
+}
+.qlhh-bulk-overlay.theme-light-blue .qlhh-bulk-head {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 55%, #1d4ed8 100%);
+  border-bottom-color: #1d4ed8;
+}
+.qlhh-bulk-head-left {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+.qlhh-bulk-head-ico {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.36);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  flex-shrink: 0;
+}
+.qlhh-bulk-head-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.qlhh-bulk-head-title-row h3 {
+  margin: 0;
+  font-size: 15.5px;
+  font-weight: 800;
+  color: #ffffff;
+}
+.qlhh-bulk-head-pill {
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.36);
+  color: #ffffff;
+}
+.qlhh-bulk-head-pill.is-origin {
+  background: rgba(16, 185, 129, 0.32);
+  border-color: rgba(167, 243, 208, 0.65);
+}
+.qlhh-bulk-head-sub {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: rgba(224, 242, 254, 0.9);
+}
+.qlhh-bulk-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(2, 18, 38, 0.28);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.qlhh-bulk-close:hover {
+  background: rgba(239, 68, 68, 0.8);
+  border-color: #fecaca;
+}
+
+.qlhh-bulk-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  background: var(--amber-bg);
+  border-bottom: 1px solid var(--amber-border);
+  color: var(--amber-text);
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.qlhh-bulk-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 16px;
+  overflow: hidden;
+  background: var(--bg-well);
+}
+
+/* Batch Apply Panel */
+.qlhh-bulk-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+.qlhh-bulk-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  background: var(--bg-table-head);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.qlhh-bulk-panel-tabs {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.qlhh-bulk-tab {
+  height: 30px;
+  padding: 0 11px;
+  border-radius: 8px;
+  border: 1px solid var(--border-control);
+  background: var(--bg-input);
+  color: var(--ink-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.14s ease;
+}
+.qlhh-bulk-tab:hover:not(.active) {
+  border-color: var(--sky-border);
+  color: var(--ink-strong);
+}
+.qlhh-bulk-tab.active {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+  border-color: #0284c7;
+  color: #ffffff;
+}
+.qlhh-bulk-tab-cnt {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.25);
+  color: inherit;
+  font-size: 10.5px;
+  font-weight: 800;
+}
+.qlhh-bulk-panel-acts {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.qlhh-bulk-mini-btn {
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-control);
+  background: var(--bg-card);
+  color: var(--ink-secondary);
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.qlhh-bulk-mini-btn:hover {
+  border-color: var(--sky-border);
+  color: var(--sky-text);
+}
+.qlhh-bulk-mini-btn.is-muted:hover {
+  border-color: var(--rose-border);
+  color: var(--rose-text);
+}
+.qlhh-bulk-apply-btn {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid #059669;
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+}
+.qlhh-bulk-apply-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.qlhh-bulk-apply-btn:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.qlhh-bulk-fields-wrap {
+  padding: 10px 12px;
+  max-height: 255px;
+  overflow-y: auto;
+}
+.qlhh-bulk-fields-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.qlhh-bf-card {
+  padding: 8px 10px;
+  border-radius: 9px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-well);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: all 0.14s ease;
+}
+.qlhh-bf-card.is-span-2 {
+  grid-column: span 2;
+}
+.qlhh-bf-card.is-on {
+  background: var(--sky-bg);
+  border-color: var(--sky-border);
+}
+.qlhh-bf-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.qlhh-bf-chk {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--ink-strong);
+  cursor: pointer;
+  user-select: none;
+}
+.qlhh-bf-chk input[type='checkbox'] {
+  width: 15px;
+  height: 15px;
+  accent-color: #0284c7;
+  cursor: pointer;
+  margin: 0;
+}
+.qlhh-bf-inline-row {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+.qlhh-bf-input,
+.qlhh-bf-select,
+.qlhh-bf-textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 5px 8px;
+  border-radius: 7px;
+  border: 1px solid var(--border-control);
+  background: var(--bg-input);
+  color: var(--ink-primary);
+  font-size: 12px;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+.qlhh-bf-input,
+.qlhh-bf-select {
+  height: 31px;
+}
+.qlhh-bf-select.is-sm {
+  width: auto;
+  flex-shrink: 0;
+  height: 27px;
+  font-size: 11px;
+  padding: 2px 6px;
+}
+.qlhh-bf-textarea {
+  resize: vertical;
+  min-height: 44px;
+}
+.qlhh-bf-input:focus,
+.qlhh-bf-select:focus,
+.qlhh-bf-textarea:focus {
+  outline: none;
+  border-color: var(--sky-text);
+}
+
+/* Preview & Inline Edit Table */
+.qlhh-bulk-table-sec {
+  flex: 1 1 auto;
+  min-height: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.qlhh-bulk-table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 7px 12px;
+  background: var(--bg-table-head);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+.qlhh-bulk-col-tabs {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.qlhh-bulk-col-tab {
+  height: 27px;
+  padding: 0 10px;
+  border-radius: 7px;
+  border: 1px solid var(--border-control);
+  background: var(--bg-card);
+  color: var(--ink-secondary);
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.qlhh-bulk-col-tab.active {
+  background: var(--sky-bg);
+  border-color: var(--sky-border);
+  color: var(--sky-text);
+  font-weight: 800;
+}
+.qlhh-bulk-table-meta {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+  color: var(--ink-secondary);
+}
+
+.qlhh-bulk-table-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+.qlhh-bulk-edit-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 12px;
+}
+.qlhh-bulk-edit-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  padding: 8px 9px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background: linear-gradient(180deg, #075985 0%, #0c4a6e 100%);
+  color: #ffffff;
+  border-bottom: 1.5px solid rgba(56, 189, 248, 0.5);
+  border-right: 1px solid rgba(255, 255, 255, 0.14);
+  white-space: nowrap;
+}
+.qlhh-bulk-overlay.theme-light-blue .qlhh-bulk-edit-table thead th {
+  background: linear-gradient(180deg, #0284c7 0%, #0369a1 100%);
+}
+.qlhh-bulk-edit-table thead th.col-b-sticky {
+  left: 0;
+  z-index: 6;
+  min-width: 190px;
+  max-width: 230px;
+}
+.qlhh-bulk-edit-table td {
+  padding: 5px 6px;
+  border-bottom: 1px solid var(--border-subtle);
+  border-right: 1px solid var(--border-subtle);
+  vertical-align: top;
+  background: var(--bg-card);
+}
+.qlhh-bulk-edit-table td.col-b-idx,
+.qlhh-bulk-edit-table th.col-b-idx {
+  width: 36px;
+  text-align: center;
+  color: var(--ink-muted);
+  font-weight: 700;
+}
+.qlhh-bulk-edit-table td.col-b-sticky {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  min-width: 190px;
+  max-width: 230px;
+  background: var(--bg-card);
+  box-shadow: 3px 0 8px -4px rgba(2, 6, 23, 0.24);
+}
+.qlhh-bulk-edit-table tr.is-row-dirty td.col-b-sticky {
+  box-shadow: inset 3px 0 0 #10b981, 3px 0 8px -4px rgba(2, 6, 23, 0.24);
+}
+.qlhh-b-code {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--sky-text);
+  word-break: break-all;
+}
+.qlhh-b-name-sub {
+  font-size: 11px;
+  color: var(--ink-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-top: 2px;
+}
+.qlhh-bulk-edit-table td.is-cell-changed {
+  background: rgba(16, 185, 129, 0.14) !important;
+}
+.qlhh-bulk-overlay.theme-light-blue .qlhh-bulk-edit-table td.is-cell-changed {
+  background: #ecfdf5 !important;
+}
+.qlhh-b-cell-input,
+.qlhh-b-cell-textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 4px 7px;
+  border-radius: 6px;
+  border: 1px solid var(--border-control);
+  background: var(--bg-input);
+  color: var(--ink-primary);
+  font-size: 12px;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+.qlhh-b-cell-input {
+  height: 28px;
+}
+.qlhh-b-cell-input.is-num {
+  text-align: right;
+  font-weight: 700;
+}
+.qlhh-b-cell-textarea {
+  min-height: 28px;
+  resize: vertical;
+}
+.qlhh-bulk-edit-table td.is-cell-changed .qlhh-b-cell-input,
+.qlhh-bulk-edit-table td.is-cell-changed .qlhh-b-cell-textarea {
+  border-color: #10b981;
+  font-weight: 700;
+}
+.qlhh-b-old-hint {
+  margin-top: 2px;
+  font-size: 10px;
+  color: var(--emerald-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 210px;
+}
+.qlhh-bulk-edit-table th.col-b-act,
+.qlhh-bulk-edit-table td.col-b-act {
+  width: 68px;
+  text-align: center;
+}
+.qlhh-b-row-acts {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.qlhh-b-row-btn {
+  width: 25px;
+  height: 25px;
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid var(--border-control);
+  background: var(--bg-input);
+  color: var(--ink-secondary);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.qlhh-b-row-btn:hover {
+  border-color: var(--sky-border);
+  color: var(--sky-text);
+}
+.qlhh-b-row-btn.is-del:hover {
+  border-color: var(--rose-border);
+  background: var(--rose-bg);
+  color: var(--rose-text);
+}
+
+.qlhh-bulk-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 11px 18px;
+  background: var(--bg-modal-head);
+  border-top: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+.qlhh-bulk-foot-info {
+  font-size: 12.5px;
+}
+.qlhh-bulk-foot-info .is-ready {
+  color: var(--emerald-text);
+  font-weight: 700;
+}
+.qlhh-bulk-foot-info .is-idle {
+  color: var(--ink-muted);
+}
+.qlhh-bulk-foot-btns {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Bulk Delete Confirm Modal */
+.qlhh-bulk-del-modal {
+  width: min(490px, 95vw);
+  background: var(--bg-modal);
+  border: 1px solid var(--rose-border);
+  border-radius: 15px;
+  box-shadow: var(--shadow-modal);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.qlhh-bulk-del-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 13px 16px;
+  background: linear-gradient(135deg, #b91c1c 0%, #dc2626 55%, #991b1b 100%);
+  color: #ffffff;
+}
+.qlhh-bulk-del-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14.5px;
+  font-weight: 800;
+}
+.qlhh-bulk-del-body {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.qlhh-bulk-del-warn {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-secondary);
+}
+.qlhh-bulk-del-list {
+  max-height: 210px;
+  overflow-y: auto;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--bg-well);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.qlhh-bulk-del-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-bottom: 5px;
+  border-bottom: 1px dashed var(--border-subtle);
+  font-size: 12px;
+}
+.qlhh-bulk-del-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.qlhh-bulk-del-item strong {
+  color: var(--rose-text);
+  font-size: 11.5px;
+}
+.qlhh-bulk-del-item span {
+  color: var(--ink-primary);
+}
+.qlhh-bulk-del-more {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--ink-muted);
+  text-align: center;
+  padding-top: 2px;
+}
+.qlhh-bulk-del-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 11px 16px;
+  background: var(--bg-modal-head);
+  border-top: 1px solid var(--border-subtle);
+}
+
+@media (max-width: 1080px) {
+  .qlhh-bulk-fields-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .qlhh-bulk-overlay {
+    padding: 0 !important;
+  }
+  .qlhh-bulk-modal {
+    width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    border: none;
+  }
+  .qlhh-bulk-fields-grid {
+    grid-template-columns: 1fr;
+  }
+  .qlhh-bf-card.is-span-2 {
+    grid-column: span 1;
+  }
+  .qlhh-bulk-float-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .qlhh-bulk-float-actions {
+    justify-content: flex-end;
+  }
+
+  /* ─── CHUẨN HÓA KHOẢNG CÁCH ĐẦU MODAL MOBILE NÉ THANH PIN / TAI THỎ / DYNAMIC ISLAND (PHƯƠNG ÁN A — ĐỒNG BỘ SALEREPORT) ─── */
+  .qlhh-fm-overlay,
+  .qlhh-cmp-overlay,
+  .qlhh-hub-overlay:not(.qlhh-usd-overlay),
+  .qlhh-bulk-overlay,
+  .qlhh-modal-backdrop:has(> .qlhh-hub-modal:not(.qlhh-usd-modal)),
+  .import-overlay:has(> .import-modal) {
+    padding: 0 !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+  }
+
+  .qlhh-fm-modal,
+  .qlhh-hub-modal:not(.qlhh-usd-modal),
+  .qlhh-bulk-modal,
+  .import-modal,
+  .pricelist-modal {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Ẩn thanh gạch kéo sheet khi modal Hub đang ở chế độ Fullscreen để Header phủ kín lên tận đỉnh */
+  .qlhh-hub-modal:not(.qlhh-usd-modal) > .mob-sheet-grabber {
+    display: none !important;
+  }
+
+  /* Đẩy nội dung Header tất cả Modal Fullscreen & Drawer Giỏ hàng xuống dưới vùng thanh pin / đồng hồ (tối thiểu 52px) */
+  .qlhh-fm-modal > .qlhh-fm-head,
+  .qlhh-hub-modal:not(.qlhh-usd-modal) > .qlhh-hub-head,
+  .qlhh-bulk-modal > .qlhh-bulk-head,
+  .import-modal > .import-modal__header,
+  .quote-cart-right-sidebar > .quote-cart-sidebar__header {
+    padding-top: max(calc(env(safe-area-inset-top, 0px) + 6px), 52px) !important;
+    padding-bottom: 12px !important;
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+    border-radius: 0 !important;
+  }
+
+  /* Đẩy nút đóng (X) dạng absolute xuống ngang hàng tiêu đề bên dưới vùng Pin */
+  .qlhh-fm-head .qlhh-fm-close {
+    top: max(calc(env(safe-area-inset-top, 0px) + 8px), 52px) !important;
+    right: 12px !important;
+  }
+
+  /* Khoảng đệm an toàn đáy modal (tránh vướng thanh Home Indicator trên iPhone) */
+  .qlhh-fm-modal > .qlhh-fm-foot,
+  .qlhh-bulk-modal > .qlhh-bulk-foot,
+  .import-modal > .import-modal__footer {
+    padding-bottom: max(calc(env(safe-area-inset-bottom, 0px) + 10px), 14px) !important;
+  }
+
+  /* Các Modal nhỏ / Sub-modal / Dialog / Lightbox giữa màn hình: luôn cách vùng Pin tối thiểu 56px */
+  .qlhh-usd-overlay,
+  .qlhh-bulk-del-overlay,
+  .import-overlay:not(:has(> .import-modal)),
+  .qlhh-modal-backdrop:not(.qlhh-fm-overlay):not(.qlhh-cmp-overlay):not(.qlhh-bulk-overlay):not(.qlhh-hub-overlay):not(:has(> .qlhh-hub-modal:not(.qlhh-usd-modal))) {
+    padding-top: max(calc(env(safe-area-inset-top, 0px) + 12px), 56px) !important;
+    padding-bottom: max(calc(env(safe-area-inset-bottom, 0px) + 12px), 24px) !important;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    box-sizing: border-box !important;
+  }
+
+  .qlhh-usd-modal,
+  .qlhh-bulk-del-modal,
+  .custom-alert-modal {
+    max-height: calc(100dvh - max(calc(env(safe-area-inset-top, 0px) + 24px), 80px)) !important;
   }
 }
 </style>

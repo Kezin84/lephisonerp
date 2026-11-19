@@ -938,6 +938,7 @@ import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import draggable from 'vuedraggable'
 import { initializeApp, getApps, getApp } from 'firebase/app'
 import { getDatabase, ref as dbRef, get, update } from 'firebase/database'
+import { useFullAppTheme } from '../composables/useAppTheme'
 
 const props = defineProps({
   uiTheme: {
@@ -974,13 +975,11 @@ const firebaseConfig = {
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp()
 const database = getDatabase(app)
 
+const { uiTheme: globalFullTheme } = useFullAppTheme()
+
 const effectiveTheme = computed(() => {
   if (props.uiTheme) return props.uiTheme
-  if (typeof window !== 'undefined') {
-    const saved = localStorage.getItem('sonai_report_fb_theme_v2')
-    if (saved === 'light' || saved === 'dark' || saved === 'custom') return saved
-  }
-  return 'dark'
+  return globalFullTheme.value
 })
 
 const STANDARD_FLOW_STEPS = [

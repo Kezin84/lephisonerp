@@ -1,14 +1,17 @@
 import {
   DEFAULT_BOT_TOKEN,
   DEFAULT_FIREBASE_DATABASE_URL,
+  TASK_SCHEDULES_VERSION,
   buildContextFromDatasets,
+  extractZaloChatFromUpdate,
   getVietnamDateParts,
   interpolateTemplate,
   isScheduleDueNow,
   matchIncomingZaloCommand,
   normalizeBotConfigWithDefault,
   resolveBotCommandText,
-  safeFirebaseKey
+  safeFirebaseKey,
+  upsertZaloRecipient
 } from '../src/utils/zaloBotCore.js'
 
 const ZALO_BOT_API_ORIGIN = 'https://bot-api.zaloplatforms.com'
@@ -137,9 +140,13 @@ const loadResolvedBotConfig = async (rtdb, env = {}) => {
     defaultBotToken: fallbackToken
   }
 
+  const rawExists = Boolean(settingsVal && typeof settingsVal === 'object')
   return {
     config: normalizeBotConfigWithDefault(settingsVal, sysZalo),
-    rawExists: Boolean(settingsVal && typeof settingsVal === 'object')
+    rawExists,
+    needsMigration: Boolean(
+      rawExists && Number(settingsVal.taskSchedulesVersion || 0) < TASK_SCHEDULES_VERSION
+    )
   }
 }
 
@@ -149,11 +156,15 @@ const createContextLoader = (rtdb) => {
 
   const getContext = async () => {
     if (cachedCtx) return cachedCtx
-    const [khVal, srVal, repVal] = await Promise.all([
+    const [khVal, srVal, repValRaw] = await Promise.all([
       rtdb.get('khach_hang').catch(() => ({})),
       rtdb.get('sale_report').catch(() => ({})),
-      rtdb.get('reports').catch(() => ({}))
+      rtdb.get('REPORT').catch(() => null)
     ])
+    let repVal = repValRaw
+    if (!repVal || (typeof repVal === 'object' && Object.keys(repVal).length === 0)) {
+      repVal = await rtdb.get('reports').catch(() => ({}))
+    }
     cachedCtx = buildContextFromDatasets({
       khVal: khVal || {},
       srVal: srVal || {},
@@ -226,8 +237,8 @@ const processIncomingUpdates = async ({ rtdb, config, items, loader }) => {
   let replied = 0
 
   for (const item of items) {
-    const msg = item?.message || item
-    const msgId = msg?.message_id
+    const info = extractZaloChatFromUpdate(item)
+    const msgId = info.msgId
     const msgKey = msgId ? safeFirebaseKey(msgId) : ''
     if (msgKey && (remoteProcessed[msgKey] || msgPatch[msgKey])) continue
 
@@ -235,24 +246,14 @@ const processIncomingUpdates = async ({ rtdb, config, items, loader }) => {
       msgPatch[msgKey] = nowMs
     }
 
-    const chatId = msg?.chat?.id || item?.chat?.id || msg?.from?.id
-    const chatType = msg?.chat?.chat_type || 'GROUP'
-    const senderName = msg?.from?.display_name || msg?.from?.name || 'Người dùng Zalo'
-    const rawText = String(msg?.text || '').trim()
+    const { chatId, rawText } = info
     if (!chatId) continue
 
     processed++
 
-    const existsRec = (config.recipients || []).some((r) => r.chatId === chatId)
-    if (!existsRec) {
-      config.recipients.push({
-        id: 'rec_' + Date.now(),
-        chatId,
-        name: chatType === 'GROUP' ? `Nhóm Zalo (${String(chatId).slice(0, 10)})` : senderName,
-        type: chatType,
-        enabled: true,
-        addedAt: new Date().toISOString()
-      })
+    if (!Array.isArray(config.recipients)) config.recipients = []
+    const recRes = upsertZaloRecipient(config.recipients, info)
+    if (recRes.updated) {
       configUpdated = true
     }
 
@@ -291,7 +292,7 @@ const processIncomingUpdates = async ({ rtdb, config, items, loader }) => {
 const runCronCycle = async (env = {}, cronExpr = '* * * * *') => {
   const rtdb = createRtdbClient(env)
   const vnNow = getVietnamDateParts(new Date())
-  const { config, rawExists } = await loadResolvedBotConfig(rtdb, env)
+  const { config, rawExists, needsMigration } = await loadResolvedBotConfig(rtdb, env)
 
   await rtdb
     .set('zalo_bot_config/worker_heartbeat', {
@@ -304,7 +305,7 @@ const runCronCycle = async (env = {}, cronExpr = '* * * * *') => {
     })
     .catch(() => {})
 
-  if (!rawExists) {
+  if (!rawExists || needsMigration) {
     await rtdb.set('zalo_bot_config/settings', config).catch(() => {})
   }
 

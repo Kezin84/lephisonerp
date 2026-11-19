@@ -61,6 +61,10 @@ const props = defineProps({
   inputmode: {
     type: String as PropType<InputModeAttr | ''>,
     default: ''
+  },
+  emptyOnZero: {
+    type: Boolean,
+    default: false
   }
 });
 
@@ -83,8 +87,13 @@ const computedInputMode = computed<InputModeAttr>(() => {
 watch(
   [() => props.modelValue, () => props.decimals],
   ([newVal]) => {
+    const isEmptyOrZero =
+      newVal === '' ||
+      newVal === null ||
+      newVal === undefined ||
+      (props.emptyOnZero && Number(newVal) === 0);
     if (!isFocused.value) {
-      displayValue.value = formatViNumber(newVal, props.decimals);
+      displayValue.value = isEmptyOrZero && props.emptyOnZero ? '' : formatViNumber(newVal, props.decimals);
     } else if (
       displayValue.value === '' &&
       newVal !== '' &&
@@ -179,7 +188,7 @@ function onInput(event: Event) {
   target.value = result.displayValue;
 
   if (result.isIntermediateEmpty) {
-    emit('update:modelValue', wasEmptyStringOnFocus.value ? '' : 0);
+    emit('update:modelValue', wasEmptyStringOnFocus.value || props.emptyOnZero ? '' : 0);
   } else {
     wasEmptyStringOnFocus.value = false;
     emit('update:modelValue', result.numericValue);
@@ -201,7 +210,7 @@ function onBlur(event: FocusEvent) {
   const raw = (target?.value ?? displayValue.value).trim();
 
   if (raw === '' || raw === '-') {
-    if (wasEmptyStringOnFocus.value) {
+    if (wasEmptyStringOnFocus.value || props.emptyOnZero) {
       displayValue.value = '';
       if (target) target.value = '';
       emit('update:modelValue', '');
@@ -215,6 +224,12 @@ function onBlur(event: FocusEvent) {
   }
 
   const parsed = parseViFormattedNumber(raw, props.decimals, true);
+  if (props.emptyOnZero && parsed === 0) {
+    displayValue.value = '';
+    if (target) target.value = '';
+    emit('update:modelValue', '');
+    return;
+  }
   const formatted = formatViNumber(parsed, props.decimals);
   displayValue.value = formatted;
   if (target) target.value = formatted;

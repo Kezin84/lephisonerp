@@ -1,17 +1,21 @@
 import { initializeApp, getApps, getApp } from 'firebase/app'
-import { getDatabase, ref as dbRef, get, set, update, push } from 'firebase/database'
+import { getDatabase, ref as dbRef, get, set, update, push, onValue } from 'firebase/database'
 import { getSystemConfigSync, hasAuthSession, isMockDbActive } from '../services/systemConfig'
 import {
   DEFAULT_BOT_TOKEN,
   DEFAULT_INVITE_URL,
+  TASK_SCHEDULES_VERSION,
   buildContextFromDatasets,
+  extractZaloChatFromUpdate,
   getVietnamDateParts,
   interpolateTemplate,
   isScheduleDueNow,
   matchIncomingZaloCommand,
   normalizeBotConfigWithDefault,
+  normalizeZaloChatType,
   resolveBotCommandText,
-  safeFirebaseKey
+  safeFirebaseKey,
+  upsertZaloRecipient
 } from './zaloBotCore.js'
 
 const firebaseConfig = {
@@ -33,7 +37,37 @@ const getDbInstance = () => {
   return getDatabase(app)
 }
 
-export { DEFAULT_BOT_TOKEN, DEFAULT_INVITE_URL }
+export {
+  DEFAULT_BOT_TOKEN,
+  DEFAULT_INVITE_URL,
+  extractZaloChatFromUpdate,
+  normalizeZaloChatType,
+  upsertZaloRecipient
+}
+
+export const subscribeZaloRecipientsRealtime = (onRecipientsUpdate) => {
+  try {
+    const db = getDbInstance()
+    const targetRef = dbRef(db, 'zalo_bot_config/settings/recipients')
+    return onValue(targetRef, (snap) => {
+      if (!snap.exists()) return
+      const raw = snap.val()
+      const list = (Array.isArray(raw) ? raw : Object.values(raw || {}))
+        .filter((r) => r && typeof r === 'object' && r.chatId)
+        .map((r) => ({
+          ...r,
+          chatId: String(r.chatId).trim(),
+          type: normalizeZaloChatType(r.type, r.chatId)
+        }))
+      if (typeof onRecipientsUpdate === 'function') {
+        onRecipientsUpdate(list)
+      }
+    })
+  } catch (err) {
+    console.warn('Không thể lắng nghe realtime recipients Zalo Bot:', err)
+    return () => {}
+  }
+}
 
 export const WORKER_HEARTBEAT_FRESH_MS = 180 * 1000
 
@@ -68,7 +102,13 @@ export const fetchZaloBotConfig = async () => {
     const db = getDbInstance()
     const snap = await get(dbRef(db, 'zalo_bot_config/settings'))
     if (snap.exists()) {
-      return normalizeBotConfig(snap.val())
+      const raw = snap.val()
+      const normalized = normalizeBotConfig(raw)
+      if (Number(raw?.taskSchedulesVersion || 0) < TASK_SCHEDULES_VERSION) {
+        const clean = JSON.parse(JSON.stringify(normalized))
+        await set(dbRef(db, 'zalo_bot_config/settings'), clean).catch(() => {})
+      }
+      return normalized
     }
     const def = getDefaultZaloBotConfig()
     await set(dbRef(db, 'zalo_bot_config/settings'), def)
@@ -162,13 +202,19 @@ export const buildDynamicSystemContext = async () => {
     const [snapKH, snapSR, snapRep] = await Promise.all([
       get(dbRef(db, 'khach_hang')),
       get(dbRef(db, 'sale_report')),
-      get(dbRef(db, 'reports'))
+      get(dbRef(db, 'REPORT'))
     ])
+
+    let repVal = snapRep.exists() ? snapRep.val() : null
+    if (!repVal || (typeof repVal === 'object' && Object.keys(repVal).length === 0)) {
+      const snapLegacy = await get(dbRef(db, 'reports')).catch(() => null)
+      if (snapLegacy && snapLegacy.exists()) repVal = snapLegacy.val()
+    }
 
     return buildContextFromDatasets({
       khVal: snapKH.exists() ? snapKH.val() : {},
       srVal: snapSR.exists() ? snapSR.val() : {},
-      repVal: snapRep.exists() ? snapRep.val() : {},
+      repVal: repVal || {},
       now: new Date()
     })
   } catch (e) {
@@ -324,8 +370,8 @@ export const pollZaloBotCommandsOnce = async (customTimeout = 8) => {
     let configUpdated = false
 
     for (const item of results) {
-      const msg = item?.message || item
-      const msgId = msg?.message_id
+      const info = extractZaloChatFromUpdate(item)
+      const msgId = info.msgId
       const msgKey = msgId ? safeFirebaseKey(msgId) : ''
       if (msgId && (processedMessageIds.has(msgId) || remoteProcessed[msgKey])) continue
       if (msgId) {
@@ -333,22 +379,12 @@ export const pollZaloBotCommandsOnce = async (customTimeout = 8) => {
         msgPatch[msgKey] = Date.now()
       }
 
-      const chatId = msg?.chat?.id || item?.chat?.id || msg?.from?.id
-      const chatType = msg?.chat?.chat_type || 'GROUP'
-      const senderName = msg?.from?.display_name || msg?.from?.name || 'Người dùng Zalo'
-      const rawText = String(msg?.text || '').trim()
+      const { chatId, rawText } = info
       if (!chatId) continue
 
-      const existsRec = (config.recipients || []).some((r) => r.chatId === chatId)
-      if (!existsRec) {
-        config.recipients.push({
-          id: 'rec_' + Date.now(),
-          chatId,
-          name: chatType === 'GROUP' ? `Nhóm Zalo (${chatId.slice(0, 10)})` : senderName,
-          type: chatType,
-          enabled: true,
-          addedAt: new Date().toISOString()
-        })
+      if (!Array.isArray(config.recipients)) config.recipients = []
+      const recRes = upsertZaloRecipient(config.recipients, info)
+      if (recRes.updated) {
         configUpdated = true
       }
 

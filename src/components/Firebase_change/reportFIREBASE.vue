@@ -7185,6 +7185,7 @@ import { ref, computed, watch, onMounted, onUnmounted, onActivated, nextTick } f
 import { useRoute, useRouter } from 'vue-router'
 import * as XLSX from 'xlsx-js-style'
 import { downloadCardFilesAsZip } from '../../utils/cardZipHelper'
+import { useFullAppTheme } from '../../composables/useAppTheme'
 import anhMauThueUrl from '../../assets/anh_mau_thue.png'
 import {
   UNIVERSAL_IMPORT_ACCEPT,
@@ -9596,7 +9597,6 @@ const getStorageCustomerLabel = (val) => {
   const found = uniqueStorageCustomers.value.find(o => o.key === val);
   return found ? found.label : val;
 };
-const REPORT_THEME_STORAGE_KEY = 'sonai_report_fb_theme_v2';
 const REPORT_CUSTOM_GLASS_CFG_KEY = 'sonai_report_fb_custom_glass_cfg_v1';
 const REPORT_RECENT_SEARCH_KEY = 'sonai_report_recent_searches';
 
@@ -9612,16 +9612,6 @@ const GLASS_PRESETS = {
   ios_frost: { brightness: 34, opacity: 46, blur: 22, dim: 20 },
   ocean_dark: { brightness: 6, opacity: 52, blur: 20, dim: 32 },
   crystal_clear: { brightness: 42, opacity: 26, blur: 12, dim: 14 }
-};
-
-const getInitialReportTheme = () => {
-  if (typeof window !== 'undefined') {
-    const saved = localStorage.getItem(REPORT_THEME_STORAGE_KEY);
-    if (saved === 'dark' || saved === 'light' || saved === 'custom') {
-      return saved;
-    }
-  }
-  return 'custom';
 };
 
 const loadInitialCustomGlassConfig = () => {
@@ -9645,7 +9635,7 @@ const loadInitialCustomGlassConfig = () => {
   return { ...DEFAULT_CUSTOM_GLASS_CONFIG };
 };
 
-const uiTheme = ref(getInitialReportTheme());
+const { uiTheme, setUiTheme: setGlobalFullTheme } = useFullAppTheme();
 const showCustomGlassTuner = ref(false);
 const customGlassConfig = ref(loadInitialCustomGlassConfig());
 const customWallpaperFileInputRef = ref(null);
@@ -9850,13 +9840,10 @@ onUnmounted(() => {
 
 const setUiTheme = (nextTheme) => {
   if (!nextTheme || uiTheme.value === nextTheme) return;
-  uiTheme.value = nextTheme;
+  setGlobalFullTheme(nextTheme);
   if (nextTheme !== 'custom') {
     showCustomGlassTuner.value = false;
   }
-  try {
-    localStorage.setItem(REPORT_THEME_STORAGE_KEY, uiTheme.value);
-  } catch (e) {}
   showToast(
     uiTheme.value === 'custom'
       ? 'Đã chuyển giao diện Custom Glassify (Nhấn icon thanh trượt để chỉnh độ trong suốt & độ sáng kính)'

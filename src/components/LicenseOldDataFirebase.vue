@@ -2768,6 +2768,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import ImportLicenseModal from './ImportLicenseFirebaseModal.vue'
 import ImportPDFModal from './ImportPDFFirebaseModal.vue'
 import AsyncConfirmModal from './AsyncConfirmModal.vue'
@@ -2775,22 +2776,10 @@ import LicenseCustomerPoPicker from './LicenseCustomerPoPicker.vue'
 import LicenseVendorPickerModal from './LicenseVendorPickerModal.vue'
 import LicenseDatePickerInput from './LicenseDatePickerInput.vue'
 import { callDeepSeek } from '../services/deepseek'
+import { useBinaryAppTheme } from '../composables/useAppTheme'
 
-// === THEME & VIEW MODE SYNC (Chuẩn SaleReportFirebase) ===
-const getInitialUiTheme = () => {
-  if (typeof window !== 'undefined') {
-    const saved = localStorage.getItem('baogia_theme_pref')
-    if (saved === 'light' || saved === 'dark') return saved
-  }
-  return 'dark'
-}
-const uiTheme = ref(getInitialUiTheme())
-const setUiTheme = (mode) => {
-  uiTheme.value = mode
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('baogia_theme_pref', mode)
-  }
-}
+// === THEME SYNC (Synced globally across all pages via useAppTheme) ===
+const { uiTheme, setUiTheme } = useBinaryAppTheme()
 
 const getInitialViewMode = () => {
   if (typeof window !== 'undefined') {
@@ -5024,8 +5013,36 @@ watch(showAIChat, (val) => {
   if (val) scrollToBottom()
 })
 
+const route = useRoute()
+
+const applyRouteQueryFilters = () => {
+  const q = route.query || {}
+  const mode = String(q.mode || '').trim()
+  if (mode === 'day' || mode === 'week' || mode === 'month' || mode === 'year' || mode === 'all') {
+    filterMode.value = mode
+  }
+  if (q.date) filterDate.value = String(q.date).trim()
+  if (q.week) filterWeek.value = String(q.week).trim()
+  if (q.month) filterMonth.value = String(q.month).trim()
+
+  const filter = String(q.filter || '').trim()
+  if (filter === 'qua_han' || filter === 'con_han' || filter === 'qua_hieu_luc' || filter === 'con_hieu_luc' || filter === 'da_xu_ly') {
+    setQuickFilter(filter)
+  } else if (filter === 'renewal') {
+    setQuickFilter('all')
+    filterExpirationStatus.value = 'active'
+    filterExpirationValue.value = '90'
+    filterExpirationUnit.value = 'day'
+  }
+
+  if (q.search !== undefined && q.search !== null && String(q.search).trim()) {
+    searchQuery.value = String(q.search).trim()
+  }
+}
+
 onMounted(() => {
   updateMobileShellViewport();
+  applyRouteQueryFilters();
   fetchData();
   window.addEventListener('scroll', handleScroll, true);
   window.addEventListener('resize', updateMobileShellViewport, { passive: true });

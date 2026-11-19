@@ -167,20 +167,36 @@
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
               Danh Sách Nhóm / Người Nhận (Chat ID)
             </h3>
-            <button
-              type="button"
-              class="btn-secondary-dark"
-              style="border-color: rgba(56, 189, 248, 0.45); color: #38bdf8;"
-              @click="listenForNewChatId"
-              :disabled="listeningNewChat"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"></circle><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"></path></svg>
-              <span>{{ listeningNewChat ? 'Đang chờ bạn tag @Bot trong nhóm Zalo...' : 'Quét bắt Nhóm Zalo mới' }}</span>
-            </button>
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <button
+                type="button"
+                class="btn-secondary-dark"
+                style="border-color: rgba(16, 185, 129, 0.45); color: #34d399;"
+                @click="copyBotAccountForDirectChat"
+                title="Copy tên tài khoản Bot để gửi cho nhân viên mở chat riêng 1-1 trên Zalo"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                <span>Copy TK Bot ({{ config.botAccount || botStatus.accountName }})</span>
+              </button>
+              <button
+                type="button"
+                class="btn-secondary-dark"
+                style="border-color: rgba(56, 189, 248, 0.45); color: #38bdf8;"
+                @click="listenForNewChatId"
+                :disabled="listeningNewChat"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"></circle><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"></path></svg>
+                <span>{{ listeningNewChat ? 'Đang chờ tin nhắn từ Zalo (25s)...' : 'Quét bắt Chat ID mới (Cá nhân & Nhóm)' }}</span>
+              </button>
+            </div>
           </div>
 
-          <div style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 12px;">
-            Mẹo: Khi thêm Bot vào nhóm Zalo mới, bấm <strong>"Quét bắt Nhóm Zalo mới"</strong> rồi vào nhóm Zalo gõ <code>@{{ config.botName || 'Bot SONAI SI' }} alo</code> để tự động lấy mã Chat ID.
+          <div style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 12px; line-height: 1.5;">
+            <strong>Tự động bắt Chat ID:</strong> Hệ thống tự động bắt &amp; đồng bộ realtime ngay vào danh sách bên dưới mỗi khi có người tương tác với Bot:
+            <br />
+            • <strong>Nhận tin Cá nhân (1-1):</strong> Mở Zalo tìm <code>{{ config.botAccount || botStatus.accountName }}</code> (hoặc <code>{{ config.botName || 'Bot SONAI SI' }}</code>), nhắn riêng <code>alo</code> — hệ thống tự bắt đúng Chat ID cá nhân hợp lệ.
+            <br />
+            • <strong>Nhận tin Nhóm:</strong> Thêm Bot vào nhóm Zalo rồi gõ <code>@{{ config.botName || 'Bot SONAI SI' }} alo</code>.
           </div>
 
           <!-- Thêm thủ công -->
@@ -255,7 +271,7 @@
                   <button
                     type="button"
                     class="btn-mini danger"
-                    @click="config.recipients.splice(idx, 1)"
+                    @click="removeRecipientAt(idx)"
                   >
                     Xoá
                   </button>
@@ -393,11 +409,19 @@
                 />
               </div>
 
-              <div style="display: flex; align-items: center; gap: 10px;">
+              <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                 <label class="switch-label">
                   <input type="checkbox" v-model="sched.enabled" />
                   <span>{{ sched.enabled ? 'Đang bật hẹn giờ' : 'Đang tắt' }}</span>
                 </label>
+                <button
+                  type="button"
+                  class="btn-mini emerald"
+                  @click="previewSchedule(sched, sIdx)"
+                  :disabled="previewingScheduleKey === (sched.id || sIdx)"
+                >
+                  {{ previewingScheduleKey === (sched.id || sIdx) ? 'Đang tổng hợp...' : 'Xem trước số liệu thực' }}
+                </button>
                 <button
                   type="button"
                   class="btn-mini sky"
@@ -474,6 +498,20 @@
                 class="form-input"
                 placeholder="Nhập nội dung tin nhắn mẫu..."
               ></textarea>
+              <div v-if="schedulePreviews[sched.id || sIdx]" class="preview-box" style="margin-top: 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px;">
+                  <span style="font-size: 0.74rem; font-weight: 800; color: #38bdf8; text-transform: uppercase;">
+                    Bản xem trước thực tế từ Firebase (node REPORT):
+                  </span>
+                  <button
+                    type="button"
+                    class="banner-close"
+                    style="font-size: 0.8rem;"
+                    @click="delete schedulePreviews[sched.id || sIdx]"
+                  >✕</button>
+                </div>
+                <pre style="margin: 0; white-space: pre-wrap; font-family: inherit; font-size: 0.84rem; color: #e2e8f0; line-height: 1.5;">{{ schedulePreviews[sched.id || sIdx] }}</pre>
+              </div>
               <div v-if="sched.lastSentDate" style="font-size: 0.75rem; color: #64748b; margin-top: 4px;">
                 Lần tự động gửi gần nhất: {{ sched.lastSentDate }} lúc {{ sched.time }}
               </div>
@@ -674,7 +712,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { initializeApp, getApps, getApp } from 'firebase/app'
 import { getDatabase, ref as dbRef, get, remove } from 'firebase/database'
 import {
@@ -687,7 +725,10 @@ import {
   executeBotCommand,
   pollZaloBotCommandsOnce,
   fetchWorkerHeartbeat,
-  isWorkerHeartbeatFresh
+  isWorkerHeartbeatFresh,
+  extractZaloChatFromUpdate,
+  upsertZaloRecipient,
+  subscribeZaloRecipientsRealtime
 } from '../utils/zaloBotService'
 
 const firebaseConfig = {
@@ -792,20 +833,41 @@ const manualCompose = reactive({
 })
 
 const manualPreviewText = ref('')
+const schedulePreviews = reactive({})
+const previewingScheduleKey = ref('')
 const commandTestArgs = reactive({})
 const botLogs = ref([])
 
 const availableVariables = [
   { code: '{date}', desc: 'Ngày hiện tại (DD/MM/YYYY)' },
   { code: '{time}', desc: 'Giờ hiện tại (HH:mm)' },
+  { code: '{thu}', desc: 'Thứ trong tuần (T2..T7, CN)' },
+  { code: '{tuan_hien_tai}', desc: 'Khoảng ngày tuần hiện tại (VD: 16/11 - 22/11)' },
+  { code: '{ban_tin_viec_sang}', desc: 'Bản tin 07:00 sáng: việc chưa làm trong tuần (ưu tiên việc mới, Sáng/Chiều)' },
+  { code: '{ban_tin_tong_ket_chieu}', desc: 'Bản tin 17:20 chiều: thống kê hôm nay + việc chưa làm trong tuần' },
+  { code: '{so_viec_chua_lam_tuan}', desc: 'Số lượng việc chưa xử lý trong tuần hiện tại' },
+  { code: '{so_viec_hom_nay_chua_xong}', desc: 'Số lượng việc hôm nay chưa xử lý' },
+  { code: '{so_viec_ton_tuan_truoc}', desc: 'Số lượng việc tồn từ các tuần trước' },
+  { code: '{cong_viec_chua_xong}', desc: 'Danh sách toàn bộ công việc chưa hoàn thành (mới nhất lên đầu)' },
   { code: '{tong_khach_hang}', desc: 'Tổng số khách hàng' },
   { code: '{so_khach_no}', desc: 'Số lượng khách hàng đang nợ' },
   { code: '{tong_cong_no}', desc: 'Tổng số tiền công nợ phải thu' },
-  { code: '{chi_tiet_cong_no}', desc: 'Danh sách chi tiết từng khách đang nợ' },
-  { code: '{cong_viec_chua_xong}', desc: 'Danh sách các công việc chưa hoàn thành' }
+  { code: '{chi_tiet_cong_no}', desc: 'Danh sách chi tiết từng khách đang nợ' }
 ]
 
 const quickPresets = [
+  {
+    label: 'Mẫu 07:00 Sáng (Việc tuần)',
+    template:
+      '[VIỆC CHƯA LÀM TRONG TUẦN - {time} | {thu} {date}]\n' +
+      '{ban_tin_viec_sang}'
+  },
+  {
+    label: 'Mẫu 17:20 Chiều (Tổng kết ngày & tuần)',
+    template:
+      '[TỔNG KẾT CUỐI NGÀY - {time} | {thu} {date}]\n\n' +
+      '{ban_tin_tong_ket_chieu}'
+  },
   {
     label: 'Mẫu Báo cáo Công nợ',
     template:
@@ -816,10 +878,9 @@ const quickPresets = [
       'Chi tiết công nợ:\n{chi_tiet_cong_no}'
   },
   {
-    label: 'Mẫu Nhắc việc chưa hoàn thành',
+    label: 'Mẫu Toàn bộ việc chưa xong',
     template:
-      '[NHẮC VIỆC CHƯA HOÀN THÀNH - {date} {time}]\n' +
-      'Danh sách công việc cần xử lý:\n' +
+      '[NHẮC VIỆC CHƯA HOÀN THÀNH - {thu} {date}]\n\n' +
       '{cong_viec_chua_xong}'
   },
   {
@@ -871,10 +932,33 @@ const checkBotConnection = async () => {
   }
 }
 
+const deletedChatIdsInSession = new Set()
+let unsubscribeRecipientsRealtime = null
+let initialRecipientsLoaded = false
+
+const removeRecipientAt = (idx) => {
+  const target = config.value.recipients[idx]
+  if (target?.chatId) {
+    deletedChatIdsInSession.add(String(target.chatId).trim())
+  }
+  config.value.recipients.splice(idx, 1)
+}
+
+const copyBotAccountForDirectChat = async () => {
+  const acc = String(config.value.botAccount || botStatus.accountName || 'bot.QkJpMNVs').trim()
+  try {
+    await navigator.clipboard.writeText(acc)
+    showBanner(`Đã copy "${acc}" — gửi cho người nhận dán vào ô tìm kiếm Zalo, mở chat riêng 1-1 và nhắn "alo" để tự động bắt Chat ID!`, 'success')
+  } catch {
+    showBanner(`Tài khoản Bot: ${acc} (hãy tìm trên Zalo và nhắn riêng "alo")`, 'info')
+  }
+}
+
 const handleSaveAllConfig = async () => {
   savingConfig.value = true
   try {
     await saveZaloBotConfig(config.value)
+    deletedChatIdsInSession.clear()
     showBanner('Đã lưu toàn bộ cấu hình Zalo Bot lên Firebase thành công.', 'success')
   } catch (err) {
     showBanner('Lỗi khi lưu cấu hình: ' + (err?.message || err), 'error')
@@ -908,42 +992,38 @@ const addRecipient = () => {
 
 const listenForNewChatId = async () => {
   listeningNewChat.value = true
-  showBanner('Đang lắng nghe trong 25 giây... Hãy vào nhóm Zalo gõ @' + (config.value.botName || 'Bot SONAI SI') + ' alo', 'info')
+  showBanner(
+    `Đang lắng nghe trong 25 giây... Nhắn riêng "alo" cho ${config.value.botAccount || botStatus.accountName} (cá nhân) hoặc gõ @${config.value.botName || 'Bot SONAI SI'} alo trong nhóm Zalo`,
+    'info'
+  )
   try {
     const res = await callZaloBotApi(config.value.botToken, 'getUpdates', { timeout: 25 })
     if (res && res.ok && res.result) {
       const items = Array.isArray(res.result) ? res.result : [res.result]
       let addedCount = 0
+      const capturedNames = []
       for (const item of items) {
-        const msg = item?.message || item
-        const chatId = msg?.chat?.id || item?.chat?.id || msg?.from?.id
-        const chatType = msg?.chat?.chat_type || 'GROUP'
-        const sender = msg?.from?.display_name || 'Nhóm Zalo mới'
-        if (chatId) {
-          const existing = config.value.recipients.find(r => r.chatId === chatId)
-          if (!existing) {
-            config.value.recipients.push({
-              id: 'rec_' + Date.now() + '_' + addedCount,
-              chatId,
-              name: chatType === 'GROUP' ? `Nhóm Zalo của ${sender}` : sender,
-              type: chatType,
-              enabled: true,
-              addedAt: new Date().toISOString()
-            })
-            addedCount++
-          }
-          await sendZaloBotMessage({
-            botToken: config.value.botToken,
-            chatId,
-            text: `[${config.value.botName || 'Bot SONAI SI'}] Đã kết nối nhóm nhận thông báo thành công (Chat ID: ${chatId}).`,
-            source: 'pair_chat'
-          })
+        const info = extractZaloChatFromUpdate(item)
+        if (!info.chatId) continue
+        deletedChatIdsInSession.delete(info.chatId)
+        const recRes = upsertZaloRecipient(config.value.recipients, info)
+        if (recRes.added) {
+          addedCount++
+          capturedNames.push(info.displayName)
         }
+        const chatLabel = info.chatType === 'GROUP' ? 'nhóm' : 'tài khoản cá nhân'
+        await sendZaloBotMessage({
+          botToken: config.value.botToken,
+          chatId: info.chatId,
+          text: `[${config.value.botName || 'Bot SONAI SI'}] Đã kết nối ${chatLabel} nhận thông báo thành công (Chat ID: ${info.chatId}).`,
+          source: 'pair_chat'
+        })
       }
       await saveZaloBotConfig(config.value)
-      showBanner(`Đã bắt được sự kiện từ Zalo và lưu cấu hình (${addedCount} nhóm mới).`, 'success')
+      const detail = capturedNames.length > 0 ? `: ${capturedNames.join(', ')}` : ''
+      showBanner(`Đã bắt được sự kiện từ Zalo và lưu cấu hình (${addedCount} người nhận mới${detail}).`, 'success')
     } else {
-      showBanner('Hết thời gian chờ mà chưa nhận được tin nhắn tag @Bot nào.', 'error')
+      showBanner('Hết 25 giây chờ mà chưa nhận được tin nhắn mới nào. Nếu Cloudflare 24/7 đang bật, Worker có thể đã tự bắt hộ và cập nhật thẳng vào danh sách!', 'info')
     }
   } catch (err) {
     showBanner('Lỗi khi quét Chat ID: ' + (err?.message || err), 'error')
@@ -971,7 +1051,15 @@ const sendQuickTestToChat = async (rec) => {
       showBanner(`Đã gửi tin nhắn kiểm tra tới "${rec.name}" thành công!`, 'success')
       loadBotLogs()
     } else {
-      showBanner('Gửi thất bại: ' + (res?.description || 'Lỗi API'), 'error')
+      const desc = String(res?.description || 'Lỗi API')
+      if (desc.toLowerCase().includes('not permitted') && rec.type !== 'GROUP') {
+        showBanner(
+          `Gửi thất bại (${desc}). Tài khoản cá nhân này chưa nhắn tin riêng 1-1 cho Bot ${config.value.botAccount || botStatus.accountName} — hãy nhắn riêng "alo" cho Bot để hệ thống tự bắt Chat ID hợp lệ!`,
+          'error'
+        )
+      } else {
+        showBanner('Gửi thất bại: ' + desc, 'error')
+      }
     }
   } finally {
     sendingMessage.value = false
@@ -1057,6 +1145,16 @@ const toggleScheduleDay = (sched, dayVal) => {
     sched.days = sched.days.filter(d => d !== dayVal)
   } else {
     sched.days.push(dayVal)
+  }
+}
+
+const previewSchedule = async (sched, sIdx) => {
+  const key = sched.id || sIdx
+  previewingScheduleKey.value = key
+  try {
+    schedulePreviews[key] = await renderBotTemplate(sched.template)
+  } finally {
+    if (previewingScheduleKey.value === key) previewingScheduleKey.value = ''
   }
 }
 
@@ -1182,11 +1280,39 @@ const formatLogTime = (iso) => {
 
 onMounted(async () => {
   config.value = await fetchZaloBotConfig()
+  initialRecipientsLoaded = true
   if (config.value.recipients.length > 0) {
     manualCompose.targetChatId = config.value.recipients[0].chatId
   }
+
+  // Lắng nghe realtime các Chat ID mới được Cloudflare Worker / polling tự động bắt từ tin nhắn Zalo
+  unsubscribeRecipientsRealtime = subscribeZaloRecipientsRealtime((remoteList) => {
+    if (!initialRecipientsLoaded || !Array.isArray(remoteList)) return
+    const newlyAdded = []
+    for (const remoteRec of remoteList) {
+      const cId = String(remoteRec?.chatId || '').trim()
+      if (!cId || deletedChatIdsInSession.has(cId)) continue
+      const exists = config.value.recipients.some((r) => String(r?.chatId || '').trim() === cId)
+      if (!exists) {
+        config.value.recipients.push({ ...remoteRec })
+        newlyAdded.push(remoteRec.name || cId)
+      }
+    }
+    if (newlyAdded.length > 0) {
+      showBanner(`Đã tự động bắt Chat ID mới từ Zalo: ${newlyAdded.join(', ')}`, 'success')
+      loadBotLogs()
+    }
+  })
+
   await checkBotConnection()
   await loadBotLogs()
+})
+
+onUnmounted(() => {
+  if (typeof unsubscribeRecipientsRealtime === 'function') {
+    unsubscribeRecipientsRealtime()
+    unsubscribeRecipientsRealtime = null
+  }
 })
 </script>
 
