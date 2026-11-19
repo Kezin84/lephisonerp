@@ -192,7 +192,7 @@ const GUIDE_GROUPS: GuideGroup[] = [
         summary: 'Chuyển đổi nhanh giữa nhiều báo giá đang mở cùng lúc.',
         detail: 'Mỗi tab lưu giữ độc lập danh sách hàng hóa, khách hàng và chiết khấu riêng, giúp xử lý nhiều yêu cầu báo giá song song.',
         desktopSelectors: ['.quote-tabs-scroll', '.quote-workspace-topbar'],
-        mobileSelectors: ['.m-qtabs-overview-btn', '.quote-tabs-scroll']
+        mobileSelectors: ['.m-dock-tabs-btn', '.mobile-screen1-cart-bar', '.mobile-screen2-action-bar']
       },
       {
         id: 'tabs-add',
@@ -202,7 +202,7 @@ const GUIDE_GROUPS: GuideGroup[] = [
         summary: 'Khởi tạo thêm một phiên báo giá trống mới.',
         detail: 'Nhấn nút dấu cộng để mở thêm tab báo giá mới mà không ảnh hưởng tới dữ liệu ở các tab đang soạn thảo.',
         desktopSelectors: ['.is-desktop-inline-add', '.btn-add-quote-tab-circle'],
-        mobileSelectors: ['.is-mobile-pinned-add', '.btn-add-quote-tab-circle']
+        mobileSelectors: ['.m-dock-tabs-btn', '.mobile-screen1-cart-bar', '.mobile-screen2-action-bar']
       },
       {
         id: 'tabs-reset',

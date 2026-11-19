@@ -2682,6 +2682,11 @@ onUnmounted(() => {
 /* qty realtime trong card */
 const qtyMap = reactive<Record<string, number>>({})
 const addedStatus = reactive<Record<string, boolean>>({})
+const addedStatusTimers = new Map<string, ReturnType<typeof setTimeout>>()
+const cardSpringAddedMap = reactive<Record<string, boolean>>({})
+const cardSpringTimers = new Map<string, ReturnType<typeof setTimeout>>()
+const mobileDockQuoteStepBtnRef = ref<HTMLElement | null>(null)
+const isMobileQuoteDockCatching = ref(false)
 
 /* ======================
    MODAL - NHẬP TAY / CHI TIẾT CARD / XEM BÁO GIÁ
@@ -13075,8 +13080,13 @@ function addItemFromCard(rawP: HangHoa) {
       ? `Đã thêm & tách thành ${Math.min(50, qty)} dòng riêng biệt!`
       : 'Đã thêm sản phẩm thành công!'
   );
+  const prevAddedTimer = addedStatusTimers.get(p.Ma_hang);
+  if (prevAddedTimer) clearTimeout(prevAddedTimer);
   addedStatus[p.Ma_hang] = true;
-  setTimeout(() => { addedStatus[p.Ma_hang] = false; }, 1500);
+  addedStatusTimers.set(p.Ma_hang, setTimeout(() => {
+    addedStatus[p.Ma_hang] = false;
+    addedStatusTimers.delete(p.Ma_hang);
+  }, 1500));
 }
 
 function getLinkedItems(p: HangHoa) {
@@ -23140,22 +23150,101 @@ function getQuoteTabFullTooltip(tab: QuoteTabSession): string {
 }
 
 const showMobileQuoteTabsSheet = ref<boolean>(false)
+const mobileQuoteTabsSheetListRef = ref<HTMLElement | null>(null)
+let mobileQuoteTabsScrollRaf1: number | null = null
+let mobileQuoteTabsScrollRaf2: number | null = null
+
+function cancelPendingMobileQuoteTabsScroll() {
+  if (mobileQuoteTabsScrollRaf1 !== null && typeof cancelAnimationFrame === 'function') {
+    cancelAnimationFrame(mobileQuoteTabsScrollRaf1)
+    mobileQuoteTabsScrollRaf1 = null
+  }
+  if (mobileQuoteTabsScrollRaf2 !== null && typeof cancelAnimationFrame === 'function') {
+    cancelAnimationFrame(mobileQuoteTabsScrollRaf2)
+    mobileQuoteTabsScrollRaf2 = null
+  }
+}
+
+function scrollMobileQuoteTabsSheetToCard(tabId?: string | null, behavior: ScrollBehavior = 'smooth') {
+  const listEl = mobileQuoteTabsSheetListRef.value
+  if (!listEl) return
+  const targetCard = tabId
+    ? (listEl.querySelector(`[data-qtab-sheet-id="${tabId}"]`) as HTMLElement | null)
+    : (listEl.querySelector('.qtabs-sheet-card.is-active') as HTMLElement | null)
+  if (!targetCard) return
+  const listRect = listEl.getBoundingClientRect()
+  const cardRect = targetCard.getBoundingClientRect()
+  const cardOffsetTop = cardRect.top - listRect.top + listEl.scrollTop
+  const targetScrollTop = Math.max(
+    0,
+    cardOffsetTop - Math.max(12, (listEl.clientHeight - targetCard.offsetHeight) / 2)
+  )
+  if (typeof listEl.scrollTo === 'function') {
+    listEl.scrollTo({ top: targetScrollTop, behavior })
+  } else {
+    listEl.scrollTop = targetScrollTop
+  }
+}
+
+function startRenameQuoteTabInSheet(tab: QuoteTabSession, e?: Event) {
+  if (e) e.stopPropagation()
+  if (renamingQuoteTabId.value && renamingQuoteTabId.value !== tab.id) {
+    commitRenameQuoteTab()
+  }
+  const currentNote = String(
+    tab.id === activeQuoteTabId.value ? ghiChuHopDong.value : (tab.ghiChuHopDong || '')
+  ).trim()
+  renamingQuoteTabId.value = tab.id
+  renamingQuoteTabDraft.value = currentNote
+  nextTick(() => {
+    scrollMobileQuoteTabsSheetToCard(tab.id, 'smooth')
+    if (typeof document === 'undefined') return
+    const inputEl = document.querySelector(
+      `input.qtabs-card-rename-input[data-sheet-rename-id="${tab.id}"]`
+    ) as HTMLInputElement | null
+    if (inputEl) {
+      inputEl.focus()
+      inputEl.select()
+    }
+  })
+}
 
 function openMobileQuoteTabsSheet() {
   snapshotCurrentStateToActiveTab()
   showMobileQuoteTabsSheet.value = true
+  cancelPendingMobileQuoteTabsScroll()
+  nextTick(() => {
+    mobileQuoteTabsScrollRaf1 = requestAnimationFrame(() => {
+      mobileQuoteTabsScrollRaf1 = null
+      mobileQuoteTabsScrollRaf2 = requestAnimationFrame(() => {
+        mobileQuoteTabsScrollRaf2 = null
+        scrollMobileQuoteTabsSheetToCard(activeQuoteTabId.value, 'smooth')
+      })
+    })
+  })
 }
 
 function closeMobileQuoteTabsSheet() {
+  cancelPendingMobileQuoteTabsScroll()
+  if (renamingQuoteTabId.value) {
+    commitRenameQuoteTab()
+  }
   showMobileQuoteTabsSheet.value = false
 }
 
 function selectQuoteTabFromSheet(tabId: string) {
+  if (renamingQuoteTabId.value === tabId) return
+  if (renamingQuoteTabId.value && renamingQuoteTabId.value !== tabId) {
+    commitRenameQuoteTab()
+  }
   switchQuoteTab(tabId)
   showMobileQuoteTabsSheet.value = false
 }
 
 async function createNewQuoteTabFromSheet() {
+  if (renamingQuoteTabId.value) {
+    commitRenameQuoteTab()
+  }
   showMobileQuoteTabsSheet.value = false
   await createNewQuoteTab()
 }
@@ -23221,6 +23310,10 @@ function cleanEmptyInactiveQuoteTabs() {
 
 function handleMobileQuoteTabsKeyDown(ev: KeyboardEvent) {
   if (ev.key === 'Escape' && showMobileQuoteTabsSheet.value) {
+    if (renamingQuoteTabId.value) {
+      cancelRenameQuoteTab()
+      return
+    }
     showMobileQuoteTabsSheet.value = false
   }
 }
@@ -23230,15 +23323,21 @@ watch(showMobileQuoteTabsSheet, (open) => {
   if (open) {
     document.addEventListener('keydown', handleMobileQuoteTabsKeyDown)
   } else {
+    cancelPendingMobileQuoteTabsScroll()
+    if (renamingQuoteTabId.value) {
+      cancelRenameQuoteTab()
+    }
     document.removeEventListener('keydown', handleMobileQuoteTabsKeyDown)
   }
 })
 
 onDeactivated(() => {
+  cancelPendingMobileQuoteTabsScroll()
   showMobileQuoteTabsSheet.value = false
 })
 
 onUnmounted(() => {
+  cancelPendingMobileQuoteTabsScroll()
   if (typeof document !== 'undefined') {
     document.removeEventListener('keydown', handleMobileQuoteTabsKeyDown)
   }
@@ -27406,12 +27505,213 @@ function onSquareCardQtyBlur(p: HangHoa) {
   }
 }
 
-function confirmSquareCardAdd(p: HangHoa) {
+type ActiveMobileFlyToken = {
+  el: HTMLElement
+  rafId: number
+  cancel: () => void
+}
+
+const activeMobileFlyTokens = new Set<ActiveMobileFlyToken>()
+let mobileQuoteDockCatchTimer: ReturnType<typeof setTimeout> | null = null
+let mobileQuoteDockCatchRaf: number | null = null
+
+function cleanupMobileFlyToQuoteEffects() {
+  activeMobileFlyTokens.forEach((item) => item.cancel())
+  activeMobileFlyTokens.clear()
+  if (mobileQuoteDockCatchTimer) {
+    clearTimeout(mobileQuoteDockCatchTimer)
+    mobileQuoteDockCatchTimer = null
+  }
+  if (mobileQuoteDockCatchRaf !== null && typeof cancelAnimationFrame === 'function') {
+    cancelAnimationFrame(mobileQuoteDockCatchRaf)
+    mobileQuoteDockCatchRaf = null
+  }
+  isMobileQuoteDockCatching.value = false
+  addedStatusTimers.forEach((timer) => clearTimeout(timer))
+  addedStatusTimers.clear()
+  cardSpringTimers.forEach((timer) => clearTimeout(timer))
+  cardSpringTimers.clear()
+  Object.keys(cardSpringAddedMap).forEach((k) => {
+    cardSpringAddedMap[k] = false
+  })
+}
+
+function triggerMobileCardSpringKick(code: string) {
+  if (!code || typeof window === 'undefined' || window.innerWidth > 1100) return
+  const prev = cardSpringTimers.get(code)
+  if (prev) clearTimeout(prev)
+  cardSpringAddedMap[code] = false
+  requestAnimationFrame(() => {
+    cardSpringAddedMap[code] = true
+    cardSpringTimers.set(code, setTimeout(() => {
+      cardSpringAddedMap[code] = false
+      cardSpringTimers.delete(code)
+    }, 460))
+  })
+}
+
+function triggerMobileQuoteDockCatch() {
+  if (typeof window === 'undefined' || window.innerWidth > 1100) return
+  if (mobileStep.value !== 1 || isAnyQuoteModalOpen.value) return
+  if (mobileQuoteDockCatchTimer) {
+    clearTimeout(mobileQuoteDockCatchTimer)
+    mobileQuoteDockCatchTimer = null
+  }
+  if (mobileQuoteDockCatchRaf !== null) {
+    cancelAnimationFrame(mobileQuoteDockCatchRaf)
+    mobileQuoteDockCatchRaf = null
+  }
+  isMobileQuoteDockCatching.value = false
+  try {
+    if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+      navigator.vibrate(8)
+    }
+  } catch {}
+  mobileQuoteDockCatchRaf = requestAnimationFrame(() => {
+    mobileQuoteDockCatchRaf = null
+    void mobileDockQuoteStepBtnRef.value?.offsetWidth
+    isMobileQuoteDockCatching.value = true
+    mobileQuoteDockCatchTimer = setTimeout(() => {
+      isMobileQuoteDockCatching.value = false
+      mobileQuoteDockCatchTimer = null
+    }, 480)
+  })
+}
+
+function triggerMobileFlyToQuoteTab(p: HangHoa, addedQty: number, sourceEl: HTMLElement | null) {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return
+  if (window.innerWidth > 1100 || mobileStep.value !== 1 || isAnyQuoteModalOpen.value) return
+
+  const targetBtn =
+    mobileDockQuoteStepBtnRef.value ||
+    (document.querySelector('.mobile-screen1-cart-bar [data-mobile-dock-step="quote"]') as HTMLElement | null)
+  if (!targetBtn) return
+
+  const targetRect = targetBtn.getBoundingClientRect()
+  if (targetRect.width <= 0 || targetRect.height <= 0) return
+
+  try {
+    if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+      navigator.vibrate(12)
+    }
+  } catch {}
+
+  const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
+  if (prefersReducedMotion) {
+    triggerMobileQuoteDockCatch()
+    return
+  }
+
+  const sourceRect = sourceEl?.getBoundingClientRect()
+  const hasValidSource = !!sourceRect && (sourceRect.width > 0 || sourceRect.height > 0)
+  const startX = hasValidSource ? sourceRect.left + sourceRect.width / 2 : window.innerWidth / 2
+  const startY = hasValidSource ? sourceRect.top + sourceRect.height / 2 : window.innerHeight * 0.45
+  const endX = targetRect.left + targetRect.width / 2
+  const endY = targetRect.top + targetRect.height / 2
+
+  if (activeMobileFlyTokens.size >= 8) {
+    const oldest = activeMobileFlyTokens.values().next().value
+    if (oldest) oldest.cancel()
+  }
+
+  const token = document.createElement('div')
+  token.className = `baogia-m-fly-token${quoteThemeMode.value === 'light' ? ' is-light' : ''}`
+  token.setAttribute('aria-hidden', 'true')
+
+  const qtyBadge = document.createElement('span')
+  qtyBadge.className = 'baogia-m-fly-qty'
+  qtyBadge.textContent = `+${Math.max(1, Math.round(addedQty || 1))}`
+
+  const nameSpan = document.createElement('span')
+  nameSpan.className = 'baogia-m-fly-name'
+  nameSpan.textContent = String(p?.Ten_hang || p?.Ma_hang || 'Sản phẩm').trim()
+
+  token.appendChild(qtyBadge)
+  token.appendChild(nameSpan)
+  document.body.appendChild(token)
+
+  const dx = endX - startX
+  const dy = endY - startY
+  const dist = Math.hypot(dx, dy)
+  const lift = Math.min(125, Math.max(66, Math.abs(dy) * 0.22 + 48))
+  const duration = Math.round(Math.min(620, Math.max(470, 420 + dist * 0.26)))
+  const tiltSign = dx >= 0 ? -1 : 1
+  const startTime = performance.now()
+
+  let finished = false
+  const entry: ActiveMobileFlyToken = {
+    el: token,
+    rafId: 0,
+    cancel: () => {
+      if (finished) return
+      finished = true
+      if (entry.rafId) cancelAnimationFrame(entry.rafId)
+      token.remove()
+      activeMobileFlyTokens.delete(entry)
+    }
+  }
+  activeMobileFlyTokens.add(entry)
+
+  const step = (now: number) => {
+    if (finished) return
+    const liveRect = targetBtn.isConnected ? targetBtn.getBoundingClientRect() : null
+    const liveEndX = liveRect && liveRect.width > 0 ? liveRect.left + liveRect.width / 2 : endX
+    const liveEndY = liveRect && liveRect.height > 0 ? liveRect.top + liveRect.height / 2 : endY
+    const liveCtrlX = startX + (liveEndX - startX) * 0.34
+    const liveCtrlY = Math.max(44, Math.min(startY, liveEndY) - lift)
+
+    const t = Math.min(1, Math.max(0, (now - startTime) / duration))
+    const u = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2
+    const inv = 1 - u
+
+    const x = inv * inv * startX + 2 * inv * u * liveCtrlX + u * u * liveEndX
+    const y = inv * inv * startY + 2 * inv * u * liveCtrlY + u * u * liveEndY
+
+    let scale = 1
+    if (t < 0.18) {
+      const p1 = t / 0.18
+      scale = 0.52 + 0.6 * (1 - Math.pow(1 - p1, 3))
+    } else if (t < 0.36) {
+      const p2 = (t - 0.18) / 0.18
+      scale = 1.12 - 0.14 * p2
+    } else {
+      const p3 = (t - 0.36) / 0.64
+      scale = 0.98 - 0.72 * (p3 * p3)
+    }
+
+    const rot = tiltSign * (7 * Math.sin(Math.PI * t) - 5 * t)
+
+    let opacity = 1
+    if (t < 0.08) {
+      opacity = 0.35 + 0.65 * (t / 0.08)
+    } else if (t > 0.84) {
+      opacity = Math.max(0.06, 1 - ((t - 0.84) / 0.16) * 0.94)
+    }
+
+    token.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) translate(-50%, -50%) scale(${scale.toFixed(3)}) rotate(${rot.toFixed(1)}deg)`
+    token.style.opacity = opacity.toFixed(3)
+
+    if (t < 1) {
+      entry.rafId = requestAnimationFrame(step)
+    } else {
+      entry.cancel()
+      triggerMobileQuoteDockCatch()
+    }
+  }
+
+  entry.rafId = requestAnimationFrame(step)
+}
+
+function confirmSquareCardAdd(p: HangHoa, ev?: Event) {
   const code = String(p?.Ma_hang || '')
   if (code && (!qtyMap[code] || qtyMap[code] < 1)) {
     qtyMap[code] = 1
   }
+  const addedQty = Math.max(1, Number(qtyMap[code]) || 1)
+  const sourceEl = (ev?.currentTarget as HTMLElement | null) || (ev?.target as HTMLElement | null)
   addItemFromCard(p)
+  triggerMobileCardSpringKick(code)
+  triggerMobileFlyToQuoteTab(p, addedQty, sourceEl)
   if (code) {
     qtyMap[code] = 1
   }
@@ -28761,6 +29061,7 @@ onDeactivated(() => {
   isBaoGiaComponentActive = false
   detachBaogiaDialogKeyListener()
   clearMobileViewportResetTimers()
+  cleanupMobileFlyToQuoteEffects()
   cleanupBaoGiaBodyShellClasses()
 })
 
@@ -28768,6 +29069,7 @@ onUnmounted(() => {
   isBaoGiaComponentActive = false
   detachBaogiaDialogKeyListener()
   clearMobileViewportResetTimers()
+  cleanupMobileFlyToQuoteEffects()
   cleanupBaoGiaBodyShellClasses()
   document.removeEventListener('focusout', handleMobileInputFocusOut, true)
   window.visualViewport?.removeEventListener('resize', handleVisualViewportResize)
@@ -29549,7 +29851,7 @@ onUnmounted(() => {
           </template>
           <!-- ACTUAL CARDS -->
           <template v-else>
-          <div class="card" :class="{ 'card-in-quote': getSelectedQtyForProduct(p) > 0 }" v-for="p in displayedProducts" :key="p.Ma_hang" @click="openCardModal(p)">
+          <div class="card" :class="{ 'card-in-quote': getSelectedQtyForProduct(p) > 0, 'is-spring-launch': !!cardSpringAddedMap[p.Ma_hang] }" v-for="p in displayedProducts" :key="p.Ma_hang" @click="openCardModal(p)">
             <div class="card-body">
               <div v-if="p.Ma_hang || getSelectedQtyForProduct(p) > 0" class="card-mobile-top-meta">
                 <span v-if="p.Ma_hang" class="card-code-tag" v-html="highlightText(p.Ma_hang, keyword)"></span>
@@ -29676,7 +29978,7 @@ onUnmounted(() => {
                       @input="onSquareCardQtyInput(p, $event)"
                       @blur="onSquareCardQtyBlur(p)"
                       @focus="($event.target as HTMLInputElement)?.select?.()"
-                      @keyup.enter="confirmSquareCardAdd(p)"
+                      @keyup.enter="confirmSquareCardAdd(p, $event)"
                       @keydown.esc.stop.prevent="cancelSquareCardQty(p)"
                     />
                     <button type="button" class="m-sq-step-btn is-plus" aria-label="Tăng số lượng" @click="incSquareCardQty(p)">+</button>
@@ -29685,7 +29987,7 @@ onUnmounted(() => {
                     type="button"
                     class="m-sq-tick-btn"
                     aria-label="Xác nhận thêm sản phẩm"
-                    @click="confirmSquareCardAdd(p)"
+                    @click="confirmSquareCardAdd(p, $event)"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.1" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                     <span class="m-sq-tick-lbl">Xác nhận thêm</span>
@@ -29739,6 +30041,26 @@ onUnmounted(() => {
           <div class="m-dock-steps">
             <button
               type="button"
+              class="m-step-pill m-dock-tabs-btn"
+              :class="{
+                'is-open': showMobileQuoteTabsSheet,
+                'is-multi': quoteTabs.length > 1,
+                'is-editing-hd': Boolean(loadedMaHopDong)
+              }"
+              :title="`Báo giá đang mở (${quoteTabs.length} tab) — Chạm để chuyển hoặc tạo tab mới`"
+              :aria-label="`Mở danh sách ${quoteTabs.length} tab báo giá`"
+              @click.stop="openMobileQuoteTabsSheet"
+            >
+              <svg class="m-dock-tabs-ic" xmlns="http://www.w3.org/2000/svg" width="12.5" height="12.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="7" y="3" width="14" height="14" rx="2.5"></rect>
+                <path d="M17 21H5.5A2.5 2.5 0 0 1 3 18.5V7"></path>
+              </svg>
+              <span class="m-dock-tabs-count">{{ quoteTabs.length }}</span>
+              <span v-if="Boolean(loadedMaHopDong)" class="m-dock-tabs-dot" aria-hidden="true"></span>
+            </button>
+            <span class="m-dock-tabs-sep" aria-hidden="true"></span>
+            <button
+              type="button"
               class="m-step-pill"
               :class="{
                 'is-current': mobileStep === 1 && !showSaveModal && !showExportInfoModal,
@@ -29746,26 +30068,27 @@ onUnmounted(() => {
               }"
               @click.stop="setMobileStep(1)"
             >
-              <span class="m-step-num">1</span>
-              <span class="m-step-label">. Chọn hàng</span>
+              <span class="m-step-label">Chọn hàng</span>
             </button>
-            <span class="m-step-arrow">→</span>
+            <span class="m-step-arrow" aria-hidden="true">›</span>
             <button
+              ref="mobileDockQuoteStepBtnRef"
+              data-mobile-dock-step="quote"
               type="button"
               class="m-step-pill"
               :class="{
                 'is-active': mobileStep === 1 && !showSaveModal && !showExportInfoModal,
                 'is-next-pulse': mobileStep === 1 && !showSaveModal && !showExportInfoModal && selectedItems.length > 0,
                 'is-current': mobileStep === 2 && !showSaveModal && !showExportInfoModal,
-                'is-done': mobileStep >= 3 || showSaveModal || showExportInfoModal
+                'is-done': mobileStep >= 3 || showSaveModal || showExportInfoModal,
+                'is-cart-catching': isMobileQuoteDockCatching
               }"
               @click.stop="setMobileStep(2)"
             >
-              <span class="m-step-num">2</span>
-              <span class="m-step-label">. Báo giá</span>
+              <span class="m-step-label">Báo giá</span>
               <span v-if="selectedItems.length > 0" class="m-step-mini-badge">{{ selectedItems.length }}</span>
             </button>
-            <span class="m-step-arrow">→</span>
+            <span class="m-step-arrow" aria-hidden="true">›</span>
             <button
               type="button"
               class="m-step-pill"
@@ -29777,10 +30100,9 @@ onUnmounted(() => {
               }"
               @click.stop="setMobileStep(3)"
             >
-              <span class="m-step-num">3</span>
-              <span class="m-step-label">. Tổng kết</span>
+              <span class="m-step-label">Tổng kết</span>
             </button>
-            <span class="m-step-arrow">→</span>
+            <span class="m-step-arrow" aria-hidden="true">›</span>
             <button
               type="button"
               class="m-step-pill m-step-save"
@@ -29791,8 +30113,7 @@ onUnmounted(() => {
               }"
               @click.stop="showSaveModal = true"
             >
-              <span class="m-step-num">4</span>
-              <span class="m-step-label">. Lưu/Xuất</span>
+              <span class="m-step-label">Lưu/Xuất</span>
             </button>
           </div>
         </div>
@@ -32637,6 +32958,26 @@ onUnmounted(() => {
             <div class="m-dock-steps">
               <button
                 type="button"
+                class="m-step-pill m-dock-tabs-btn"
+                :class="{
+                  'is-open': showMobileQuoteTabsSheet,
+                  'is-multi': quoteTabs.length > 1,
+                  'is-editing-hd': Boolean(loadedMaHopDong)
+                }"
+                :title="`Báo giá đang mở (${quoteTabs.length} tab) — Chạm để chuyển hoặc tạo tab mới`"
+                :aria-label="`Mở danh sách ${quoteTabs.length} tab báo giá`"
+                @click.stop="openMobileQuoteTabsSheet"
+              >
+                <svg class="m-dock-tabs-ic" xmlns="http://www.w3.org/2000/svg" width="12.5" height="12.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="7" y="3" width="14" height="14" rx="2.5"></rect>
+                  <path d="M17 21H5.5A2.5 2.5 0 0 1 3 18.5V7"></path>
+                </svg>
+                <span class="m-dock-tabs-count">{{ quoteTabs.length }}</span>
+                <span v-if="Boolean(loadedMaHopDong)" class="m-dock-tabs-dot" aria-hidden="true"></span>
+              </button>
+              <span class="m-dock-tabs-sep" aria-hidden="true"></span>
+              <button
+                type="button"
                 class="m-step-pill"
                 :class="{
                   'is-current': mobileStep === 1 && !showSaveModal && !showExportInfoModal,
@@ -32644,11 +32985,11 @@ onUnmounted(() => {
                 }"
                 @click.stop="setMobileStep(1)"
               >
-                <span class="m-step-num">1</span>
-                <span class="m-step-label">. Chọn hàng</span>
+                <span class="m-step-label">Chọn hàng</span>
               </button>
-              <span class="m-step-arrow">→</span>
+              <span class="m-step-arrow" aria-hidden="true">›</span>
               <button
+                data-mobile-dock-step="quote"
                 type="button"
                 class="m-step-pill"
                 :class="{
@@ -32659,11 +33000,10 @@ onUnmounted(() => {
                 }"
                 @click.stop="setMobileStep(2)"
               >
-                <span class="m-step-num">2</span>
-                <span class="m-step-label">. Báo giá</span>
-                <span v-if="selectedItems.length > 0 && mobileStep !== 1" class="m-step-mini-badge">{{ selectedItems.length }}</span>
+                <span class="m-step-label">Báo giá</span>
+                <span v-if="selectedItems.length > 0" class="m-step-mini-badge">{{ selectedItems.length }}</span>
               </button>
-              <span class="m-step-arrow">→</span>
+              <span class="m-step-arrow" aria-hidden="true">›</span>
               <button
                 type="button"
                 class="m-step-pill"
@@ -32675,10 +33015,9 @@ onUnmounted(() => {
                 }"
                 @click.stop="setMobileStep(3)"
               >
-                <span class="m-step-num">3</span>
-                <span class="m-step-label">. Tổng kết</span>
+                <span class="m-step-label">Tổng kết</span>
               </button>
-              <span class="m-step-arrow">→</span>
+              <span class="m-step-arrow" aria-hidden="true">›</span>
               <button
                 type="button"
                 class="m-step-pill m-step-save"
@@ -32689,8 +33028,7 @@ onUnmounted(() => {
                 }"
                 @click.stop="showSaveModal = true"
               >
-                <span class="m-step-num">4</span>
-                <span class="m-step-label">. Lưu/Xuất</span>
+                <span class="m-step-label">Lưu/Xuất</span>
               </button>
             </div>
           </div>
@@ -43442,21 +43780,61 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <div class="qtabs-sheet-list">
+          <div ref="mobileQuoteTabsSheetListRef" class="qtabs-sheet-list">
             <div
               v-for="(tab, tIdx) in quoteTabs"
               :key="'m-qtab-card-' + tab.id"
+              :data-qtab-sheet-id="tab.id"
               role="button"
               tabindex="0"
               class="qtabs-sheet-card"
               :class="{
                 'is-active': tab.id === activeQuoteTabId,
-                'is-editing': Boolean(tab.id === activeQuoteTabId ? loadedMaHopDong : tab.loadedMaHopDong)
+                'is-editing': Boolean(tab.id === activeQuoteTabId ? loadedMaHopDong : tab.loadedMaHopDong),
+                'is-renaming': renamingQuoteTabId === tab.id
               }"
               @click="selectQuoteTabFromSheet(tab.id)"
               @keydown.enter.prevent="selectQuoteTabFromSheet(tab.id)"
             >
-              <div class="qtabs-card-top">
+              <div v-if="renamingQuoteTabId === tab.id" class="qtabs-card-rename-row" @click.stop>
+                <input
+                  :data-sheet-rename-id="tab.id"
+                  v-model="renamingQuoteTabDraft"
+                  type="text"
+                  class="qtabs-card-rename-input"
+                  :placeholder="getQuoteTabFallbackTitle(tab, tIdx)"
+                  @click.stop
+                  @keydown.enter.stop.prevent="commitRenameQuoteTab(tab)"
+                  @keydown.esc.stop.prevent="cancelRenameQuoteTab()"
+                  @blur="commitRenameQuoteTab(tab)"
+                />
+                <button
+                  type="button"
+                  class="qtabs-card-rename-save-btn"
+                  title="Lưu tên tab"
+                  aria-label="Lưu tên tab"
+                  @mousedown.prevent.stop="commitRenameQuoteTab(tab)"
+                  @click.stop="commitRenameQuoteTab(tab)"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  class="qtabs-card-rename-cancel-btn"
+                  title="Hủy đổi tên"
+                  aria-label="Hủy đổi tên"
+                  @mousedown.prevent.stop="cancelRenameQuoteTab()"
+                  @click.stop="cancelRenameQuoteTab()"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              </div>
+              <div v-else class="qtabs-card-top">
                 <div class="qtabs-card-title-group">
                   <span class="qtabs-card-radio">
                     <svg v-if="tab.id === activeQuoteTabId" xmlns="http://www.w3.org/2000/svg" width="10.5" height="10.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
@@ -43467,18 +43845,32 @@ onUnmounted(() => {
                   <span v-else-if="Boolean(tab.loadedMaHopDong)" class="qtabs-card-status-pill is-edit-pill">Sửa HĐ</span>
                 </div>
 
-                <button
-                  type="button"
-                  class="qtabs-card-close-btn"
-                  title="Đóng và xóa tab báo giá này"
-                  aria-label="Đóng tab"
-                  @click.stop="closeQuoteTab(tab.id)"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                  </svg>
-                </button>
+                <div class="qtabs-card-top-actions">
+                  <button
+                    type="button"
+                    class="qtabs-card-rename-btn"
+                    title="Đổi tên tab báo giá (Ghi chú HĐ)"
+                    aria-label="Đổi tên tab báo giá"
+                    @click.stop="startRenameQuoteTabInSheet(tab, $event)"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M12 20h9"></path>
+                      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"></path>
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    class="qtabs-card-close-btn"
+                    title="Đóng và xóa tab báo giá này"
+                    aria-label="Đóng tab"
+                    @click.stop="closeQuoteTab(tab.id)"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13.5" height="13.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                </div>
               </div>
 
               <div class="qtabs-card-cus" :class="{ 'is-empty-cus': !getTabCustomerName(tab) }">
@@ -48720,12 +49112,14 @@ thead th.th-compare-col .quote-col-resizer.is-active::after {
     line-height: 1.2 !important;
   }
 
-  /* CỤM 4 NÚT QUY TRÌNH BÊN PHẢI DOCK (.m-dock-steps) */
+  /* CỤM 4 NÚT QUY TRÌNH BÊN PHẢI DOCK (.m-dock-steps) — HIỆN RÕ TÊN THAO TÁC CẢ 4 NÚT */
   .m-dock-steps {
     display: flex !important;
     align-items: center !important;
-    gap: 3px !important;
+    justify-content: center !important;
+    gap: 5px !important;
     flex-shrink: 0 !important;
+    max-width: 100% !important;
   }
 
   .m-step-arrow {
@@ -48734,62 +49128,65 @@ thead th.th-compare-col .quote-col-resizer.is-active::after {
     color: rgba(148, 163, 184, 0.55) !important;
     user-select: none !important;
     line-height: 1 !important;
-    margin: 0 1px !important;
+    margin: 0 !important;
+    flex-shrink: 0 !important;
   }
 
   .m-step-pill {
     position: relative !important;
     height: 32px !important;
-    min-width: 28px !important;
+    min-width: 0 !important;
     width: auto !important;
-    padding: 0 8px !important;
+    padding: 0 12px !important;
     margin: 0 !important;
     border-radius: 999px !important;
     background: rgba(30, 41, 59, 0.85) !important;
     border: 1px solid rgba(148, 163, 184, 0.25) !important;
     color: #94a3b8 !important;
-    font-size: 11.5px !important;
-    font-weight: 800 !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    white-space: nowrap !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
     gap: 0 !important;
+    flex-shrink: 0 !important;
     cursor: pointer !important;
     box-shadow: none !important;
     -webkit-tap-highlight-color: transparent;
     transition:
-      background 0.32s cubic-bezier(0.22, 1, 0.36, 1),
-      color 0.25s ease,
-      padding 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+      background 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+      color 0.22s ease,
       transform 0.18s cubic-bezier(0.22, 1, 0.36, 1),
-      border-color 0.3s ease,
-      box-shadow 0.32s cubic-bezier(0.22, 1, 0.36, 1) !important;
+      border-color 0.25s ease,
+      box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1) !important;
   }
 
   .m-step-pill:active {
-    transform: scale(0.91) !important;
+    transform: scale(0.93) !important;
   }
 
   .m-step-pill.is-done {
-    background: rgba(16, 185, 129, 0.09) !important;
-    border: 1px solid rgba(16, 185, 129, 0.25) !important;
-    color: rgba(52, 211, 153, 0.78) !important;
+    background: rgba(16, 185, 129, 0.1) !important;
+    border: 1px solid rgba(16, 185, 129, 0.28) !important;
+    color: #6ee7b7 !important;
   }
 
   .m-step-pill.is-current:not(.is-active) {
     background: rgba(16, 185, 129, 0.24) !important;
-    border: 1.8px solid #34d399 !important;
+    border: 1.5px solid #34d399 !important;
     color: #ffffff !important;
+    font-weight: 800 !important;
     box-shadow:
       0 0 0 2px rgba(52, 211, 153, 0.18),
       inset 0 1px 0 rgba(255, 255, 255, 0.18) !important;
   }
 
   .m-step-pill.is-active {
-    padding: 0 11px !important;
     background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
     border-color: rgba(110, 231, 183, 0.65) !important;
     color: #ffffff !important;
+    font-weight: 800 !important;
     box-shadow:
       0 4px 12px rgba(16, 185, 129, 0.38),
       inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
@@ -48806,7 +49203,7 @@ thead th.th-compare-col .quote-col-resizer.is-active::after {
       transform: scale(1);
     }
     50% {
-      transform: scale(1.065);
+      transform: scale(1.045);
     }
   }
 
@@ -48818,38 +49215,26 @@ thead th.th-compare-col .quote-col-resizer.is-active::after {
 
   .m-step-pill.is-next-pulse:active {
     animation: none !important;
-    transform: scale(0.91) !important;
-  }
-
-  .m-step-num {
-    font-size: 11.5px !important;
-    font-weight: 900 !important;
-    line-height: 1 !important;
+    transform: scale(0.93) !important;
   }
 
   .m-step-label {
     display: inline-block !important;
-    max-width: 0 !important;
-    opacity: 0 !important;
-    overflow: hidden !important;
-    white-space: nowrap !important;
-    font-size: 11.5px !important;
-    font-weight: 800 !important;
-    line-height: 1 !important;
-    transition:
-      max-width 0.34s cubic-bezier(0.22, 1, 0.36, 1),
-      opacity 0.22s ease !important;
-  }
-
-  .m-step-pill.is-active .m-step-label {
-    max-width: 85px !important;
+    max-width: none !important;
     opacity: 1 !important;
+    overflow: visible !important;
+    white-space: nowrap !important;
+    font-size: inherit !important;
+    font-weight: inherit !important;
+    line-height: 1 !important;
+    letter-spacing: -0.01em !important;
   }
 
   .m-step-mini-badge {
     position: absolute !important;
     top: -5px !important;
     right: -4px !important;
+    z-index: 2 !important;
     min-width: 15px !important;
     height: 15px !important;
     padding: 0 3px !important;
@@ -48858,6 +49243,7 @@ thead th.th-compare-col .quote-col-resizer.is-active::after {
     color: #ffffff !important;
     font-size: 9px !important;
     font-weight: 800 !important;
+    font-variant-numeric: tabular-nums !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -50505,13 +50891,14 @@ thead th.th-compare-col .quote-col-resizer.is-active::after {
   .page.theme-light-blue .m-step-pill.is-done {
     background: #eff6ff !important;
     border: 1px solid #bfdbfe !important;
-    color: #3b82f6 !important;
+    color: #2563eb !important;
   }
 
   .page.theme-light-blue .m-step-pill.is-current:not(.is-active) {
     background: #dbeafe !important;
-    border: 1.8px solid #2563eb !important;
+    border: 1.5px solid #2563eb !important;
     color: #1e3a8a !important;
+    font-weight: 800 !important;
     box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16) !important;
   }
 
@@ -50519,6 +50906,7 @@ thead th.th-compare-col .quote-col-resizer.is-active::after {
     background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
     border-color: #60a5fa !important;
     color: #ffffff !important;
+    font-weight: 800 !important;
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3) !important;
   }
 
@@ -65866,6 +66254,104 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
     color: #7dd3fc !important;
   }
 
+  #app .page .qtabs-sheet-card.is-renaming {
+    border-color: #38bdf8 !important;
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2), 0 6px 16px rgba(2, 6, 23, 0.35) !important;
+  }
+
+  #app .page .qtabs-card-top-actions {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    flex-shrink: 0 !important;
+  }
+
+  #app .page button.qtabs-card-rename-btn {
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 8px !important;
+    background: rgba(56, 189, 248, 0.14) !important;
+    border: 1px solid rgba(56, 189, 248, 0.34) !important;
+    color: #7dd3fc !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: none !important;
+    cursor: pointer !important;
+    flex-shrink: 0 !important;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.14s ease !important;
+  }
+
+  #app .page button.qtabs-card-rename-btn:active {
+    background: rgba(2, 132, 199, 0.34) !important;
+    border-color: #38bdf8 !important;
+    color: #ffffff !important;
+    transform: scale(0.92) !important;
+  }
+
+  #app .page .qtabs-card-rename-row {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  #app .page input.qtabs-card-rename-input {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    width: 100% !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    padding: 0 10px !important;
+    margin: 0 !important;
+    border-radius: 9px !important;
+    background: rgba(15, 23, 42, 0.92) !important;
+    border: 1.5px solid #38bdf8 !important;
+    color: #f8fafc !important;
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    outline: none !important;
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.18) !important;
+  }
+
+  #app .page input.qtabs-card-rename-input::placeholder {
+    color: #64748b !important;
+    font-weight: 500 !important;
+  }
+
+  #app .page button.qtabs-card-rename-save-btn,
+  #app .page button.qtabs-card-rename-cancel-btn {
+    width: 32px !important;
+    min-width: 32px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 9px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+    cursor: pointer !important;
+    box-shadow: none !important;
+  }
+
+  #app .page button.qtabs-card-rename-save-btn {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    border: 1px solid rgba(110, 231, 183, 0.55) !important;
+    color: #ffffff !important;
+  }
+
+  #app .page button.qtabs-card-rename-cancel-btn {
+    background: rgba(30, 41, 59, 0.9) !important;
+    border: 1px solid rgba(100, 116, 139, 0.65) !important;
+    color: #cbd5e1 !important;
+  }
+
   #app .page button.qtabs-card-close-btn {
     width: 28px !important;
     height: 28px !important;
@@ -66064,6 +66550,46 @@ tfoot.compare-tfoot td.td-compare-cont-tt.is-grand {
     background: #e0f2fe !important;
     border-color: #7dd3fc !important;
     color: #0369a1 !important;
+  }
+
+  #app .page.theme-light-blue .qtabs-sheet-card.is-renaming {
+    border-color: #2563eb !important;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.16), 0 6px 16px rgba(15, 23, 42, 0.08) !important;
+  }
+
+  #app .page.theme-light-blue button.qtabs-card-rename-btn {
+    background: #eff6ff !important;
+    border-color: #bfdbfe !important;
+    color: #1d4ed8 !important;
+  }
+
+  #app .page.theme-light-blue button.qtabs-card-rename-btn:active {
+    background: #2563eb !important;
+    border-color: #1d4ed8 !important;
+    color: #ffffff !important;
+  }
+
+  #app .page.theme-light-blue input.qtabs-card-rename-input {
+    background: #ffffff !important;
+    border-color: #2563eb !important;
+    color: #0f172a !important;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15) !important;
+  }
+
+  #app .page.theme-light-blue input.qtabs-card-rename-input::placeholder {
+    color: #94a3b8 !important;
+  }
+
+  #app .page.theme-light-blue button.qtabs-card-rename-save-btn {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+    border-color: #1d4ed8 !important;
+    color: #ffffff !important;
+  }
+
+  #app .page.theme-light-blue button.qtabs-card-rename-cancel-btn {
+    background: #f1f5f9 !important;
+    border-color: #cbd5e1 !important;
+    color: #475569 !important;
   }
 
   #app .page.theme-light-blue button.qtabs-card-close-btn {
@@ -75707,7 +76233,27 @@ label.m-qcard-bulk-check-pill input[type='checkbox'] {
     color: #64748b;
   }
 
-  /* DOCK CON TRÊN MOBILE: ẨN NHÃN & NÚT BACK BÊN TRÁI, CHỈ HIỆN 4 NÚT HIỆN TẠI */
+  /* PA1 MOBILE: ĐƯA THANH ĐA TAB BÁO GIÁ XUỐNG VỊ TRÍ ĐẦU DOCK & ẨN TOPBAR TAB TRÊN ĐỈNH */
+  #app .page.baogia-firebase-page .quote-workspace-topbar {
+    display: none !important;
+  }
+
+  #app .page.baogia-firebase-page .table-header-box {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 45 !important;
+    background: rgba(15, 23, 42, 0.96) !important;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.16) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+  }
+
+  #app .page.baogia-firebase-page.theme-light-blue .table-header-box {
+    background: rgba(255, 255, 255, 0.96) !important;
+    border-bottom: 1px solid #cbd5e1 !important;
+  }
+
+  /* DOCK CON TRÊN MOBILE: ẨN NHÃN & NÚT BACK BÊN TRÁI, HIỆN [TAB] | 4 BƯỚC THAO TÁC */
   #app .page.baogia-firebase-page .mobile-screen1-cart-bar .m-dock-left,
   #app .page.baogia-firebase-page .mobile-screen2-action-bar .m-dock-left {
     display: none !important;
@@ -75722,6 +76268,96 @@ label.m-qcard-bulk-check-pill input[type='checkbox'] {
   #app .page.baogia-firebase-page .mobile-screen2-action-bar .m-dock-steps {
     justify-content: center !important;
   }
+
+  #app .page.baogia-firebase-page .m-dock-tabs-btn {
+    gap: 4px !important;
+    padding: 0 10px !important;
+    background: rgba(56, 189, 248, 0.14) !important;
+    border: 1px solid rgba(56, 189, 248, 0.36) !important;
+    color: #7dd3fc !important;
+    font-weight: 800 !important;
+  }
+
+  #app .page.baogia-firebase-page .m-dock-tabs-btn.is-multi {
+    background: rgba(14, 165, 233, 0.22) !important;
+    border-color: rgba(56, 189, 248, 0.58) !important;
+    color: #e0f2fe !important;
+  }
+
+  #app .page.baogia-firebase-page .m-dock-tabs-btn.is-editing-hd {
+    background: rgba(245, 158, 11, 0.18) !important;
+    border-color: rgba(251, 191, 36, 0.56) !important;
+    color: #fde68a !important;
+  }
+
+  #app .page.baogia-firebase-page .m-dock-tabs-btn.is-open {
+    background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
+    border-color: rgba(147, 197, 253, 0.72) !important;
+    color: #ffffff !important;
+  }
+
+  #app .page.baogia-firebase-page .m-dock-tabs-ic {
+    flex-shrink: 0 !important;
+  }
+
+  #app .page.baogia-firebase-page .m-dock-tabs-count {
+    font-size: inherit !important;
+    font-weight: 800 !important;
+    font-variant-numeric: tabular-nums !important;
+    line-height: 1 !important;
+  }
+
+  #app .page.baogia-firebase-page .m-dock-tabs-dot {
+    position: absolute !important;
+    top: -3px !important;
+    right: -3px !important;
+    width: 8px !important;
+    height: 8px !important;
+    border-radius: 999px !important;
+    background: #f59e0b !important;
+    border: 1.5px solid #0f172a !important;
+    box-shadow: 0 0 6px rgba(245, 158, 11, 0.7) !important;
+  }
+
+  #app .page.baogia-firebase-page .m-dock-tabs-sep {
+    width: 1px !important;
+    height: 18px !important;
+    margin: 0 2px !important;
+    background: rgba(148, 163, 184, 0.3) !important;
+    flex-shrink: 0 !important;
+  }
+
+  #app .page.baogia-firebase-page.theme-light-blue .m-dock-tabs-btn {
+    background: #eff6ff !important;
+    border-color: #93c5fd !important;
+    color: #1d4ed8 !important;
+  }
+
+  #app .page.baogia-firebase-page.theme-light-blue .m-dock-tabs-btn.is-multi {
+    background: #dbeafe !important;
+    border-color: #60a5fa !important;
+    color: #1e3a8a !important;
+  }
+
+  #app .page.baogia-firebase-page.theme-light-blue .m-dock-tabs-btn.is-editing-hd {
+    background: #fffbeb !important;
+    border-color: #f59e0b !important;
+    color: #b45309 !important;
+  }
+
+  #app .page.baogia-firebase-page.theme-light-blue .m-dock-tabs-btn.is-open {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+    border-color: #2563eb !important;
+    color: #ffffff !important;
+  }
+
+  #app .page.baogia-firebase-page.theme-light-blue .m-dock-tabs-dot {
+    border-color: #ffffff !important;
+  }
+
+  #app .page.baogia-firebase-page.theme-light-blue .m-dock-tabs-sep {
+    background: #cbd5e1 !important;
+  }
 }
 
 @media (max-width: 768px) {
@@ -75731,10 +76367,34 @@ label.m-qcard-bulk-check-pill input[type='checkbox'] {
     right: auto !important;
     transform: translateX(-50%) !important;
     width: max-content !important;
-    max-width: calc(100vw - 24px) !important;
-    padding: 8px 12px !important;
+    max-width: calc(100vw - 12px) !important;
+    padding: 6px 8px !important;
     gap: 0 !important;
     border-radius: 999px !important;
+  }
+
+  #app .page.baogia-firebase-page .mobile-screen1-cart-bar .m-dock-steps,
+  #app .page.baogia-firebase-page .mobile-screen2-action-bar .m-dock-steps {
+    gap: 2.5px !important;
+  }
+
+  #app .page.baogia-firebase-page .mobile-screen1-cart-bar .m-step-arrow,
+  #app .page.baogia-firebase-page .mobile-screen2-action-bar .m-step-arrow {
+    font-size: 11px !important;
+    font-weight: 700 !important;
+  }
+
+  #app .page.baogia-firebase-page .mobile-screen1-cart-bar .m-step-pill,
+  #app .page.baogia-firebase-page .mobile-screen2-action-bar .m-step-pill {
+    height: 31px !important;
+    padding: 0 8.5px !important;
+    font-size: 11px !important;
+  }
+
+  #app .page.baogia-firebase-page .mobile-screen1-cart-bar .m-dock-tabs-btn,
+  #app .page.baogia-firebase-page .mobile-screen2-action-bar .m-dock-tabs-btn {
+    padding: 0 8px !important;
+    gap: 3px !important;
   }
 
   #app .page.baogia-firebase-page .mobile-screen1-cart-bar.is-modal-hidden,
@@ -75742,6 +76402,79 @@ label.m-qcard-bulk-check-pill input[type='checkbox'] {
   #app .page.baogia-firebase-page.has-open-modal .mobile-screen1-cart-bar,
   #app .page.baogia-firebase-page.has-open-modal .mobile-screen2-action-bar {
     transform: translateX(-50%) translateY(calc(100% + 96px + env(safe-area-inset-bottom, 0px))) scale(0.96) !important;
+  }
+}
+
+@media (max-width: 400px) {
+  #app .page.baogia-firebase-page .mobile-screen1-cart-bar,
+  #app .page.baogia-firebase-page .mobile-screen2-action-bar {
+    max-width: calc(100vw - 10px) !important;
+    padding: 6px 7px !important;
+  }
+
+  #app .page.baogia-firebase-page .mobile-screen1-cart-bar .m-dock-steps,
+  #app .page.baogia-firebase-page .mobile-screen2-action-bar .m-dock-steps {
+    gap: 2px !important;
+  }
+
+  #app .page.baogia-firebase-page .mobile-screen1-cart-bar .m-dock-tabs-sep,
+  #app .page.baogia-firebase-page .mobile-screen2-action-bar .m-dock-tabs-sep {
+    height: 16px !important;
+    margin: 0 1px !important;
+  }
+
+  #app .page.baogia-firebase-page .mobile-screen1-cart-bar .m-step-arrow,
+  #app .page.baogia-firebase-page .mobile-screen2-action-bar .m-step-arrow {
+    font-size: 10px !important;
+  }
+
+  #app .page.baogia-firebase-page .mobile-screen1-cart-bar .m-step-pill,
+  #app .page.baogia-firebase-page .mobile-screen2-action-bar .m-step-pill {
+    height: 30px !important;
+    padding: 0 6.5px !important;
+    font-size: 10.5px !important;
+  }
+
+  #app .page.baogia-firebase-page .mobile-screen1-cart-bar .m-dock-tabs-btn,
+  #app .page.baogia-firebase-page .mobile-screen2-action-bar .m-dock-tabs-btn {
+    padding: 0 6.5px !important;
+    gap: 2.5px !important;
+  }
+
+  #app .page.baogia-firebase-page .mobile-screen1-cart-bar .m-dock-tabs-ic,
+  #app .page.baogia-firebase-page .mobile-screen2-action-bar .m-dock-tabs-ic {
+    width: 11.5px !important;
+    height: 11.5px !important;
+  }
+}
+
+@media (max-width: 359px) {
+  #app .page.baogia-firebase-page .mobile-screen1-cart-bar,
+  #app .page.baogia-firebase-page .mobile-screen2-action-bar {
+    max-width: calc(100vw - 8px) !important;
+    padding: 5px 6px !important;
+  }
+
+  #app .page.baogia-firebase-page .mobile-screen1-cart-bar .m-dock-steps,
+  #app .page.baogia-firebase-page .mobile-screen2-action-bar .m-dock-steps {
+    gap: 2px !important;
+  }
+
+  #app .page.baogia-firebase-page .mobile-screen1-cart-bar .m-step-arrow,
+  #app .page.baogia-firebase-page .mobile-screen2-action-bar .m-step-arrow {
+    display: none !important;
+  }
+
+  #app .page.baogia-firebase-page .mobile-screen1-cart-bar .m-step-pill,
+  #app .page.baogia-firebase-page .mobile-screen2-action-bar .m-step-pill {
+    height: 29px !important;
+    padding: 0 5.5px !important;
+    font-size: 10px !important;
+  }
+
+  #app .page.baogia-firebase-page .mobile-screen1-cart-bar .m-dock-tabs-btn,
+  #app .page.baogia-firebase-page .mobile-screen2-action-bar .m-dock-tabs-btn {
+    padding: 0 5.5px !important;
   }
 }
 
@@ -75879,5 +76612,235 @@ label.m-qcard-bulk-check-pill input[type='checkbox'] {
   background: #f5f3ff !important;
   border-color: #c4b5fd !important;
   color: #6d28d9 !important;
+}
+
+/* ==========================================================================
+   HIỆU ỨNG LÒ XO XÁC NHẬN THÊM & BAY PARABOL VÀO TAB BÁO GIÁ (MOBILE)
+   ========================================================================== */
+@keyframes baogiaSpringConfirmBtn {
+  0% {
+    transform: scale(0.76);
+  }
+  36% {
+    transform: scale(1.1, 0.93);
+  }
+  62% {
+    transform: scale(0.95, 1.05);
+  }
+  82% {
+    transform: scale(1.03, 0.99);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes baogiaSpringTickIcon {
+  0% {
+    transform: scale(0.35) rotate(-24deg);
+    opacity: 0.4;
+  }
+  55% {
+    transform: scale(1.26) rotate(7deg);
+    opacity: 1;
+  }
+  80% {
+    transform: scale(0.94) rotate(-2deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes baogiaCardLaunchSpring {
+  0% {
+    transform: scale(1);
+  }
+  26% {
+    transform: scale(0.974);
+  }
+  58% {
+    transform: scale(1.016);
+  }
+  82% {
+    transform: scale(0.996);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes mDockCartCatchSpring {
+  0% {
+    transform: scale(1);
+  }
+  24% {
+    transform: scale(1.16, 0.9);
+  }
+  48% {
+    transform: scale(0.93, 1.09);
+  }
+  72% {
+    transform: scale(1.05, 0.98);
+  }
+  88% {
+    transform: scale(0.99, 1.01);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes mDockCartCatchRing {
+  0% {
+    opacity: 0.85;
+    transform: scale(0.92);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.36, 1.62);
+  }
+}
+
+@keyframes mDockBadgeCatchPop {
+  0% {
+    transform: scale(1);
+  }
+  36% {
+    transform: scale(1.52);
+  }
+  68% {
+    transform: scale(0.88);
+  }
+  86% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.baogia-m-fly-token {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 980;
+  pointer-events: none;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 168px;
+  height: 28px;
+  padding: 0 9px 0 4px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border: 1.5px solid rgba(167, 243, 208, 0.88);
+  color: #ffffff;
+  box-shadow:
+    0 10px 24px rgba(16, 185, 129, 0.48),
+    0 2px 8px rgba(2, 6, 23, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.32);
+  will-change: transform, opacity;
+  transform: translate3d(-9999px, -9999px, 0);
+  opacity: 0;
+}
+
+.baogia-m-fly-token.is-light {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  border-color: rgba(191, 219, 254, 0.95);
+  box-shadow:
+    0 10px 24px rgba(37, 99, 235, 0.36),
+    0 2px 8px rgba(15, 23, 42, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.32);
+}
+
+.baogia-m-fly-token .baogia-m-fly-qty {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.24);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.baogia-m-fly-token .baogia-m-fly-name {
+  min-width: 0;
+  max-width: 112px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11.5px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+
+@media (max-width: 1100px) {
+  #app .page.baogia-firebase-page .product-grid button.m-sq-tick-btn {
+    transition: transform 0.26s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.15s ease !important;
+  }
+
+  #app .page.baogia-firebase-page .product-grid button.m-sq-tick-btn:active {
+    transform: scale(0.88) !important;
+  }
+
+  #app .page.baogia-firebase-page .product-grid button.m-sq-open-add-btn.is-added {
+    animation: baogiaSpringConfirmBtn 0.48s cubic-bezier(0.22, 1, 0.36, 1) both !important;
+    transform-origin: center center !important;
+  }
+
+  #app .page.baogia-firebase-page .product-grid button.m-sq-open-add-btn.is-added svg {
+    animation: baogiaSpringTickIcon 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) both !important;
+  }
+
+  #app .page.baogia-firebase-page .product-grid .card.is-spring-launch {
+    animation: baogiaCardLaunchSpring 0.44s cubic-bezier(0.22, 1, 0.36, 1) both !important;
+    transform-origin: center center !important;
+  }
+
+  #app .page.baogia-firebase-page .mobile-screen1-cart-bar .m-step-pill.is-cart-catching,
+  #app .page.baogia-firebase-page .mobile-screen1-cart-bar .m-step-pill.is-next-pulse.is-cart-catching {
+    animation: mDockCartCatchSpring 0.46s cubic-bezier(0.22, 1, 0.36, 1) forwards !important;
+    transform-origin: center center !important;
+  }
+
+  #app .page.baogia-firebase-page .mobile-screen1-cart-bar .m-step-pill.is-cart-catching::after {
+    content: '' !important;
+    position: absolute !important;
+    inset: -2px !important;
+    border-radius: 999px !important;
+    border: 2px solid rgba(52, 211, 153, 0.9) !important;
+    pointer-events: none !important;
+    animation: mDockCartCatchRing 0.48s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  }
+
+  #app .page.baogia-firebase-page.theme-light-blue .mobile-screen1-cart-bar .m-step-pill.is-cart-catching::after {
+    border-color: rgba(37, 99, 235, 0.85) !important;
+  }
+
+  #app .page.baogia-firebase-page .mobile-screen1-cart-bar .m-step-pill.is-cart-catching .m-step-mini-badge {
+    animation: mDockBadgeCatchPop 0.44s cubic-bezier(0.34, 1.56, 0.64, 1) both !important;
+    transform-origin: center center !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #app .page.baogia-firebase-page .product-grid button.m-sq-open-add-btn.is-added,
+  #app .page.baogia-firebase-page .product-grid button.m-sq-open-add-btn.is-added svg,
+  #app .page.baogia-firebase-page .product-grid .card.is-spring-launch,
+  #app .page.baogia-firebase-page .mobile-screen1-cart-bar .m-step-pill.is-cart-catching,
+  #app .page.baogia-firebase-page .mobile-screen1-cart-bar .m-step-pill.is-cart-catching::after,
+  #app .page.baogia-firebase-page .mobile-screen1-cart-bar .m-step-pill.is-cart-catching .m-step-mini-badge {
+    animation: none !important;
+  }
 }
 </style>
