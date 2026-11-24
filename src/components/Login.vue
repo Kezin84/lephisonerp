@@ -69,7 +69,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { initializeApp, getApps, getApp } from 'firebase/app'
 import { getDatabase, ref as dbRef, get } from 'firebase/database'
 import { isLocalDevHost, isMockDbActive, switchDbModeAndReload } from '../services/systemConfig'
@@ -93,6 +93,7 @@ const firebaseConfig = {
 const firebaseApp = !getApps().length ? initializeApp(firebaseConfig) : getApp()
 const database = getDatabase(firebaseApp)
 
+const route = useRoute()
 const router = useRouter()
 const username = ref('')
 const password = ref('')
@@ -144,8 +145,13 @@ const handleLogin = async () => {
         sessionStorage.setItem('auth_token', JSON.stringify(sessionData))
       }
       
-      // Chuyển hướng vào trang chính
-      router.push('/report-firebase')
+      // Chuyển hướng vào đúng deep-link ban đầu (nếu có) hoặc trang chính
+      const redirectRaw = typeof route.query.redirect === 'string' ? route.query.redirect.trim() : ''
+      const safeRedirect =
+        redirectRaw.startsWith('/') && !redirectRaw.startsWith('//') && !redirectRaw.startsWith('/login')
+          ? redirectRaw
+          : '/report-firebase'
+      router.push(safeRedirect)
     } else {
       errorMessage.value = 'Sai tài khoản hoặc mật khẩu'
     }

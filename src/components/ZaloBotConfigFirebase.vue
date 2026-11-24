@@ -158,6 +158,40 @@
               </div>
             </div>
           </div>
+
+          <div class="form-group row" style="margin-bottom: 0;">
+            <div class="col">
+              <label>Domain Web ERP (tạo link bấm trên Zalo)</label>
+              <div style="display: flex; gap: 8px;">
+                <input
+                  type="text"
+                  v-model="config.webAppUrl"
+                  class="form-input"
+                  placeholder="https://sonai.tech"
+                />
+                <button
+                  type="button"
+                  class="btn-secondary-dark"
+                  style="white-space: nowrap;"
+                  title="Điền theo địa chỉ trang web hiện tại"
+                  @click="fillCurrentOriginToWebAppUrl"
+                >
+                  Dùng web này
+                </button>
+              </div>
+            </div>
+            <div class="col">
+              <label>Chế độ gắn link trong nhắc việc / tổng kết / /congviec</label>
+              <select v-model="config.taskLinkMode" class="form-input">
+                <option value="day_week">Link từng ngày + Tuần + Tồn tuần trước (Gọn đẹp)</option>
+                <option value="per_task">Link chi tiết từng việc + Từng ngày + Tuần</option>
+                <option value="off">Tắt chèn link web</option>
+              </select>
+            </div>
+          </div>
+          <div style="font-size: 0.76rem; color: #94a3b8; margin-top: 8px; line-height: 1.45;">
+            • Link rút gọn <code>/r/d/...</code>, <code>/r/w/...</code>, <code>/r/prev</code> nhảy thẳng vào danh sách tương ứng trên trang Báo cáo. Tin dài hơn 1.850 ký tự sẽ <strong>tự động tách làm 2 tin liên tiếp</strong> để không bị cắt mất nội dung.
+          </div>
         </div>
 
         <!-- Danh sách Nhóm / Người nhận (Chat ID) -->
@@ -340,10 +374,28 @@
           </div>
 
           <div v-if="manualPreviewText" class="preview-box">
-            <div style="font-size: 0.75rem; font-weight: 800; color: #38bdf8; text-transform: uppercase; margin-bottom: 6px;">
-              Bản xem trước với số liệu thực tế từ Firebase:
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px;">
+              <span style="font-size: 0.75rem; font-weight: 800; color: #38bdf8; text-transform: uppercase;">
+                Bản xem trước với số liệu thực tế từ Firebase:
+              </span>
+              <span
+                v-if="getPreviewParts(manualPreviewText).length > 1"
+                class="pill-badge"
+                style="background: rgba(245, 158, 11, 0.16); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.35);"
+              >
+                Tự tách {{ getPreviewParts(manualPreviewText).length }} tin Zalo ({{ manualPreviewText.length }} ký tự)
+              </span>
             </div>
-            <pre style="margin: 0; white-space: pre-wrap; font-family: inherit; font-size: 0.85rem; color: #e2e8f0; line-height: 1.5;">{{ manualPreviewText }}</pre>
+            <div
+              v-for="(part, pIdx) in getPreviewParts(manualPreviewText)"
+              :key="'mp-' + pIdx"
+              class="preview-part-card"
+            >
+              <div v-if="getPreviewParts(manualPreviewText).length > 1" class="preview-part-label">
+                Tin nhắn #{{ pIdx + 1 }} ({{ part.length }} ký tự)
+              </div>
+              <pre class="preview-pre"><template v-for="(lineObj, lIdx) in tokenizePreviewLines(part)" :key="lIdx"><strong v-if="lineObj.isHeader" class="preview-header-line"><template v-for="(seg, segIdx) in lineObj.segments" :key="segIdx"><a v-if="seg.type === 'url'" :href="seg.href" target="_blank" rel="noopener noreferrer" class="preview-link">{{ seg.value }}</a><template v-else>{{ seg.value }}</template></template></strong><template v-else><template v-for="(seg, segIdx) in lineObj.segments" :key="segIdx"><a v-if="seg.type === 'url'" :href="seg.href" target="_blank" rel="noopener noreferrer" class="preview-link">{{ seg.value }}</a><template v-else>{{ seg.value }}</template></template></template><template v-if="lIdx < tokenizePreviewLines(part).length - 1">{{ '\n' }}</template></template></pre>
+            </div>
           </div>
 
           <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px;">
@@ -499,10 +551,19 @@
                 placeholder="Nhập nội dung tin nhắn mẫu..."
               ></textarea>
               <div v-if="schedulePreviews[sched.id || sIdx]" class="preview-box" style="margin-top: 10px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px;">
-                  <span style="font-size: 0.74rem; font-weight: 800; color: #38bdf8; text-transform: uppercase;">
-                    Bản xem trước thực tế từ Firebase (node REPORT):
-                  </span>
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px;">
+                  <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <span style="font-size: 0.74rem; font-weight: 800; color: #38bdf8; text-transform: uppercase;">
+                      Bản xem trước thực tế từ Firebase (node REPORT):
+                    </span>
+                    <span
+                      v-if="getPreviewParts(schedulePreviews[sched.id || sIdx]).length > 1"
+                      class="pill-badge"
+                      style="background: rgba(245, 158, 11, 0.16); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.35);"
+                    >
+                      Tự tách {{ getPreviewParts(schedulePreviews[sched.id || sIdx]).length }} tin Zalo ({{ schedulePreviews[sched.id || sIdx].length }} ký tự)
+                    </span>
+                  </div>
                   <button
                     type="button"
                     class="banner-close"
@@ -510,7 +571,16 @@
                     @click="delete schedulePreviews[sched.id || sIdx]"
                   >✕</button>
                 </div>
-                <pre style="margin: 0; white-space: pre-wrap; font-family: inherit; font-size: 0.84rem; color: #e2e8f0; line-height: 1.5;">{{ schedulePreviews[sched.id || sIdx] }}</pre>
+                <div
+                  v-for="(part, pIdx) in getPreviewParts(schedulePreviews[sched.id || sIdx])"
+                  :key="'sp-' + (sched.id || sIdx) + '-' + pIdx"
+                  class="preview-part-card"
+                >
+                  <div v-if="getPreviewParts(schedulePreviews[sched.id || sIdx]).length > 1" class="preview-part-label">
+                    Tin nhắn #{{ pIdx + 1 }} ({{ part.length }} ký tự)
+                  </div>
+                  <pre class="preview-pre"><template v-for="(lineObj, lIdx) in tokenizePreviewLines(part)" :key="lIdx"><strong v-if="lineObj.isHeader" class="preview-header-line"><template v-for="(seg, segIdx) in lineObj.segments" :key="segIdx"><a v-if="seg.type === 'url'" :href="seg.href" target="_blank" rel="noopener noreferrer" class="preview-link">{{ seg.value }}</a><template v-else>{{ seg.value }}</template></template></strong><template v-else><template v-for="(seg, segIdx) in lineObj.segments" :key="segIdx"><a v-if="seg.type === 'url'" :href="seg.href" target="_blank" rel="noopener noreferrer" class="preview-link">{{ seg.value }}</a><template v-else>{{ seg.value }}</template></template></template><template v-if="lIdx < tokenizePreviewLines(part).length - 1">{{ '\n' }}</template></template></pre>
+                </div>
               </div>
               <div v-if="sched.lastSentDate" style="font-size: 0.75rem; color: #64748b; margin-top: 4px;">
                 Lần tự động gửi gần nhất: {{ sched.lastSentDate }} lúc {{ sched.time }}
@@ -728,7 +798,9 @@ import {
   isWorkerHeartbeatFresh,
   extractZaloChatFromUpdate,
   upsertZaloRecipient,
-  subscribeZaloRecipientsRealtime
+  subscribeZaloRecipientsRealtime,
+  splitZaloMessages,
+  isZaloHeaderLine
 } from '../utils/zaloBotService'
 
 const firebaseConfig = {
@@ -842,13 +914,22 @@ const availableVariables = [
   { code: '{date}', desc: 'Ngày hiện tại (DD/MM/YYYY)' },
   { code: '{time}', desc: 'Giờ hiện tại (HH:mm)' },
   { code: '{thu}', desc: 'Thứ trong tuần (T2..T7, CN)' },
+  { code: '{ngay_hom_qua}', desc: 'Ngày hôm qua (DD/MM/YYYY)' },
   { code: '{tuan_hien_tai}', desc: 'Khoảng ngày tuần hiện tại (VD: 16/11 - 22/11)' },
-  { code: '{ban_tin_viec_sang}', desc: 'Bản tin 07:00 sáng: việc chưa làm trong tuần (ưu tiên việc mới, Sáng/Chiều)' },
-  { code: '{ban_tin_tong_ket_chieu}', desc: 'Bản tin 17:20 chiều: thống kê hôm nay + việc chưa làm trong tuần' },
+  { code: '{ban_tin_viec_sang}', desc: 'Bản tin 07:00 sáng: tổng kết hôm qua (đã xong + chưa xong, có ghi chú) + lịch hôm nay + việc tuần' },
+  { code: '{ban_tin_tong_ket_chieu}', desc: 'Bản tin 17:20 chiều: thống kê hôm nay + việc chưa làm trong tuần kèm link' },
   { code: '{so_viec_chua_lam_tuan}', desc: 'Số lượng việc chưa xử lý trong tuần hiện tại' },
   { code: '{so_viec_hom_nay_chua_xong}', desc: 'Số lượng việc hôm nay chưa xử lý' },
   { code: '{so_viec_ton_tuan_truoc}', desc: 'Số lượng việc tồn từ các tuần trước' },
-  { code: '{cong_viec_chua_xong}', desc: 'Danh sách toàn bộ công việc chưa hoàn thành (mới nhất lên đầu)' },
+  { code: '{cong_viec_chua_xong}', desc: 'Danh sách toàn bộ công việc chưa hoàn thành (mới nhất lên đầu, kèm link)' },
+  { code: '{link_hom_qua}', desc: 'Link mở danh sách công việc hôm qua' },
+  { code: '{link_hom_qua_xong}', desc: 'Link mở việc đã hoàn thành hôm qua' },
+  { code: '{link_hom_qua_chua_xong}', desc: 'Link mở việc chưa xong hôm qua' },
+  { code: '{link_hom_nay}', desc: 'Link mở danh sách công việc hôm nay' },
+  { code: '{link_viec_hom_nay}', desc: 'Link mở việc chưa xong hôm nay' },
+  { code: '{link_tuan_nay}', desc: 'Link mở việc chưa xong tuần hiện tại' },
+  { code: '{link_ton_tuan_truoc}', desc: 'Link mở các việc tồn từ tuần trước' },
+  { code: '{link_tat_ca_chua_xong}', desc: 'Link mở toàn bộ công việc chưa xử lý' },
   { code: '{tong_khach_hang}', desc: 'Tổng số khách hàng' },
   { code: '{so_khach_no}', desc: 'Số lượng khách hàng đang nợ' },
   { code: '{tong_cong_no}', desc: 'Tổng số tiền công nợ phải thu' },
@@ -857,9 +938,9 @@ const availableVariables = [
 
 const quickPresets = [
   {
-    label: 'Mẫu 07:00 Sáng (Việc tuần)',
+    label: 'Mẫu 07:00 Sáng (Điểm tin đầu ngày)',
     template:
-      '[VIỆC CHƯA LÀM TRONG TUẦN - {time} | {thu} {date}]\n' +
+      '[ĐIỂM TIN ĐẦU NGÀY - {time} | {thu} {date}]\n' +
       '{ban_tin_viec_sang}'
   },
   {
@@ -900,6 +981,76 @@ const weekDays = [
   { val: 6, label: 'T7' },
   { val: 0, label: 'CN' }
 ]
+
+const getCurrentContextOptions = () => ({
+  webAppUrl: config.value.webAppUrl,
+  taskLinkMode: config.value.taskLinkMode
+})
+
+const fillCurrentOriginToWebAppUrl = () => {
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    config.value.webAppUrl = window.location.origin
+    showBanner(`Đã điền URL web hiện tại: ${window.location.origin}`, 'info')
+  }
+}
+
+const getPreviewParts = (text) => {
+  const parts = splitZaloMessages(text || '')
+  return parts.length > 0 ? parts : [String(text || '')]
+}
+
+const resolvePreviewLinkHref = (rawUrl) => {
+  try {
+    const parsed = new URL(rawUrl)
+    if (
+      typeof window !== 'undefined' &&
+      window.location?.origin &&
+      (parsed.pathname === '/r' || parsed.pathname.startsWith('/r/'))
+    ) {
+      return `${window.location.origin}${parsed.pathname}${parsed.search}${parsed.hash}`
+    }
+    return rawUrl
+  } catch {
+    return rawUrl
+  }
+}
+
+const tokenizePreviewLinks = (text) => {
+  const src = String(text || '')
+  const regex = /(https?:\/\/[^\s<>"']+)/g
+  const segments = []
+  let lastIdx = 0
+  let m
+  while ((m = regex.exec(src)) !== null) {
+    if (m.index > lastIdx) {
+      segments.push({ type: 'text', value: src.slice(lastIdx, m.index) })
+    }
+    const rawUrl = m[1].replace(/[),.;!?]+$/, '')
+    const trailing = m[1].slice(rawUrl.length)
+    segments.push({
+      type: 'url',
+      value: rawUrl,
+      href: resolvePreviewLinkHref(rawUrl)
+    })
+    if (trailing) {
+      segments.push({ type: 'text', value: trailing })
+    }
+    lastIdx = regex.lastIndex
+  }
+  if (lastIdx < src.length) {
+    segments.push({ type: 'text', value: src.slice(lastIdx) })
+  }
+  return segments
+}
+
+const tokenizePreviewLines = (text) => {
+  return String(text || '')
+    .split('\n')
+    .map((line) => ({
+      isHeader: isZaloHeaderLine(line),
+      segments: tokenizePreviewLinks(line)
+    }))
+}
 
 const insertVarToManual = (code) => {
   manualCompose.text = (manualCompose.text || '') + ' ' + code
@@ -1069,7 +1220,7 @@ const sendQuickTestToChat = async (rec) => {
 const previewManualMessage = async () => {
   previewingManual.value = true
   try {
-    manualPreviewText.value = await renderBotTemplate(manualCompose.text)
+    manualPreviewText.value = await renderBotTemplate(manualCompose.text, {}, getCurrentContextOptions())
   } finally {
     previewingManual.value = false
   }
@@ -1082,7 +1233,7 @@ const sendManualMessageNow = async () => {
   }
   sendingMessage.value = true
   try {
-    const finalMsg = await renderBotTemplate(manualCompose.text)
+    const finalMsg = await renderBotTemplate(manualCompose.text, {}, getCurrentContextOptions())
     manualPreviewText.value = finalMsg
 
     if (manualCompose.targetChatId === '__all__') {
@@ -1152,7 +1303,7 @@ const previewSchedule = async (sched, sIdx) => {
   const key = sched.id || sIdx
   previewingScheduleKey.value = key
   try {
-    schedulePreviews[key] = await renderBotTemplate(sched.template)
+    schedulePreviews[key] = await renderBotTemplate(sched.template, {}, getCurrentContextOptions())
   } finally {
     if (previewingScheduleKey.value === key) previewingScheduleKey.value = ''
   }
@@ -1161,7 +1312,7 @@ const previewSchedule = async (sched, sIdx) => {
 const runScheduleNow = async (sched) => {
   sendingMessage.value = true
   try {
-    const msgText = await renderBotTemplate(sched.template)
+    const msgText = await renderBotTemplate(sched.template, {}, getCurrentContextOptions())
     const targetId = sched.targetChatId || config.value.recipients[0]?.chatId
     if (targetId === '__all__') {
       const activeRecs = config.value.recipients.filter(r => r.enabled && r.chatId)
@@ -1211,7 +1362,7 @@ const addNewCommand = () => {
 const triggerCommandFromWeb = async (cmd, argVal = '') => {
   sendingMessage.value = true
   try {
-    const replyText = await executeBotCommand(cmd, argVal, config.value.commands)
+    const replyText = await executeBotCommand(cmd, argVal, config.value.commands, getCurrentContextOptions())
     const targetChat =
       config.value.recipients.find(r => r.enabled && r.chatId)?.chatId ||
       config.value.recipients[0]?.chatId
@@ -1683,6 +1834,46 @@ onUnmounted(() => {
   border-radius: 10px;
   padding: 12px 14px;
   margin-top: 10px;
+}
+
+.preview-part-card + .preview-part-card {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(56, 189, 248, 0.28);
+}
+
+.preview-part-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #fbbf24;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.preview-pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+  font-size: 0.84rem;
+  color: #e2e8f0;
+  line-height: 1.55;
+}
+
+.preview-link {
+  color: #38bdf8;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  word-break: break-all;
+}
+.preview-link:hover {
+  color: #7dd3fc;
+}
+
+.preview-header-line {
+  font-weight: 800;
+  color: #f8fafc;
 }
 
 .switch-label {

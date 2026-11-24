@@ -32,6 +32,7 @@ import QuanLyMauInFirebase from '../components/QuanLyMauInFirebase.vue'
 import ZaloBotConfigFirebase from '../components/ZaloBotConfigFirebase.vue'
 import SystemConfig from '../components/SystemConfig.vue'
 import { isLocalDevHost } from '../services/systemConfig'
+import { resolveShortReportRedirect } from '../utils/zaloBotCore.js'
 
 const routes = [
   {
@@ -236,6 +237,12 @@ const routes = [
     meta: { title: 'Cấu hình Zalo Bot' }
   },
   {
+    path: '/r/:pathMatch(.*)*',
+    alias: ['/r'],
+    name: 'ReportShortRedirect',
+    redirect: (to) => resolveShortReportRedirect(to.path) || '/report-firebase'
+  },
+  {
     path: '/system-config',
     alias: ['/cau-hinh-he-thong', '/config'],
     name: 'SystemConfig',
@@ -250,6 +257,12 @@ const router = createRouter({
 })
 
 router.beforeEach((to, _from, next) => {
+  const shortRedirectTarget = resolveShortReportRedirect(to.path)
+  if (shortRedirectTarget) {
+    next(shortRedirectTarget)
+    return
+  }
+
   if (to.path === '/login') {
     next()
     return
@@ -267,7 +280,8 @@ router.beforeEach((to, _from, next) => {
   if (tokenLocal || tokenSession) {
     next()
   } else {
-    next('/login')
+    const redirectTarget = to.fullPath && to.fullPath !== '/' ? to.fullPath : ''
+    next(redirectTarget ? { path: '/login', query: { redirect: redirectTarget } } : '/login')
   }
 })
 

@@ -4,17 +4,23 @@ import { getSystemConfigSync, hasAuthSession, isMockDbActive } from '../services
 import {
   DEFAULT_BOT_TOKEN,
   DEFAULT_INVITE_URL,
+  DEFAULT_TASK_LINK_MODE,
+  DEFAULT_WEB_APP_URL,
   TASK_SCHEDULES_VERSION,
   buildContextFromDatasets,
+  buildZaloHeaderTextStyles,
   extractZaloChatFromUpdate,
   getVietnamDateParts,
   interpolateTemplate,
   isScheduleDueNow,
+  isZaloHeaderLine,
   matchIncomingZaloCommand,
   normalizeBotConfigWithDefault,
   normalizeZaloChatType,
   resolveBotCommandText,
+  resolveShortReportRedirect,
   safeFirebaseKey,
+  splitZaloMessages,
   upsertZaloRecipient
 } from './zaloBotCore.js'
 
@@ -40,8 +46,14 @@ const getDbInstance = () => {
 export {
   DEFAULT_BOT_TOKEN,
   DEFAULT_INVITE_URL,
+  DEFAULT_TASK_LINK_MODE,
+  DEFAULT_WEB_APP_URL,
+  buildZaloHeaderTextStyles,
   extractZaloChatFromUpdate,
+  isZaloHeaderLine,
   normalizeZaloChatType,
+  resolveShortReportRedirect,
+  splitZaloMessages,
   upsertZaloRecipient
 }
 
@@ -167,38 +179,94 @@ export const callZaloBotApi = async (botToken, method, payload = {}) => {
   return await resDirect.json()
 }
 
+const sleepMs = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
 export const sendZaloBotMessage = async ({ botToken, chatId, text, source = 'manual' }) => {
   if (!chatId || !text) {
     return { ok: false, description: 'Thiếu chatId hoặc nội dung tin nhắn' }
   }
-  try {
-    const data = await callZaloBotApi(botToken, 'sendMessage', {
-      chat_id: String(chatId).trim(),
-      text: String(text)
-    })
-    await appendZaloBotLog({
-      chatId,
-      text: String(text).slice(0, 600),
-      source,
-      ok: Boolean(data && data.ok),
-      response: data?.description || (data?.ok ? 'Thành công' : 'Lỗi')
-    })
-    return data
-  } catch (err) {
-    await appendZaloBotLog({
-      chatId,
-      text: String(text).slice(0, 600),
-      source,
-      ok: false,
-      response: err?.message || 'Lỗi kết nối'
-    })
-    return { ok: false, description: err?.message || 'Lỗi kết nối API' }
+  const parts = splitZaloMessages(text)
+  if (parts.length === 0) {
+    return { ok: false, description: 'Nội dung tin nhắn trống' }
+  }
+
+  let lastData = null
+  let partsSent = 0
+  let firstErrorDesc = ''
+
+  for (let i = 0; i < parts.length; i++) {
+    const partText = parts[i]
+    const partSource = parts.length > 1 ? `${source} [${i + 1}/${parts.length}]` : source
+    if (i > 0) {
+      await sleepMs(260)
+    }
+    try {
+      const textStyles = buildZaloHeaderTextStyles(partText)
+      const payload = {
+        chat_id: String(chatId).trim(),
+        text: String(partText),
+        ...(textStyles.length > 0 ? { text_styles: textStyles } : {})
+      }
+      let data = await callZaloBotApi(botToken, 'sendMessage', payload)
+      if ((!data || !data.ok) && textStyles.length > 0) {
+        data = await callZaloBotApi(botToken, 'sendMessage', {
+          chat_id: String(chatId).trim(),
+          text: String(partText)
+        })
+      }
+      lastData = data
+      if (data && data.ok) {
+        partsSent++
+      } else if (!firstErrorDesc) {
+        firstErrorDesc = data?.description || 'Lỗi'
+      }
+      await appendZaloBotLog({
+        chatId,
+        text: String(partText).slice(0, 800),
+        source: partSource,
+        ok: Boolean(data && data.ok),
+        response: data?.description || (data?.ok ? 'Thành công' : 'Lỗi')
+      })
+    } catch (err) {
+      if (!firstErrorDesc) {
+        firstErrorDesc = err?.message || 'Lỗi kết nối API'
+      }
+      await appendZaloBotLog({
+        chatId,
+        text: String(partText).slice(0, 800),
+        source: partSource,
+        ok: false,
+        response: err?.message || 'Lỗi kết nối'
+      })
+    }
+  }
+
+  const allOk = partsSent === parts.length
+  return {
+    ...(lastData && typeof lastData === 'object' ? lastData : {}),
+    ok: allOk,
+    partsSent,
+    totalParts: parts.length,
+    description: allOk
+      ? parts.length > 1
+        ? `Thành công (${partsSent}/${parts.length} tin)`
+        : lastData?.description || 'Thành công'
+      : firstErrorDesc || lastData?.description || 'Lỗi gửi tin nhắn'
   }
 }
 
-export const buildDynamicSystemContext = async () => {
+export const buildDynamicSystemContext = async (options = {}) => {
   const db = getDbInstance()
   try {
+    let webAppUrl = options?.webAppUrl
+    let taskLinkMode = options?.taskLinkMode
+    if (!webAppUrl || !taskLinkMode) {
+      const snapSettings = await get(dbRef(db, 'zalo_bot_config/settings')).catch(() => null)
+      const settingsVal = snapSettings && snapSettings.exists() ? snapSettings.val() : null
+      if (!webAppUrl) webAppUrl = settingsVal?.webAppUrl || DEFAULT_WEB_APP_URL
+      if (!taskLinkMode) taskLinkMode = settingsVal?.taskLinkMode || DEFAULT_TASK_LINK_MODE
+    }
+
     const [snapKH, snapSR, snapRep] = await Promise.all([
       get(dbRef(db, 'khach_hang')),
       get(dbRef(db, 'sale_report')),
@@ -215,21 +283,27 @@ export const buildDynamicSystemContext = async () => {
       khVal: snapKH.exists() ? snapKH.val() : {},
       srVal: snapSR.exists() ? snapSR.val() : {},
       repVal: repVal || {},
-      now: new Date()
+      now: new Date(),
+      webAppUrl,
+      taskLinkMode
     })
   } catch (e) {
     console.warn('Lỗi tổng hợp dữ liệu cho Zalo Bot:', e)
-    return buildContextFromDatasets({ now: new Date() })
+    return buildContextFromDatasets({
+      now: new Date(),
+      webAppUrl: options?.webAppUrl || DEFAULT_WEB_APP_URL,
+      taskLinkMode: options?.taskLinkMode || DEFAULT_TASK_LINK_MODE
+    })
   }
 }
 
-export const renderBotTemplate = async (templateStr, extraVars = {}) => {
-  const ctx = await buildDynamicSystemContext()
+export const renderBotTemplate = async (templateStr, extraVars = {}, contextOptions = {}) => {
+  const ctx = await buildDynamicSystemContext(contextOptions)
   return interpolateTemplate(templateStr, ctx, extraVars)
 }
 
-export const executeBotCommand = async (cmdObj, argStr = '', allCommands = []) => {
-  const ctx = await buildDynamicSystemContext()
+export const executeBotCommand = async (cmdObj, argStr = '', allCommands = [], contextOptions = {}) => {
+  const ctx = await buildDynamicSystemContext(contextOptions)
   let hhVal = {}
   if (cmdObj?.actionType === 'product_lookup') {
     try {
@@ -260,10 +334,14 @@ export const triggerZaloEventNotification = async (eventKey, vars = {}) => {
     const vn = getVietnamDateParts(new Date())
     const defaultTime = `${vn.dateStr} ${vn.timeStr}`
 
-    const text = await renderBotTemplate(trig.template, {
-      thoi_gian: defaultTime,
-      ...vars
-    })
+    const text = await renderBotTemplate(
+      trig.template,
+      {
+        thoi_gian: defaultTime,
+        ...vars
+      },
+      { webAppUrl: config.webAppUrl, taskLinkMode: config.taskLinkMode }
+    )
 
     const targetId = trig.targetChatId
     if (targetId === '__all__') {
@@ -322,7 +400,11 @@ export const checkAndRunScheduledBotTasks = async () => {
 
       sched.lastSentDate = vn.isoDateStr
       configChanged = true
-      const msgText = await renderBotTemplate(sched.template)
+      const msgText = await renderBotTemplate(
+        sched.template,
+        {},
+        { webAppUrl: config.webAppUrl, taskLinkMode: config.taskLinkMode }
+      )
       if (sched.targetChatId === '__all__') {
         const activeRecs = (config.recipients || []).filter((r) => r.enabled && r.chatId)
         for (const rec of activeRecs) {
@@ -390,7 +472,10 @@ export const pollZaloBotCommandsOnce = async (customTimeout = 8) => {
 
       const matched = matchIncomingZaloCommand(rawText, config.botName, config.commands)
       if (matched) {
-        const replyText = await executeBotCommand(matched.cmd, matched.argStr, config.commands)
+        const replyText = await executeBotCommand(matched.cmd, matched.argStr, config.commands, {
+          webAppUrl: config.webAppUrl,
+          taskLinkMode: config.taskLinkMode
+        })
         await sendZaloBotMessage({
           botToken: config.botToken,
           chatId,

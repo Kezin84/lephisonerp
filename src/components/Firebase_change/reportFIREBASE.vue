@@ -8189,12 +8189,12 @@ const baseFilteredReports = computed(() => {
       const reportDate = parseDateFromReport(r.thoi_gian);
       if (!reportDate) return false;
       if (filters.value.dateFrom) {
-        const from = new Date(filters.value.dateFrom);
+        const from = parseIsoLocal(filters.value.dateFrom);
         from.setHours(0, 0, 0, 0);
         if (reportDate < from) return false;
       }
       if (filters.value.dateTo) {
-        const to = new Date(filters.value.dateTo);
+        const to = parseIsoLocal(filters.value.dateTo);
         to.setHours(23, 59, 59, 999);
         if (reportDate > to) return false;
       }
@@ -9333,6 +9333,7 @@ const focusReportByDeepLink = (targetReportId) => {
   if (!r) return
 
   isApplyingDeepLinkState = true
+  desktopViewMode.value = 'detail'
   filters.value.searchQuery = ''
   filters.value.period = ''
   filters.value.trang_thai = ''
@@ -17354,16 +17355,103 @@ watch(pendingModalSentinel, () => {
   });
 });
 
+const mapDeepLinkStatusQuery = (rawStatus) => {
+  const s = String(rawStatus || '').trim().toLowerCase()
+  if (!s || s === 'all' || s === 'tat_ca' || s === 'tất cả') return ''
+  if (s === 'pending' || s === 'p' || s === 'chua_xu_ly' || s === 'chưa xử lý') return 'Chưa xử lý'
+  if (s === 'done' || s === 'd' || s === 'hoan_thanh' || s === 'hoàn thành') return 'Hoàn thành'
+  if (s === 'failed' || s === 'f' || s === 'that_bai' || s === 'thất bại') return 'Failed'
+  return ''
+}
+
+const applyDeepLinkFiltersFromRoute = () => {
+  const q = route.query || {}
+  const openId = q.openId || q.id
+  if (openId) return
+
+  const scope = String(q.scope || '').trim().toLowerCase()
+  const weekStr = String(q.week || '').trim().toUpperCase()
+  const dateStr = String(q.date || '').trim()
+  const beforeStr = String(q.before || '').trim()
+  const hasStatusParam = q.status !== undefined && q.status !== null
+  const mappedStatus = mapDeepLinkStatusQuery(q.status)
+
+  if (!scope && !weekStr && !dateStr && !hasStatusParam) return
+
+  const clearAttributeFilters = () => {
+    filters.value.searchQuery = ''
+    filters.value.period = ''
+    filters.value.tag = ''
+    filters.value.phan_loai = ''
+    filters.value.maKH = ''
+    filters.value.projectId = ''
+    filters.value.workflowId = ''
+    filters.value.pipelineTaskId = ''
+  }
+
+  releaseDeepLinkDateLock({ restoreDefaultWeek: false })
+  isApplyingDeepLinkState = true
+
+  if (scope === 'prev-weeks') {
+    let cutoffIso = /^\d{4}-\d{2}-\d{2}$/.test(beforeStr) ? beforeStr : ''
+    if (!cutoffIso) {
+      const monday = getMondayOfDate(new Date())
+      const prevSunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() - 1)
+      cutoffIso = toIsoDateStr(prevSunday)
+    }
+    desktopViewMode.value = 'detail'
+    clearAttributeFilters()
+    filters.value.filterMode = 'day'
+    filters.value.dateFrom = ''
+    filters.value.dateTo = cutoffIso
+    filters.value.trang_thai = mappedStatus || 'Chưa xử lý'
+    calendarAnchorDate.value = parseIsoLocal(cutoffIso)
+  } else if (scope === 'all-pending') {
+    desktopViewMode.value = 'detail'
+    clearAttributeFilters()
+    filters.value.filterMode = 'day'
+    filters.value.dateFrom = ''
+    filters.value.dateTo = ''
+    filters.value.trang_thai = mappedStatus || 'Chưa xử lý'
+  } else if (/^\d{4}-W\d{2}$/.test(weekStr)) {
+    desktopViewMode.value = 'detail'
+    clearAttributeFilters()
+    filters.value.filterMode = 'week'
+    filters.value.weekFrom = weekStr
+    filters.value.weekTo = weekStr
+    filters.value.trang_thai = mappedStatus
+    calendarAnchorDate.value = getWeekDateRange(weekStr).from
+  } else if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    desktopViewMode.value = 'detail'
+    clearAttributeFilters()
+    filters.value.filterMode = 'day'
+    filters.value.dateFrom = dateStr
+    filters.value.dateTo = dateStr
+    filters.value.trang_thai = mappedStatus
+    calendarAnchorDate.value = parseIsoLocal(dateStr)
+  } else if (hasStatusParam) {
+    desktopViewMode.value = 'detail'
+    filters.value.trang_thai = mappedStatus
+  }
+
+  nextTick(() => {
+    isApplyingDeepLinkState = false
+  })
+}
+
+watch(
+  () => route.fullPath,
+  () => {
+    applyDeepLinkFiltersFromRoute()
+  }
+)
+
 onMounted(() => {
   listenCustomersRealtime();
   listenQuanLyFileRealtime();
   fetchCustomersForQuote();
   loadPipelineData();
-  if (route.query.date) {
-    filters.value.filterMode = 'day'
-    filters.value.dateFrom = String(route.query.date)
-    filters.value.dateTo = String(route.query.date)
-  }
+  applyDeepLinkFiltersFromRoute();
   fetchReports()
   window.addEventListener('resize', onResize)
   window.addEventListener('keydown', onBaogiaGlobalKeydown)

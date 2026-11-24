@@ -3,6 +3,7 @@ import {
   DEFAULT_FIREBASE_DATABASE_URL,
   TASK_SCHEDULES_VERSION,
   buildContextFromDatasets,
+  buildZaloHeaderTextStyles,
   extractZaloChatFromUpdate,
   getVietnamDateParts,
   interpolateTemplate,
@@ -10,7 +11,9 @@ import {
   matchIncomingZaloCommand,
   normalizeBotConfigWithDefault,
   resolveBotCommandText,
+  resolveShortReportRedirect,
   safeFirebaseKey,
+  splitZaloMessages,
   upsertZaloRecipient
 } from '../src/utils/zaloBotCore.js'
 
@@ -150,7 +153,7 @@ const loadResolvedBotConfig = async (rtdb, env = {}) => {
   }
 }
 
-const createContextLoader = (rtdb) => {
+const createContextLoader = (rtdb, botConfig = {}) => {
   let cachedCtx = null
   let cachedHhVal = undefined
 
@@ -169,7 +172,9 @@ const createContextLoader = (rtdb) => {
       khVal: khVal || {},
       srVal: srVal || {},
       repVal: repVal || {},
-      now: new Date()
+      now: new Date(),
+      webAppUrl: botConfig?.webAppUrl,
+      taskLinkMode: botConfig?.taskLinkMode
     })
     return cachedCtx
   }
@@ -183,38 +188,85 @@ const createContextLoader = (rtdb) => {
   return { getContext, getHangHoa }
 }
 
+const sleepMs = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
 const sendAndLog = async ({ rtdb, botToken, chatId, text, source }) => {
   if (!chatId || !text) {
     return { ok: false, description: 'Thiếu chatId hoặc nội dung tin nhắn' }
   }
-  try {
-    const data = await callZaloApiDirect(botToken, 'sendMessage', {
-      chat_id: String(chatId).trim(),
-      text: String(text)
-    })
-    await rtdb
-      .push('zalo_bot_config/logs', {
-        timestamp: new Date().toISOString(),
-        chatId,
-        text: String(text).slice(0, 600),
-        source,
-        ok: Boolean(data && data.ok),
-        response: data?.description || (data?.ok ? 'Thành công' : 'Lỗi')
-      })
-      .catch(() => {})
-    return data
-  } catch (err) {
-    await rtdb
-      .push('zalo_bot_config/logs', {
-        timestamp: new Date().toISOString(),
-        chatId,
-        text: String(text).slice(0, 600),
-        source,
-        ok: false,
-        response: err?.message || 'Lỗi kết nối API'
-      })
-      .catch(() => {})
-    return { ok: false, description: err?.message || 'Lỗi kết nối API' }
+  const parts = splitZaloMessages(text)
+  if (parts.length === 0) {
+    return { ok: false, description: 'Nội dung tin nhắn trống' }
+  }
+
+  let lastData = null
+  let partsSent = 0
+  let firstErrorDesc = ''
+
+  for (let i = 0; i < parts.length; i++) {
+    const partText = parts[i]
+    const partSource = parts.length > 1 ? `${source} [${i + 1}/${parts.length}]` : source
+    if (i > 0) {
+      await sleepMs(260)
+    }
+    try {
+      const textStyles = buildZaloHeaderTextStyles(partText)
+      const payload = {
+        chat_id: String(chatId).trim(),
+        text: String(partText),
+        ...(textStyles.length > 0 ? { text_styles: textStyles } : {})
+      }
+      let data = await callZaloApiDirect(botToken, 'sendMessage', payload)
+      if ((!data || !data.ok) && textStyles.length > 0) {
+        data = await callZaloApiDirect(botToken, 'sendMessage', {
+          chat_id: String(chatId).trim(),
+          text: String(partText)
+        })
+      }
+      lastData = data
+      if (data && data.ok) {
+        partsSent++
+      } else if (!firstErrorDesc) {
+        firstErrorDesc = data?.description || 'Lỗi'
+      }
+      await rtdb
+        .push('zalo_bot_config/logs', {
+          timestamp: new Date().toISOString(),
+          chatId,
+          text: String(partText).slice(0, 800),
+          source: partSource,
+          ok: Boolean(data && data.ok),
+          response: data?.description || (data?.ok ? 'Thành công' : 'Lỗi')
+        })
+        .catch(() => {})
+    } catch (err) {
+      if (!firstErrorDesc) {
+        firstErrorDesc = err?.message || 'Lỗi kết nối API'
+      }
+      await rtdb
+        .push('zalo_bot_config/logs', {
+          timestamp: new Date().toISOString(),
+          chatId,
+          text: String(partText).slice(0, 800),
+          source: partSource,
+          ok: false,
+          response: err?.message || 'Lỗi kết nối API'
+        })
+        .catch(() => {})
+    }
+  }
+
+  const allOk = partsSent === parts.length
+  return {
+    ...(lastData && typeof lastData === 'object' ? lastData : {}),
+    ok: allOk,
+    partsSent,
+    totalParts: parts.length,
+    description: allOk
+      ? parts.length > 1
+        ? `Thành công (${partsSent}/${parts.length} tin)`
+        : lastData?.description || 'Thành công'
+      : firstErrorDesc || lastData?.description || 'Lỗi kết nối API'
   }
 }
 
@@ -319,7 +371,7 @@ const runCronCycle = async (env = {}, cronExpr = '* * * * *') => {
     }
   }
 
-  const loader = createContextLoader(rtdb)
+  const loader = createContextLoader(rtdb, config)
   let schedulesSent = 0
   let configChanged = false
 
@@ -427,6 +479,12 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url)
 
+    // 0. Rút gọn deep-link cho tin nhắn Zalo (/r/d/..., /r/w/..., /r/prev, /r/pending, /r/t/...)
+    if (url.pathname === '/r' || url.pathname.startsWith('/r/')) {
+      const targetPath = resolveShortReportRedirect(url.pathname) || '/report-firebase'
+      return Response.redirect(new URL(targetPath, url.origin).toString(), 302)
+    }
+
     // 1. Proxy /zalo-bot-api/* sang bot-api.zaloplatforms.com (chống CORS trên Cloudflare)
     if (url.pathname.startsWith('/zalo-bot-api/')) {
       return proxyZaloBotApi(request, url)
@@ -470,7 +528,7 @@ export default {
         if (!config.enabled || !config.commandListenerEnabled) {
           return jsonResponse({ ok: true, skipped: true })
         }
-        const loader = createContextLoader(rtdb)
+        const loader = createContextLoader(rtdb, config)
         const items = Array.isArray(body) ? body : [body]
         ctx.waitUntil(processIncomingUpdates({ rtdb, config, items, loader }))
         return jsonResponse({ ok: true })

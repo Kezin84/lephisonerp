@@ -6,7 +6,23 @@ export const DEFAULT_BOT_TOKEN =
 
 export const DEFAULT_INVITE_URL = 'https://bot.zaloplatforms.com/groups/invite/bot.QkJpMNVs'
 
+export const DEFAULT_WEB_APP_URL = 'https://sonai.tech'
+
+export const DEFAULT_TASK_LINK_MODE = 'day_week'
+
 export const DEFAULT_WORKER_TIMEZONE = 'Asia/Ho_Chi_Minh'
+
+export const normalizeWebAppUrl = (raw) => {
+  const s = String(raw || '').trim().replace(/\/+$/, '')
+  if (/^https?:\/\/[^/\s]+/i.test(s)) return s
+  return DEFAULT_WEB_APP_URL
+}
+
+export const normalizeTaskLinkMode = (raw) => {
+  const v = String(raw || '').trim().toLowerCase()
+  if (v === 'day_week' || v === 'per_task' || v === 'off') return v
+  return DEFAULT_TASK_LINK_MODE
+}
 
 const escapeRegExp = (str) => String(str || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
@@ -109,7 +125,7 @@ const WEEKDAY_MAP = {
 
 const WEEKDAY_LABELS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
 
-export const TASK_SCHEDULES_VERSION = 2
+export const TASK_SCHEDULES_VERSION = 3
 
 const pad2 = (n) => String(n).padStart(2, '0')
 
@@ -127,6 +143,368 @@ const clampZaloMessage = (text, maxChars = 1900) => {
   const lastNewline = cut.lastIndexOf('\n')
   const base = lastNewline > maxChars * 0.6 ? cut.slice(0, lastNewline) : cut
   return `${base.trimEnd()}\n... (xem đầy đủ danh sách trên web Report Firebase)`
+}
+
+/**
+ * Split a long Zalo message (> 1850 chars) into at most `maxParts` (default 2) well-balanced
+ * messages strictly under Zalo Bot API's 2000-char limit.
+ * - Never leaves a tiny orphan header chunk as Part 1.
+ * - Keeps each task + its sub-lines (KH / Ghi chú / link) together.
+ * - Keeps day headers glued to their day link.
+ * - If content still exceeds `maxParts`, preserves the trailing footer block (e.g. prev-week link).
+ */
+export const splitZaloMessages = (text, maxChars = 1850, maxParts = 2) => {
+  const str = String(text || '').trim()
+  if (!str) return []
+  if (str.length <= maxChars) return [str]
+
+  const contentLimit = Math.max(400, maxChars - 42)
+  const limitParts = Math.max(1, Number(maxParts) || 2)
+
+  // Preserve trailing divider footer block (e.g., "────────────────────\n▸ Tuần trước còn ...")
+  const footerMatch = str.match(/\n{2,}(─{5,}[\s\S]*)$/)
+  const trailingFooter = footerMatch && footerMatch[1].length <= 360 ? footerMatch[1].trim() : ''
+  const mainBody = trailingFooter ? str.slice(0, footerMatch.index).trimEnd() : str
+
+  const buildAtomicUnits = (sourceText) => {
+    const rawLines = sourceText.split('\n')
+    const units = []
+    let pendingBlank = false
+
+    for (const line of rawLines) {
+      if (line.trim() === '') {
+        pendingBlank = units.length > 0
+        continue
+      }
+
+      // Attach indented metadata lines (• KH, • Ghi chú, ↳ link) to previous task unit
+      if (!pendingBlank && units.length > 0 && /^\s+(?:•|↳|▸|-|\.\.\.)/.test(line)) {
+        const merged = `${units[units.length - 1].text}\n${line}`
+        if (merged.length <= contentLimit) {
+          units[units.length - 1].text = merged
+          continue
+        }
+      }
+
+      // Glue day/section link right below its ◆ / ✓ / ○ / × heading
+      if (
+        !pendingBlank &&
+        units.length > 0 &&
+        /^▸\s*(?:Xem|Chi tiết)\b/i.test(line.trim()) &&
+        /^(?:◆|✓|○|×|Tuần\s|Tổng:)/.test(units[units.length - 1].text)
+      ) {
+        const merged = `${units[units.length - 1].text}\n${line}`
+        if (merged.length <= contentLimit) {
+          units[units.length - 1].text = merged
+          continue
+        }
+      }
+
+      // Split abnormally long single line if needed
+      if (line.length > contentLimit) {
+        let rem = line
+        let first = true
+        while (rem.length > contentLimit) {
+          let cutIdx = rem.lastIndexOf(' ', contentLimit)
+          if (cutIdx < contentLimit * 0.5) cutIdx = contentLimit
+          units.push({ text: rem.slice(0, cutIdx).trimEnd(), sep: first && pendingBlank ? '\n\n' : '\n' })
+          rem = rem.slice(cutIdx).trimStart()
+          first = false
+          pendingBlank = false
+        }
+        if (rem) {
+          units.push({ text: rem, sep: '\n' })
+        }
+        continue
+      }
+
+      units.push({
+        text: line,
+        sep: pendingBlank ? '\n\n' : '\n'
+      })
+      pendingBlank = false
+    }
+
+    return units
+  }
+
+  const allUnits = buildAtomicUnits(mainBody)
+  if (trailingFooter) {
+    allUnits.push({ text: trailingFooter, sep: '\n\n', isFooter: true })
+  }
+
+  const rawChunks = []
+  let idx = 0
+
+  while (idx < allUnits.length && rawChunks.length < limitParts) {
+    const isLastAllowedPart = rawChunks.length === limitParts - 1
+    let cur = ''
+
+    if (!isLastAllowedPart) {
+      while (idx < allUnits.length) {
+        const u = allUnits[idx]
+        const nextStr = cur ? `${cur}${u.sep}${u.text}` : u.text
+        if (nextStr.length <= contentLimit) {
+          cur = nextStr
+          idx++
+        } else {
+          break
+        }
+      }
+
+      // Avoid stranding a lone ◆ / ✓ / ○ / × section header at the very end of Part 1
+      if (idx < allUnits.length && cur) {
+        const lastDoubleBreak = cur.lastIndexOf('\n\n')
+        if (lastDoubleBreak > contentLimit * 0.45) {
+          const tail = cur.slice(lastDoubleBreak + 2)
+          if (/^(?:◆|✓|○|×)\s/.test(tail) && !/\n(?:\d+\.|•\s)/.test(tail)) {
+            // Rewind the stranded heading into the next part
+            cur = cur.slice(0, lastDoubleBreak).trimEnd()
+            idx--
+          }
+        }
+      }
+
+      if (!cur && idx < allUnits.length) {
+        cur = allUnits[idx].text.slice(0, contentLimit)
+        idx++
+      }
+      rawChunks.push(cur.trimEnd())
+    } else {
+      // Last allowed part: fit everything remaining, or cleanly cap while preserving trailing footer
+      const remainingAll = allUnits
+        .slice(idx)
+        .map((u, k) => (k === 0 ? u.text : `${u.sep}${u.text}`))
+        .join('')
+
+      if (remainingAll.length <= contentLimit) {
+        rawChunks.push(remainingAll.trimEnd())
+        idx = allUnits.length
+      } else {
+        const hasFooterAtEnd = Boolean(trailingFooter && allUnits[allUnits.length - 1]?.isFooter)
+        const bodyUnitsEnd = hasFooterAtEnd ? allUnits.length - 1 : allUnits.length
+        const overflowNotice = '... (còn thêm việc khác — bấm link tuần/ngày ở trên để xem đủ)'
+        const reservedTail = hasFooterAtEnd
+          ? `\n${overflowNotice}\n\n${trailingFooter}`
+          : `\n${overflowNotice}`
+        const bodyBudget = Math.max(200, contentLimit - reservedTail.length)
+
+        while (idx < bodyUnitsEnd) {
+          const u = allUnits[idx]
+          const nextStr = cur ? `${cur}${u.sep}${u.text}` : u.text
+          if (nextStr.length <= bodyBudget) {
+            cur = nextStr
+            idx++
+          } else {
+            break
+          }
+        }
+        rawChunks.push(`${cur.trimEnd()}${reservedTail}`.trim())
+        idx = allUnits.length
+      }
+    }
+  }
+
+  if (rawChunks.length <= 1) return rawChunks
+
+  const total = rawChunks.length
+  return rawChunks.map((chunk, i) => {
+    const partNo = i + 1
+    let decorated = chunk
+    if (partNo === 1) {
+      decorated = `${chunk}\n\n(Còn tiếp — Phần 1/${total})`
+    } else if (partNo < total) {
+      decorated = `[Tiếp theo — Phần ${partNo}/${total}]\n\n${chunk}\n\n(Còn tiếp...)`
+    } else {
+      decorated = `[Tiếp theo — Phần ${partNo}/${total}]\n\n${chunk}`
+    }
+    return decorated.length <= 1980 ? decorated : clampZaloMessage(decorated, 1980)
+  })
+}
+
+/**
+ * Identify header lines in Bot messages that should be rendered bold in Zalo
+ * (via Zalo Bot API `text_styles` UTF-16 offset runs) and in the web preview.
+ */
+export const isZaloHeaderLine = (line) => {
+  const trimmed = String(line || '').trim()
+  if (!trimmed) return false
+  if (/^\[[^\]\n]{3,120}\]$/.test(trimmed)) return true
+  if (/^(?:◆|✓|○|×)\s+\S/.test(trimmed)) return true
+  if (/^▸\s*Tuần trước còn\b/i.test(trimmed)) return true
+  return false
+}
+
+/**
+ * Build Zalo Bot API `text_styles` array (UTF-16 offsets) to bold all header lines
+ * without mutating raw text or breaking URLs containing underscores/symbols.
+ */
+export const buildZaloHeaderTextStyles = (text) => {
+  const str = String(text || '')
+  if (!str) return []
+  const styles = []
+  let offset = 0
+  const lines = str.split('\n')
+  for (const line of lines) {
+    if (isZaloHeaderLine(line)) {
+      const trimmedStart = line.length - line.trimStart().length
+      const trimmed = line.trim()
+      if (trimmed.length > 0) {
+        styles.push({
+          start: offset + trimmedStart,
+          len: trimmed.length,
+          st: ['b']
+        })
+      }
+    }
+    offset += line.length + 1
+  }
+  return styles
+}
+
+export const getIsoWeekCode = (yearNum, monthNum, dayNum) => {
+  const d = new Date(Date.UTC(yearNum, monthNum - 1, dayNum))
+  const dayNumMon = (d.getUTCDay() + 6) % 7
+  d.setUTCDate(d.getUTCDate() + 3 - dayNumMon)
+  const isoYear = d.getUTCFullYear()
+  const week1 = new Date(Date.UTC(isoYear, 0, 4))
+  const week1Mon = (week1.getUTCDay() + 6) % 7
+  const weekNo = 1 + Math.round(((d.getTime() - week1.getTime()) / 86400000 - 3 + week1Mon) / 7)
+  const wPad = pad2(weekNo)
+  return {
+    isoWeek: `${isoYear}-W${wPad}`,
+    shortWeek: `${String(isoYear).slice(-2)}W${wPad}`
+  }
+}
+
+export const getWeekdayLabelForIsoDate = (isoDate) => {
+  const m = String(isoDate || '').match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!m) return ''
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])))
+  return WEEKDAY_LABELS[d.getUTCDay()] || ''
+}
+
+const toShortDateCode = (isoDate) => {
+  const m = String(isoDate || '').match(/^20(\d{2})-(\d{2})-(\d{2})$/)
+  return m ? `${m[1]}${m[2]}${m[3]}` : String(isoDate || '')
+}
+
+export const buildReportShortLinks = (webAppUrl = DEFAULT_WEB_APP_URL) => {
+  const base = normalizeWebAppUrl(webAppUrl)
+  return {
+    base,
+    dayUrl(isoDate, statusCode = '') {
+      if (!isoDate) return `${base}/report-firebase`
+      const code = toShortDateCode(isoDate)
+      return statusCode ? `${base}/r/d/${code}/${statusCode}` : `${base}/r/d/${code}`
+    },
+    weekUrl(shortWeek, statusCode = '') {
+      if (!shortWeek) return `${base}/report-firebase`
+      return statusCode ? `${base}/r/w/${shortWeek}/${statusCode}` : `${base}/r/w/${shortWeek}`
+    },
+    prevWeeksUrl() {
+      return `${base}/r/prev`
+    },
+    allPendingUrl() {
+      return `${base}/r/pending`
+    },
+    taskUrl(taskId) {
+      const clean = String(taskId || '').trim()
+      if (!clean) return `${base}/report-firebase`
+      const shortId = clean.replace(/^RPT_(\d{8}_\d+)$/, '$1')
+      return `${base}/r/t/${encodeURIComponent(shortId)}`
+    }
+  }
+}
+
+const expandShortDateCode = (code) => {
+  const s = String(code || '').trim()
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
+  const m = s.match(/^(\d{2})(\d{2})(\d{2})$/)
+  if (!m) return ''
+  const mm = Number(m[2])
+  const dd = Number(m[3])
+  if (mm < 1 || mm > 12 || dd < 1 || dd > 31) return ''
+  return `20${m[1]}-${m[2]}-${m[3]}`
+}
+
+const expandShortWeekCode = (code) => {
+  const s = String(code || '').trim().toUpperCase()
+  const mFull = s.match(/^(\d{4})-?W(\d{2})$/)
+  if (mFull) return `${mFull[1]}-W${mFull[2]}`
+  const mShort = s.match(/^(\d{2})W(\d{2})$/)
+  if (mShort) return `20${mShort[1]}-W${mShort[2]}`
+  return ''
+}
+
+const expandShortStatusCode = (code) => {
+  const s = String(code || '').trim().toLowerCase()
+  if (s === 'p' || s === 'pending') return 'pending'
+  if (s === 'd' || s === 'done') return 'done'
+  if (s === 'f' || s === 'failed') return 'failed'
+  return ''
+}
+
+/**
+ * Resolve ultra-short Zalo deep-link paths (/r/...) into full SPA paths (/report-firebase?...).
+ * Shared by both Cloudflare Worker (302 redirect) and Vue Router (Vercel/localhost fallback).
+ */
+export const resolveShortReportRedirect = (pathname) => {
+  const raw = String(pathname || '').trim()
+  if (raw !== '/r' && !raw.startsWith('/r/')) return null
+
+  const segments = raw
+    .replace(/^\/r\/?/, '')
+    .split('/')
+    .map((x) => x.trim())
+    .filter(Boolean)
+
+  if (segments.length === 0) return '/report-firebase'
+
+  const kind = segments[0].toLowerCase()
+
+  if (kind === 'd' && segments[1]) {
+    const isoDate = expandShortDateCode(segments[1])
+    if (!isoDate) return '/report-firebase'
+    const status = expandShortStatusCode(segments[2])
+    const q = new URLSearchParams({ date: isoDate })
+    if (status) q.set('status', status)
+    return `/report-firebase?${q.toString()}`
+  }
+
+  if (kind === 'w' && segments[1]) {
+    const isoWeek = expandShortWeekCode(segments[1])
+    if (!isoWeek) return '/report-firebase'
+    const status = expandShortStatusCode(segments[2])
+    const q = new URLSearchParams({ week: isoWeek })
+    if (status) q.set('status', status)
+    return `/report-firebase?${q.toString()}`
+  }
+
+  if (kind === 'prev') {
+    const q = new URLSearchParams({ scope: 'prev-weeks', status: 'pending' })
+    const before = expandShortDateCode(segments[1])
+    if (before) q.set('before', before)
+    return `/report-firebase?${q.toString()}`
+  }
+
+  if (kind === 'pending') {
+    return '/report-firebase?scope=all-pending&status=pending'
+  }
+
+  if (kind === 't' && segments[1]) {
+    let decoded = segments[1]
+    try {
+      decoded = decodeURIComponent(segments[1])
+    } catch {
+      // keep raw segment
+    }
+    const fullId = /^\d{8}_\d+$/.test(decoded) ? `RPT_${decoded}` : decoded
+    const q = new URLSearchParams({ openId: fullId })
+    return `/report-firebase?${q.toString()}`
+  }
+
+  return '/report-firebase'
 }
 
 /**
@@ -204,11 +582,27 @@ export const getVietnamDateParts = (date = new Date(), timeZone = DEFAULT_WORKER
 /**
  * Compute current week range (Monday -> Sunday) in Vietnam calendar date.
  */
+export const getVietnamYesterdayParts = (vn) => {
+  const yesterday = new Date(Date.UTC(vn.yearNum, vn.monthNum - 1, vn.dayNum) - 86400000)
+  const yY = yesterday.getUTCFullYear()
+  const yM = pad2(yesterday.getUTCMonth() + 1)
+  const yD = pad2(yesterday.getUTCDate())
+  const dow = yesterday.getUTCDay()
+  return {
+    isoDateStr: `${yY}-${yM}-${yD}`,
+    shortDate: `${yD}/${yM}`,
+    fullDate: `${yD}/${yM}/${yY}`,
+    dayOfWeek: dow,
+    weekdayLabel: WEEKDAY_LABELS[dow] || ''
+  }
+}
+
 export const getVietnamWeekRange = (vn) => {
   const todayUtcMs = Date.UTC(vn.yearNum, vn.monthNum - 1, vn.dayNum)
   const offsetFromMonday = (vn.dayOfWeek + 6) % 7
   const monday = new Date(todayUtcMs - offsetFromMonday * 86400000)
   const sunday = new Date(monday.getTime() + 6 * 86400000)
+  const prevSunday = new Date(monday.getTime() - 86400000)
 
   const mY = monday.getUTCFullYear()
   const mM = pad2(monday.getUTCMonth() + 1)
@@ -216,10 +610,17 @@ export const getVietnamWeekRange = (vn) => {
   const sY = sunday.getUTCFullYear()
   const sM = pad2(sunday.getUTCMonth() + 1)
   const sD = pad2(sunday.getUTCDate())
+  const psY = prevSunday.getUTCFullYear()
+  const psM = pad2(prevSunday.getUTCMonth() + 1)
+  const psD = pad2(prevSunday.getUTCDate())
+  const { isoWeek, shortWeek } = getIsoWeekCode(vn.yearNum, vn.monthNum, vn.dayNum)
 
   return {
     mondayIso: `${mY}-${mM}-${mD}`,
     sundayIso: `${sY}-${sM}-${sD}`,
+    prevSundayIso: `${psY}-${psM}-${psD}`,
+    isoWeek,
+    shortWeek,
     weekLabel: `${mD}/${mM} - ${sD}/${sM}`
   }
 }
@@ -352,14 +753,14 @@ export const isScheduleDueNow = (sched, vnNow, graceMinutes = 1) => {
 
 export const buildMorningTasksScheduleDefault = () => ({
   id: 'sched_morning_tasks',
-  name: 'Nhắc việc chưa làm trong tuần (07:00 sáng)',
+  name: 'Điểm tin đầu ngày: Tổng kết hôm qua & việc tuần (07:00 sáng)',
   time: '07:00',
   days: [0, 1, 2, 3, 4, 5, 6],
   targetChatId: '__all__',
   enabled: true,
   lastSentDate: '',
   template:
-    '[VIỆC CHƯA LÀM TRONG TUẦN - {time} | {thu} {date}]\n' +
+    '[ĐIỂM TIN ĐẦU NGÀY - {time} | {thu} {date}]\n' +
     '{ban_tin_viec_sang}'
 })
 
@@ -379,11 +780,14 @@ export const buildAfternoonTasksScheduleDefault = () => ({
 export const buildBaseBotConfig = (sysZalo = {}) => {
   const token = String(sysZalo.defaultBotToken || DEFAULT_BOT_TOKEN).trim()
   const invite = String(sysZalo.defaultInviteUrl || DEFAULT_INVITE_URL).trim()
+  const webAppUrl = normalizeWebAppUrl(sysZalo.defaultWebAppUrl || DEFAULT_WEB_APP_URL)
   return {
     botToken: token,
     botName: 'Bot SONAI SI',
     botAccount: 'bot.QkJpMNVs',
     inviteGroupUrl: invite,
+    webAppUrl,
+    taskLinkMode: DEFAULT_TASK_LINK_MODE,
     enabled: true,
     commandListenerEnabled: true,
     taskSchedulesVersion: TASK_SCHEDULES_VERSION,
@@ -541,9 +945,24 @@ export const normalizeBotConfigWithDefault = (raw, sysZalo = {}) => {
     const morningDef = buildMorningTasksScheduleDefault()
     const afternoonDef = buildAfternoonTasksScheduleDefault()
 
-    const hasMorning = normalizedSchedules.some((s) => s && s.id === 'sched_morning_tasks')
-    if (!hasMorning) {
+    const morningIdx = normalizedSchedules.findIndex((s) => s && s.id === 'sched_morning_tasks')
+    if (morningIdx < 0) {
       normalizedSchedules = [morningDef, ...normalizedSchedules]
+    } else {
+      const oldMorning = normalizedSchedules[morningIdx]
+      const oldTpl = String(oldMorning.template || '').trim()
+      const isLegacyMorningDefault =
+        oldTpl === '[VIỆC CHƯA LÀM TRONG TUẦN - {time} | {thu} {date}]\n{ban_tin_viec_sang}'
+      if (isLegacyMorningDefault) {
+        normalizedSchedules[morningIdx] = {
+          ...oldMorning,
+          name:
+            oldMorning.name === 'Nhắc việc chưa làm trong tuần (07:00 sáng)'
+              ? morningDef.name
+              : oldMorning.name,
+          template: morningDef.template
+        }
+      }
     }
 
     const aftIdx = normalizedSchedules.findIndex((s) => s && s.id === 'sched_afternoon_tasks')
@@ -568,6 +987,8 @@ export const normalizeBotConfigWithDefault = (raw, sysZalo = {}) => {
     botName: String(raw.botName || def.botName).trim(),
     botAccount: String(raw.botAccount || def.botAccount).trim(),
     inviteGroupUrl: String(raw.inviteGroupUrl || def.inviteGroupUrl).trim(),
+    webAppUrl: normalizeWebAppUrl(raw.webAppUrl || def.webAppUrl),
+    taskLinkMode: normalizeTaskLinkMode(raw.taskLinkMode || def.taskLinkMode),
     enabled: raw.enabled !== undefined ? Boolean(raw.enabled) : def.enabled,
     commandListenerEnabled:
       raw.commandListenerEnabled !== undefined
@@ -691,106 +1112,239 @@ const buildTaskTagsPrefix = (t, { includePeriod = false } = {}) => {
   return parts.length > 0 ? parts.join(' ') + ' ' : ''
 }
 
+const groupTasksByIsoDate = (tasks) => {
+  const groups = []
+  const byKey = new Map()
+  for (const t of tasks || []) {
+    const key = t.isoDate || '__nodate__'
+    let g = byKey.get(key)
+    if (!g) {
+      g = {
+        isoDate: t.isoDate || '',
+        shortDate: t.shortDate || '',
+        fullDate: t.fullDate || '',
+        weekdayLabel: t.isoDate ? getWeekdayLabelForIsoDate(t.isoDate) : '',
+        items: []
+      }
+      byKey.set(key, g)
+      groups.push(g)
+    }
+    g.items.push(t)
+  }
+  return groups
+}
+
+const pushDetailedTaskLines = (lines, seqNo, t, { showPerTaskLinks = false, links = null } = {}) => {
+  const prefix = buildTaskTagsPrefix(t, { includePeriod: true })
+  lines.push(`${seqNo}. ${prefix}${t.noiDung}`)
+  if (t.customerLabel) {
+    lines.push(`   • KH: ${t.customerLabel}`)
+  }
+  if (t.ghiChu) {
+    lines.push(`   • Ghi chú: ${t.ghiChu}`)
+  }
+  if (showPerTaskLinks && links && t.id) {
+    lines.push(`   ↳ Chi tiết: ${links.taskUrl(t.id)}`)
+  }
+}
+
 const formatMorningWeeklyTasksDigest = ({
-  weekLabel,
+  vn,
+  yesterday,
+  weekRange,
+  weekTotalCount,
+  weekDoneCount,
+  weekPendingCount,
+  weekPriorityPendingCount,
+  yesterdayAll,
+  yesterdayDone,
+  yesterdayPending,
+  yesterdayFailed,
   todayPending,
-  weekOtherPending,
-  prevWeeksPendingCount
+  weekOtherPendingForMorning,
+  prevWeeksPendingCount,
+  links,
+  taskLinkMode = DEFAULT_TASK_LINK_MODE
 }) => {
-  const totalWeekPending = todayPending.length + weekOtherPending.length
-  const totalPriority =
-    todayPending.filter((t) => t.isPriority).length +
-    weekOtherPending.filter((t) => t.isPriority).length
+  const showLinks = taskLinkMode !== 'off' && Boolean(links)
+  const showPerTaskLinks = taskLinkMode === 'per_task' && Boolean(links)
+  const shortToday = `${pad2(vn.dayNum)}/${pad2(vn.monthNum)}`
+  const weekPct = weekTotalCount > 0 ? Math.round((weekDoneCount / weekTotalCount) * 100) : 0
 
   const lines = []
-  if (totalWeekPending === 0) {
-    lines.push(`Tuần ${weekLabel} • Hiện không có công việc nào chưa xử lý trong tuần này.`)
+  if (weekTotalCount === 0) {
+    lines.push(`Tuần ${weekRange.weekLabel} • Chưa ghi nhận công việc nào trong tuần mới.`)
+    if (showLinks) {
+      lines.push(`▸ Chi tiết: ${links.weekUrl(weekRange.shortWeek)}`)
+    }
+  } else if (weekPendingCount === 0) {
+    lines.push(
+      `Tuần ${weekRange.weekLabel} • Xong ${weekDoneCount}/${weekTotalCount} việc (${weekPct}%) • Không còn việc tồn tuần này.`
+    )
+    if (showLinks) {
+      lines.push(`▸ Chi tiết: ${links.weekUrl(weekRange.shortWeek)}`)
+    }
   } else {
     lines.push(
-      `Tuần ${weekLabel} • Còn ${totalWeekPending} việc chưa xử lý` +
-        (totalPriority > 0 ? ` (${totalPriority} ưu tiên)` : '')
+      `Tuần ${weekRange.weekLabel} • Xong ${weekDoneCount}/${weekTotalCount} việc (${weekPct}%) • Còn ${weekPendingCount} việc chưa xử lý` +
+        (weekPriorityPendingCount > 0 ? ` (${weekPriorityPendingCount} ưu tiên)` : '')
+    )
+    if (showLinks) {
+      lines.push(`▸ Chi tiết: ${links.weekUrl(weekRange.shortWeek, 'p')}`)
+    }
+  }
+
+  // 1. TỔNG KẾT HÔM QUA (Cách A: luôn là ngày hôm qua = today - 1)
+  const totalYesterday = yesterdayAll.length
+  const yPct = totalYesterday > 0 ? Math.round((yesterdayDone.length / totalYesterday) * 100) : 0
+  lines.push('')
+  lines.push(
+    `◆ TỔNG KẾT HÔM QUA (${yesterday.weekdayLabel} ${yesterday.shortDate} • Tổng: ${totalYesterday} việc)`
+  )
+  if (totalYesterday === 0) {
+    lines.push('• Hôm qua chưa ghi nhận công việc nào.')
+  } else {
+    lines.push(
+      `• Hoàn thành: ${yesterdayDone.length} (${yPct}%) | Chưa xong: ${yesterdayPending.length} | Thất bại: ${yesterdayFailed.length}`
     )
   }
+  if (showLinks) {
+    lines.push(`▸ Chi tiết: ${links.dayUrl(yesterday.isoDateStr)}`)
+  }
 
-  const MAX_TOTAL_DISPLAY = 15
-  const shownToday = todayPending.slice(0, Math.min(10, MAX_TOTAL_DISPLAY))
-  const remainingSlots = Math.max(0, MAX_TOTAL_DISPLAY - shownToday.length)
-  const shownWeekOther = weekOtherPending.slice(0, remainingSlots)
-
-  let seq = 1
-
-  if (shownToday.length > 0) {
+  if (yesterdayDone.length > 0) {
     lines.push('')
-    lines.push(`◆ HÔM NAY (${todayPending.length} việc)`)
-    for (const t of shownToday) {
-      const prefix = buildTaskTagsPrefix(t, { includePeriod: true })
-      lines.push(`${seq++}. ${prefix}${t.noiDung}`)
-      if (t.customerLabel) {
-        lines.push(`   • KH: ${t.customerLabel}`)
-      }
-      if (t.ghiChu) {
-        lines.push(`   • Ghi chú: ${t.ghiChu}`)
-      }
+    lines.push(`✓ ĐÃ HOÀN THÀNH HÔM QUA (${yesterdayDone.length})`)
+    if (showLinks) {
+      lines.push(`▸ Chi tiết: ${links.dayUrl(yesterday.isoDateStr, 'd')}`)
     }
+    const shownYDone = yesterdayDone.slice(0, 15)
+    shownYDone.forEach((t, idx) => {
+      pushDetailedTaskLines(lines, idx + 1, t, { showPerTaskLinks, links })
+    })
+    if (yesterdayDone.length > shownYDone.length) {
+      lines.push(`... và ${yesterdayDone.length - shownYDone.length} việc đã hoàn thành khác.`)
+    }
+  }
+
+  if (yesterdayPending.length > 0) {
+    lines.push('')
+    lines.push(`○ CHƯA XONG HÔM QUA (${yesterdayPending.length})`)
+    if (showLinks) {
+      lines.push(`▸ Chi tiết: ${links.dayUrl(yesterday.isoDateStr, 'p')}`)
+    }
+    const shownYPending = yesterdayPending.slice(0, 20)
+    shownYPending.forEach((t, idx) => {
+      pushDetailedTaskLines(lines, idx + 1, t, { showPerTaskLinks, links })
+    })
+    if (yesterdayPending.length > shownYPending.length) {
+      lines.push(`... và ${yesterdayPending.length - shownYPending.length} việc chưa xong hôm qua khác.`)
+    }
+  }
+
+  if (yesterdayFailed.length > 0) {
+    lines.push('')
+    lines.push(`× THẤT BẠI HÔM QUA (${yesterdayFailed.length})`)
+    if (showLinks) {
+      lines.push(`▸ Chi tiết: ${links.dayUrl(yesterday.isoDateStr, 'f')}`)
+    }
+    const shownYFailed = yesterdayFailed.slice(0, 10)
+    shownYFailed.forEach((t, idx) => {
+      pushDetailedTaskLines(lines, idx + 1, t, { showPerTaskLinks, links })
+    })
+    if (yesterdayFailed.length > shownYFailed.length) {
+      lines.push(`... và ${yesterdayFailed.length - shownYFailed.length} việc thất bại khác.`)
+    }
+  }
+
+  // 2. LỊCH HÔM NAY (chỉ hiện nếu hôm nay đã có việc hẹn trước)
+  if (todayPending.length > 0) {
+    lines.push('')
+    lines.push(`◆ LỊCH HÔM NAY ${vn.weekdayLabel} ${shortToday} (${todayPending.length} việc)`)
+    if (showLinks) {
+      lines.push(`▸ Chi tiết: ${links.dayUrl(vn.isoDateStr, 'p')}`)
+    }
+    const shownToday = todayPending.slice(0, 15)
+    shownToday.forEach((t, idx) => {
+      pushDetailedTaskLines(lines, idx + 1, t, { showPerTaskLinks, links })
+    })
     if (todayPending.length > shownToday.length) {
-      lines.push(`   ... và ${todayPending.length - shownToday.length} việc hôm nay khác.`)
+      lines.push(`... và ${todayPending.length - shownToday.length} việc hôm nay khác.`)
     }
   }
 
-  if (shownWeekOther.length > 0) {
-    lines.push('')
-    lines.push(`◆ MỚI TRONG TUẦN NÀY (${weekOtherPending.length} việc)`)
-    for (const t of shownWeekOther) {
-      const prefix = buildTaskTagsPrefix(t, { includePeriod: false })
-      lines.push(`${seq++}. ${prefix}${t.noiDung}`)
-      const metaParts = []
-      if (t.shortDate) {
-        metaParts.push(t.period ? `${t.shortDate} (${t.period})` : t.shortDate)
-      } else if (t.period) {
-        metaParts.push(t.period)
+  // 3. VIỆC CHƯA LÀM CÁC NGÀY KHÁC TRONG TUẦN (loại trừ hôm qua & hôm nay để tránh trùng lặp)
+  if (weekOtherPendingForMorning.length > 0) {
+    const shownWeekOther = weekOtherPendingForMorning.slice(0, 25)
+    const dayGroups = groupTasksByIsoDate(shownWeekOther)
+    const fullCountByIso = {}
+    for (const t of weekOtherPendingForMorning) {
+      const k = t.isoDate || '__nodate__'
+      fullCountByIso[k] = (fullCountByIso[k] || 0) + 1
+    }
+
+    for (const group of dayGroups) {
+      lines.push('')
+      const dayTotal = fullCountByIso[group.isoDate || '__nodate__'] || group.items.length
+      const dayTitle = group.shortDate
+        ? `${group.weekdayLabel ? `${group.weekdayLabel} ` : ''}${group.shortDate}`
+        : 'NGÀY KHÁC TRONG TUẦN'
+      lines.push(`◆ ${dayTitle} (${dayTotal} việc)`)
+      if (showLinks && group.isoDate) {
+        lines.push(`▸ Chi tiết: ${links.dayUrl(group.isoDate, 'p')}`)
       }
-      if (t.customerLabel) {
-        metaParts.push(`KH: ${t.customerLabel}`)
-      }
-      if (metaParts.length > 0) {
-        lines.push(`   • ${metaParts.join(' | ')}`)
-      }
-      if (t.ghiChu) {
-        lines.push(`   • Ghi chú: ${t.ghiChu}`)
+      group.items.forEach((t, idx) => {
+        pushDetailedTaskLines(lines, idx + 1, t, { showPerTaskLinks, links })
+      })
+    }
+
+    const hiddenWeekOther = weekOtherPendingForMorning.length - shownWeekOther.length
+    if (hiddenWeekOther > 0) {
+      lines.push('')
+      lines.push(`... và ${hiddenWeekOther} công việc khác trong tuần.`)
+      if (showLinks) {
+        lines.push(`▸ Chi tiết: ${links.weekUrl(weekRange.shortWeek, 'p')}`)
       }
     }
   }
 
-  const hiddenWeekOther = weekOtherPending.length - shownWeekOther.length
-  if (hiddenWeekOther > 0) {
-    lines.push(`... và ${hiddenWeekOther} công việc khác trong tuần.`)
-  }
-
+  // 4. VIỆC TỒN TỪ TUẦN TRƯỚC
   if (prevWeeksPendingCount > 0) {
     lines.push('')
     lines.push('────────────────────')
-    lines.push(
-      `▸ Lưu ý: Còn ${prevWeeksPendingCount} việc tồn từ tuần trước chưa xử lý (xem trên web hoặc nhắn /congviec).`
-    )
+    if (showLinks) {
+      lines.push(`▸ Tuần trước còn ${prevWeeksPendingCount} việc tồn chưa xử lý`)
+      lines.push(`▸ Chi tiết: ${links.prevWeeksUrl()}`)
+    } else {
+      lines.push(
+        `▸ Lưu ý: Còn ${prevWeeksPendingCount} việc tồn từ tuần trước chưa xử lý (xem trên web hoặc nhắn /congviec).`
+      )
+    }
   }
 
-  return clampZaloMessage(lines.join('\n'))
+  return lines.join('\n').trim()
 }
 
 const formatAfternoonDailyWeeklySummary = ({
-  weekLabel,
+  vn,
+  weekRange,
   todayAll,
   todayDone,
   todayPending,
   todayFailed,
   weekOtherPending,
-  prevWeeksPendingCount
+  prevWeeksPendingCount,
+  links,
+  taskLinkMode = DEFAULT_TASK_LINK_MODE
 }) => {
+  const showLinks = taskLinkMode !== 'off' && Boolean(links)
+  const showPerTaskLinks = taskLinkMode === 'per_task' && Boolean(links)
+  const shortToday = `${pad2(vn.dayNum)}/${pad2(vn.monthNum)}`
   const lines = []
   const totalToday = todayAll.length
   const pct = totalToday > 0 ? Math.round((todayDone.length / totalToday) * 100) : 0
 
-  lines.push(`◆ THỐNG KÊ HÔM NAY (Tổng: ${totalToday} việc)`)
+  lines.push(`◆ THỐNG KÊ HÔM NAY (${vn.weekdayLabel} ${shortToday} • Tổng: ${totalToday} việc)`)
   if (totalToday === 0) {
     lines.push('• Hôm nay chưa ghi nhận công việc nào.')
   } else {
@@ -798,15 +1352,24 @@ const formatAfternoonDailyWeeklySummary = ({
       `• Hoàn thành: ${todayDone.length} (${pct}%) | Chưa xong: ${todayPending.length} | Thất bại: ${todayFailed.length}`
     )
   }
+  if (showLinks) {
+    lines.push(`▸ Chi tiết: ${links.dayUrl(vn.isoDateStr)}`)
+  }
 
   if (todayDone.length > 0) {
     lines.push('')
     lines.push(`✓ ĐÃ HOÀN THÀNH HÔM NAY (${todayDone.length})`)
-    const shownDone = todayDone.slice(0, 8)
+    if (showLinks) {
+      lines.push(`▸ Chi tiết: ${links.dayUrl(vn.isoDateStr, 'd')}`)
+    }
+    const shownDone = todayDone.slice(0, 15)
     shownDone.forEach((t, idx) => {
       const prefix = buildTaskTagsPrefix(t, { includePeriod: true })
       const cust = t.customerLabel ? ` [${t.customerLabel}]` : ''
       lines.push(`${idx + 1}. ${prefix}${t.noiDung}${cust}`)
+      if (showPerTaskLinks && t.id) {
+        lines.push(`   ↳ Chi tiết: ${links.taskUrl(t.id)}`)
+      }
     })
     if (todayDone.length > shownDone.length) {
       lines.push(`... và ${todayDone.length - shownDone.length} việc đã hoàn thành khác.`)
@@ -816,11 +1379,17 @@ const formatAfternoonDailyWeeklySummary = ({
   if (todayPending.length > 0) {
     lines.push('')
     lines.push(`○ CHƯA XONG HÔM NAY (${todayPending.length})`)
-    const shownTodayPending = todayPending.slice(0, 8)
+    if (showLinks) {
+      lines.push(`▸ Chi tiết: ${links.dayUrl(vn.isoDateStr, 'p')}`)
+    }
+    const shownTodayPending = todayPending.slice(0, 20)
     shownTodayPending.forEach((t, idx) => {
       const prefix = buildTaskTagsPrefix(t, { includePeriod: true })
       const cust = t.customerLabel ? ` [${t.customerLabel}]` : ''
       lines.push(`${idx + 1}. ${prefix}${t.noiDung}${cust}`)
+      if (showPerTaskLinks && t.id) {
+        lines.push(`   ↳ Chi tiết: ${links.taskUrl(t.id)}`)
+      }
     })
     if (todayPending.length > shownTodayPending.length) {
       lines.push(`... và ${todayPending.length - shownTodayPending.length} việc chưa xong khác.`)
@@ -830,11 +1399,17 @@ const formatAfternoonDailyWeeklySummary = ({
   if (todayFailed.length > 0) {
     lines.push('')
     lines.push(`× THẤT BẠI HÔM NAY (${todayFailed.length})`)
-    const shownFailed = todayFailed.slice(0, 5)
+    if (showLinks) {
+      lines.push(`▸ Chi tiết: ${links.dayUrl(vn.isoDateStr, 'f')}`)
+    }
+    const shownFailed = todayFailed.slice(0, 10)
     shownFailed.forEach((t, idx) => {
       const prefix = buildTaskTagsPrefix(t, { includePeriod: true })
       const cust = t.customerLabel ? ` [${t.customerLabel}]` : ''
       lines.push(`${idx + 1}. ${prefix}${t.noiDung}${cust}`)
+      if (showPerTaskLinks && t.id) {
+        lines.push(`   ↳ Chi tiết: ${links.taskUrl(t.id)}`)
+      }
     })
     if (todayFailed.length > shownFailed.length) {
       lines.push(`... và ${todayFailed.length - shownFailed.length} việc thất bại khác.`)
@@ -845,10 +1420,16 @@ const formatAfternoonDailyWeeklySummary = ({
   lines.push('')
   lines.push('────────────────────')
   if (totalWeekPending === 0) {
-    lines.push(`◆ TỒN CHƯA LÀM TRONG TUẦN (${weekLabel}): 0 việc`)
+    lines.push(`◆ TỒN CHƯA LÀM TRONG TUẦN (${weekRange.weekLabel}): 0 việc`)
     lines.push('• Đã hoàn thành toàn bộ công việc trong tuần.')
+    if (showLinks) {
+      lines.push(`▸ Chi tiết: ${links.weekUrl(weekRange.shortWeek)}`)
+    }
   } else {
-    lines.push(`◆ TỒN CHƯA LÀM TRONG TUẦN (${weekLabel}): Tổng ${totalWeekPending} việc`)
+    lines.push(`◆ TỒN CHƯA LÀM TRONG TUẦN (${weekRange.weekLabel}): Tổng ${totalWeekPending} việc`)
+    if (showLinks) {
+      lines.push(`▸ Chi tiết: ${links.weekUrl(weekRange.shortWeek, 'p')}`)
+    }
     if (todayPending.length > 0 && weekOtherPending.length > 0) {
       lines.push(
         `(Gồm ${todayPending.length} việc hôm nay ở trên + ${weekOtherPending.length} việc ngày khác trong tuần)`
@@ -858,21 +1439,36 @@ const formatAfternoonDailyWeeklySummary = ({
     }
 
     if (weekOtherPending.length > 0) {
-      lines.push('')
-      const shownWeekOther = weekOtherPending.slice(0, 10)
-      for (const t of shownWeekOther) {
-        const prefix = buildTaskTagsPrefix(t, { includePeriod: false })
-        const dateTag = t.shortDate
-          ? t.period
-            ? `${t.shortDate} (${t.period}) - `
-            : `${t.shortDate} - `
-          : t.period
-            ? `(${t.period}) - `
-            : ''
-        const cust = t.customerLabel ? ` [${t.customerLabel}]` : ''
-        lines.push(`▸ ${prefix}${dateTag}${t.noiDung}${cust}`)
+      const shownWeekOther = weekOtherPending.slice(0, 25)
+      const dayGroups = groupTasksByIsoDate(shownWeekOther)
+      const fullCountByIso = {}
+      for (const t of weekOtherPending) {
+        const k = t.isoDate || '__nodate__'
+        fullCountByIso[k] = (fullCountByIso[k] || 0) + 1
       }
+
+      for (const group of dayGroups) {
+        lines.push('')
+        const dayTotal = fullCountByIso[group.isoDate || '__nodate__'] || group.items.length
+        const dayTitle = group.shortDate
+          ? `${group.weekdayLabel ? `${group.weekdayLabel} ` : ''}${group.shortDate}`
+          : 'NGÀY KHÁC TRONG TUẦN'
+        lines.push(`◆ ${dayTitle} (${dayTotal} việc)`)
+        if (showLinks && group.isoDate) {
+          lines.push(`▸ Chi tiết: ${links.dayUrl(group.isoDate, 'p')}`)
+        }
+        for (const t of group.items) {
+          const prefix = buildTaskTagsPrefix(t, { includePeriod: true })
+          const cust = t.customerLabel ? ` [${t.customerLabel}]` : ''
+          lines.push(`• ${prefix}${t.noiDung}${cust}`)
+          if (showPerTaskLinks && t.id) {
+            lines.push(`  ↳ Chi tiết: ${links.taskUrl(t.id)}`)
+          }
+        }
+      }
+
       if (weekOtherPending.length > shownWeekOther.length) {
+        lines.push('')
         lines.push(`... và ${weekOtherPending.length - shownWeekOther.length} việc khác trong tuần.`)
       }
     }
@@ -880,40 +1476,111 @@ const formatAfternoonDailyWeeklySummary = ({
 
   if (prevWeeksPendingCount > 0) {
     lines.push('')
-    lines.push(`▸ Tuần trước còn ${prevWeeksPendingCount} việc tồn chưa xử lý.`)
+    lines.push('────────────────────')
+    if (showLinks) {
+      lines.push(`▸ Tuần trước còn ${prevWeeksPendingCount} việc tồn chưa xử lý`)
+      lines.push(`▸ Chi tiết: ${links.prevWeeksUrl()}`)
+    } else {
+      lines.push(`▸ Tuần trước còn ${prevWeeksPendingCount} việc tồn chưa xử lý.`)
+    }
   }
 
-  return clampZaloMessage(lines.join('\n'))
+  return lines.join('\n').trim()
 }
 
-const formatAllPendingTasksSummary = (allPending, vn) => {
+const formatAllPendingTasksSummary = ({
+  allPending,
+  vn,
+  weekRange,
+  prevWeeksPendingCount,
+  links,
+  taskLinkMode = DEFAULT_TASK_LINK_MODE
+}) => {
+  const showLinks = taskLinkMode !== 'off' && Boolean(links)
+  const showPerTaskLinks = taskLinkMode === 'per_task' && Boolean(links)
   if (!allPending || allPending.length === 0) {
-    return 'Hiện không có công việc nào chưa xử lý.'
+    return showLinks
+      ? `Hiện không có công việc nào chưa xử lý.\n▸ Chi tiết: ${links.weekUrl(weekRange.shortWeek)}`
+      : 'Hiện không có công việc nào chưa xử lý.'
   }
-  const lines = [`Tổng: ${allPending.length} công việc chưa xử lý (mới nhất lên đầu)`, '']
-  const shown = allPending.slice(0, 15)
-  shown.forEach((t, idx) => {
-    const isToday = t.isoDate === vn.isoDateStr
-    const prefix = buildTaskTagsPrefix(t, { includePeriod: isToday })
-    const datePart = isToday
-      ? 'Hôm nay'
-      : t.shortDate
-        ? t.period
-          ? `${t.shortDate} (${t.period})`
-          : t.shortDate
-        : t.period || ''
-    const cust = t.customerLabel ? ` [${t.customerLabel}]` : ''
-    lines.push(`${idx + 1}. ${prefix}${datePart ? `${datePart} - ` : ''}${t.noiDung}${cust}`)
-  })
-  if (allPending.length > shown.length) {
-    lines.push(`... và ${allPending.length - shown.length} công việc khác.`)
+
+  const shortToday = `${pad2(vn.dayNum)}/${pad2(vn.monthNum)}`
+  const lines = [`Tổng: ${allPending.length} công việc chưa xử lý (mới nhất lên đầu)`]
+  if (showLinks) {
+    lines.push(`▸ Chi tiết tất cả: ${links.allPendingUrl()}`)
+    lines.push(`▸ Chi tiết tuần này (${weekRange.weekLabel}): ${links.weekUrl(weekRange.shortWeek, 'p')}`)
   }
-  return clampZaloMessage(lines.join('\n'))
+
+  const shown = allPending.slice(0, 30)
+  const dayGroups = groupTasksByIsoDate(shown)
+  const fullCountByIso = {}
+  for (const t of allPending) {
+    const k = t.isoDate || '__nodate__'
+    fullCountByIso[k] = (fullCountByIso[k] || 0) + 1
+  }
+
+  let seq = 1
+  for (const group of dayGroups) {
+    lines.push('')
+    const isToday = group.isoDate && group.isoDate === vn.isoDateStr
+    const dayTotal = fullCountByIso[group.isoDate || '__nodate__'] || group.items.length
+    if (isToday) {
+      lines.push(`◆ HÔM NAY ${vn.weekdayLabel} ${shortToday} (${dayTotal} việc)`)
+      if (showLinks) {
+        lines.push(`▸ Chi tiết: ${links.dayUrl(vn.isoDateStr, 'p')}`)
+      }
+    } else if (group.isoDate) {
+      const dayTitle = `${group.weekdayLabel ? `${group.weekdayLabel} ` : ''}${group.shortDate}`
+      lines.push(`◆ ${dayTitle} (${dayTotal} việc)`)
+      if (showLinks) {
+        lines.push(`▸ Chi tiết: ${links.dayUrl(group.isoDate, 'p')}`)
+      }
+    } else {
+      lines.push(`◆ CHƯA RÕ NGÀY (${dayTotal} việc)`)
+    }
+
+    for (const t of group.items) {
+      const prefix = buildTaskTagsPrefix(t, { includePeriod: true })
+      const cust = t.customerLabel ? ` [${t.customerLabel}]` : ''
+      lines.push(`${seq++}. ${prefix}${t.noiDung}${cust}`)
+      if (showPerTaskLinks && t.id) {
+        lines.push(`   ↳ Chi tiết: ${links.taskUrl(t.id)}`)
+      }
+    }
+  }
+
+  if (allPending.length > shown.length || prevWeeksPendingCount > 0) {
+    lines.push('')
+    lines.push('────────────────────')
+    if (allPending.length > shown.length) {
+      lines.push(`... và ${allPending.length - shown.length} công việc cũ hơn.`)
+    }
+    if (prevWeeksPendingCount > 0) {
+      if (showLinks) {
+        lines.push(`▸ Tuần trước còn ${prevWeeksPendingCount} việc tồn chưa xử lý`)
+        lines.push(`▸ Chi tiết: ${links.prevWeeksUrl()}`)
+      } else {
+        lines.push(`▸ Tuần trước còn ${prevWeeksPendingCount} việc tồn chưa xử lý.`)
+      }
+    }
+  }
+
+  return lines.join('\n').trim()
 }
 
-export const buildContextFromDatasets = ({ khVal = {}, srVal = {}, repVal = {}, now = new Date() } = {}) => {
+export const buildContextFromDatasets = ({
+  khVal = {},
+  srVal = {},
+  repVal = {},
+  now = new Date(),
+  webAppUrl = DEFAULT_WEB_APP_URL,
+  taskLinkMode = DEFAULT_TASK_LINK_MODE
+} = {}) => {
   const vn = getVietnamDateParts(now)
+  const yesterday = getVietnamYesterdayParts(vn)
   const weekRange = getVietnamWeekRange(vn)
+  const resolvedLinkMode = normalizeTaskLinkMode(taskLinkMode)
+  const links = buildReportShortLinks(webAppUrl)
   const customersList = []
   const debtCustomers = []
   const customerNameById = {}
@@ -995,16 +1662,26 @@ export const buildContextFromDatasets = ({ khVal = {}, srVal = {}, repVal = {}, 
   const todayPending = todayAll.filter((t) => t.isPending).sort(sortTodayPending)
   const todayFailed = todayAll.filter((t) => t.isFailed).sort(sortTodayDoneOrFailed)
 
-  const weekOtherPending = allTasks
-    .filter(
-      (t) =>
-        t.isPending &&
-        t.isoDate &&
-        t.isoDate >= weekRange.mondayIso &&
-        t.isoDate <= weekRange.sundayIso &&
-        t.isoDate !== vn.isoDateStr
-    )
+  const yesterdayAll = allTasks.filter((t) => t.isoDate === yesterday.isoDateStr)
+  const yesterdayDone = yesterdayAll.filter((t) => t.isDone).sort(sortTodayDoneOrFailed)
+  const yesterdayPending = yesterdayAll.filter((t) => t.isPending).sort(sortTodayPending)
+  const yesterdayFailed = yesterdayAll.filter((t) => t.isFailed).sort(sortTodayDoneOrFailed)
+
+  const weekAll = allTasks.filter(
+    (t) => t.isoDate && t.isoDate >= weekRange.mondayIso && t.isoDate <= weekRange.sundayIso
+  )
+  const weekTotalCount = weekAll.length
+  const weekDoneCount = weekAll.filter((t) => t.isDone).length
+  const weekPendingCount = weekAll.filter((t) => t.isPending).length
+  const weekPriorityPendingCount = weekAll.filter((t) => t.isPending && t.isPriority).length
+
+  const weekOtherPending = weekAll
+    .filter((t) => t.isPending && t.isoDate !== vn.isoDateStr)
     .sort(sortNewestFirst)
+
+  const weekOtherPendingForMorning = weekOtherPending.filter(
+    (t) => t.isoDate !== yesterday.isoDateStr
+  )
 
   const prevWeeksPendingCount = allTasks.filter(
     (t) => t.isPending && t.isoDate && t.isoDate < weekRange.mondayIso
@@ -1013,23 +1690,45 @@ export const buildContextFromDatasets = ({ khVal = {}, srVal = {}, repVal = {}, 
   const allPending = allTasks.filter((t) => t.isPending).sort(sortNewestFirst)
 
   const morningWeeklyTasksDigest = formatMorningWeeklyTasksDigest({
-    weekLabel: weekRange.weekLabel,
+    vn,
+    yesterday,
+    weekRange,
+    weekTotalCount,
+    weekDoneCount,
+    weekPendingCount,
+    weekPriorityPendingCount,
+    yesterdayAll,
+    yesterdayDone,
+    yesterdayPending,
+    yesterdayFailed,
     todayPending,
-    weekOtherPending,
-    prevWeeksPendingCount
+    weekOtherPendingForMorning,
+    prevWeeksPendingCount,
+    links,
+    taskLinkMode: resolvedLinkMode
   })
 
   const afternoonDailyWeeklySummary = formatAfternoonDailyWeeklySummary({
-    weekLabel: weekRange.weekLabel,
+    vn,
+    weekRange,
     todayAll,
     todayDone,
     todayPending,
     todayFailed,
     weekOtherPending,
-    prevWeeksPendingCount
+    prevWeeksPendingCount,
+    links,
+    taskLinkMode: resolvedLinkMode
   })
 
-  const incompleteTasksText = formatAllPendingTasksSummary(allPending, vn)
+  const incompleteTasksText = formatAllPendingTasksSummary({
+    allPending,
+    vn,
+    weekRange,
+    prevWeeksPendingCount,
+    links,
+    taskLinkMode: resolvedLinkMode
+  })
 
   const debtDetailLines =
     debtCustomers.length > 0
@@ -1047,12 +1746,21 @@ export const buildContextFromDatasets = ({ khVal = {}, srVal = {}, repVal = {}, 
     date: vn.dateStr,
     time: vn.timeStr,
     thu: vn.weekdayLabel,
+    ngay_hom_qua: yesterday.fullDate,
     tuan_hien_tai: weekRange.weekLabel,
+    link_hom_qua: links.dayUrl(yesterday.isoDateStr),
+    link_hom_qua_xong: links.dayUrl(yesterday.isoDateStr, 'd'),
+    link_hom_qua_chua_xong: links.dayUrl(yesterday.isoDateStr, 'p'),
+    link_hom_nay: links.dayUrl(vn.isoDateStr),
+    link_viec_hom_nay: links.dayUrl(vn.isoDateStr, 'p'),
+    link_tuan_nay: links.weekUrl(weekRange.shortWeek, 'p'),
+    link_ton_tuan_truoc: links.prevWeeksUrl(),
+    link_tat_ca_chua_xong: links.allPendingUrl(),
     tong_khach_hang: customersList.length,
     so_khach_no: debtCustomers.length,
     tong_cong_no: formatNum(totalDebt),
     chi_tiet_cong_no: debtDetailLines,
-    so_viec_chua_lam_tuan: todayPending.length + weekOtherPending.length,
+    so_viec_chua_lam_tuan: weekPendingCount,
     so_viec_hom_nay_chua_xong: todayPending.length,
     so_viec_ton_tuan_truoc: prevWeeksPendingCount,
     ban_tin_viec_sang: morningWeeklyTasksDigest,
